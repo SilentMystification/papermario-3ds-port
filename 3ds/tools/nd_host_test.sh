@@ -140,6 +140,15 @@ printf '%s\n' "hostsel v1" "img $IMG_ID" "self $SELF" "assets $AHASH" "rk $(rk_i
 : > $HSR/hits.txt
 if [ "${PM_CACHE:-on}" != off ]; then $PY 3ds/tools/hostsel.py lookup $HS $HSR/k0.txt $OUT/host_in.txt $HSR/units.txt $HSR/hits.txt || { echo "FAIL hostsel lookup"; exit 1; }; fi
 if [ "${PM_HOSTSEL:-on}" = all ]; then cp $HSR/units.txt $HSR/run.txt; else cut -f1 $HSR/hits.txt | LC_ALL=C sort > $HSR/hit_s.txt; LC_ALL=C sort $HSR/units.txt | LC_ALL=C comm -23 - $HSR/hit_s.txt > $HSR/run.txt; fi
+# HSDEP: a host.d script that reads a /tmp file of another unit names it on a line "# HOSTSEL needs: <unit>". A unit that runs
+# pulls every unit it needs (they run before it: the needed unit must sort first, else FAIL), and its stored key holds their reads.
+grep -H -E '^# HOSTSEL needs: ' 3ds/tests/host.d/*.sh 2>/dev/null | sed -E 's/^([^:]*):# HOSTSEL needs: */\1\t/' > $HSR/needs.txt || true
+while IFS="$(printf '\t')" read -r u nd; do case "$nd" in "$u"|"") ;; *) [ "$(printf '%s\n%s\n' "$nd" "$u" | LC_ALL=C sort | head -1)" = "$nd" ] || { echo "FAIL hostsel: $u needs $nd, which sorts after it"; exit 1; } ;; esac; done < $HSR/needs.txt
+while :; do
+    awk -F'\t' 'FILENAME == ARGV[1] { r[$0] = 1; next } ($1 in r) && !($2 in r) { print $2 }' $HSR/run.txt $HSR/needs.txt | LC_ALL=C sort -u > $HSR/pull.txt
+    [ -s $HSR/pull.txt ] || break
+    cat $HSR/pull.txt >> $HSR/run.txt; LC_ALL=C sort -u -o $HSR/run.txt $HSR/run.txt
+done
 HS_INLINE=0; grep -qx inline $HSR/run.txt && HS_INLINE=1
 grep -v -x inline $HSR/run.txt > $HSR/run_hd.txt || true
 echo "hostsel: hit $(grep -c . $HSR/hits.txt) of $(grep -c . $HSR/units.txt) units, run $(grep -c . $HSR/run.txt)$([ "${PM_HOSTSEL:-on}" = all ] && echo ' (PM_HOSTSEL=all: every unit runs)')"
@@ -155,9 +164,14 @@ END { for (b = 1; b <= nb; b++) print bl[b] }' > $HSR/batches.txt
 stage hostsel
 hrc=0
 MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a:ro -v "$(wpath "$GE"):/gcache:ro" -v "$ROOT/$HSR:/hso" -e HS_INLINE=$HS_INLINE -w /work pm3ds-host:1 sh -c "set -e; $HOST_AV; $RK_SO"'
+  # HSDEP: /tmp/gconv (the gfx entry and nd_gfx_tab.o) is made here, outside every unit, traced to prep.log. A unit that opens a
+  # file below /tmp/gconv (logged "@..." by RT_ROOT2) gets the prep reads in its key (hostsel.py store).
+  mkdir -p /tmp/gconv; cp -r /gcache/. /tmp/gconv/; rm -rf /tmp/gconv/out; rm -f /tmp/gconv/key.txt /tmp/gconv/outs.sha1
+  RT_LOG=/tmp/rt/prep.log RT_ROOT=/work/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so gcc -m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL -DND_HOST_GFX -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -c -o /tmp/gconv/nd_gfx_tab.o /tmp/gconv/nd_gfx_tab.c
+  cp /tmp/rt/prep.log /hso/rt/prep.log
   t0=$(date +%s); stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
   # the inline block runs as an async subshell (set -e holds there; in an && list it would not), its status from wait
-  if [ "$HS_INLINE" = 1 ]; then r=0; ( set -e; export RT_LOG=/tmp/rt/inline.log RT_ROOT=/work/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so
+  if [ "$HS_INLINE" = 1 ]; then r=0; ( set -e; export RT_LOG=/tmp/rt/inline.log RT_ROOT=/work/ RT_ROOT2=/tmp/gconv/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so
   gcc -m32 -Wall -Wextra -o /tmp/ndd 3ds/tools/nd_host_decode_test.c 2>&1 | grep -v "^$" || true
   stage L26
   /tmp/ndd
@@ -236,10 +250,7 @@ __attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2
   /tmp/ndmd
   stage L71
   # S7CONV: the gfx table tool and the host compare of its tables (nd_gtab_test.c: old list reader against the tables)
-  mkdir -p /tmp/gconv; cp -r /gcache/. /tmp/gconv/; rm -rf /tmp/gconv/out; rm -f /tmp/gconv/key.txt /tmp/gconv/outs.sha1
-  stage L73
-  gcc -m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL -DND_HOST_GFX -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -c -o /tmp/gconv/nd_gfx_tab.o /tmp/gconv/nd_gfx_tab.c
-  stage L74
+  # HSDEP: /tmp/gconv and nd_gfx_tab.o are made before the units (see the start of this container)
   gcc -m32 -Wall -Wextra -Werror -DND_SCOMP_HOST -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -o /tmp/ndgt 3ds/tools/nd_gtab_test.c 3ds/src/nd_gtab.c 3ds/src/nd_scomp.c /tmp/gconv/nd_gfx_tab.o /tmp/gconv/gconv_in.o -Wl,--gc-sections
   stage L75
   /tmp/ndgt
@@ -255,7 +266,7 @@ __attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2
   ) > /tmp/inline.out 2>&1 & wait $! || r=$?; echo $r > /hso/inline.rc; cp /tmp/inline.out /hso/inline.out; cp /tmp/rt/inline.log /hso/rt/inline.log 2>/dev/null || true; cat /tmp/inline.out; fi
   hd=/tmp/hostd; rm -rf $hd; mkdir -p $hd
   while read -r batch; do
-    for t in $batch; do n=$(echo "$t" | tr / _); ( s=$(date +%s); RT_LOG=/tmp/rt/$n.log RT_ROOT=/work/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so sh "$t" < /dev/null > "$hd/$n.log" 2>&1; echo $? > "$hd/$n.rc"; echo $(($(date +%s) - s)) > "$hd/$n.s" ) & done
+    for t in $batch; do n=$(echo "$t" | tr / _); ( s=$(date +%s); RT_LOG=/tmp/rt/$n.log RT_ROOT=/work/ RT_ROOT2=/tmp/gconv/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so sh "$t" < /dev/null > "$hd/$n.log" 2>&1; echo $? > "$hd/$n.rc"; echo $(($(date +%s) - s)) > "$hd/$n.s" ) & done
     wait
   done < /hso/batches.txt
   hdfail=0
@@ -267,9 +278,10 @@ __attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2
 stage container-end
 # HOSTSEL: store each passing unit that ran (its trace must name its own script: else the trace is broken and nothing is stored).
 : > $HSR/store.txt
-if [ "$HS_INLINE" = 1 ] && [ "$(cat $HSR/inline.rc 2>/dev/null)" = 0 ]; then printf 'inline\t%s\t%s\t3ds/tools/nd_host_decode_test.c\n' $HSR/rt/inline.log $HSR/inline.out >> $HSR/store.txt; fi
-while read -r t; do n=$(echo "$t" | tr / _); [ "$(cat $HSR/hd/$n.rc 2>/dev/null)" = 0 ] && printf '%s\t%s\t%s\t%s\n' "$t" $HSR/rt/$n.log $HSR/hd/$n.sec "$t" >> $HSR/store.txt; done < $HSR/run_hd.txt
-if [ "${PM_CACHE:-on}" != off ] && [ -s $HSR/store.txt ]; then $PY 3ds/tools/hostsel.py store $HS $HSR/k0.txt $OUT/host_in.txt $HSR/store.txt >> "$TMPLOG" 2>&1 || { echo "FAIL hostsel store (read trace)" >> "$TMPLOG"; fail=1; }; fi
+if [ "$HS_INLINE" = 1 ] && [ "$(cat $HSR/inline.rc 2>/dev/null)" = 0 ]; then printf 'inline\t%s\t%s\t3ds/tools/nd_host_decode_test.c\t\n' $HSR/rt/inline.log $HSR/inline.out >> $HSR/store.txt; fi
+while read -r t; do n=$(echo "$t" | tr / _); nl=$(awk -F'\t' -v u="$t" '$1 == u { printf "%s%s", s, $2; s = "," }' $HSR/needs.txt | sed 's|/|_|g; s|,|.log,'$HSR'/rt/|g'); [ -n "$nl" ] && nl="$HSR/rt/$nl.log"
+    [ "$(cat $HSR/hd/$n.rc 2>/dev/null)" = 0 ] && printf '%s\t%s\t%s\t%s\t%s\n' "$t" $HSR/rt/$n.log $HSR/hd/$n.sec "$t" "$nl" >> $HSR/store.txt; done < $HSR/run_hd.txt
+if [ "${PM_CACHE:-on}" != off ] && [ -s $HSR/store.txt ]; then $PY 3ds/tools/hostsel.py store $HS $HSR/k0.txt $OUT/host_in.txt $HSR/store.txt $HSR/rt/prep.log >> "$TMPLOG" 2>&1 || { echo "FAIL hostsel store (read trace)" >> "$TMPLOG"; fail=1; }; fi
 # the stored output of each hit; PM_HOSTSEL=all: a hit whose unit fails now is a stale entry (it is removed)
 while IFS="$(printf '\t')" read -r u d; do
     if [ "${PM_HOSTSEL:-on}" = all ]; then

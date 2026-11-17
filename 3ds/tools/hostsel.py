@@ -78,15 +78,36 @@ def lookup_unit(root, k0u, ids):
     return None
 
 
-def store_unit(root, k0u, ids, log, out, must=None):
-    """Stores a passing unit. (None, 0) when its trace is missing or lacks <must> (the unit's own script): a broken trace."""
+def log_paths(log):
+    """The paths of a trace log (None when the log is missing). A "@<path>" path is a read below the shared /tmp/gconv."""
     try:
         txt = open(log, encoding="utf-8", errors="replace").read()
     except OSError:
+        return None
+    return set(l.split("\t", 1)[1] for l in txt.split("\n") if "\t" in l)
+
+
+def store_unit(root, k0u, ids, log, out, must=None, extra=(), prep=None):
+    """Stores a passing unit. (None, 0) when its trace is missing or lacks <must> (the unit's own script): a broken trace.
+    HSDEP: the reads of the units it needs (extra logs) join its key; a unit (or a needed unit) that opened a file below the
+    shared /tmp/gconv ("@" paths) also gets the reads of the prep step that made it (prep log; missing prep log: not stored)."""
+    own = log_paths(log)
+    if own is None:
         return None, 0
-    reads = sorted(set(l.split("\t", 1)[1] for l in txt.split("\n") if "\t" in l) & set(ids))
-    if must and must not in reads:
+    if must and must not in own:
         return None, 0
+    allp = set(own)
+    for x in extra:
+        xp = log_paths(x)
+        if xp is None:
+            return None, 0
+        allp |= xp
+    if any(q.startswith("@") for q in allp):
+        pp = log_paths(prep) if prep else None
+        if pp is None:
+            return None, 0
+        allp |= pp
+    reads = sorted(allp & set(ids))
     key = full_key(k0u, reads, ids)
     kd = os.path.join(root, sha1(k0u.encode("utf-8"))[:16])
     d = os.path.join(kd, sha1(key.encode("utf-8"))[:16])
@@ -136,12 +157,25 @@ def selftest():
         chk(not os.path.isdir(d), "the failed entry stayed")
         chk(store_unit(root, k0u, ids, log, out, "u.c")[0] is None, "a trace without its must file was stored")
         chk(store_unit(root, k0u, ids, log + ".none", out)[0] is None, "a missing trace was stored")
+        # HSDEP: a needed unit's reads and the prep reads (for "@" paths) join the key
+        xlog = os.path.join(r, "xlog"); plog = os.path.join(r, "plog"); glog = os.path.join(r, "glog")
+        open(xlog, "w").write("cc1\tu.c\n"); open(plog, "w").write("cc1\tp.h\n"); open(glog, "w").write("cc1\ta.c\nsh\t@nd_gfx_tab.o\n")
+        ids2 = dict(ids, **{"p.h": "b:7"}); k2 = k0_of("K v1", "t1", ids2)
+        d2, n2 = store_unit(root, k2, ids2, log, out, None, [xlog], plog)
+        chk(n2 == 3, "needs: reads %d, want 3 (a.c b.h + u.c of the needed unit)" % n2)
+        chk(lookup_unit(root, k2, dict(ids2, **{"u.c": "b:9"})) is None, "an edit read only by the needed unit hit")
+        k3 = k0_of("K v1", "t3", ids2)
+        d3, n3 = store_unit(root, k3, ids2, glog, out, None, [], plog)
+        chk(n3 == 2, "prep: reads %d, want 2 (a.c + p.h of the prep)" % n3)
+        chk(lookup_unit(root, k3, dict(ids2, **{"p.h": "b:9"})) is None, "an edit read only by the /tmp/gconv prep hit")
+        chk(store_unit(root, k3, ids2, glog, out, None, [], plog + ".none")[0] is None, "a unit with @ reads was stored without the prep log")
+        chk(store_unit(root, k2, ids2, log, out, None, [xlog + ".none"], plog)[0] is None, "a unit was stored without its needed unit's log")
         d, n = store_unit(root, k0u, ids, log, out)
         open(os.path.join(d, "reads.txt"), "a").write("\nu.c")
         chk(lookup_unit(root, k0u, ids) is None, "a changed read list hit")
     finally:
         shutil.rmtree(r, ignore_errors=True)
-    print("hostsel ok (empty, store, hit, unit, K0, unread hit, read miss, removed read, new file, deleted file, probe, byte, must, no trace, read list)")
+    print("hostsel ok (empty, store, hit, unit, K0, unread hit, read miss, removed read, new file, deleted file, probe, byte, must, no trace, needs, prep, read list)")
 
 
 def main(a):
@@ -155,14 +189,17 @@ def main(a):
                 if d:
                     f.write("%s\t%s\n" % (u, d))
         return 0
-    if len(a) == 6 and a[1] == "store":
+    if len(a) in (6, 7) and a[1] == "store":
         k0, ids = open(a[3], encoding="utf-8").read(), load_ids(a[4])
+        prep = a[6] if len(a) == 7 else None
         bad = 0
         for l in open(a[5], encoding="utf-8"):
-            u, log, out, must = l.rstrip("\r\n").split("\t")
-            d, n = store_unit(a[2], k0_of(k0, u, ids), ids, log, out, must)
+            f = l.rstrip("\r\n").split("\t")
+            u, log, out, must = f[:4]
+            extra = [x for x in (f[4].split(",") if len(f) > 4 else []) if x]
+            d, n = store_unit(a[2], k0_of(k0, u, ids), ids, log, out, must, extra, prep)
             if d is None:
-                print("HOSTSEL FAULT: the read trace of %s lacks %s (readtrace.c). Nothing stored for it." % (u, must))
+                print("HOSTSEL FAULT: the read trace of %s (or of a unit it needs, or of the /tmp/gconv prep) is missing or lacks %s. Nothing stored for it." % (u, must))
                 bad = 1
         return bad
     print(__doc__, file=sys.stderr)

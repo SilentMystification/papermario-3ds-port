@@ -1,3 +1,4 @@
+# HOSTSEL needs: 3ds/tests/host.d/conv2c.sh
 #!/bin/sh
 # FXLT: the tile size on the caller's image (NDN_TSZ) and the light units (NDN_LIT) are v2 ops (nd_gfx_conv.c v2_tilesize, v2_walk NDO_MW and
 # NDO_MOVEMEM). Seeded faults: the first NDN_TSZ / NDN_LIT value + 1 in the compare's copy must give bad above 0. Reads /tmp/ndntab of conv2c.sh

@@ -29,11 +29,21 @@ static void rt_log(const char* path, int fd_ok)
     if (!root) root = "/work/";
     if (!realpath(path, rp)) goto out;
     rl = strlen(root);
-    if (strncmp(rp, root, rl) != 0) goto out;
+    if (strncmp(rp, root, rl) != 0) {
+        /* HSDEP: RT_ROOT2 (a shared /tmp folder made outside the traced unit) is logged as "@<path below it>" */
+        const char* r2 = getenv("RT_ROOT2");
+        if (!r2 || strncmp(rp, r2, strlen(r2)) != 0) goto out;
+        if (stat(rp, &st) != 0 || !S_ISREG(st.st_mode)) goto out;
+        n = (int)readlink("/proc/self/exe", exe, sizeof exe - 1);
+        exe[n > 0 ? n : 0] = 0;
+        n = snprintf(line, sizeof line, "%s\t@%s\n", strrchr(exe, '/') ? strrchr(exe, '/') + 1 : exe, rp + strlen(r2));
+        goto wr;
+    }
     if (stat(rp, &st) != 0 || !S_ISREG(st.st_mode)) goto out;
     n = (int)readlink("/proc/self/exe", exe, sizeof exe - 1);
     exe[n > 0 ? n : 0] = 0;
     n = snprintf(line, sizeof line, "%s\t%s\n", strrchr(exe, '/') ? strrchr(exe, '/') + 1 : exe, rp + rl);
+wr:
     if (n <= 0 || n >= (int)sizeof line) goto out;
     if (!ropen) ropen = (int (*)(const char*, int, ...))dlsym(RTLD_NEXT, "open");
     lfd = ropen(log, O_WRONLY | O_APPEND | O_CREAT | O_CLOEXEC, 0644);
