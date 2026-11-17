@@ -1,0 +1,3 @@
+# RAWIMG: Heart and Ultra block content lists (their textures are unsigned char arrays: gen_gfx_syms.py RAW rule)
+src/entity/model/HeartBlockContent.c
+src/entity/model/UltraBlockContent.c
