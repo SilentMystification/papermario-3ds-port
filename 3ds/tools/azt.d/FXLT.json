@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "fxlt_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario at pos 0 0 200, fxtest=13,72,91,115,117 (shape_spell, quizmo_stage, fright_jar, spirit_card, something_rotating), cold det start with the drec switch: frames 412 to 588 step 44 (frame 12 of each slot) go to shots/drec.txt.",
+      "proves": "FXLT: the draws of the 5 effects whose lists move (NDN_TSZ, NDN_LIT) are a function of the build (det): base and head give a byte-equal drec.txt when no draw changes.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=13,72,91,115,117 loglevel=debug det drec=412:5:44",
+      "extra": [],
+      "until": "drec f588 draws [1-9]\\d* bytes \\d+",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f588 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "FXLT: 5 fxtest slots of 44 frames from frame 400 (pm_fxtest.c SLOT, START), one drec frame per slot. Cold start, cap 40 s, deadline 35 s, as fxpic_91_drec."
+    }
+  ]
+}

@@ -38,6 +38,7 @@ TOP = 15
 GENERATED = {'3ds/src/nd_gfx_tab.c', '3ds/src/map_restore_table.c'}
 
 NOBUILD_RULE = True  # LCNOBUILD: the seeded test (3ds/tests/host.d/lcnobuild.sh) runs a copy with this False and expects a diff
+NOINC_RULE = True  # NOINC: the seeded test (3ds/tests/host.d/noinc.sh) runs a copy with this False and expects a diff
 LIVE_INC_RX = re.compile(r'^[ \t]*#[ \t]*include[ \t]+"([^"]+)"', re.M)
 DEAD_INC_RX = re.compile(r'^[ \t]*//[ \t]*#[ \t]*include[ \t]+"([^"]+)"', re.M)
 SRC_GROUPS = ['src/effects/gfx', 'src/effects', 'src/world', 'src/entity', 'src/battle', 'src/pause', 'src/filemenu']
@@ -271,6 +272,19 @@ def main(argv):
             r = p.relative_to(ASSET_ROOT / 'assets/us').as_posix() if (ASSET_ROOT / 'assets/us') in p.parents else None
             return r is not None and r in dead and r not in live
         assets_c = [p for p in assets_c if not _unbuilt(p)]
+    # NOINC: an asset that no live include in src/, include/ or a gfxin twin names is not in the device build.
+    # The name is the include text (relative to assets/us), so a chain through a src .inc.c counts (ToadHouseBlanketAnim.inc.c names blanket.gfx.inc.c).
+    if NOINC_RULE:
+        named = set()
+        for p in files(['src/**/*.c', 'src/**/*.h', 'include/**/*.h']):
+            named.update(LIVE_INC_RX.findall(read_stripped(p)))
+        for tw in (ROOT / '3ds/tools/gfxin').glob('**/*.c'):
+            named.update(LIVE_INC_RX.findall(read_stripped(tw)))
+        def _unnamed(p):
+            if (ASSET_ROOT / 'assets/us') not in p.parents:
+                return False
+            return p.relative_to(ASSET_ROOT / 'assets/us').as_posix() not in named
+        assets_c = [p for p in assets_c if not _unnamed(p)]
 
     # (name, file set, twin): twin classes print the active and _n64 dicts.
     split = []

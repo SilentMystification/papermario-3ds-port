@@ -6,7 +6,7 @@
 # their entries). 2 (every commit): the base build of <commit> goes into the basebin store, so a row started from it finds its
 # base built. 3: basebin cachecheck. Every commit: entries whose content key changed are removed. cold 1: a cold build
 # (PM_CACHE=off: no cache, no ccache, new build dir, new asset volume) of <commit> must equal its entry byte for byte.
-# shots 1: one stored bench runs again and its shots must equal the stored ones.
+# shots 1: one stored bench runs again and its shots must equal the stored ones. 4 (every commit): the full host test set.
 # It commits nothing (postmerge_bg.sh moves the new runs.jsonl lines to the main folder). Exit 0 when all pass, else the step.
 cd "$(git rev-parse --show-toplevel)" || exit 9
 c=${1:?usage: sh 3ds/tools/post_merge.sh <commit> <cold 0|1> <shots 0|1>}; cold=${2:-1}; shots=${3:-1}
@@ -21,4 +21,7 @@ $PY 3ds/tools/bench.py base --prebuild --commit "$c" --row POSTMERGE || exit 2
 fl=""; [ "$cold" = 1 ] && fl="$fl --cold"; [ "$shots" = 1 ] && fl="$fl --shots"
 echo "post_merge 3: basebin cachecheck$fl"
 $PY 3ds/tools/bench.py base --check --commit "$c"$fl --row POSTMERGE || exit 3
+# HOSTSEL: the full host test set (no unit skipped). A unit with a stored pass that fails now is a stale entry: exit 4.
+echo "post_merge 4: host test, every unit (PM_HOSTSEL=all)"
+PM_HOSTSEL=all sh 3ds/tools/nd_host_test.sh > build3ds/out/post_merge_host.txt 2>&1 || { tail -n 20 build3ds/out/post_merge_host.txt; exit 4; }
 echo "post_merge ok"

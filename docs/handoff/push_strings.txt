@@ -6,6 +6,6 @@ nd_dual_keep
 ndnu_D_0900BE40_3F7CA0
 anim mesh f%u units %d dev %d
 nd_mesh_size
-moon jump tap
+moon jump release y
 options: live row 0 value
 flipfps f

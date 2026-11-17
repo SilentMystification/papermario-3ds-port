@@ -4,3 +4,4 @@
 #include "effects/gfx/D_090051C8_412458.gfx.inc.c"
 #include "effects/gfx/D_09005370_412600.gfx.inc.c"
 #include "effects/gfx/D_090053D0_412660.gfx.inc.c"
+#include "effects/gfx/D_09005440_4126D0.gfx.inc.c"

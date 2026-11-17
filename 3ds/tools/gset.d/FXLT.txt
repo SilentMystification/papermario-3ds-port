@@ -1,0 +1,4 @@
+src/effects/gfx/shape_spell.c
+src/effects/gfx/spirit_card.c
+src/effects/gfx/fright_jar.c
+src/effects/gfx/quizmo_stage.c

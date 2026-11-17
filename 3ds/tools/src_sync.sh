@@ -32,8 +32,10 @@ in_manifest() {
 # AVOL (the shared asset volume of this content). PM_CACHE=off: AVOL is a new volume of this run (removed at the end).
 asset_manifest() {
     oa=$(cd "$OUT" && pwd)
-    (cd "$ASSET_BASE" && find $ASSET_DIRS -type f | LC_ALL=C sort > "$oa/asset_paths.txt" \
-        && git hash-object --no-filters --stdin-paths < "$oa/asset_paths.txt" | paste "$oa/asset_paths.txt" - > "$oa/asset_now.txt")
+    # LOOP2: one python process with 8 hash threads (3ds/tools/asset_ids.py; the same bytes as find | sort | git hash-object,
+    # asset_ids.py --check): FACT 3.1 s against 4.1 s on 18426 files.
+    if command -v py >/dev/null 2>&1; then aip="py -3"; else aip=python3; fi
+    $aip 3ds/tools/asset_ids.py "$ASSET_BASE" "$oa/asset_paths.txt" "$oa/asset_now.txt" $ASSET_DIRS
     [ -s "$OUT/asset_now.txt" ] || { echo "asset_manifest: no asset files under $ASSET_BASE ($ASSET_DIRS)" >&2; exit 1; }
     AHASH=$(sha1sum < "$OUT/asset_now.txt" | cut -c1-40)
     AVOL=pm3ds-assets-$(printf '%s' "$AHASH" | cut -c1-16)

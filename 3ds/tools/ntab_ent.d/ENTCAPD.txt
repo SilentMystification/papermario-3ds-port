@@ -1,0 +1,2 @@
+# ENTCAPD: sites with a captured entry
+src/screen_render_util.c

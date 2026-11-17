@@ -16,7 +16,7 @@ printf 'ndd_Ent_A f /w/src/entity/E.c:3 00000001 00000002 00000003 00000004 0000
 ea=$(cd "$T" && python3 -I "$R/3ds/tools/entapply.py" log.txt | tr -d '\r' | tr '\n' '|')
 l3=$(sed -n 4p "$T/src/entity/E.c" | tr -d '\r'); l2=$(sed -n 2p "$T/src/entity/E.c" | cut -c1-31)
 cp "$T/E.orig" "$T/src/entity/E.c"
-sed 's|(?=src/))|(?=src/effects/))|' 3ds/tools/entapply.py > "$T/ea_fault.py"
+sed 's|(src/(?:|(src/effects/(?:|' 3ds/tools/entapply.py > "$T/ea_fault.py"
 ef=$(cd "$T" && python3 -I "$T/ea_fault.py" log.txt | tr -d '\r' | tr '\n' '|')
 rm -rf "$T"
 case $ea in *"entapply site src/entity/E.c:3 pe_E_3|"*"entapply sites 1 "*) ;; *) echo "entsrc FAIL entapply: [$ea]"; exit 1 ;; esac

@@ -1,0 +1,140 @@
+diff --git a/3ds/tools/azt.d/TSTSHK.json b/3ds/tools/azt.d/TSTSHK.json
+new file mode 100644
+index 0000000000..3cbcbe864a
+--- /dev/null
++++ b/3ds/tools/azt.d/TSTSHK.json
+@@ -0,0 +1,29 @@
++{
++  "scenarios": [
++    {
++      "name": "tst13_drec",
++      "status": "unverified",
++      "subject": "tst_13 entry 0, cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt (build_gfx_floor: mdl_project_tex_coords and the shockwave list).",
++      "proves": "TSTSHK: the draw record text of tst_13 frames 200 and 201 is byte-equal between a base and a head build (the shockwave floor list moved to a device key).",
++      "debug": "warp=tst_13:0 loglevel=debug det drec=200:2",
++      "extra": [],
++      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
++      "cap": 40,
++      "deadline": 35,
++      "first_marker": "warp: tst_13 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "warp",
++          "regex": "warp: tst_13 entry 0"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f201 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "TSTSHK: drec of tst_13 entry 0 (the shockwave floor builder, main.c:286). Cap 40 s, deadline 35 s."
++    }
++  ]
++}
+diff --git a/3ds/tools/bench.d/TSTSHK.json b/3ds/tools/bench.d/TSTSHK.json
+new file mode 100644
+index 0000000000..3fe8c9e35f
+--- /dev/null
++++ b/3ds/tools/bench.d/TSTSHK.json
+@@ -0,0 +1,21 @@
++{
++  "benches": [
++    {
++      "name": "tst13_drec",
++      "kind": "azahar_pic",
++      "speed": "normal",
++      "default": false,
++      "purpose": "TSTSHK: draw records of tst_13 entry 0 frames 200 and 201, cold det start. A head equals the base.",
++      "scenario": "tst13_drec",
++      "cap": 40,
++      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "det",
++        "cold",
++        "drec"
++      ],
++      "gates": []
++    }
++  ]
++}
+diff --git a/3ds/tools/gfxin/src/world/area_tst/tst_13/main.c b/3ds/tools/gfxin/src/world/area_tst/tst_13/main.c
+new file mode 100644
+index 0000000000..18c06aa72f
+--- /dev/null
++++ b/3ds/tools/gfxin/src/world/area_tst/tst_13/main.c
+@@ -0,0 +1,5 @@
++#include "src/world/area_tst/tst_13/main.c"
++#include "world/area_tst/tst_13/shockwave.gfx.inc.c"
++Gfx N(dummy_gfx)[] = {
++    gsSPEndDisplayList()
++};
+diff --git a/3ds/tools/gset.d/TSTSHK.txt b/3ds/tools/gset.d/TSTSHK.txt
+new file mode 100644
+index 0000000000..3fb5771869
+--- /dev/null
++++ b/3ds/tools/gset.d/TSTSHK.txt
+@@ -0,0 +1,2 @@
++# TSTSHK: tst_13 shockwave include and dummy_gfx (mdl_project_tex_coords reads a key through mdl_get_vertex_count, VCOUNT model.c:3639)
++src/world/area_tst/tst_13/main.c
+diff --git a/src/entity_model.c b/src/entity_model.c
+index e671903a20..694f95e971 100644
+--- a/src/entity_model.c
++++ b/src/entity_model.c
+@@ -464,11 +464,9 @@ void appendGfx_entity_model(EntityModel* model) {
+             }
+         }
+ 
+-        if (entRec != nullptr) { /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL) */
+-            nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
+-        } else {
+-            gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
+-        }
++        /* S6-2c-3, DIRECT D3: the draw record and the model list G_DL go to the frame stream (the walker draws the list from the static pools, or runs the G_DL).
++         * TSTSHK: entRec is set here (the same USE_IMAGE test at the top), so the old gSPDisplayList arm never ran. */
++        nd_rec_ent_draw(model->gfx.displayList, entRec[1].words.w0, entRec[1].words.w1, 0);
+         if (entRec != nullptr && entcheck_on()) { /* S6-2a: end record, the walker checks its tile 0 state against the decode of the list (pm_gbi.c G_PM_ENT) */
+             Gfx endRec[G_PM_ENT_WORDS];
+             endRec[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_END;
+diff --git a/src/world/area_tst/tst_13/main.c b/src/world/area_tst/tst_13/main.c
+index c7997b55e4..5a06e979ed 100644
+--- a/src/world/area_tst/tst_13/main.c
++++ b/src/world/area_tst/tst_13/main.c
+@@ -1,4 +1,5 @@
+ #include "tst_13.h"
++#include "nd_gtab.h"
+ #include "nd_st.h"
+ #include "nd_xf.h"
+ 
+@@ -275,11 +276,9 @@ NpcGroupList N(DefaultNPCs) = {
+ };
+ 
+ #include "world/area_tst/tst_13/shockwave.vtx.inc.c"
+-#include "world/area_tst/tst_13/shockwave.gfx.inc.c"
++NDN_DECL(N(shockwave_gfx));
+ 
+-Gfx N(dummy_gfx)[] = {
+-    gsSPEndDisplayList()
+-};
++NDN_DECL(N(dummy_gfx));
+ 
+ s32 N(BuildGfxCallCount) = 0;
+ 
+@@ -298,13 +297,13 @@ void N(build_gfx_floor)(void) {
+     guScaleF(sp50, x, y, z);
+     guMtxCatF(sp50, sp10, sp10);
+     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
+-    mdl_project_tex_coords(MODEL_o152, N(shockwave_gfx), sp10, nullptr);
++    mdl_project_tex_coords(MODEL_o152, NDN(N(shockwave_gfx)), sp10, nullptr);
+ 
+     nd_pso_cyc(G_CYC_1CYCLE);
+     nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+     mdl_draw_hidden_panel_surface(1);
+     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+-    gSPDisplayList(gMainGfxPos++, N(shockwave_gfx));
++    gSPDisplayList(gMainGfxPos++, NDN(N(shockwave_gfx)));
+     nd_xf_pop(G_MTX_MODELVIEW);
+ }
+ 

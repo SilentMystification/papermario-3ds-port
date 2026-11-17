@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "fxops_drec",
+      "status": "unverified",
+      "subject": "FXOPS draw records: flame, radial_shimmer, underwater, embers and star_spirits_energy (fxtest 27, 45, 87, 105, 123) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 588, step 44), no shots.",
+      "proves": "FXOPS: the draw records of the 5 effects whose lists move are byte-equal between a base and a head build.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=27,45,87,105,123 loglevel=debug det drec=412:5:44",
+      "until": "drec f588 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f588 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "FXOPS: copy of dls2_fx_drec (DLSITE2) with 5 effects. Cap 30 s, deadline 25 s, until the drec line of frame 588."
+    }
+  ]
+}

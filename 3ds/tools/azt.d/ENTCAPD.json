@@ -1,0 +1,56 @@
+{
+  "scenarios": [
+    {
+      "name": "entcapd_kgr01_cap",
+      "status": "unverified",
+      "subject": "ENTCAPD capture: kgr_01 darkness stencil (dark_kgr01 words), entcap and entcapt on, log only.",
+      "proves": "ENTCAPD: the entcap lines of the sites (nd_walk.c entcap_rec) and the drec line.",
+      "debug": "warp=kgr_01:0 wide loglevel=debug det drec=150:2 entcap entcapt",
+      "until": "drec f151 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "entcap",
+          "regex": "entcap l [0-9a-f]{8} s [0-9a-f]{8}"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f151 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "ENTCAPD: copy of the words of the named scenario plus the switches. Until the drec line of frame 151."
+    },
+    {
+      "name": "entcapd_kgr01_drec",
+      "status": "unverified",
+      "subject": "ENTCAPD gate: kgr_01 darkness stencil (dark_kgr01 words), cold det start, drec.",
+      "proves": "ENTCAPD: the draw records are byte-equal between a base and a head.",
+      "debug": "warp=kgr_01:0 wide loglevel=debug det drec=150:2",
+      "until": "drec f151 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kgr_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kgr_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f151 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "ENTCAPD: copy of the words of the named scenario plus the switches. Until the drec line of frame 151."
+    }
+  ]
+}

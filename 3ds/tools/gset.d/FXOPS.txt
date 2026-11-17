@@ -1,0 +1,5 @@
+src/effects/gfx/embers.c
+src/effects/gfx/radial_shimmer.c
+src/effects/gfx/star_spirits_energy.c
+src/effects/gfx/underwater.c
+src/effects/gfx/flame.c

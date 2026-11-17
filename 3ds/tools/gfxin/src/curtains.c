@@ -132,3 +132,8 @@ Gfx NoControllerSetupTexGfx[] = {
     gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
     gsSPEndDisplayList(),
 };
+Gfx NoControllerGfx[] = {
+    gsSPTextureRectangle(0x0180, 0x0260, 0x0380, 0x02E0, G_TX_RENDERTILE, 0, 0, 0x0400, 0x0400),
+    gsDPPipeSync(),
+    gsSPEndDisplayList(),
+};

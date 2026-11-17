@@ -39,7 +39,11 @@ ASSET_BASE=$AR; ASSET_DIRS="assets/us ver/us/build"; IMG=pm3ds-host:1
 . 3ds/tools/src_sync.sh
 GC_EXCL=""; . 3ds/tools/readkey.sh # GENKEY: every id comes from host_in.txt (the host test writes no generator output)
 asset_manifest
-in_manifest $HOST_IN > $OUT/host_in.txt
+# HOSTSEL: the build outputs under HOST_IN stay out of the key and the tar. A parallel build (rowloop.sh) writes them while this
+# test lists its files, and pm_build.h changes on every lane build. No unit reads them (FACT: no hostsel reads.txt names one);
+# a unit that needs one fails on the missing file, it never passes on a stale one.
+HOST_GEN='^3ds/(src/(nd_gfx_tab|nd_ntab_descs|nd_pso_tab|map_restore_table)\.c|include/(pm_build|texkey_patch)\.h)	'
+in_manifest $HOST_IN | grep -v -E "$HOST_GEN" > $OUT/host_in.txt
 [ -s $OUT/host_in.txt ] || { echo "FAIL host key: no files in HOST_IN"; exit 1; }
 # GENKEY (3ds/tools/readkey.sh): the gfx table key is K0 (image, this script, assets, trace tool, the path list of HOST_IN, the
 # tar of the step) plus the content id of every file gen_gfx_tab.sh read (traced). An edit to a file it does not read hits.
@@ -60,7 +64,7 @@ k2=$(in_manifest $st); rm -rf $st
 if [ "$k1" = "$k2" ]; then echo "FAIL cache selftest: a changed byte kept the key"; fail=1; else echo "cache selftest ok (a changed byte misses)"; fi
 # Whole-run cache: a passing run with the same TEST_KEY replays its output. The stored output is checked by its sha1 first.
 TC=build3ds/out/hostcache/$TEST_KEY
-if [ "${PM_CACHE:-on}" != off ] && [ -f $TC/rc.txt ] && [ -f $TC/out.txt ] && [ "$(cat $TC/out.sha1 2>/dev/null)" = "$(sha1sum $TC/out.txt | cut -d' ' -f1)" ]; then
+if [ "${PM_CACHE:-on}" != off ] && [ "${PM_HOSTSEL:-on}" != all ] && [ -f $TC/rc.txt ] && [ -f $TC/out.txt ] && [ "$(cat $TC/out.sha1 2>/dev/null)" = "$(sha1sum $TC/out.txt | cut -d' ' -f1)" ]; then
     echo "hostcache: hit ${TEST_KEY}"
     cat $TC/out.txt; exit "$(cat $TC/rc.txt)"
 fi
@@ -74,17 +78,8 @@ trap 'build_slot_release; cold_rm' EXIT
 trap 'build_slot_release; cold_rm; exit 130' INT TERM
 stage slot-wait
 TMPLOG=build3ds/out/host_run.txt
-# BATCH: host.d scripts run in parallel in batches; two scripts share a batch only when they name no common /tmp or build3ds/out path.
-(for t in 3ds/tests/host.d/*.sh; do [ -f "$t" ] || continue; echo "$t|$(grep -o -E '(/tmp|build3ds/out)/[A-Za-z0-9_./-]*' "$t" | sort -u | tr '\n' ' ')"; done) | awk -F'|' '
-{ n = split($2, a, " "); placed = 0
-  for (b = 1; b <= nb && !placed; b++) { if (cnt[b] < 12) { ok = 1; for (i = 1; i <= n; i++) if ((b, a[i]) in tok) { ok = 0; break }
-      if (ok) { for (i = 1; i <= n; i++) tok[b, a[i]] = 1; cnt[b]++; bl[b] = bl[b] " " $1; placed = 1 } } }
-  if (!placed) { nb++; cnt[nb] = 1; for (i = 1; i <= n; i++) tok[nb, a[i]] = 1; bl[nb] = $1 } }
-END { for (b = 1; b <= nb; b++) print bl[b] }' > build3ds/out/hostd_batches.txt
-stage batches
-# VOLHOST: the tar of the key files (and the batch list), and the asset volume of AHASH (made once when it is missing).
-{ cat $OUT/host_files.txt; echo build3ds/out/hostd_batches.txt; } > $OUT/host_tar.txt
-tar -cf $OUT/host_in.tar -T $OUT/host_tar.txt || { echo "FAIL host tar of HOST_IN"; exit 1; }
+# VOLHOST: the tar of the key files, and the asset volume of AHASH (made once when it is missing).
+tar -cf $OUT/host_in.tar -T $OUT/host_files.txt || { echo "FAIL host tar of HOST_IN"; exit 1; }
 case "$(MSYS_NO_PATHCONV=1 docker run --rm -v $AVOL:/a:ro -e K=$AHASH $IMG sh -c '[ "$(cat /a/c/key.txt 2>/dev/null)" = "$K" ] && echo assets-ok; true')" in
     *assets-ok*) ;;
     *) asset_vol_make ;;
@@ -92,9 +87,12 @@ esac
 # av_fault <rc>: exit 7 of a container (the asset volume failed its check) removes the volume.
 av_fault() { if [ "$1" = 7 ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; echo "HOST FAULT: the asset volume $AVOL failed its content check and was removed. Run again (the next run makes it new)."; fi; }
 stage tar-assets
-# gfx table entry (GENKEY): build3ds/out/gfxcache/<16 hex of K0>/<16 hex of the full key>/. A hit needs a stored read list whose
+# gfx table entry (GENKEY): <main>/build3ds/hostgfx/<16 hex of K0>/<16 hex of the full key>/. A hit needs a stored read list whose
 # full key equals key.txt and an outs hash that matches; else the step runs traced under a temp name, then one rename.
-GC=build3ds/out/gfxcache; GK0=$GC/$(printf '%s' "$GFX_K0" | sha1sum | cut -c1-16)
+# HOSTSEL: the gfx entries and the unit results live in the main folder, shared by every worktree (content keys).
+MAINR=$(cd "$(git rev-parse --git-common-dir)/.." && pwd)
+wpath() { (cd "$1" && { pwd -W 2>/dev/null || pwd; }); }
+GC=$MAINR/build3ds/hostgfx; GK0=$GC/$(printf '%s' "$GFX_K0" | sha1sum | cut -c1-16)
 gfx_ok() { [ -f "$1/key.txt" ] && [ "$(cat "$1/key.txt")" = "$2" ] && [ -f "$1/outs.sha1" ] && [ "$(outs_hash "$1")" = "$(cat "$1/outs.sha1")" ]; }
 GE=
 if [ "${PM_CACHE:-on}" != off ]; then # GFXINC: PM_CACHE=off (cold gate) never hits
@@ -111,7 +109,7 @@ if [ -n "$GE" ]; then echo "gfxcache: hit"; else
     mkdir -p "$GK0"; TMPE=$GK0/.tmp.$$; rm -rf "$TMPE"; mkdir -p "$TMPE/out"
     # GFXINC: the object cache volume of this host image (3ds/tools/gconv_objcache.py), shared by every worktree and build.sh.
     grc=0
-    MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a:ro -v "$ROOT/$TMPE:/gcw" \
+    MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a:ro -v "$(wpath "$TMPE"):/gcw" \
         -v "pm3ds-gconvobj-$(printf '%s' "$IMG_ID" | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "
       set -e; $HOST_AV; $RK_SO
       $RK_TRACE sh 3ds/tools/gen_gfx_tab.sh /gcw/nd_gfx_tab.c /gcw
@@ -128,12 +126,38 @@ if [ -n "$GE" ]; then echo "gfxcache: hit"; else
     ls -dt "$GK0"/*/ 2>/dev/null | grep -v '\.tmp\.' | tail -n +5 | xargs -r rm -rf # 4 read states per K0
 fi
 cp -f "$GE"/out/* build3ds/out/
-# Keep the 8 newest K0 folders (an entry is 13 MB, FACT oracle 2026-11-16). The entry of this run is made newest first.
-touch "$GE" "$GK0"; ls -dt $GC/*/ 2>/dev/null | tail -n +9 | xargs -r rm -rf
+# Keep the 16 newest K0 folders (all worktrees) (an entry is 13 MB, FACT oracle 2026-11-16). The entry of this run is made newest first.
+touch "$GE" "$GK0"; ls -dt $GC/*/ 2>/dev/null | tail -n +17 | xargs -r rm -rf
 stage gfx-table
+# HOSTSEL (3ds/tools/hostsel.py): one result entry per unit (the inline block, each host.d script), keyed by K0 (below) and the
+# content id of every file the unit read (traced, 3ds/tools/readtrace.c). A unit with a hit does not run; its stored output is
+# printed. hostsel.py adds the path list of the tar to K0 (new, removed, created files). The command lines and the environment of
+# every unit are text of this script (self) or of the image (img). PM_HOSTSEL=all runs every unit and fails a unit that had a hit but fails now (the post-merge check, post_merge.sh 4).
+PY=python; command -v py >/dev/null 2>&1 && PY="py -3"
+HS=$MAINR/build3ds/hostsel; HSR=build3ds/out/hs_run; rm -rf $HSR; mkdir -p $HSR/hd $HSR/rt
+printf '%s\n' "hostsel v1" "img $IMG_ID" "self $SELF" "assets $AHASH" "rk $(rk_id)" "gfx $(sha1sum < "$GE/key.txt" | cut -c1-40)" > $HSR/k0.txt
+{ echo inline; for t in 3ds/tests/host.d/*.sh; do [ -f "$t" ] && echo "$t"; done; } > $HSR/units.txt
+: > $HSR/hits.txt
+if [ "${PM_CACHE:-on}" != off ]; then $PY 3ds/tools/hostsel.py lookup $HS $HSR/k0.txt $OUT/host_in.txt $HSR/units.txt $HSR/hits.txt || { echo "FAIL hostsel lookup"; exit 1; }; fi
+if [ "${PM_HOSTSEL:-on}" = all ]; then cp $HSR/units.txt $HSR/run.txt; else cut -f1 $HSR/hits.txt | LC_ALL=C sort > $HSR/hit_s.txt; LC_ALL=C sort $HSR/units.txt | LC_ALL=C comm -23 - $HSR/hit_s.txt > $HSR/run.txt; fi
+HS_INLINE=0; grep -qx inline $HSR/run.txt && HS_INLINE=1
+grep -v -x inline $HSR/run.txt > $HSR/run_hd.txt || true
+echo "hostsel: hit $(grep -c . $HSR/hits.txt) of $(grep -c . $HSR/units.txt) units, run $(grep -c . $HSR/run.txt)$([ "${PM_HOSTSEL:-on}" = all ] && echo ' (PM_HOSTSEL=all: every unit runs)')"
+# BATCH: host.d scripts run in parallel in batches; two scripts share a batch only when they name no common /tmp or build3ds/out path.
+if [ -s $HSR/run_hd.txt ]; then grep -o -H -E '(/tmp|build3ds/out)/[A-Za-z0-9_./-]*' $(cat $HSR/run_hd.txt) /dev/null > $HSR/tok.txt || true; else : > $HSR/tok.txt; fi
+awk 'FILENAME == ARGV[1] { o[++n] = $0; next } { i = index($0, ":"); f = substr($0, 1, i - 1); k = substr($0, i + 1); if (!((f, k) in seen)) { seen[f, k] = 1; tk[f] = tk[f] " " k } }
+END { for (i = 1; i <= n; i++) print o[i] "|" tk[o[i]] }' $HSR/run_hd.txt $HSR/tok.txt | awk -F'|' '
+{ n = split($2, a, " "); placed = 0
+  for (b = 1; b <= nb && !placed; b++) { if (cnt[b] < 12) { ok = 1; for (i = 1; i <= n; i++) if ((b, a[i]) in tok) { ok = 0; break }
+      if (ok) { for (i = 1; i <= n; i++) tok[b, a[i]] = 1; cnt[b]++; bl[b] = bl[b] " " $1; placed = 1 } } }
+  if (!placed) { nb++; cnt[nb] = 1; for (i = 1; i <= n; i++) tok[nb, a[i]] = 1; bl[nb] = $1 } }
+END { for (b = 1; b <= nb; b++) print bl[b] }' > $HSR/batches.txt
+stage hostsel
 hrc=0
-MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a:ro -v "$ROOT/$GE:/gcache:ro" -w /work pm3ds-host:1 sh -c "set -e; $HOST_AV"'
+MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a:ro -v "$(wpath "$GE"):/gcache:ro" -v "$ROOT/$HSR:/hso" -e HS_INLINE=$HS_INLINE -w /work pm3ds-host:1 sh -c "set -e; $HOST_AV; $RK_SO"'
   t0=$(date +%s); stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
+  # the inline block runs as an async subshell (set -e holds there; in an && list it would not), its status from wait
+  if [ "$HS_INLINE" = 1 ]; then r=0; ( set -e; export RT_LOG=/tmp/rt/inline.log RT_ROOT=/work/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so
   gcc -m32 -Wall -Wextra -o /tmp/ndd 3ds/tools/nd_host_decode_test.c 2>&1 | grep -v "^$" || true
   stage L26
   /tmp/ndd
@@ -228,18 +252,34 @@ __attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2
   stage L79
   /tmp/kcc
   stage L80
+  ) > /tmp/inline.out 2>&1 & wait $! || r=$?; echo $r > /hso/inline.rc; cp /tmp/inline.out /hso/inline.out; cp /tmp/rt/inline.log /hso/rt/inline.log 2>/dev/null || true; cat /tmp/inline.out; fi
   hd=/tmp/hostd; rm -rf $hd; mkdir -p $hd
   while read -r batch; do
-    for t in $batch; do n=$(echo "$t" | tr / _); ( s=$(date +%s); sh "$t" < /dev/null > "$hd/$n.log" 2>&1; echo $? > "$hd/$n.rc"; echo $(($(date +%s) - s)) > "$hd/$n.s" ) & done
+    for t in $batch; do n=$(echo "$t" | tr / _); ( s=$(date +%s); RT_LOG=/tmp/rt/$n.log RT_ROOT=/work/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so sh "$t" < /dev/null > "$hd/$n.log" 2>&1; echo $? > "$hd/$n.rc"; echo $(($(date +%s) - s)) > "$hd/$n.s" ) & done
     wait
-  done < build3ds/out/hostd_batches.txt
+  done < /hso/batches.txt
   hdfail=0
-  for t in 3ds/tests/host.d/*.sh; do [ -f "$t" ] || continue; n=$(echo "$t" | tr / _); echo "host.d: $t"; cat "$hd/$n.log"; echo "HOSTD $t $(cat "$hd/$n.s" 2>/dev/null) s"; [ "$(cat "$hd/$n.rc" 2>/dev/null)" = 0 ] || { echo "host.d FAILED: $t"; hdfail=1; }; done
-  [ "$hdfail" = 0 ]
+  while read -r t; do n=$(echo "$t" | tr / _); { echo "host.d: $t"; cat "$hd/$n.log"; echo "HOSTD $t $(cat "$hd/$n.s" 2>/dev/null) s"; } > "$hd/$n.sec"; cat "$hd/$n.sec"; cp "$hd/$n.sec" "$hd/$n.rc" /hso/hd/; cp /tmp/rt/$n.log /hso/rt/ 2>/dev/null || true; [ "$(cat "$hd/$n.rc" 2>/dev/null)" = 0 ] || { echo "host.d FAILED: $t"; hdfail=1; }; done < /hso/run_hd.txt
+  [ "$hdfail" = 0 ] && [ "$(cat /hso/inline.rc 2>/dev/null || echo 0)" = 0 ]
   stage L81
 ' > "$TMPLOG" 2>&1 < $OUT/host_in.tar || hrc=$?
 [ "$hrc" = 0 ] || { av_fault "$hrc" >> "$TMPLOG"; fail=1; }
 stage container-end
+# HOSTSEL: store each passing unit that ran (its trace must name its own script: else the trace is broken and nothing is stored).
+: > $HSR/store.txt
+if [ "$HS_INLINE" = 1 ] && [ "$(cat $HSR/inline.rc 2>/dev/null)" = 0 ]; then printf 'inline\t%s\t%s\t3ds/tools/nd_host_decode_test.c\n' $HSR/rt/inline.log $HSR/inline.out >> $HSR/store.txt; fi
+while read -r t; do n=$(echo "$t" | tr / _); [ "$(cat $HSR/hd/$n.rc 2>/dev/null)" = 0 ] && printf '%s\t%s\t%s\t%s\n' "$t" $HSR/rt/$n.log $HSR/hd/$n.sec "$t" >> $HSR/store.txt; done < $HSR/run_hd.txt
+if [ "${PM_CACHE:-on}" != off ] && [ -s $HSR/store.txt ]; then $PY 3ds/tools/hostsel.py store $HS $HSR/k0.txt $OUT/host_in.txt $HSR/store.txt >> "$TMPLOG" 2>&1 || { echo "FAIL hostsel store (read trace)" >> "$TMPLOG"; fail=1; }; fi
+# the stored output of each hit; PM_HOSTSEL=all: a hit whose unit fails now is a stale entry (it is removed)
+while IFS="$(printf '\t')" read -r u d; do
+    if [ "${PM_HOSTSEL:-on}" = all ]; then
+        n=$(echo "$u" | tr / _); r=$(cat $HSR/hd/$n.rc 2>/dev/null); [ "$u" = inline ] && r=$(cat $HSR/inline.rc 2>/dev/null)
+        if [ "$r" = 0 ]; then echo "hostsel cachecheck ok $u" >> "$TMPLOG"; else echo "HOSTSEL CACHECHECK FAIL $u: the entry passed, the unit fails now (entry $d removed)" >> "$TMPLOG"; rm -rf "$d"; fail=1; fi
+    else
+        { echo "hostsel: hit $u"; cat "$d/out.txt"; } >> "$TMPLOG"
+    fi
+done < $HSR/hits.txt
+stage hostsel-store
 # CRASHALL part 2: the crash page renders its lines into the RGBA16 buffer (3ds/tools/crash_page_test.c).
 MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$ROOT:/w" -w /w pm3ds-host:1 sh -c 'gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/cp 3ds/tools/crash_page_test.c 3ds/src/pm_crash_page.c && /tmp/cp' >> "$TMPLOG" 2>&1 || fail=1
 stage crash-page
