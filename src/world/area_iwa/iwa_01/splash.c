@@ -66,7 +66,7 @@ void N(gfx_build_splashes)(s32 index) {
                    splash->scale,
                    splash->pos.x, splash->pos.y, splash->pos.z);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, NDN(N(splash_gfx)));
+        nd_draw_list(NDN(N(splash_gfx)), ND_SELF);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
