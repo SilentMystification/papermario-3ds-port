@@ -12,16 +12,14 @@
 typedef struct { int p0, p1; float u0, u1; } FoldSeg;
 
 
-/* the image roles of img_role (the former pm_gbi.c) */
-enum { ROLE_MAIN, ROLE_DEPTHQ, ROLE_CPUFILL, ROLE_DEPTH, ROLE_CPUPAL, ROLE_SLOT };
+#include "nd_tgt.h" /* the image roles and the target record */
 
 extern u16 DepthCopyBuffer[16];
 extern unsigned short* nuGfxZBuffer;
 void pm_depth_query(const void* timg, int x, int id); /* F03, pm_depth.c */
 void pm_cfb_capture_prev_cpu_for(const void* fill);
-extern int cimg_stride, cimg_zero, zcol, zslot_on, sci_x0;
+extern int zcol, zslot_on, sci_x0;
 
-int img_role(int for_fill);
 float depth_of_word(unsigned w16);
 void off_screen_check(void);
 float shift_mul(unsigned n);

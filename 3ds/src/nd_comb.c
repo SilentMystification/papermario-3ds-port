@@ -211,7 +211,7 @@ void nd_walker_desc(NdPsoDesc* d) {
     d->key_c = in.key_c; d->key_s = in.key_s; d->conv_k4 = in.conv_k4;
     d->tex_on = (uint8_t)in.tex_on; d->use_t1 = (uint8_t)in.use_t1; d->t1_valid = (uint8_t)in.t1_valid; d->dual_on = (uint8_t)in.dual_on;
     d->box_prod = (uint8_t)in.box_prod; d->box_folded = (uint8_t)in.box_folded; d->comb_set = (uint8_t)in.comb_set; d->comb_alpha_shade = (uint8_t)in.comb_alpha_shade;
-    d->leg_prev = (uint8_t)in.leg_mode; d->vprim = (uint8_t)pm_comb_vprim; d->zimg = (uint8_t)(img_role(0) == ROLE_DEPTHQ); d->plod = (uint8_t)nd_ws.prim_lod;
+    d->leg_prev = (uint8_t)in.leg_mode; d->vprim = (uint8_t)pm_comb_vprim; d->zimg = (uint8_t)(nd_img_role(0) == ROLE_DEPTHQ); d->plod = (uint8_t)nd_ws.prim_lod;
 }
 
 /* NPSO4: the psochk debug switch (read once). Each draw that states a description compares it with the walker's; the first 8 bad ones are logged, and a line every 100 frames. Off: one test. */
@@ -259,7 +259,7 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) {
     v[n++] = nd_ws.tst1.tile_shift[0][0]; v[n++] = nd_ws.tst1.tile_shift[0][1]; v[n++] = nd_ws.tst1.tile_shift[1][0]; v[n++] = nd_ws.tst1.tile_shift[1][1];
     v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
     v[n++] = nd_ws.omode_l; v[n++] = nd_ws.prim_z; v[n++] = (uint32_t)fog_fm; v[n++] = (uint32_t)fog_fo; v[n++] = (uint32_t)fogmix_on;
-    v[n++] = (uint32_t)img_role(0);
+    v[n++] = (uint32_t)nd_img_role(0);
     if (n > max) n = max;
     memcpy(o, v, n * sizeof(uint32_t));
     return n;

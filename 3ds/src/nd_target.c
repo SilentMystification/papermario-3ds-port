@@ -15,7 +15,6 @@
 #include "nd_grabonce.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
-int cimg_stride = 320;
 void pm_zbuf_need(void);
 int pm_fb_native(const void* p);
 int pm_is_cur_cfb(const void* p);
@@ -28,20 +27,8 @@ int pm_is_cur_cfb(const void* p);
 #define nd_cfb ((const unsigned short*)pm_walk_cfb) /* CORE2C-2: the colour buffer of the walked frame */
 int zcol, zslot_on; /* B5: zcol = this texrect copies colour into the z-buffer image (underwater, case 7): a slot, not a depth write */
 void* const zb_fake = (void*)0x1000; /* the key of that slot when nuGfxZBuffer is NULL (address 0 cannot name a texture) */
-int cimg_zero; /* B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
-int img_role(int for_fill) {
-    if (!nd_ws.cimg && !cimg_zero) return ROLE_MAIN;
-    if (nd_ws.cimg == (void*)DepthCopyBuffer) return ROLE_DEPTHQ;
-    if (for_fill && pm_is_cfb(nd_ws.cimg) && (nd_ws.omode_l & ~7u) == ((G_RM_VISCVG | G_RM_VISCVG2) & ~7u)) {
-        pm_zbuf_need(); /* D03: the single call site in this file; pm_main.c wraps the darkness stencil */
-        return ROLE_CPUFILL;
-    }
-    if (nd_ws.cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)nd_ws.cimg >= nuGfxZBuffer && (const unsigned short*)nd_ws.cimg < nuGfxZBuffer + 320 * 240)) &&
-        (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3 || (nd_ws.omode_l & 0x30u)) && !zcol) return ROLE_DEPTH;
-    if (!nd_ws.cimg && !zcol) return ROLE_MAIN;
-    if (pm_fb_native(nd_ws.cimg) && nd_ws.cimg_siz == 2) return ROLE_MAIN;
-    return ROLE_SLOT;
-}
+/* NDK_ZERO (nd_tgt.kind): B3: the last G_SETCIMG named address 0. nuGfxZBuffer is NULL until the pause or the darkness overlay allocates it (D03), so the game's z-buffer image is address 0 */
+/* The role is nd_tgt_role (nd_tgt.h), a pure function of the target record set in set_cimg. */
 /* B3: the N64 writes a 16 bit colour word into the z-buffer memory, and the RDP reads it back as 14 bit z plus 2 bit dz. The port
  * keeps z as prim_z (15 bit, 0 near): the word shifted right by 1 (the decal uses prim depth 32734 = the word 0xFFBC of prim 248 240 240). */
 float depth_of_word(unsigned w16) { return (float)((w16 & 0xffffu) >> 1) / 32767.f; }
@@ -87,23 +74,28 @@ void grab_cur(const void* src, int w, int h) {
 }
 void off_screen_check(void) {
     int r;
-    r = img_role(0);
+    r = nd_img_role(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
     if ((r == ROLE_SLOT || r == ROLE_DEPTHQ)) {
         /* FSELLAG2: a window image (draw_box: scissor 0, 0, width, height, then the fill of that rectangle) needs a clear only in the row blocks of its height.
          * Only a stride from 65 to 319 with the scissor equal to the image width qualifies: the 320 wide users (zbuffer copies, frozen frame, water) and the 64 wide stencils clear the whole slot. */
-        int band = (cimg_stride > 64 && cimg_stride < 320 && nd_ws.cimg_siz == 2 && sci_x0 == 0 && sci_y0 == 0 && sci_x1 == cimg_stride && sci_y1 > 0) ? sci_y1 : 0;
-        pm_gpu_off_begin(nd_ws.cimg ? nd_ws.cimg : zb_fake, cimg_stride, nd_ws.cimg_siz, band);
+        int band = (nd_tgt.stride > 64 && nd_tgt.stride < 320 && nd_tgt.siz == 2 && sci_x0 == 0 && sci_y0 == 0 && sci_x1 == nd_tgt.stride && sci_y1 > 0) ? sci_y1 : 0;
+        pm_gpu_off_begin(nd_tgt.img ? nd_tgt.img : zb_fake, nd_tgt.stride, nd_tgt.siz, band);
     }
 }
 /* CORE-2b batch D: colour image setter (decoded fields; cimg_zero is set from the address word). */
 static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
     void* nc = ptr_of(addr);
-    if (nc != nd_ws.cimg || ns != nd_ws.cimg_siz) pm_gpu_off_end(); /* V05 */
-    nd_ws.cimg = nc;
-    cimg_zero = (addr == 0); zcol = 0;
-    nd_ws.cimg_siz = ns;
-    cimg_stride = stride;
+    if (nc != nd_tgt.img || ns != nd_tgt.siz) pm_gpu_off_end(); /* V05 */
+    nd_tgt.img = nc;
+    zcol = 0;
+    nd_tgt.siz = (uint8_t)ns;
+    nd_tgt.stride = (uint16_t)stride;
+    /* NTGT: the address class, decided once here (each test as img_role had it) */
+    nd_tgt.kind = (uint8_t)((nc == NULL ? NDK_NULL : 0u) | (addr == 0 ? NDK_ZERO : 0u) | (nc == (void*)DepthCopyBuffer ? NDK_DEPTHQ : 0u) |
+        (pm_is_cfb(nc) ? NDK_CFB : 0u) |
+        ((nuGfxZBuffer && (const unsigned short*)nc >= nuGfxZBuffer && (const unsigned short*)nc < nuGfxZBuffer + 320 * 240) ? NDK_INZ : 0u) |
+        (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 void gbi_setcimg(u32 a, u32 b) { set_cimg(b, (int)((a >> 12) & 3), (int)(a & 0xfff) + 1); }
 

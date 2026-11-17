@@ -208,7 +208,7 @@ static __attribute__((cold, noinline)) void sr_orb_log(unsigned m, const NdRende
     }
 }
 void sync_render(void) {
-    unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)img_role(0);
+    unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
     if (sr_ok && sg == sr_sig) {
         GP_SET(6, 1);
         return;
@@ -236,7 +236,7 @@ void sync_render(void) {
     }
 mixed:
     NdRender rs;
-    nd_render_state(nd_ws.omode_h, m, img_role(0) == ROLE_DEPTH, &rs);
+    nd_render_state(nd_ws.omode_h, m, nd_img_role(0) == ROLE_DEPTH, &rs);
     pm_gpu_set_nocolor(rs.nocol);
     if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
     pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);

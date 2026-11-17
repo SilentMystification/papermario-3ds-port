@@ -715,7 +715,7 @@ int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
     if (!is_host((u32)(uintptr_t)l)) { *out = 0; return 0; } /* as pm_dlc_native_ranges: no draw */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
     DlcEnt* e = dlc_find(l);
-    if (!e || e->gen != pm_dlc_gen || e->refused || e->ngrp > 64u || img_role(0) == ROLE_DEPTH) return -1;
+    if (!e || e->gen != pm_dlc_gen || e->refused || e->ngrp > 64u || nd_img_role(0) == ROLE_DEPTH) return -1;
     const float(*m)[4] = combined;
     uint64_t vm = 0;
     const int wzd = PMDL("wzcull"); /* FFOG: the cache-hit cull (model_vis_same) also counts (dlc_wz_note) */
@@ -768,7 +768,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
     }
     if (e->refused) return dnr(4);
     const float(*m)[4] = combined;
-    if (img_role(0) == ROLE_DEPTH) return dnr(5); /* gv_state_why: the z mark pass (fallback) */
+    if (nd_img_role(0) == ROLE_DEPTH) return dnr(5); /* gv_state_why: the z mark pass (fallback) */
     const int wzd = PMDL("wzcull"); /* FFOG: the diagnostic counts of the box test (dlc_wz_note) */
     const u32 lm = G_TEXTURE_GEN;
     const u32 bad = fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0;

@@ -85,17 +85,17 @@ static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, in
             unsigned r = (unsigned)(o[0] * 31.f + .5f), g = (unsigned)(o[1] * 31.f + .5f),
                      b = (unsigned)(o[2] * 31.f + .5f), a = o[3] >= .5f;
             unsigned c = (r << 11) | (g << 6) | (b << 1) | a;
-            u8* d = (u8*)nd_ws.cimg + ((size_t)y * (size_t)cimg_stride + (size_t)x) * 2u;
+            u8* d = (u8*)nd_tgt.img + ((size_t)y * (size_t)nd_tgt.stride + (size_t)x) * 2u;
             d[0] = (u8)(c >> 8);
             d[1] = (u8)c;
         }
     }
-    pm_tex_invalidate(nd_ws.cimg, 64);
+    pm_tex_invalidate(nd_tgt.img, 64);
     return 1;
 }
 
 __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
-    if (!nd_ws.cimg || pm_is_cfb(nd_ws.cimg) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
+    if (!nd_tgt.img || (nd_tgt.kind & NDK_CFB) || tile >= 8 || nd_ws.tst1.tile_tmem[tile] < 256) return 0;
     return rect_to_image_draw(xl, yl, xh, yh, tile, hs, hd); /* HCCUT2: the drawing body is cold */ }
 
 /* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
@@ -115,7 +115,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
     /* HUD3: with wide the frame shows game x -40..359 (px maps x to 40 + x). A window that reaches into the side strips is composed there too, so its border and
      * corners sit where draw_box puts them. Clipped at 0 and 320, the chunk on the game edge took the edge rule of tex_raw_rect, which extends s past the
      * clamped composite: the corner column 0 (the light border texel) smeared over the 40 px strip as a yellow bar. */
-    const int xlo = (pm_wide && pm_is_cfb(nd_ws.cimg)) ? -40 : 0, xhi = (pm_wide && pm_is_cfb(nd_ws.cimg)) ? 360 : 320;
+    const int xlo = (pm_wide && (nd_tgt.kind & NDK_CFB)) ? -40 : 0, xhi = (pm_wide && (nd_tgt.kind & NDK_CFB)) ? 360 : 320;
     int cx0 = X0 < xlo ? xlo : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > xhi ? xhi : X1, cy1 = Y1 > 240 ? 240 : Y1;
     pm_gpu_flush();
     pm_gpu_set_combine(5);
@@ -227,13 +227,13 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     if (xl & 0x800) xl |= ~0xfff;
     if (yl & 0x800) yl |= ~0xfff;
     /* F03: the decomp copies one z-buffer pixel into DepthCopyBuffer[id] (scissor x0 = id). Read the PICA depth. */
-    if (nd_ws.cimg == (void*)DepthCopyBuffer) { nd_texrect_depth(hs); return; }
+    if (nd_tgt.kind & NDK_DEPTHQ) { nd_texrect_depth(hs); return; }
     if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) { return; }
     if (nd_texlog_on != 0) nd_texrect_log(xl, yl, xh, yh);
     /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
-    zcol = nd_ws.cimg_siz == 2 && (cimg_zero || (nuGfxZBuffer && (const unsigned short*)nd_ws.cimg >= nuGfxZBuffer && (const unsigned short*)nd_ws.cimg < nuGfxZBuffer + 320 * 240)) && !(nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL));
+    zcol = nd_tgt.siz == 2 && (nd_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL));
     if (zcol) { zslot_on = 1; sync_render(); }
-    else if (img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
+    else if (nd_img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
     off_screen_check();
     box_fold_sync();
     sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
@@ -292,10 +292,10 @@ __attribute__((noinline, cold)) static void nd_fillrect_cpu(int ulx, int uly, in
      * the VISCVG render mode (the RDP writes it as the pixel alpha bits). The PICA has no edge
      * coverage, so every pixel is a full pixel: write the full-coverage value (gray, alpha 1) to
      * that memory and draw nothing on the screen. The game filter then leaves each pixel as is. */
-    unsigned short* d = (unsigned short*)nd_ws.cimg;
+    unsigned short* d = (unsigned short*)nd_tgt.img;
     /* PAUSEOPEN: no CPU readback here. The picture is the GPU copy (background_gfx.c SHOW_PAUSED, pm_gpu_want_prev) */
     for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
-        for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < cimg_stride; x++) d[y * cimg_stride + x] = 0x8421;
+        for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < nd_tgt.stride; x++) d[y * nd_tgt.stride + x] = 0x8421;
 }
 __attribute__((noinline, cold)) static void nd_fillrect_zs(int ulx, int uly, int lrx, int lry, unsigned color) {
     /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
@@ -310,8 +310,8 @@ __attribute__((noinline)) void nd_fillrect(u32 w0, u32 w1) {
     int lry = FILL_SX10(w0 >> 2);
     int ulx = FILL_SX10(w1 >> 14);
     int uly = FILL_SX10(w1 >> 2);
-    if (img_role(1) == ROLE_CPUFILL) { nd_fillrect_cpu(ulx, uly, lrx, lry); return; }
-    if (img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
+    if (nd_img_role(1) == ROLE_CPUFILL) { nd_fillrect_cpu(ulx, uly, lrx, lry); return; }
+    if (nd_img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
         pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ws.fill));
         return;
     }
