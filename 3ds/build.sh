@@ -157,7 +157,7 @@ cmd $GT_CMD
 himg $HIMGID
 assets $AHASH
 rk $(rk_id)
-paths $(sha1sum < $OUT/rk_gfx_tab_paths.txt | cut -c1-40)"
+paths $(rk_pathsum $OUT/rk_gfx_tab_paths.txt)"
     GT_OUT="nd_gfx_tab.c:3ds/src/nd_gfx_tab.c nd_ntab_descs.c:3ds/src/nd_ntab_descs.c ntab_inherit.txt:build3ds/out/ntab_inherit.txt ntab_unsup.txt:build3ds/out/ntab_unsup.txt ntab_tables.txt:build3ds/out/ntab_tables.txt ntab_entries.txt:build3ds/out/ntab_entries.txt ntab_pairs.txt:build3ds/out/ntab_pairs.txt gset_ok.txt:build3ds/out/gset_ok.txt"
     if rk_get gfx_tab "$k0" $OUT/in_now.txt $GT_OUT; then echo "gen_gfx_tab: cache hit"; return 0; fi
     mkdir -p "$OUT" build3ds/out # gen_gfx_tab.sh writes its logs to build3ds/out only when the folder exists
@@ -190,7 +190,7 @@ himg $HIMGID
 assets $AHASH
 rk $(rk_id)
 gfxtab $(sha1sum < 3ds/src/nd_gfx_tab.c | cut -c1-40) $(sha1sum < 3ds/src/nd_ntab_descs.c | cut -c1-40)
-paths $(sha1sum < $OUT/rk_pso_tab_paths.txt | cut -c1-40)
+paths $(rk_pathsum $OUT/rk_pso_tab_paths.txt)
 scan
 $(rk_ids $OUT/in_now.txt $OUT/rk_pso_tab_scan.txt)"
     if rk_get pso_tab "$k0" $OUT/in_now.txt nd_pso_tab.c:3ds/src/nd_pso_tab.c; then echo "gen_pso_tab: cache hit"; return 0; fi
