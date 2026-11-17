@@ -1,0 +1,356 @@
+diff --git a/3ds/tools/azt.d/FXOPS.json b/3ds/tools/azt.d/FXOPS.json
+new file mode 100644
+index 0000000000..ca290b256a
+--- /dev/null
++++ b/3ds/tools/azt.d/FXOPS.json
+@@ -0,0 +1,28 @@
++{
++  "scenarios": [
++    {
++      "name": "fxops_drec",
++      "status": "unverified",
++      "subject": "FXOPS draw records: flame, radial_shimmer, underwater, embers and star_spirits_energy (fxtest 27, 45, 87, 105, 123) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 588, step 44), no shots.",
++      "proves": "FXOPS: the draw records of the 5 effects whose lists move are byte-equal between a base and a head build.",
++      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=27,45,87,105,123 loglevel=debug det drec=412:5:44",
++      "until": "drec f588 draws [1-9]\\d* bytes \\d+",
++      "cap": 30,
++      "deadline": 25,
++      "first_marker": "warp: mac_01 entry 0",
++      "expects": "warp",
++      "needs_picture": false,
++      "expected_events": [
++        {
++          "name": "warp",
++          "regex": "warp: mac_01 entry 0"
++        },
++        {
++          "name": "drec",
++          "regex": "drec f588 draws [1-9]\\d* bytes \\d+"
++        }
++      ],
++      "reason": "FXOPS: copy of dls2_fx_drec (DLSITE2) with 5 effects. Cap 30 s, deadline 25 s, until the drec line of frame 588."
++    }
++  ]
++}
+diff --git a/3ds/tools/bench.d/FXOPS.json b/3ds/tools/bench.d/FXOPS.json
+new file mode 100644
+index 0000000000..97cbfb83c8
+--- /dev/null
++++ b/3ds/tools/bench.d/FXOPS.json
+@@ -0,0 +1,21 @@
++{
++  "benches": [
++    {
++      "name": "fxops_drec",
++      "kind": "azahar_pic",
++      "speed": "normal",
++      "default": false,
++      "purpose": "FXOPS: draw records of fxtest 27, 45, 87, 105, 123 on mac_01, frames 412 to 588 step 44 (cold det start). A head equals the base.",
++      "scenario": "fxops_drec",
++      "cap": 30,
++      "until": "drec f588 draws [1-9]\\d* bytes \\d+",
++      "tags": [
++        "azahar",
++        "det",
++        "cold",
++        "drec"
++      ],
++      "gates": []
++    }
++  ]
++}
+diff --git a/3ds/tools/gconv_src.d/FXOPS.txt b/3ds/tools/gconv_src.d/FXOPS.txt
+new file mode 100644
+index 0000000000..6e13cbf080
+--- /dev/null
++++ b/3ds/tools/gconv_src.d/FXOPS.txt
+@@ -0,0 +1 @@
++flame
+diff --git a/3ds/tools/gfxin/src/effects/gfx/embers.c b/3ds/tools/gfxin/src/effects/gfx/embers.c
+index 8043f3b84b..1808eba75b 100644
+--- a/3ds/tools/gfxin/src/effects/gfx/embers.c
++++ b/3ds/tools/gfxin/src/effects/gfx/embers.c
+@@ -1,2 +1,3 @@
+ #include "src/effects/gfx/embers.c"
+ #include "effects/gfx/D_090003B0_3DC2F0.gfx.inc.c"
++#include "effects/gfx/D_09000280_3DC1C0.gfx.inc.c"
+diff --git a/3ds/tools/gfxin/src/effects/gfx/flame.c b/3ds/tools/gfxin/src/effects/gfx/flame.c
+new file mode 100644
+index 0000000000..5e3cd35016
+--- /dev/null
++++ b/3ds/tools/gfxin/src/effects/gfx/flame.c
+@@ -0,0 +1,5 @@
++#include "src/effects/gfx/flame.c"
++unsigned char D_800B32E0[0x800]; /* FXOPS: the flame render target (src/main.c:15-16 is not in the gconv set) */
++unsigned char D_800B3AE0[0x800];
++#include "effects/gfx/D_090008F8_3544A8.gfx.inc.c"
++#include "effects/gfx/D_09000918_3544C8.gfx.inc.c"
+diff --git a/3ds/tools/gfxin/src/effects/gfx/radial_shimmer.c b/3ds/tools/gfxin/src/effects/gfx/radial_shimmer.c
+index ba1fe4dc85..0e75aff964 100644
+--- a/3ds/tools/gfxin/src/effects/gfx/radial_shimmer.c
++++ b/3ds/tools/gfxin/src/effects/gfx/radial_shimmer.c
+@@ -8,3 +8,4 @@
+ #include "effects/gfx/D_090039A8_36A708.gfx.inc.c"
+ #include "effects/gfx/D_09003A88_36A7E8.gfx.inc.c"
+ #include "effects/gfx/D_090037A8_36A508.gfx.inc.c"
++#include "effects/gfx/D_090038B8_36A618.gfx.inc.c"
+diff --git a/3ds/tools/gfxin/src/effects/gfx/star_spirits_energy.c b/3ds/tools/gfxin/src/effects/gfx/star_spirits_energy.c
+index be2142b993..af8631d76e 100644
+--- a/3ds/tools/gfxin/src/effects/gfx/star_spirits_energy.c
++++ b/3ds/tools/gfxin/src/effects/gfx/star_spirits_energy.c
+@@ -4,3 +4,4 @@
+ #include "effects/gfx/D_090051C8_412458.gfx.inc.c"
+ #include "effects/gfx/D_09005370_412600.gfx.inc.c"
+ #include "effects/gfx/D_090053D0_412660.gfx.inc.c"
++#include "effects/gfx/D_09005440_4126D0.gfx.inc.c"
+diff --git a/3ds/tools/gfxin/src/effects/gfx/underwater.c b/3ds/tools/gfxin/src/effects/gfx/underwater.c
+index 914d2b2fe5..f94903f07b 100644
+--- a/3ds/tools/gfxin/src/effects/gfx/underwater.c
++++ b/3ds/tools/gfxin/src/effects/gfx/underwater.c
+@@ -6,3 +6,5 @@
+ #include "effects/gfx/D_09000268_3B9CD8.gfx.inc.c"
+ #include "effects/gfx/D_090003A0_3B9E10.gfx.inc.c"
+ #include "effects/gfx/D_090003D8_3B9E58.gfx.inc.c"
++#include "effects/gfx/D_09000528_3B9F98.gfx.inc.c"
++#include "effects/gfx/D_09000570_3B9FE0.gfx.inc.c"
+diff --git a/3ds/tools/gset.d/FXOPS.txt b/3ds/tools/gset.d/FXOPS.txt
+new file mode 100644
+index 0000000000..edcc80b83b
+--- /dev/null
++++ b/3ds/tools/gset.d/FXOPS.txt
+@@ -0,0 +1,5 @@
++src/effects/gfx/embers.c
++src/effects/gfx/radial_shimmer.c
++src/effects/gfx/star_spirits_energy.c
++src/effects/gfx/underwater.c
++src/effects/gfx/flame.c
+diff --git a/3ds/tools/nd_gfx_conv.c b/3ds/tools/nd_gfx_conv.c
+index 5406e2685b..03870619d6 100644
+--- a/3ds/tools/nd_gfx_conv.c
++++ b/3ds/tools/nd_gfx_conv.c
+@@ -181,7 +181,7 @@ static void conv(const GSym* g) {
+  * called list runs on the state of its call point, and the state it leaves stays), tracks the state groups of an NdPsoDesc, the tile state of tile 0
+  * (the walker's set_tile / set_loadtile / set_loadblock / set_timg / set_loadtlut / set_tilesize rules, tex_win0 of nd_texwin.c), the matrices and the
+  * colours. A list that reaches a triangle before it has set a combine, the cycle bits of other mode H and G_TEXTURE inherits state from its caller:
+- * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights outside a Lights1 symbol, scissor, rectangles, convert and key words, tile 1, an
++ * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights outside a Lights1 symbol, prim depth, image and marker units, tile 1, an
+  * address outside the set) gets none either (ntab_unsup.txt, the reason). There is never a v1 fallback inside a v2 table. ---- */
+ #include "nd_int.h"
+ #include "nd_vslot.h"
+@@ -506,7 +506,14 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
+             else cx->lit = 1;
+             break;
+         }
+-        case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_RARE: case NDO_RECT: case NDO_MISC:
++        case NDO_RARE: /* FXOPS: the convert and key words are desc state (set_rare, nd_set.c:148); the unit runs on the device */
++            if (a == NDO_RARE_CONV) s->conv_k4 = (w1 >> 9) & 0xffu;
++            else if (a == NDO_RARE_KEYR) { s->key_c = (s->key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); s->key_s = (s->key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
++            else { s->key_c = (s->key_c & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8); s->key_s = (s->key_s & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8); }
++            break;
++        case NDO_FILL: case NDO_SCISSOR: case NDO_RECT: /* FXOPS: a unit only, no v2 op (nd_ntab_run runs the units, nd_walk.c:600; a texture RECT keeps its 2 NOP units) */
++            break;
++        case NDO_PRIMZ: case NDO_MISC:
+             v2_unsup(v2_opname(id), k);
+             break;
+         case NDO_TIMG: {
+diff --git a/3ds/tools/nd_gtab_test.c b/3ds/tools/nd_gtab_test.c
+index 0476e44a66..6937727e47 100644
+--- a/3ds/tools/nd_gtab_test.c
++++ b/3ds/tools/nd_gtab_test.c
+@@ -319,6 +319,11 @@ static void m_unit(const uint32_t* u) {
+     case NDO_BLEND: m_col(3, 0, w1); break;
+     case NDO_MTX: m_xf(a & 0xffu, w1); break;
+     case NDO_POPMTX: m_xf(0xffu, w1); break;
++    case NDO_RARE: /* FXOPS: the convert and key words (set_rare, nd_set.c:148) */
++        if (a == NDO_RARE_CONV) ms.conv_k4 = (w1 >> 9) & 0xffu;
++        else if (a == NDO_RARE_KEYR) { ms.key_c = (ms.key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); ms.key_s = (ms.key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
++        else { ms.key_c = (ms.key_c & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8); ms.key_s = (ms.key_s & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8); }
++        break;
+     case NDO_TIMG:
+         ms.timg = (const void*)(uintptr_t)w1; ms.t.timg_fmt = (a >> 21) & 7u; ms.t.timg_siz = (a >> 19) & 3u; ms.t.timg_stride = (int)(a & 0xfffu) + 1; ms.m.ld_valid = 0;
+         break;
+diff --git a/src/effects/embers.c b/src/effects/embers.c
+index 533c478ccb..72ca6fd7f3 100644
+--- a/src/effects/embers.c
++++ b/src/effects/embers.c
+@@ -7,10 +7,10 @@
+ #include "nd_val.h"
+ #include "nd_xf.h"
+ 
+-extern Gfx D_09000280_3DC1C0[];
++NDN_DECL(D_09000280_3DC1C0);
+ NDN_DECL(D_090003B0_3DC2F0);
+ 
+-Gfx* D_E00E0A40[] = { NDN(D_090003B0_3DC2F0), D_09000280_3DC1C0 };
++Gfx* D_E00E0A40[] = { NDN(D_090003B0_3DC2F0), NDN(D_09000280_3DC1C0) };
+ 
+ f32 D_E00E0A48[] = {
+     0.01f, 0.05f,  0.1f,  0.2f, 0.35f,  0.5f,
+diff --git a/src/effects/flame.c b/src/effects/flame.c
+index c08e8cd09a..dc28ca68d8 100644
+--- a/src/effects/flame.c
++++ b/src/effects/flame.c
+@@ -1,4 +1,5 @@
+ #include "common.h"
++#include "nd_gtab.h"
+ #include "effects_internal.h"
+ #include "nu/nusys.h"
+ #include "nd_val.h"
+@@ -16,8 +17,8 @@ typedef struct FlamePreset {
+ } FlamePreset; // size = 0x10
+ 
+ extern Gfx D_09000800_3543B0[];
+-extern Gfx D_090008F8_3544A8[]; //TODO rename EffectGfx_Flame_DrawQuad
+-extern Gfx D_09000918_3544C8[];
++NDN_DECL(D_090008F8_3544A8);
++NDN_DECL(D_09000918_3544C8);
+ extern Gfx D_090009E0_354590[];
+ 
+ FlamePreset FlamePresets[] = {
+@@ -184,7 +185,7 @@ void flame_appendGfx(void* effect) {
+ 
+     if (LastFlameRenderFrame != gGameStatusPtr->frameCounter) {
+         LastFlameRenderFrame = gGameStatusPtr->frameCounter;
+-        gSPDisplayList(gMainGfxPos++, D_09000918_3544C8);
++        gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8));
+         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
+         gSPDisplayList(gMainGfxPos++, D_090009E0_354590);
+         nd_target_end();
+@@ -207,6 +208,6 @@ void flame_appendGfx(void* effect) {
+     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
+ 
+     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+-    gSPDisplayList(gMainGfxPos++, D_090008F8_3544A8);
++    gSPDisplayList(gMainGfxPos++, NDN(D_090008F8_3544A8));
+     nd_xf_pop(G_MTX_MODELVIEW);
+ }
+diff --git a/src/effects/gfx/embers.c b/src/effects/gfx/embers.c
+index 8c78b90bf1..1c9f4b78c2 100644
+--- a/src/effects/gfx/embers.c
++++ b/src/effects/gfx/embers.c
+@@ -3,7 +3,6 @@
+ INCLUDE_IMG("effects/gfx/D_09000000_3DBF40.png", D_09000000_3DBF40);
+ INCLUDE_IMG("effects/gfx/D_09000200_3DC140.png", D_09000200_3DC140);
+ 
+-#include "effects/gfx/D_09000280_3DC1C0.gfx.inc.c"
+ 
+ #include "effects/gfx/D_09000370_3DC2B0.vtx.inc.c"
+ 
+diff --git a/src/effects/gfx/flame.c b/src/effects/gfx/flame.c
+index ce8156ced7..c0261bc597 100644
+--- a/src/effects/gfx/flame.c
++++ b/src/effects/gfx/flame.c
+@@ -31,8 +31,6 @@ Gfx D_09000800_3543B0[] = {
+ };
+ 
+ #include "effects/gfx/D_090008B8_354468.vtx.inc.c"
+-#include "effects/gfx/D_090008F8_3544A8.gfx.inc.c"
+-#include "effects/gfx/D_09000918_3544C8.gfx.inc.c"
+ 
+ Gfx D_090009E0_354590[] = {
+     gsDPSetColorImage(G_IM_FMT_I, G_IM_SIZ_8b, 32, OS_K0_TO_PHYSICAL(&D_800B3AE0)),
+diff --git a/src/effects/gfx/radial_shimmer.c b/src/effects/gfx/radial_shimmer.c
+index 75382eb575..48f59b810f 100644
+--- a/src/effects/gfx/radial_shimmer.c
++++ b/src/effects/gfx/radial_shimmer.c
+@@ -13,4 +13,3 @@ INCLUDE_IMG("effects/gfx/D_09002E00_369B60.png", D_09002E00_369B60);
+ #include "effects/gfx/D_09003000_369D60.vtx.inc.c"
+ #include "effects/gfx/D_090031A0_369F00.vtx.inc.c"
+ 
+-#include "effects/gfx/D_090038B8_36A618.gfx.inc.c"
+diff --git a/src/effects/gfx/star_spirits_energy.c b/src/effects/gfx/star_spirits_energy.c
+index 2d60cde7fd..8acf6b7d7f 100644
+--- a/src/effects/gfx/star_spirits_energy.c
++++ b/src/effects/gfx/star_spirits_energy.c
+@@ -22,4 +22,3 @@ INCLUDE_IMG("effects/gfx/D_09004A00_411C90.png", D_09004A00_411C90);
+ #include "effects/gfx/D_090050E8_412378.vtx.inc.c"
+ #include "effects/gfx/D_09005128_4123B8.vtx.inc.c"
+ 
+-#include "effects/gfx/D_09005440_4126D0.gfx.inc.c"
+diff --git a/src/effects/gfx/underwater.c b/src/effects/gfx/underwater.c
+index 22f3b46c15..46f6a5085f 100644
+--- a/src/effects/gfx/underwater.c
++++ b/src/effects/gfx/underwater.c
+@@ -13,5 +13,3 @@ Vp D_09000418_3B9E88 = {
+ };
+ 
+ #include "effects/gfx/D_09000428_3B9E98.vtx.inc.c"
+-#include "effects/gfx/D_09000528_3B9F98.gfx.inc.c"
+-#include "effects/gfx/D_09000570_3B9FE0.gfx.inc.c"
+diff --git a/src/effects/radial_shimmer.c b/src/effects/radial_shimmer.c
+index 348b4e1f20..654f0f55a9 100644
+--- a/src/effects/radial_shimmer.c
++++ b/src/effects/radial_shimmer.c
+@@ -15,7 +15,7 @@ NDN_DECL(D_09003508_36A268);
+ NDN_DECL(D_090035E8_36A348);
+ NDN_DECL(D_090036C8_36A428);
+ NDN_DECL(D_09003830_36A590);
+-extern Gfx D_090038B8_36A618[];
++NDN_DECL(D_090038B8_36A618);
+ NDN_DECL(D_090039A8_36A708);
+ NDN_DECL(D_09003A88_36A7E8);
+ 
+@@ -27,8 +27,8 @@ Gfx* D_E0066C50[] = {
+ 
+ Gfx* D_E0066C8C[] = {
+     NDN(D_09003508_36A268), NDN(D_090035E8_36A348), NDN(D_09003428_36A188), NDN(D_090039A8_36A708), NDN(D_09003A88_36A7E8),
+-    NDN(D_09003428_36A188), NDN(D_090039A8_36A708), NDN(D_09003A88_36A7E8), D_090038B8_36A618, NDN(D_09003508_36A268),
+-    D_090038B8_36A618, D_090038B8_36A618, NDN(D_09003428_36A188), NDN(D_09003A88_36A7E8), NDN(D_090036C8_36A428),
++    NDN(D_09003428_36A188), NDN(D_090039A8_36A708), NDN(D_09003A88_36A7E8), NDN(D_090038B8_36A618), NDN(D_09003508_36A268),
++    NDN(D_090038B8_36A618), NDN(D_090038B8_36A618), NDN(D_09003428_36A188), NDN(D_09003A88_36A7E8), NDN(D_090036C8_36A428),
+ };
+ 
+ // todo ??? unused
+diff --git a/src/effects/star_spirits_energy.c b/src/effects/star_spirits_energy.c
+index c3a7d02e15..65f1c05868 100644
+--- a/src/effects/star_spirits_energy.c
++++ b/src/effects/star_spirits_energy.c
+@@ -12,13 +12,13 @@ NDN_DECL(D_09005168_4123F8);
+ NDN_DECL(D_090051C8_412458);
+ NDN_DECL(D_09005370_412600);
+ NDN_DECL(D_090053D0_412660);
+-extern Gfx D_09005440_4126D0[];
++NDN_DECL(D_09005440_4126D0);
+ 
+ NdLst D_E0122B90[] = {
+     NDN(D_09005168_4123F8), NDN(D_090051C8_412458), NDN(D_09005370_412600), NDN(D_090053D0_412660)
+ };
+ 
+-NdLst D_E0122BA0[] = { D_09005440_4126D0 };
++NdLst D_E0122BA0[] = { NDN(D_09005440_4126D0) };
+ NdLst D_E0122BA4[] = { NDN(D_09004E00_412090) };
+ 
+ typedef struct UnkStarSpiritsEnergy {
+@@ -387,7 +387,7 @@ void star_spirits_energy_appendGfx(void* effect) {
+ 
+         if (alpha > 0) {
+             nd_val_prim(0, 0, 208, 208, 208, alpha);
+-            {   /* F07-6: with wide the flash reaches both screen edges (D_09005440_4126D0 is 0 to 320) */
++            {   /* F07-6: with wide the flash reaches both screen edges (NDN(D_09005440_4126D0) is 0 to 320) */
+                 extern int pm_wide;
+                 if (pm_wide) {
+                     nd_pso_cyc(G_CYC_1CYCLE);
+diff --git a/src/effects/underwater.c b/src/effects/underwater.c
+index bfcfa91d85..fe0a5df8f8 100644
+--- a/src/effects/underwater.c
++++ b/src/effects/underwater.c
+@@ -10,8 +10,8 @@
+ #include "nd_at.h"
+ 
+ extern Vtx D_09000428_3B9E98[];
+-extern Gfx D_09000528_3B9F98[];
+-extern Gfx D_09000570_3B9FE0[];
++NDN_DECL(D_09000528_3B9F98);
++NDN_DECL(D_09000570_3B9FE0);
+ 
+ void underwater_init(EffectInstance* effect);
+ void underwater_update(EffectInstance* effect);
+@@ -217,7 +217,7 @@ void underwater_appendGfx(void* effect) {
+     s32 b, c, k, i;
+ 
+     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+-    nd_draw_list(D_09000528_3B9F98, ND_SELF);
++    nd_draw_list(NDN(D_09000528_3B9F98), ND_SELF);
+ 
+     tidal_grid_fill(data);
+     if (!tidal_logged) {
