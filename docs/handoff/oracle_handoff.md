@@ -1,9 +1,8 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main a6b7a1b09b, 2026-11-17. PHASEE wrote plan_walker_delete.md, ws_OPMOVE, ws_PSOSEEN. DIAG1 wrote ws_FXSLOT2.
-Counters FACT (listcen on d74594f376): build 312, gfxpos 4, data 191, data_arrays 0, gfxtype 251, recdl 6, reader 792, model 15.
-Merged after that: MISCP (recdl -1), FXSLOT1 (build -1, gfxpos -1, recdl +1).
-Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
+State: main 05f18ca04d, 2026-11-17. PHASEE2 wrote ws_FLAMEDL, ws_PSOFB (waits PSOSEEN merge), design_nstate.md (S2).
+Counters FACT (listcen on 51332ca38e+FXSLOT2): build 311, gfxpos 3, data 191, gfxtype 251, recdl 5 (FXSLOT2 -5 after), reader 730, model 15.
+Merged: OPMOVE (reader -62), FXSLOT2 (recdl -5). PSOSEEN branch 2f1e9c7d06: gen_pso_tab fails in its build 2 (no oracle answer seen).
 ## The chain to the end: docs/handoff/plan_walker_delete.md (stages S0-S8, decisions D1 D2, risks). Read it first.
 - D1, D2: orchestrator chose A (core 1 draw state, table lookup per draw; walk census deleted with the walker). The user may override.
 - User 2026-11-16: a table miss uses a fixed fallback and writes one log entry. nd_comb_core leaves the device.
@@ -13,17 +12,10 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
 - ws_PSOSEEN (no wait): nd_comb.c:241 miss arm logs `psoseen <ND_PSO_DESC fields>` once per key; psoseen.py writes nd_pso_seen.c.
 - ws_FXSLOT2 (recdl -5), ws_TST13 (build -1, gfxpos -1), ws_IMGOVL (recdl -1).
 ## Open work (in order)
-1. FLAMEDL page (FXSLOT1 merged): src/effects/flame.c:188 `gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8))` (state only:
-   loads, cycle type) and :211 `NDN(D_090008F8_3544A8)` (4 vertices, 2 triangles, inherits the preset combine). Form: FXDIG and
-   FXSLOT1 (git show of the deleted pages): nd_rec_dl capture form, entcap run, entapply, entry desc. Bench fxops_drec runs flame
-   (FLTGT gate). Read pm_fxtest.c for the flame index. build -2, gfxpos -2. With TST13 and FXSLOT2: gfxpos 0, src build 0.
-2. PSOFB page (after PSOSEEN): nd_comb.c:241 miss gives a fixed fallback NdCombOut and one log entry. All decisions pass
-   nd_comb_pick (nd_comb.c:240, callers :276 :302). Split nd_decide.c: nd_pso_in_eq, nd_pso_flags, nd_pso_fix, nd_const_rgb,
-   nd_comb_tst stay on the device (to nd_psolk.c). Check them for calls into the static decide code first. The rest goes to
-   3ds/tools/nd_decide.c. Path readers: gen_pso_tab.py:129, build.sh:211, host.d coin.sh:6 :8, conv2c.sh:9, decide.sh:5. model -2.
-3. S2: write docs/handoff/design_nstate.md (Opus oracle): core 1 draw state, native draw record, when core 1 resolves the pso id,
-   the batch rule that keeps drec equal (nd_op_same nd_walk.c:280, gv_epoch :283), the v2 field-set op instead of NDN_UNIT
-   (nd_gtab.h:104). Then the S3-S6 Haiku pages.
+1. Answer coder questions: FLAMEDL, PSOSEEN (gen_pso_tab failure), TST13, IMGOVL.
+2. PSOFB runs after the PSOSEEN merge. Its psochk lines lose the lkbad field.
+3. User answers UD1-UD3 (design_nstate.md section 12) and the Sonnet yes for NST1, NDR0, NCONV1, NREC1. Then write ws_NST0
+   (Haiku, ws_NST0.patch: the F3 globals into NdWs), then ws_NST1 (Sonnet).
 4. gMainGfxPos after src gfxpos 0: nd_rec.c redirect, nd_gtab.c:127, nd_cen.c, variables.h:111. It leaves in S7 with nd_gbi.h.
 ## Facts that cost time
 - Every setter writes an NDO typed unit through nd_nr (nd_nr.h:11). Core 0 runs it in nd_walk_state (nd_walk.c:390). The game
@@ -44,6 +36,5 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0.
 - Other oracles edit this file and the orchestrator commits stray files: read `git log -- <file>` and the file before a write.
 - Coders often hand back before the oracle reply arrives. Tell the orchestrator to resume them with the reply.
 ## What to do first
-1. Answer coder questions (OPMOVE, PSOSEEN, FXSLOT2, TST13, IMGOVL).
-2. Write ws_FLAMEDL, then ws_PSOFB when PSOSEEN is merged.
-3. Write design_nstate.md (S2) before any S3 page.
+1. Read design_nstate.md. Answer coder questions.
+2. Write the S3 pages from design_nstate.md section 10 after the user decisions.
