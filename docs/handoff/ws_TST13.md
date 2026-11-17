@@ -17,7 +17,8 @@ PM_ROW=TST13 PM_LANE=TST13. Edit only src/world/area_tst/tst_13/main.c; add 3ds/
    first_marker `warp: tst_13 entry 0`. Commit `TST13 1: tst_13 shockwave nd_rec_dl (capture form); tst13_cap, tst13_drec`.
 3. `sh 3ds/build.sh > build3ds/out/tst13_build1.txt 2>&1` (bench.py run does not build; bench.py:1218-1225). Then
    `python 3ds/tools/bench.py run tst13_cap --row TST13 --why "TST13 capture"`. `python 3ds/tools/entcap.py <its run.log>
-   > 3ds/tools/fxrest.d/cap4.txt`. cap4.txt must have an `l` line with `tst_13/main.c:306` and one word set.
+   > build3ds/out/tst13_entcap.txt`. `grep "tst_13/main.c:306" build3ds/out/tst13_entcap.txt > 3ds/tools/fxrest.d/cap4.txt`
+   (only this site: entapply edits every site of its input). cap4.txt must hold one line.
 4. `python 3ds/tools/entapply.py 3ds/tools/fxrest.d/cap4.txt > build3ds/out/tst13_apply.txt`. Expected: `entapply site
    src/world/area_tst/tst_13/main.c:306 pe_main_306` and the last line `entapply sites 1 ...`. Commit `TST13 2: captured entry`.
 5. `python 3ds/tools/bench.py base tst13_drec --row TST13 --commit $(git merge-base HEAD main)` (base run, not charged).

@@ -35,7 +35,8 @@ static void fxt_star_shimmer(void) {
 2. `python 3ds/tools/bench.py base fxdig_drec --row FXSLOT1 --commit $(git merge-base HEAD main)` (base run, not charged).
 3. `PM_HOSTSEL=all sh 3ds/tools/rowloop.sh --row FXSLOT1 --bench fxdig_drec --why "FXSLOT1 gate" > build3ds/out/fxslot1_loop.txt 2>&1`.
 4. `python 3ds/tools/bench.py run fxslot_cap --row FXSLOT1 --why "FXSLOT1 capture"`. `python 3ds/tools/entcap.py <its run.log>
-   > 3ds/tools/fxrest.d/cap3.txt`. Commit cap3.txt with the `fxtest: ... slot 110 frames` line and the psochk end line in the text.
+   > build3ds/out/fxslot1_entcap.txt`. `grep -E "status_star_shimmer.c:189|chomp_drop.c:16[36]|disable_x.c:3(08|10)"
+   build3ds/out/fxslot1_entcap.txt > 3ds/tools/fxrest.d/cap3.txt` (only these sites: entapply edits every site of its input). Commit cap3.txt with the `fxtest: ... slot 110 frames` line and the psochk end line in the text.
 ## Tests that decide (1 build, 3 Azahar starts)
 - `LOOP PASS` with fxdig_drec byte-equal (the default slot 44 is unchanged).
 - cap3.txt has an `l` line for each of status_star_shimmer.c:189, chomp_drop.c:163, :166, disable_x.c:308, :310.
