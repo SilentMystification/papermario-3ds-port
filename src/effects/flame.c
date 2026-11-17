@@ -185,7 +185,7 @@ void flame_appendGfx(void* effect) {
 
     if (LastFlameRenderFrame != gGameStatusPtr->frameCounter) {
         LastFlameRenderFrame = gGameStatusPtr->frameCounter;
-        gSPDisplayList(gMainGfxPos++, NDN(D_09000918_3544C8));
+        nd_rec_dl(NDN(D_09000918_3544C8));
         nd_val_tile_size(1, uls, ult, uls + 128, ult + 256);
         nd_draw_list(NDN(D_090009E0_354590), ND_SELF);
         nd_target_end();
@@ -208,6 +208,6 @@ void flame_appendGfx(void* effect) {
     guMtxF2L(sp98, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, NDN(D_090008F8_3544A8));
+    nd_rec_dl(NDN(D_090008F8_3544A8));
     nd_xf_pop(G_MTX_MODELVIEW);
 }
