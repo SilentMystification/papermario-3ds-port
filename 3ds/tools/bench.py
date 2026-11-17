@@ -1420,6 +1420,8 @@ def cmd_build_at(a):
 
 
 BASE_KEEP = 5  # the base store keeps this many commits (the oldest is removed first)
+CHECK_PURE = True  # BASEKEEP2: base --check --shots picks its candidate without removing an entry; seeded test 3ds/tests/basebin/test_basecheck.py
+RESTORE_KEPT = True  # BASEKEEP2: a check rerun that stores nothing puts the checked entry back; seeded test as above
 BASEBIN_KEEP = 6  # BASEBIN: the basebin store keeps this many base builds (3dsx 38 MB, elf 246 MB each)
 BASE_FILL = ("mdl5_iwa10_det", "spot_mac01_det")  # TOOLB10: warm byte scenes, in the order the rows run them; battle_start_f182_cold is cold by design (no base)
 BASE_ROW = "BASECACHE"
@@ -1511,27 +1513,43 @@ def drop_stored(commit, bench):
     return True
 
 
-def stored(commit, bench):
-    """True when the store holds the shots of bench at commit for the inputs of now. Cache safety: meta.json holds the content
-    key (shots_key) and the sha1 of every stored file; every use checks both, and a failed entry is removed."""
+def stored_why(commit, bench):
+    """BASEKEEP2: "" when the store holds the shots of bench at commit for the inputs of now, "missing" when it holds none, else the
+    reason of a failed check. Removes nothing (base --check --shots reads every entry with the bench and scenario definitions of
+    its own checkout: a bench of a row branch that main does not define yet has another key there)."""
     d = store_root() / commit / bench
     if not ((d / "meta.json").exists() and shot_names(d)):
-        return False
+        return "missing"
     try:
         meta = json.loads((d / "meta.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         meta = {}
     if meta.get("key") != shots_key(commit, bench):
-        print("base %s at %s: stored for other inputs (content key differs): stale, removed" % (bench, commit[:9]))
-        drop_stored(commit, bench)
-        return False
+        return "stored for other inputs (content key differs): stale, removed"
     files = sorted(p.name for p in d.iterdir() if p.is_file() and p.name != "meta.json")
     have = meta.get("out_sha1") or {}
     if sorted(have) != files or any(bb.sha1_file(d / n) != h for n, h in have.items()):
-        print("base %s at %s: a stored file differs from its hash: removed" % (bench, commit[:9]))
+        return "a stored file differs from its hash: removed"
+    return ""
+
+
+def stored(commit, bench):
+    """True when the store holds the shots of bench at commit for the inputs of now. Cache safety: meta.json holds the content
+    key (shots_key) and the sha1 of every stored file; every use checks both, and a failed entry is removed."""
+    why = stored_why(commit, bench)
+    if why and why != "missing":
+        print("base %s at %s: %s" % (bench, commit[:9], why))
         drop_stored(commit, bench)
-        return False
-    return True
+    return not why
+
+
+def index_add(commit, bench):
+    """BASEKEEP2: lists bench under commit in index.json (no prune). base --check --shots puts a kept entry back with it."""
+    idx = load_index()
+    ent = idx["commits"].setdefault(commit, {"short": commit[:9], "benches": []})
+    if bench not in ent["benches"]:
+        ent["benches"].append(bench)
+    save_index(idx)
 
 
 def store_base(commit, bench, scenario_name, shots, log, info):
@@ -2046,7 +2064,10 @@ def base_check_cold(a, root, live, random):
 def base_check_shots(a, live, random):
     """base --check --shots: one random stored bench of a commit with a basebin entry runs again; its shots must be equal."""
     idx = load_index()["commits"]
-    cands = [(c, b) for c in live for b in (idx.get(c) or {}).get("benches", []) if stored(c, b)]
+    # BASEKEEP2: the candidates are read with stored_why (no removal): stored() here removed the entries of row benches (FACT
+    # build3ds/out/post_merge_f1216481d1.txt:8978, entself_fx_drec at b514cebcd). CHECK_PURE False is the seeded fault.
+    check = (lambda c, b: not stored_why(c, b)) if CHECK_PURE else stored
+    cands = [(c, b) for c in live for b in (idx.get(c) or {}).get("benches", []) if check(c, b)]
     if not cands:
         print("cachecheck shots: no stored bench of a commit with a basebin entry")
         return 0
@@ -2058,7 +2079,13 @@ def base_check_shots(a, live, random):
     drop_stored(commit, b)
     try:
         rc = base_build_run([bench_def(b)], commit, a.row)
-        diff = shots_diff(str(keep), str(old)) if rc == 0 and stored(commit, b) else "the new run was not stored (rc %d)" % rc
+        new = rc == 0 and stored(commit, b)
+        diff = shots_diff(str(keep), str(old)) if new else "the new run was not stored (rc %d)" % rc
+        if not new and RESTORE_KEPT:  # BASEKEEP2: the checked entry was valid: it goes back (RESTORE_KEPT False is the seeded fault)
+            shutil.rmtree(old, ignore_errors=True)
+            os.rename(keep, old)
+            index_add(commit, b)
+            print("cachecheck shots %s %s: the stored entry is kept" % (b, commit[:9]))
     finally:
         shutil.rmtree(keep, ignore_errors=True)
     if diff:
