@@ -1,0 +1,268 @@
+diff --git a/3ds/src/nd_walk.c b/3ds/src/nd_walk.c
+index 309302305c..c4880749d5 100644
+--- a/3ds/src/nd_walk.c
++++ b/3ds/src/nd_walk.c
+@@ -502,16 +502,16 @@ static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {
+     for (unsigned i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
+     return h;
+ }
+-static __attribute__((cold, noinline)) void entcap_rec(const NdGTab* t, uint32_t site, uint32_t ent) { /* a static list call with no stated entry */
++static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_t site, uint32_t ent) { /* a static list call with no stated entry */
+     static uint32_t keys[4096];
+     static unsigned nkeys, over;
+     void nd_walker_desc(NdPsoDesc* d);
+-    if (nd_ntab_find(t->list)) return; /* a v2 table: not a list without one */
++    if (!PMDL("entcapt") && nd_ntab_find(list)) return; /* a v2 table: not a list without one (ENTSRC: the switch entcapt logs it too) */
+     if (ent) return; /* FXENT2: a call with a stated entry (nd_draw_list with an ND_PSO_DESC); ND_SELF and nd_rec_dl calls are logged */
+     NdPsoDesc d;
+     nd_walker_desc(&d);
+     d.geom = 0; d.key_c = 0; d.key_s = 0; d.plod = 0; /* FXREST2: draw values, not entry state */
+-    const uint32_t la = (uint32_t)(uintptr_t)t->list;
++    const uint32_t la = (uint32_t)(uintptr_t)list;
+     uint32_t h = entcap_fnv(2166136261u, &la, 4u);
+     h = entcap_fnv(h, &site, 4u);
+     h = entcap_fnv(h, &d, sizeof d);
+@@ -617,7 +617,7 @@ static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uin
+         pm_walk_side--;
+         return;
+     }
+-    if (__builtin_expect(PMDL("entcap") && !nt, 0)) entcap_rec(t, rec[2], rec[3]);
++    if (__builtin_expect(PMDL("entcap") && (!nt || PMDL("entcapt")), 0)) entcap_rec(key, rec[2], rec[3]); /* ENTSRC: entcapt adds the lists with a v2 table */
+     if (__builtin_expect(pm_walk_dbg, 0)) {
+         const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)key };
+         nd_walk_state(u, 1u);
+diff --git a/3ds/tests/entsrc/a.txt b/3ds/tests/entsrc/a.txt
+new file mode 100644
+index 0000000000..0782c87515
+--- /dev/null
++++ b/3ds/tests/entsrc/a.txt
+@@ -0,0 +1,2 @@
++Ent_A pe_w_7 3ds/tests/entsrc/x/w.c:6 0x00000001 0x00000002 0x00000003 0x00000004 0x00000000 0x00000000 0x00000000 0x00000000 1 0 0 0 0 0 1 0 0 0 0 0
++dro_02_card_gfx pe_w_7 3ds/tests/entsrc/x/w.c:7 0x00000001 0x00000002 0x00000003 0x00000004 0x00000000 0x00000000 0x00000000 0x00000000 1 0 0 0 0 0 1 0 0 0 0 0
+diff --git a/3ds/tests/entsrc/x/w.c b/3ds/tests/entsrc/x/w.c
+new file mode 100644
+index 0000000000..48ea63bac0
+--- /dev/null
++++ b/3ds/tests/entsrc/x/w.c
+@@ -0,0 +1,8 @@
++#include "nd_gtab.h"
++ND_PSO_DESC(pe_w_7, 0x00000001, 0x00000002, 0x00000003, 0x00000004, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0);
++void f(Entity* entity) {
++    Gfx* gfx = ENTITY_ADDR(entity, Gfx*, NDN(Ent_A));
++
++    nd_draw_list(gfx, pe_w_7);
++    nd_draw_list(NDN(N(card_gfx)), pe_w_7);
++}
+diff --git a/3ds/tests/host.d/entsrc.sh b/3ds/tests/host.d/entsrc.sh
+new file mode 100644
+index 0000000000..8747662495
+--- /dev/null
++++ b/3ds/tests/host.d/entsrc.sh
+@@ -0,0 +1,25 @@
++#!/bin/sh
++# ENTSRC: gen_ntab_entries.py reads an extra file with a namespace (N(x) -> <NS>_x) and resolves ENTITY_ADDR(e, Gfx*, x); entapply.py
++# takes a site in any src/ directory. Seeded faults: ENTITY_ADDR renamed in a copy of gen_ntab_entries.py, src/effects only in a copy
++# of entapply.py. Each must change the output. Prints one line; exit 1 on a fail.
++R=$(pwd)
++T=${TMPDIR:-/tmp}/entsrc.$$
++rm -rf "$T"; mkdir -p "$T/src/entity"
++python3 -I 3ds/tools/gen_ntab_entries.py 3ds/tests/entsrc 3ds/tests/entsrc/x/w.c=dro_02 > "$T/gne.txt" || { echo "entsrc FAIL gne exit"; exit 1; }
++if ! tr -d '\r' < 3ds/tests/entsrc/a.txt | cmp -s "$T/gne.txt" -; then echo "entsrc FAIL gne output differs from a.txt"; diff "$T/gne.txt" 3ds/tests/entsrc/a.txt | head; exit 1; fi
++sed 's/ENTITY_ADDR/ENTITY_ADDX/' 3ds/tools/gen_ntab_entries.py > "$T/gne_fault.py"
++python3 -I "$T/gne_fault.py" 3ds/tests/entsrc 3ds/tests/entsrc/x/w.c=dro_02 > "$T/gne_fault.txt" || true
++if tr -d '\r' < 3ds/tests/entsrc/a.txt | cmp -s "$T/gne_fault.txt" -; then echo "entsrc FAIL gne seeded fault not seen"; exit 1; fi
++printf '#include "nd_gtab.h"\nvoid f(void) {\n    nd_rec_dl(NDN(Ent_A));\n}\n' > "$T/src/entity/E.c"
++cp "$T/src/entity/E.c" "$T/E.orig"
++printf 'ndd_Ent_A f /w/src/entity/E.c:3 00000001 00000002 00000003 00000004 00000000 00000000 00000000 00000000 00000001 00000000 00000000\n' > "$T/log.txt"
++ea=$(cd "$T" && python3 -I "$R/3ds/tools/entapply.py" log.txt | tr -d '\r' | tr '\n' '|')
++l3=$(sed -n 4p "$T/src/entity/E.c" | tr -d '\r'); l2=$(sed -n 2p "$T/src/entity/E.c" | cut -c1-31)
++cp "$T/E.orig" "$T/src/entity/E.c"
++sed 's|(src/(?:|(src/effects/(?:|' 3ds/tools/entapply.py > "$T/ea_fault.py"
++ef=$(cd "$T" && python3 -I "$T/ea_fault.py" log.txt | tr -d '\r' | tr '\n' '|')
++rm -rf "$T"
++case $ea in *"entapply site src/entity/E.c:3 pe_E_3|"*"entapply sites 1 "*) ;; *) echo "entsrc FAIL entapply: [$ea]"; exit 1 ;; esac
++if [ "$l3" != "    nd_draw_list(NDN(Ent_A), pe_E_3);" ] || [ "$l2" != "ND_PSO_DESC(pe_E_3, 0x00000001," ]; then echo "entsrc FAIL entapply edit: [$l2] [$l3]"; exit 1; fi
++case $ef in *"entapply sites 0 "*) ;; *) echo "entsrc FAIL entapply seeded fault not seen: [$ef]"; exit 1 ;; esac
++echo "entsrc ok"
+diff --git a/3ds/tools/entapply.py b/3ds/tools/entapply.py
+index 5f8c7ba276..e975996aa2 100644
+--- a/3ds/tools/entapply.py
++++ b/3ds/tools/entapply.py
+@@ -2,7 +2,8 @@
+ r"""ENTRYFX E2: apply entcap walker descriptions to the effect sources (nd_rec_dl site -> nd_draw_list with a ND_PSO_DESC).
+ 
+ Usage: entapply.py [--dry] <entcap.py output>...   (run from the repo root; site paths are relative to it)
+-A log line with 11 hex words counts as an entry. Its site is (src/effects/\w+\.c):(\d+) in the line; no site: counts as other.
++A log line with 11 hex words counts as an entry. Its site is a src/ path (ENTSRC: any directory below src, a .c or .inc.c file):(\d+)
++in the line; no site: counts as other.
+ A site may carry a key `#<k>` (FXENT3: nd_rec_dl_k sites, entcap.py prints the key on the loc).
+ A line `so <list> <fn> <file:line>` (FXENT3: a state-only list, no words) marks its site as so.
+ Per site: the set of distinct 11-word tuples per key (unkeyed sites: key None).
+@@ -27,7 +28,7 @@ import re
+ import sys
+ 
+ WORDS = re.compile(r"((?: [0-9a-f]{8}){11})\s*$")
+-SITE = re.compile(r"(src/effects/\w+\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")
++SITE = re.compile(r"(?<![\w.])(src/(?:\w+/)*\w+(?:\.inc)?\.c):(\d+)(?: \(discriminator \d+\))?(?:#(\d+))?")  # ENTSRC site
+ NDREC = re.compile(r"^(\s*)nd_rec_dl\((.+)\);\s*$")
+ NDKEY = re.compile(r"^(\s*)nd_rec_dl_k\((.+), (.+), (\d+)\);\s*$")
+ INC = '#include "nd_gtab.h"'
+diff --git a/3ds/tools/gen_gfx_tab.sh b/3ds/tools/gen_gfx_tab.sh
+index 521ae14b2b..d1a1073b57 100644
+--- a/3ds/tools/gen_gfx_tab.sh
++++ b/3ds/tools/gen_gfx_tab.sh
+@@ -25,7 +25,7 @@ TUOBJ=""
+ for f in $TUS; do TUOBJ="$TUOBJ ${f%.c}.o"; done
+ gcc -m32 -r -nostdlib -o "$T/gconv_in.o" "$TD/gconv_in.o" $TUOBJ
+ gcc -m32 -Wall -Wextra -Werror -DND_SCOMP_HOST $DEF $TINC -o "$T/nd_gfx_conv" 3ds/tools/nd_gfx_conv.c 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c 3ds/tools/nd_vslot.c "$T/gconv_in.o" -Wl,--gc-sections
+-python3 3ds/tools/gen_ntab_entries.py src/effects > "$T/ntab_entries.txt"
++python3 3ds/tools/gen_ntab_entries.py src/effects $(cat $(ls 3ds/tools/ntab_ent.d/*.txt | LC_ALL=C sort) | sed 's/#.*//' | tr -s ' \t\r\n' ' ') > "$T/ntab_entries.txt" # ENTSRC: plus the files of ntab_ent.d
+ # MODELRM: the lists of nd_rmdef.h also get a static NdSDef (ndsd_<list>)
+ sed -n 's/^ *X(\(Gfx_RM[A-Za-z0-9_]*\)).*/\1/p' 3ds/include/nd_rmdef.h > "$T/sdef_names.txt"
+ "$T/nd_gfx_conv" "$T/nd_ntab_descs.c" "$T/ntab_inherit.txt" "$T/ntab_unsup.txt" "$T/nd_ntab_idx.c" "$T/ntab_tables.txt" "$T/ntab_entries.txt" "$T/ntab_pairs.txt" "$T/gset_ok.txt" "$T/sdef_names.txt" > "$T/nd_gfx_tab.c"
+diff --git a/3ds/tools/gen_ntab_entries.py b/3ds/tools/gen_ntab_entries.py
+index 1d21c30608..c3da0749dc 100644
+--- a/3ds/tools/gen_ntab_entries.py
++++ b/3ds/tools/gen_ntab_entries.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""gen_ntab_entries.py <dir>: the device entry writer of CONV2C2 (ws_CONV2C2.md, group 1).
++"""gen_ntab_entries.py <dir> [<file>[=<NAMESPACE>] ...]: the device entry writer of CONV2C2 (ws_CONV2C2.md, group 1).
+ 
+ For every nd_draw_list(<arg>, <desc>) site of <dir>/*.c (sorted; <desc> not ND_SELF) the list names of <arg> (names()) paired with
+ the 20 tokens of the line ND_PSO_DESC(<desc>, ...); of the same file. One output line per distinct (list, desc) of a site:
+@@ -7,6 +7,8 @@ the 20 tokens of the line ND_PSO_DESC(<desc>, ...); of the same file. One output
+ A site that does not resolve (an arg form names() does not know, or no ND_PSO_DESC line of the desc) prints:
+     gne skip <file>:<line>
+ Module form: names(text, arg) returns the list names (a list, or None for a skip); ws_FXSELF imports it.
++ENTSRC: after the files of <dir>, each extra <file> (gen_gfx_tab.sh passes the lines of 3ds/tools/ntab_ent.d/*.txt) is scanned the same
++way. With =<NAMESPACE>, N(x) in an argument is <NAMESPACE>_x (the gen_gfx_syms.py name). ENTITY_ADDR(e, Gfx*, x) is x (include/entity.h:66).
+ """
+ import os
+ import re
+@@ -66,16 +68,21 @@ def _init(text, name):
+     return _uniq(vals)
+ 
+ 
+-def _names(text, arg, local):
++def _names(text, arg, local, ns=None):
+     s = _outer(arg.strip())
++    if ns:  # ENTSRC namespace
++        s = re.sub(r"\bN\((\w+)\)", lambda m: ns + "_" + m.group(1), s)
++    me = re.fullmatch(r"ENTITY_ADDR\(\s*\w+\s*,\s*Gfx\s*\*\s*,\s*(.+)\)", s)  # ENTSRC entity
++    if me:
++        return _names(text, me.group(1), local, ns)
+     s = re.sub(r"^NDN\((\w+)\)$", r"\1", s)  # GSETB: a moved list is written NDN(X) (gset.py)
+     if "?" in s:
+         rest = s.split("?", 1)[1]
+         if ":" not in rest:
+             return None
+         a, b = rest.split(":", 1)
+-        na = _names(text, a, local)
+-        nb = _names(text, b, local)
++        na = _names(text, a, local, ns)
++        nb = _names(text, b, local, ns)
+         if na is None or nb is None:
+             return None
+         return _uniq(na + nb)
+@@ -87,7 +94,7 @@ def _names(text, arg, local):
+             found = False
+             for mm in re.finditer(r"\b%s\s*=\s*([^;=][^;]*);" % re.escape(s), text):
+                 found = True
+-                r = _names(text, mm.group(1).strip(), False)
++                r = _names(text, mm.group(1).strip(), False, ns)
+                 if r is None:
+                     return None
+                 vals += r
+@@ -97,47 +104,52 @@ def _names(text, arg, local):
+     return None
+ 
+ 
+-def names(text, arg):
+-    return _names(strip_comments(text), arg, True)
++def names(text, arg, ns=None):
++    return _names(strip_comments(text), arg, True, ns)
++
++
++def scan(path, ns, seen):
++    with open(path, encoding="utf-8", errors="replace") as fh:
++        text = fh.read()
++    lines = [l.rstrip("\r") for l in text.split("\n")]
++    descs = {}
++    for l in lines:
++        m = DESC.match(l)
++        if m and m.group(1) not in descs:
++            descs[m.group(1)] = [t.strip() for t in m.group(2).split(",")]
++    for i, l in enumerate(lines, 1):
++        m = CALL.search(l)
++        if not m or m.group(2) == "ND_SELF":
++            continue
++        where = "%s:%d" % (path, i)
++        desc = m.group(2)
++        if desc not in descs or len(descs[desc]) != 20:
++            print("gne skip " + where)
++            continue
++        ns_ = names(text, m.group(1), ns)
++        if ns_ is None:
++            print("gne skip " + where)
++            continue
++        for n in ns_:
++            if (n, desc) in seen:
++                continue
++            seen.add((n, desc))
++            print(" ".join([n, desc, where] + descs[desc]))
+ 
+ 
+ def main(argv):
+     if len(argv) < 2:
+-        print("usage: gen_ntab_entries.py <dir>", file=sys.stderr)
++        print("usage: gen_ntab_entries.py <dir> [<file>[=<NAMESPACE>] ...]", file=sys.stderr)
+         return 2
+     sys.stdout.reconfigure(newline="\n")  # LF on every host (the expected output a.txt is LF)
+     d = argv[1].rstrip("/")
+     seen = set()
+     for f in sorted(os.listdir(d)):
+-        if not f.endswith(".c"):
+-            continue
+-        path = d + "/" + f
+-        with open(path, encoding="utf-8", errors="replace") as fh:
+-            text = fh.read()
+-        lines = [l.rstrip("\r") for l in text.split("\n")]
+-        descs = {}
+-        for l in lines:
+-            m = DESC.match(l)
+-            if m and m.group(1) not in descs:
+-                descs[m.group(1)] = [t.strip() for t in m.group(2).split(",")]
+-        for i, l in enumerate(lines, 1):
+-            m = CALL.search(l)
+-            if not m or m.group(2) == "ND_SELF":
+-                continue
+-            where = "%s:%d" % (path, i)
+-            desc = m.group(2)
+-            if desc not in descs or len(descs[desc]) != 20:
+-                print("gne skip " + where)
+-                continue
+-            ns = names(text, m.group(1))
+-            if ns is None:
+-                print("gne skip " + where)
+-                continue
+-            for n in ns:
+-                if (n, desc) in seen:
+-                    continue
+-                seen.add((n, desc))
+-                print(" ".join([n, desc, where] + descs[desc]))
++        if f.endswith(".c"):
++            scan(d + "/" + f, None, seen)
++    for x in argv[2:]:  # ENTSRC: the extra files, in argument order
++        path, _, ns = x.partition("=")
++        scan(path, ns or None, seen)
+     return 0
+ 
+ 
+diff --git a/3ds/tools/ntab_ent.d/000_base.txt b/3ds/tools/ntab_ent.d/000_base.txt
+new file mode 100644
+index 0000000000..8d54d1edbe
+--- /dev/null
++++ b/3ds/tools/ntab_ent.d/000_base.txt
+@@ -0,0 +1 @@
++# ENTSRC: extra source files of gen_ntab_entries.py (gen_gfx_tab.sh). One per line: <path>[=<NAMESPACE>]. A row adds its own <ROW>.txt.
