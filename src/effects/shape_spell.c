@@ -10,8 +10,8 @@ typedef struct UnkStruct {
     /* 0x01 */ u8 unk_01;
     /* 0x02 */ u8 unk_02;
     /* 0x03 */ u8 unk_03;
-    /* 0x04 */ Gfx* unk_04;
-    /* 0x08 */ Gfx* unk_08;
+    /* 0x04 */ NdLst unk_04;
+    /* 0x08 */ NdLst unk_08;
 } UnkStruct; // size = 0xC
 
 NDN_DECL(D_09001080_33AFE0);

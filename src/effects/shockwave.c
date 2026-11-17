@@ -279,8 +279,6 @@ void shockwave_appendGfx(void* effect) {
     s32 envR, envG, envB;
     s32 primR2, primG2, primB2;
     s32 envR2, envG2, envB2;
-    Gfx* savedGfxPos;
-    Gfx* savedGfxPos2;
     NdSub sub;
     s32 temp_v0;
     s32 i;

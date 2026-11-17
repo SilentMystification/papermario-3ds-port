@@ -121,7 +121,6 @@ void hieroglyphs_appendGfx(void* effect) {
     Camera* camera = &gCameras[gCurrentCameraID];
     s32 lifeTime = data->lifeTime;
     s32 unk_24 = data->unk_24;
-    Gfx* savedGfxPos;
     NdSub sub;
     Matrix4f sp20;
     Matrix4f sp60;

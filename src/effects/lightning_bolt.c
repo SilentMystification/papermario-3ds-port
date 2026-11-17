@@ -254,7 +254,7 @@ void lightning_bolt_appendGfx(void* effect) {
         data->edgeLength[i] = (f32) preset->width[i] * 0.1;
     }
 
-    vtxBuffer = (Vtx_t*) nd_rec_data(0x30 * sizeof(Gfx)); /* DIRECT D6c: the vertex buffer is stream data */
+    vtxBuffer = (Vtx_t*) nd_rec_data(24 * sizeof(Vtx)); /* DIRECT D6c: the vertex buffer is stream data */
     vtx = vtxBuffer;
 
     for (i = 0; i < ARRAY_COUNT(data->boltVertexPosX); i++) {
