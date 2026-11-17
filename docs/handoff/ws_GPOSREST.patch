@@ -1,0 +1,363 @@
+diff -ruN a/3ds/include/nd_at.h b/3ds/include/nd_at.h
+--- a/3ds/include/nd_at.h	2026-11-16 20:37:44.561304500 -0500
++++ b/3ds/include/nd_at.h	2026-11-16 20:38:28.986871200 -0500
+@@ -33,6 +33,9 @@
+ 
+ /* PBUF: the push call of a list (gSPDisplayList): the unit nd_gx_w gives for G_DL with G_DL_PUSH */
+ #define NDCTL_CALL(O, l) O(ND_OP_CALL_W0, (uint32_t)(uintptr_t)(l))
++/* GPOSREST: a G_PM_ND mark (gbi_custom.h kinds splash, grab hold, gutter, sprite shade; arg 0 to 255): the unit nd_gx_w gives for gPmNd*(gMainGfxPos++, arg) */
++#define NDCTL_ND(O, kind, arg) O(ND_X0(ND_W0_PMND((kind), (uint32_t)(arg) & 0xffu), 0u), ND_X1(ND_W0_PMND((kind), (uint32_t)(arg) & 0xffu), 0u))
++#define nd_mark(kind, arg) NDCTL_ND(nd_nr, kind, arg)
+ 
+ #define NDGEO_VTX(O, v, n, v0) O(ND_NR_VTX(n, v0), (uint32_t)(uintptr_t)(v))
+ #define NDGEO_TRI1(O, a, b, c, f) O(NDO_W0(NDO_TRI1, __gsSP1Triangle_w1f(a, b, c, f)), 0u)
+diff -ruN a/3ds/tests/host.d/ns3unit.sh b/3ds/tests/host.d/ns3unit.sh
+--- a/3ds/tests/host.d/ns3unit.sh	2026-11-16 20:37:44.945846400 -0500
++++ b/3ds/tests/host.d/ns3unit.sh	2026-11-16 20:38:28.995225400 -0500
+@@ -1,6 +1,6 @@
+ #!/bin/sh
+ # NS3UNIT: host test of the O forms (3ds/include/nd_at.h, nd_tx.h, nd_nr.h) against the gbi macros they replace (3ds/tools/nd_at_test.c).
+-# Prints "ns3unit ok 25/25" or "ns3unit FAIL <shape>". First a seeded fault (the texture rectangle flag dropped from the O form in a copy of
++# Prints "ns3unit ok 27/27" or "ns3unit FAIL <shape>". First a seeded fault (the texture rectangle flag dropped from the O form in a copy of
+ # nd_tx.h) must fail at rtex; then the real headers must pass.
+ FP="-msse2 -mfpmath=sse -ffp-contract=off"
+ FL="-m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
+diff -ruN a/3ds/tools/nd_at_test.c b/3ds/tools/nd_at_test.c
+--- a/3ds/tools/nd_at_test.c	2026-11-16 20:37:44.745694700 -0500
++++ b/3ds/tools/nd_at_test.c	2026-11-16 20:38:28.995225400 -0500
+@@ -117,6 +117,10 @@
+ static uint32_t gRw0, gRw1, gRhs, gRhd; /* set in main: the texture rectangle words of screen_overlays.c */
+ static void a_rw(void) { ND_GX(p++, gRw0, gRw1); gImmp1(p++, G_RDPHALF_1, gRhs); gImmp1(p++, G_RDPHALF_2, gRhd); }
+ static void b_rw(void) { NDTX_RECT_W(ND_NR_AT, gRw0, gRw1, gRhs, gRhd); }
++static void a_ndsp(void) { gPmNdSplash(p++, 1); }
++static void b_ndsp(void) { NDCTL_ND(ND_NR_AT, G_PM_ND_SPLASH, 1); }
++static void a_ndgut(void) { gPmNdGutter(p++, 0x1a7); }
++static void b_ndgut(void) { NDCTL_ND(ND_NR_AT, G_PM_ND_GUTTER, 0x1a7); }
+ static void a_ho(void) { nrp = bb; ND_NR_AT(0x12345678u, 0x9abcdef0u); a_is_nr = 1; }
+ static void b_ho(void) { uint32_t* q = nrp; nd_nr_o(&q, 0x12345678u, 0x9abcdef0u); nrp = q; }
+ 
+@@ -128,7 +132,7 @@
+     { "tri2", a_tri2, b_tri2 }, { "viewport", a_viewport, b_viewport }, { "fill", a_fill, b_fill },
+     { "ltile", a_ltile, b_ltile }, { "ltile4", a_ltile4, b_ltile4 }, { "lblk", a_lblk, b_lblk }, { "lblk4", a_lblk4, b_lblk4 },
+     { "tlut16", a_tlut16, b_tlut16 }, { "sblk4", a_sblk4, b_sblk4 }, { "rtex", a_rtex, b_rtex }, { "rscis", a_rscis, b_rscis },
+-    { "rw", a_rw, b_rw }, { "ho", a_ho, b_ho },
++    { "rw", a_rw, b_rw }, { "ho", a_ho, b_ho }, { "ndsp", a_ndsp, b_ndsp }, { "ndgut", a_ndgut, b_ndgut },
+ };
+ 
+ /* one shape: the gbi side units (the sync units dropped, the two halves after a texture rectangle kept) against the O side units */
+diff -ruN a/include/effect_shims.h b/include/effect_shims.h
+--- a/include/effect_shims.h	2026-11-16 20:37:43.676045500 -0500
++++ b/include/effect_shims.h	2026-11-16 20:38:28.998353400 -0500
+@@ -20,7 +20,7 @@
+ bool shim_npc_raycast_down_sides(s32, f32*, f32*, f32*, f32*);
+ s32 shim_load_effect(s32 effectIndex);
+ float shim_sqrtf(float value);
+-void shim_mdl_draw_hidden_panel_surface(Gfx**, u16 treeIndex);
++void shim_mdl_draw_hidden_panel_surface(u16 treeIndex);
+ bool shim_is_point_visible(f32, f32, f32, s32, f32*, f32*);
+ void shim_guPerspectiveF(f32 mf[4][4], u16* perspNorm, f32 fovy, f32 aspect, f32 near, f32 far, f32 scale);
+ void shim_transform_point(Matrix4f mtx, f32 inX, f32 inY, f32 inZ, f32 inS, f32* outX, f32* outY, f32* outZ, f32* outW);
+diff -ruN a/include/functions.h b/include/functions.h
+--- a/include/functions.h	2026-11-16 20:37:43.496371200 -0500
++++ b/include/functions.h	2026-11-16 20:38:28.998353400 -0500
+@@ -809,7 +809,7 @@
+ 
+ Gfx* mdl_get_copied_gfx(s32 copyIndex);
+ void mdl_get_copied_vertices(s32 copyIndex, Vtx** firstVertex, Vtx** copiedVertices, s32* numCopied);
+-void mdl_draw_hidden_panel_surface(Gfx** arg0, u16 treeIndex);
++void mdl_draw_hidden_panel_surface(u16 treeIndex);
+ bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* screenY);
+ void set_screen_overlay_center_worldpos(s32 idx, s32 posIdx, s32 x, s32 y, s32 z);
+ void* mdl_get_next_texture_address(s32);
+diff -ruN a/src/background_gfx.c b/src/background_gfx.c
+--- a/src/background_gfx.c	2026-11-16 20:37:43.118502800 -0500
++++ b/src/background_gfx.c	2026-11-16 20:38:28.921846100 -0500
+@@ -8,6 +8,7 @@
+ #include "nd_val.h"
+ #include "nd_geo.h"
+ #include "nd_tx.h"
++#include "nd_at.h"
+ 
+ extern s32 gPauseBackgroundFade;
+ extern int pm_wide; /* F07-4 */
+@@ -370,7 +371,7 @@
+                                SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
+                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+             nd_rect_tex(0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2, G_TX_RENDERTILE, 0 << 5, 0 << 5, 1 << 10, 1 << 10);
+-            if (pm_wide) gPmNdGutter(gMainGfxPos++, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
++            if (pm_wide) nd_mark(G_PM_ND_GUTTER, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
+             break;
+         default:
+             // Draw the scene's background as normal
+diff -ruN a/src/draw_box.c b/src/draw_box.c
+--- a/src/draw_box.c	2026-11-16 20:37:42.403039900 -0500
++++ b/src/draw_box.c	2026-11-16 20:37:45.416802200 -0500
+@@ -694,7 +694,7 @@
+                     }
+                     /* PAUSEFLK: corner idx reads its own 4 vertices of the slot (the decomp SHIFT form). The US form moved quads by 4, 8 and 12 after
+                      * corners 1 to 3, so corner 3 wrote slot + 24..27: past the 16-vertex slot, and past the array for slot 20 (InspectIcon, ISpyData). */
+-                    gSPVertex(gMainGfxPos++, &quads[idx * 4], 4, 0);
++                    nd_mesh_vtx(&quads[idx * 4], 4, 0);
+                     nd_mesh_tri2(0, 3, 1, 0, 0, 2, 3, 0);
+                 } else {
+                     switch (idx) {
+diff -ruN a/src/effects/bombette_breaking.c b/src/effects/bombette_breaking.c
+--- a/src/effects/bombette_breaking.c	2026-11-16 20:37:43.854331400 -0500
++++ b/src/effects/bombette_breaking.c	2026-11-16 20:38:28.998353400 -0500
+@@ -226,7 +226,7 @@
+     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+ 
+-    mdl_draw_hidden_panel_surface(&gMainGfxPos, data->treeIndex);
++    mdl_draw_hidden_panel_surface(data->treeIndex);
+ 
+     data++;
+     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
+diff -ruN a/src/effects/motion_blur_flame.c b/src/effects/motion_blur_flame.c
+--- a/src/effects/motion_blur_flame.c	2026-11-16 20:37:43.319781600 -0500
++++ b/src/effects/motion_blur_flame.c	2026-11-16 20:38:28.937498400 -0500
+@@ -4,6 +4,7 @@
+ #include "nd_gtab.h"
+ #include "nd_val.h"
+ #include "nd_tx.h"
++#include "nd_at.h"
+ 
+ NDN_DECL(D_09000200_3A35D0);
+ NDN_DECL(D_090002A8_3A3678);
+@@ -158,7 +159,7 @@
+ 
+     nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+     nd_draw_list(D_E00A29D0[temp_a2], ND_SELF);
+-    gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: the strips share one frame copy */
++    nd_mark(G_PM_ND_GRABHOLD, 1); /* SBLK2 B1: the strips share one frame copy */
+ 
+     for (i = 0; i < UNK_ARRAY_SIZE_1; i++) {
+         f32 temp_f12 = data->unk_1C[i];
+@@ -247,7 +248,7 @@
+         }
+     }
+ 
+-    gPmNdGrabHold(gMainGfxPos++, 0);
++    nd_mark(G_PM_ND_GRABHOLD, 0);
+ 
+     for (i = 0; i < ARRAY_COUNT(data->unk_3C) - 1; i++) {
+         data->unk_3C[i + 1] = sp18[i];
+diff -ruN a/src/effects/underwater.c b/src/effects/underwater.c
+--- a/src/effects/underwater.c	2026-11-16 20:37:42.769139100 -0500
++++ b/src/effects/underwater.c	2026-11-16 20:38:28.953613800 -0500
+@@ -7,6 +7,7 @@
+ #include "nd_st.h"
+ #include "nd_geo.h"
+ #include "nd_tx.h"
++#include "nd_at.h"
+ 
+ extern Vtx D_09000428_3B9E98[];
+ extern Gfx D_09000528_3B9F98[];
+@@ -235,7 +236,7 @@
+     nd_pso_rm(CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | G_RM_PASS, CVG_DST_SAVE | ZMODE_OPA | FORCE_BL | GBL_c2(G_BL_CLR_IN, G_BL_0, G_BL_CLR_IN, G_BL_1));
+     nd_pso_persp(G_TP_PERSP);
+     nd_pso_filt(G_TF_BILERP);
+-    gPmNdGrabHold(gMainGfxPos++, 1); /* SBLK2 B1: one frame copy for the mesh */
++    nd_mark(G_PM_ND_GRABHOLD, 1); /* SBLK2 B1: one frame copy for the mesh */
+ 
+     guOrthoF(mtx, 0.0f, 1280.0f, 960.0f, 0.0f, -16384.0f, 16384.0f, 1.0f);
+     guMtxF2L(mtx, &gDisplayContext->matrixStack[gMatrixListPos]);
+@@ -245,11 +246,7 @@
+     nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_ON);
+ 
+     // one tile: the whole frame (320 x 240, RGBA16, line 80 words), clamp
+-    gDPSetTile(
+-        gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b,
+-        80, 0x0000, G_TX_LOADTILE, 0,
+-        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD,
+-        G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
++    nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 80, 0x0000, G_TX_LOADTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
+     nd_tex_ldtile(G_TX_LOADTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
+     nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 80, 0x0000, G_TX_RENDERTILE, 0, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD, G_TX_NOMIRROR | G_TX_CLAMP, 0, G_TX_NOLOD);
+     nd_val_tile_size(G_TX_RENDERTILE, 0, 0, (SCREEN_WIDTH - 1) * 4, (240 - 1) * 4);
+@@ -265,7 +262,7 @@
+         }
+     }
+ 
+-    gPmNdGrabHold(gMainGfxPos++, 0);
++    nd_mark(G_PM_ND_GRABHOLD, 0);
+     nd_tex_on(0xFFFF, 0xFFFF, 0, G_TX_RENDERTILE, G_OFF);
+     nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCameraID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
+ }
+diff -ruN a/src/effects/water_splash.c b/src/effects/water_splash.c
+--- a/src/effects/water_splash.c	2026-11-16 20:37:42.939926100 -0500
++++ b/src/effects/water_splash.c	2026-11-16 20:38:28.969347200 -0500
+@@ -5,6 +5,8 @@
+ ND_PSO_DESC(pe_water_splash_222, 0xfc2196c2, 0xf0fefe38, 0x1e182cf0, 0x0c184b50, 0x00200005, 0x00000000, 0x00000000, 0x00000000, 1, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0, 0);
+ #include "nd_val.h"
+ #include "nd_xf.h"
++#include "nd_tx.h"
++#include "nd_at.h"
+ 
+ NDN_DECL(D_09000100_3BCB90);
+ NDN_DECL(D_09000268_3BCCF8);
+@@ -190,7 +192,7 @@
+     nd_draw_list(NDN(D_09000100_3BCB90), ND_SELF);
+ 
+     data++;
+-    gPmNdSplash(gMainGfxPos++, 1);
++    nd_mark(G_PM_ND_SPLASH, 1);
+     for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, data++) {
+         s32 temp_t2 = (s32)data->unk_04.x + sp94;
+         s32 temp_t3 = (s32)data->unk_04.y + temp_fp;
+@@ -209,9 +211,7 @@
+ 
+         u16* refrBuf = nuGfxCfb[0]; { u32 k_; for (k_ = 0; k_ < nuGfxCfbNum; k_++) if (nuGfxCfb[k_] == nuGfxCfb_ptr) { refrBuf = nuGfxCfb[(k_ + nuGfxCfbNum - 1) % nuGfxCfbNum]; break; } }
+         /* SPLASHPREV2: the buffer before the current one (2 or 3 buffers), the one pm_cfb_capture_prev copies on the GPU */
+-        gDPLoadMultiTile(gMainGfxPos++, OS_K0_TO_PHYSICAL(refrBuf), 0x100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0,
+-                         temp_t2 + 0xA0, temp_t3 + 0x78, temp_t2 + 0xBF, temp_t3 + 0x97, 0,
+-                         G_TX_WRAP, G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
++        nd_tex_load_mtile(OS_K0_TO_PHYSICAL(refrBuf), 0x100, 1, G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0, temp_t2 + 0xA0, temp_t3 + 0x78, temp_t2 + 0xBF, temp_t3 + 0x97, 0, G_TX_WRAP, G_TX_WRAP, 5, 5, G_TX_NOLOD, G_TX_NOLOD);
+ 
+         guTranslateF(sp10, data->unk_04.x, data->unk_04.y, data->unk_04.z);
+         guScaleF(sp50, data->unk_34, data->unk_34, data->unk_34);
+@@ -223,6 +223,6 @@
+         nd_draw_list(D_E00BEAF0[(i + (gGameStatusPtr->frameCounter / 2)) & 3], pe_water_splash_222);
+         nd_xf_pop(G_MTX_MODELVIEW);
+     }
+-    gPmNdSplash(gMainGfxPos++, 0);
++    nd_mark(G_PM_ND_SPLASH, 0);
+     nd_xf_pop(G_MTX_MODELVIEW);
+ }
+diff -ruN a/src/entity/HiddenPanel.c b/src/entity/HiddenPanel.c
+--- a/src/entity/HiddenPanel.c	2026-11-16 20:37:44.025206700 -0500
++++ b/src/entity/HiddenPanel.c	2026-11-16 20:38:28.999952900 -0500
+@@ -34,7 +34,7 @@
+         nd_xf_pop(G_MTX_MODELVIEW);
+     }
+     mdl_project_tex_coords(data->modelID, data->renderDList, data->entityMatrix, entity->gfxBaseAddr);
+-    mdl_draw_hidden_panel_surface(&gMainGfxPos, data->modelID);
++    mdl_draw_hidden_panel_surface(data->modelID);
+ }
+ 
+ void entity_HiddenPanel_set_ispy_notification(Entity* entity) {
+diff -ruN a/src/model.c b/src/model.c
+--- a/src/model.c	2026-11-16 20:37:42.232009700 -0500
++++ b/src/model.c	2026-11-16 20:38:28.996801900 -0500
+@@ -3952,17 +3952,12 @@
+     }
+     if (outX >= 0.0f && outY >= 0.0f && outX < 320.0f && outY < 240.0f) {
+         // Load a 4x1 pixel tile of the depth buffer
+-        gDPLoadTextureTile(gMainGfxPos++, osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1,
+-            (s32) outX, 0, (s32) outX + 3, 0,
+-            0,
+-            G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+-            9, G_TX_NOMASK,
+-            G_TX_NOLOD, G_TX_NOLOD);
++        nd_tex_load_tile(osVirtualToPhysical(&nuGfxZBuffer[(s32) outY * SCREEN_WIDTH]), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, 1, (s32) outX, 0, (s32) outX + 3, 0, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, 9, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+         // Set the current color image to the buffer where copied depth values are stored.
+-        gDPSetColorImage(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, DepthCopyBuffer);
++        nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, DepthCopyBuffer);
+         // Set up 1 cycle mode and all other relevant othermode params.
+         // One cycle mode must be used here because only one pixel is copied, and copy mode only supports multiples of 4 pixels.
+-        gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE);
++        nd_pso_cyc(G_CYC_1CYCLE);
+         nd_pso_rm(G_RM_OPA_SURF, G_RM_OPA_SURF2);
+         nd_pso_cc(G_CC_DECALRGBA, G_CC_DECALRGBA);
+         nd_pso_filt(G_TF_POINT);
+@@ -3972,14 +3967,13 @@
+         nd_pso_detail(G_TD_CLAMP);
+         nd_pso_lod(G_TL_TILE);
+         // Adjust the scissor to only draw to the specified pixel.
+-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, depthQueryID, 0, depthQueryID + 1, 1);
++        nd_pso_scis(G_SC_NON_INTERLACE, depthQueryID, 0, depthQueryID + 1, 1);
+         // Draw a texrect to copy one pixel of the loaded depth tile to the output buffer.
+-        gSPTextureRectangle(gMainGfxPos++, depthQueryID << 2, 0 << 2, (depthQueryID + 1) << 2, 1 << 2, G_TX_RENDERTILE, (s32) outX << 5, 0, 1 << 10, 1 << 10);
++        nd_rect_tex(depthQueryID << 2, 0 << 2, (depthQueryID + 1) << 2, 1 << 2, G_TX_RENDERTILE, (s32) outX << 5, 0, 1 << 10, 1 << 10);
+         // Sync and swap the color image back to the current framebuffer.
+-        gDPPipeSync(gMainGfxPos++);
+         nd_tgt_cimg(G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH, osVirtualToPhysical(nuGfxCfb_ptr));
+         // Reconfigure the frame's normal scissor.
+-        gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
++        nd_pso_scis(G_SC_NON_INTERLACE, camera->viewportStartX, camera->viewportStartY, camera->viewportStartX + camera->viewportW, camera->viewportStartY + camera->viewportH);
+ 
+         // The following code will use last frame's depth value, since the copy that was just written won't be executed until the current frame is drawn.
+ 
+@@ -4000,27 +3994,13 @@
+     return outZ > 0.0f;
+ }
+ 
+-void mdl_draw_hidden_panel_surface(Gfx** arg0, u16 treeIndex) {
++/* GPOSREST: every caller passed &gMainGfxPos (the frame stream), so the packet swap was a no-op */
++void mdl_draw_hidden_panel_surface(u16 treeIndex) {
+     Model* model = get_model_from_list_index(get_model_list_index_from_tree_index(treeIndex));
+     Model copied = *model;
+-    Gfx* oldGfxPos;
+-    s32 flag;
+-
+-    if (*arg0 == gMainGfxPos) {
+-        flag = 1;
+-    }
+-
+-    oldGfxPos = gMainGfxPos;
+-    gMainGfxPos = *arg0;
+ 
+     copied.flags = MODEL_FLAG_HAS_LOCAL_VERTEX_COPY | MODEL_FLAG_VALID;
+     appendGfx_model(&copied);
+-
+-    *arg0 = gMainGfxPos;
+-
+-    if (flag == 0) {
+-        gMainGfxPos = oldGfxPos;
+-    }
+ }
+ 
+ void* mdl_get_next_texture_address(s32 size) {
+diff -ruN a/src/sprite.c b/src/sprite.c
+--- a/src/sprite.c	2026-11-16 20:37:42.573383800 -0500
++++ b/src/sprite.c	2026-11-16 20:38:28.986335100 -0500
+@@ -215,10 +215,7 @@
+                          Vp* vpAlt, Vp* vpMain) {
+     NDTX_LOAD_TLUT16(HO, 0, palette);
+     if (flags & SPR_SHADING_FLAG_ENABLED) {
+-        gDPScrollMultiTile2_4b(gMainGfxPos++, raster, G_IM_FMT_CI, width, height,
+-                              0, 0, width - 1, height - 1, 0,
+-                              G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
+-                              256, 256);
++        nd_tex_scroll_mtile2_4b(raster, G_IM_FMT_CI, width, height, 0, 0, width - 1, height - 1, 0, G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD, 256, 256);
+         nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+         nd_val_tile_size(2, 0, 0, 63 << 2, 0);
+         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
+@@ -467,11 +464,11 @@
+         ifxImg.xOffset = -(width / 2);
+         ifxImg.yOffset = height;
+         ifxImg.alpha = opacity;
+-        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 1); /* SHADEIMG: the shade colour inside the imgfx draw */
++        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) nd_mark(G_PM_ND_SPRSHADE, 1); /* SHADEIMG: the shade colour inside the imgfx draw */
+         if (imgfx_appendGfx_component((u8) CurSpriteImgFX, &ifxImg, IMGFX_FLAG_80000, mtxTransform) == 1) {
+             CurSpriteImgFX &= ~SPR_IMGFX_FLAG_ALL;
+         }
+-        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) gPmNdSprShade(gMainGfxPos++, 0);
++        if (gSpriteShadingProfile->flags & SPR_SHADING_FLAG_ENABLED) nd_mark(G_PM_ND_SPRSHADE, 0);
+     }
+     nd_xf_pop(G_MTX_MODELVIEW);
+ }
+diff -ruN a/src/world/area_mac/mac_00/water_gfx.c b/src/world/area_mac/mac_00/water_gfx.c
+--- a/src/world/area_mac/mac_00/water_gfx.c	2026-11-16 20:37:44.198900500 -0500
++++ b/src/world/area_mac/mac_00/water_gfx.c	2026-11-16 20:38:29.001047900 -0500
+@@ -22,7 +22,7 @@
+     nd_pso_zsrc(G_ZS_PIXEL);
+     nd_pso_rm(G_RM_PASS, G_RM_AA_ZB_XLU_SURF2);
+ 
+-    mdl_draw_hidden_panel_surface(&gMainGfxPos, MODEL_water);
++    mdl_draw_hidden_panel_surface(MODEL_water);
+ }
+ 
+ EvtScript N(EVS_SetupWaterCustomGfx) = {
+diff -ruN a/src/world/area_tst/tst_13/main.c b/src/world/area_tst/tst_13/main.c
+--- a/src/world/area_tst/tst_13/main.c	2026-11-16 20:37:44.393348100 -0500
++++ b/src/world/area_tst/tst_13/main.c	2026-11-16 20:38:29.001615700 -0500
+@@ -302,7 +302,7 @@
+ 
+     nd_pso_cyc(G_CYC_1CYCLE);
+     nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
+-    mdl_draw_hidden_panel_surface(&gMainGfxPos, 1);
++    mdl_draw_hidden_panel_surface(1);
+     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+     gSPDisplayList(gMainGfxPos++, N(shockwave_gfx));
+     nd_xf_pop(G_MTX_MODELVIEW);

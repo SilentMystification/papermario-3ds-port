@@ -1,6 +1,7 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 01f59e1b6b, 2026-11-16. Oracle DL6 wrote ws_ROOTREST (C1 -12, C2 -12), ws_VINE (C5 -34), ws_DLCCHK (registry only), each + patch, Haiku, start now, parallel.
+State: main 7eb679a916, 2026-11-16. Oracle O7 wrote ws_GPOSREST (+ patch, Haiku, start now: C1 -11, C2 -29), ws_NIMGM (Sonnet, start now, src/imgfx.c only), ws_NTGT (Sonnet: group 1 now, group 2 after Merge GPOSREST). Counters main 7eb679a916: build 405, gfxpos 126, data 1207, arrays 92, gfxtype 583, recdl 10, reader 789, model 15.
+FACT (O7): the 21 mdl_get_copied_gfx sites and the 3 model node list sites (flo_10, mac_00, crystal_ball) and entity_model.c:470/492/774/786 are heap or variable lists that the walker runs (walk_call nd_walk.c:225: ent_gdl, dlc_try, nd_ops_run). A real removal needs a Sonnet design (the copy compiled to a native mesh at mdl_make_local_vertex_copy, model.c:3673). A handle row only moves C1/C2 to C10: not written. Rest of C1 in src: inherit lists without capture (ENTRY form outside src/effects: entapply.py SITE reads src/effects only) and converter refusals (ntab_unsup.txt).
 FACT (DL6): phase E 1C and 5 still blocked: nd_ent.c:311 calls nd_dlc_compile on the device; trigger C1 0, C2 0 (1C) and C6 0 (5) not met.
 FACT (DL6): build3ds/out/ntab_*.txt in the main folder is stale (15:12); use a worktree copy of the newest build. Converter refusals that block
   screen_overlays (PRIMDEPTH), kmr_20/mgm_00/curtains (RECT), hos_05 (SCISSOR): v2_walk nd_gfx_conv.c:509 (gap d, oracle design). Copied-gfx sites (22): NMDL rows.
