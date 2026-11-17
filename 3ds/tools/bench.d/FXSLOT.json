@@ -1,0 +1,37 @@
+{
+  "benches": [
+    {
+      "name": "fxslot_cap",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXSLOT: entcap lines of the 5 unseen sites (log only). Source of fxrest.d/cap3.txt.",
+      "scenario": "fxslot_cap",
+      "cap": 40,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "entcap",
+        "fxslot"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxslot_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FXSLOT: draw records (drec.txt) of frame 722 with fxslot=110, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.",
+      "scenario": "fxslot_drec",
+      "cap": 40,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det",
+        "drec",
+        "fxslot"
+      ],
+      "gates": []
+    }
+  ]
+}

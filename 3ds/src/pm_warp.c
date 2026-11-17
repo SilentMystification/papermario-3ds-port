@@ -842,8 +842,8 @@ static void warp_setup(s16 areaID, s16 mapID) {
 int pm_warp_preset_count(void) { return (int)ARRAY_COUNT(presets); }
 
 /* PT01b: test maps (area_tst, ids tst_*) are cut content. tst_12 fills the 96 effect slots and crashed the N3DS (docs/plans/n3crash.md, Q-F10 option B).
- * The list of maps for the Warp-to option and the options.ini reader do not offer them, and a saved or switch value is ignored. */
-int pm_warp_is_test_map(const char* id) { return id && strncmp(id, "tst_", 4) == 0; }
+ * The list of maps for the Warp-to option and the options.ini reader do not offer them, and a saved or switch value is ignored. Switch warptest allows them. */
+int pm_warp_is_test_map(const char* id) { return id && strncmp(id, "tst_", 4) == 0 && !pm_debug_has("warptest"); }
 
 /* PT01: every map of gAreas as one flat list (area order, map order), without the test maps. */
 int pm_warp_map_count(void) {
