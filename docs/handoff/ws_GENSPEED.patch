@@ -1,0 +1,126 @@
+diff --git a/3ds/build.sh b/3ds/build.sh
+index 2c4d61f..4e1f179 100644
+--- a/3ds/build.sh
++++ b/3ds/build.sh
+@@ -93,6 +93,23 @@ assets $AHASH"
+ gen_texkey >&2 # PUSHKEY: stdout of build.sh is the key only (PM_KEY_ONLY)
+ # VOLGEN: the content ids of every code and tool file, read by the generator keys (gc_inputs). After texkey (texkey_patch.h is an input).
+ in_manifest $CODE_DIRS 3ds/tools > $OUT/in_now.txt
++# GENSPEED: gen_gfx_tab and gen_pso_tab read a copy of their key folders (one tar file of this tree, unpacked in the container's
++# own /work) and the assets from the shared asset volume (checked against its out.sha1 first: exit 7), not the C:\ bind mount.
++# FACT (oracle timing 2026-11-16, gconv objects cached): gfx_tab 71 s on the bind mount (WSL2 9p), 2.4 s on ext4; pso_tab 28 s
++# and 2.1 s. The container sees only the key folders, so a read outside the key fails the step. /w is mounted for the outputs.
++GEN_AV='mkdir -p /work/ver/us; tar -xf - -C /work; (cd /a/c && sha1sum -c --status out.sha1) || { echo "ASSET VOLUME CHECK FAILED" >&2; exit 7; }; ln -s /a/c/assets /work/assets; ln -s /a/c/ver/us/build /work/ver/us/build'
++# gen_run <name> <command> <key folder>...: makes the asset volume when it is missing (once per run), writes $OUT/gen_in.tar of
++# the key folders and runs the command in the host image with the tar on stdin. Exit 7 removes the asset volume (as the build does).
++gen_run() {
++    gn=$1; gcmd=$2; shift 2
++    if [ "$GEN_AOK" != 1 ]; then case "$(vol_state)" in *assets-ok*) ;; *) asset_vol_make ;; esac; GEN_AOK=1; fi
++    tar -cf - --exclude=__pycache__ "$@" > $OUT/gen_in.tar || { rm -f $OUT/gen_in.tar; echo "$gn failed: tar of $*" >&2; exit 1; }
++    w=$(pwd -W 2>/dev/null || pwd); grc=0
++    MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v $AVOL:/a:ro -v "pm3ds-gconvobj-$(docker image inspect -f '{{.Id}}' pm3ds-host:1 | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "$gcmd" < $OUT/gen_in.tar || grc=$?
++    rm -f $OUT/gen_in.tar
++    if [ "$grc" -eq 7 ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; echo "BUILD FAULT: the asset volume $AVOL failed its content check and was removed. Build again (the next build makes it new)." >&2; exit 7; fi
++    [ "$grc" = 0 ] || { echo "$gn failed" >&2; exit 1; }
++}
+ 
+ # HC4f1: host shape converter (3ds/tools/nd_shape_conv.c, host C, read only on ASSET_BASE). Writes $OUT/romfs/shape/<asset>.nds
+ # for every *_shape table entry: the Yay0 decode with pointer fields as shape offsets and their reloc list.
+@@ -118,21 +135,18 @@ $(gc_inputs 3ds/tools/nd_shape_conv.c 3ds/tools/yay0_test.c 3ds/src/nd_seam.c 3d
+ gen_shapes >&2 # PUSHKEY
+ 
+ # S7CONV: native tables of the static gfx lists (3ds/tools/gen_gfx_tab.sh, row S7CONV design note): 3ds/src/nd_gfx_tab.c (git-ignored, never
+-# committed, in the build key). Run in the host image with the nd_host_test.sh layout (assets read only from ASSET_BASE). Skip: the stamp
++# committed, in the build key). Run in the host image by gen_run (GENSPEED: key folders copied, assets from the asset volume). Skip: the stamp
+ # holds the hashes of the tool, its headers and the gfx sources of the set; the file is replaced only when its content changes.
+ gen_gfx_tab() {
+-    w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
+     # VOLGEN: cached (gencache gfx_tab). Key inputs: the command text, the host image, every asset file, and all of 3ds/tools,
+     # 3ds/include, 3ds/stub_include, include, src (gen_gfx_tab.sh compiles with -I src -I include) and the 2 port sources.
+     # GTIN (restored in VOLGEN 1: the patch dropped the GT_IN lines that gtin.sh checks). GT_IN is the key input list.
+     GT_IN="3ds/tools 3ds/include 3ds/stub_include include"
+     GT_IN="$GT_IN src 3ds/src/nd_scomp.c 3ds/src/nd_texwin.c" # GTIN: the own-TU sources of the set (under src)
+     GT_CMD='
+-        set -e; mkdir -p /work/ver/us
+-        for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
+-        ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
++        set -e; '"$GEN_AV"'
+         sh 3ds/tools/gen_gfx_tab.sh /w/3ds/src/nd_gfx_tab.c.new /tmp/gconv 2>&1 | grep -v "^gconv def"'
+-    want="gfx_tab v1
++    want="gfx_tab v2
+ cmd $GT_CMD
+ himg $HIMGID
+ assets $AHASH
+@@ -141,7 +155,7 @@ $(gc_inputs $GT_IN)"
+     if gc_get gfx_tab "$want" $GT_OUT; then echo "gen_gfx_tab: cache hit"; return 0; fi
+     mkdir -p "$OUT" build3ds/out # gen_gfx_tab.sh writes its logs to build3ds/out only when the folder exists
+     rm -f 3ds/src/nd_gfx_tab.c.new
+-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -v "pm3ds-gconvobj-$(docker image inspect -f '{{.Id}}' pm3ds-host:1 | cut -c8-23):/gobj" -e GCONV_OBJ=/gobj -e PM_CACHE="${PM_CACHE:-on}" -w /work pm3ds-host:1 sh -c "$GT_CMD" || { echo "gen_gfx_tab failed" >&2; exit 1; }
++    gen_run gen_gfx_tab "$GT_CMD" $GT_IN
+     [ -s 3ds/src/nd_gfx_tab.c.new ] || { echo "gen_gfx_tab failed: no output" >&2; exit 1; }
+     if cmp -s 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; then rm -f 3ds/src/nd_gfx_tab.c.new; else mv -f 3ds/src/nd_gfx_tab.c.new 3ds/src/nd_gfx_tab.c; fi
+     gc_put gfx_tab "$want" $GT_OUT || true
+@@ -150,24 +164,22 @@ $(gc_inputs $GT_IN)"
+ # in the host image, written to 3ds/src/nd_pso_tab.c (git-ignored, in the build key). Skip: the stamp holds the hashes of the two
+ # tools and the sources of the scan; the file is replaced only when its content changes.
+ gen_pso_tab() {
+-    w=$(pwd -W 2>/dev/null || pwd); ab=$(cd "$ASSET_BASE" && pwd -W 2>/dev/null || pwd)
+     # VOLGEN: cached (gencache pso_tab). Key inputs: the command text, the host image, every asset file, all of 3ds/tools,
+     # 3ds/include, 3ds/stub_include, include, src, 3ds/src, and the 2 gen_gfx_tab outputs in 3ds/src (written just before).
++    PT_IN="3ds/tools 3ds/include 3ds/stub_include include src 3ds/src" # GENSPEED: the key folders, also the tar list of gen_run
+     PT_CMD='
+-        set -e; mkdir -p /work/ver/us
+-        for d in 3ds include src; do ln -s "/w/$d" "/work/$d"; done
+-        ln -s /ar/assets /work/assets; ln -s /ar/ver/us/build /work/ver/us/build
++        set -e; '"$GEN_AV"'
+         python3 3ds/tools/gen_pso_tab.py /w/3ds/src/nd_pso_tab.c.new src 3ds/src'
+-    want="pso_tab v1
++    want="pso_tab v2
+ cmd $PT_CMD
+ himg $HIMGID
+ assets $AHASH
+ gfxtab $(sha1sum < 3ds/src/nd_gfx_tab.c | cut -c1-40) $(sha1sum < 3ds/src/nd_ntab_descs.c | cut -c1-40)
+-$(gc_inputs 3ds/tools 3ds/include 3ds/stub_include include src 3ds/src)"
++$(gc_inputs $PT_IN)"
+     if gc_get pso_tab "$want" nd_pso_tab.c:3ds/src/nd_pso_tab.c; then echo "gen_pso_tab: cache hit"; return 0; fi
+     mkdir -p "$OUT"
+     rm -f 3ds/src/nd_pso_tab.c.new
+-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w" -v "$ab/assets:/ar/assets:ro" -v "$ab/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c "$PT_CMD" || { echo "gen_pso_tab failed" >&2; exit 1; }
++    gen_run gen_pso_tab "$PT_CMD" $PT_IN
+     [ -s 3ds/src/nd_pso_tab.c.new ] || { echo "gen_pso_tab failed: no output" >&2; exit 1; }
+     if cmp -s 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; then rm -f 3ds/src/nd_pso_tab.c.new; else mv -f 3ds/src/nd_pso_tab.c.new 3ds/src/nd_pso_tab.c; fi
+     gc_put pso_tab "$want" nd_pso_tab.c:3ds/src/nd_pso_tab.c || true
+@@ -206,7 +218,7 @@ key_now() {
+     } | sha1sum | cut -d' ' -f1
+ }
+ # TOOLB1: PM_KEY_ONLY=1 prints the key of the tree (bench.py build_stale compares it with build_key.txt) and stops.
+-if [ -n "$PM_KEY_ONLY" ]; then key_now; exit 0; fi
++if [ -n "$PM_KEY_ONLY" ]; then key_now; if [ "${PM_CACHE:-on}" = off ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; fi; exit 0; fi # GENSPEED: gen_run can make the cold asset volume
+ # Azahar loads from its own SD card, not from build3ds/.
+ publish_3dsx() {
+     if [ -z "$PM_LANE" ] && [ -n "$APPDATA" ] && [ -f build3ds/pm_3ds.3dsx ]; then
+diff --git a/3ds/tests/genspeed/run.sh b/3ds/tests/genspeed/run.sh
+new file mode 100644
+index 0000000..42d1c4e
+--- /dev/null
++++ b/3ds/tests/genspeed/run.sh
+@@ -0,0 +1,19 @@
++#!/bin/sh
++# GENSPEED self-test (needs docker; not a host.d test): the asset volume check GEN_AV of 3ds/build.sh. Control: the lane asset
++# volume passes (rc 0). Seeded fault: a copy of it with one appended byte fails with rc 7. Usage, from the repo root after a
++# build of the lane: sh 3ds/tests/genspeed/run.sh build3ds/lane-<lane>. Prints "genspeed ok" or "genspeed FAIL <why>".
++O=${1:?usage: run.sh <lane out dir>}
++[ -s "$O/asset_now.txt" ] || { echo "genspeed FAIL no $O/asset_now.txt"; exit 1; }
++AV=pm3ds-assets-$(sha1sum < "$O/asset_now.txt" | cut -c1-16)
++SV=pm3ds-assets-gsseed$$
++GEN_AV=; eval "$(grep '^GEN_AV=' 3ds/build.sh)"
++[ -n "$GEN_AV" ] || { echo "genspeed FAIL no GEN_AV line in 3ds/build.sh"; exit 1; }
++run() { tar -cf - 3ds/tools/gen_gfx_tab.sh | MSYS_NO_PATHCONV=1 docker run --rm -i -v "$1:/a:ro" pm3ds-host:1 sh -c "set -e; $GEN_AV; test -f /work/3ds/tools/gen_gfx_tab.sh; test -d /work/assets/us; test -d /work/ver/us/build"; }
++run "$AV"; rc=$?
++[ "$rc" = 0 ] || { echo "genspeed FAIL control rc $rc ($AV)"; exit 1; }
++docker volume create $SV >/dev/null
++MSYS_NO_PATHCONV=1 docker run --rm -v "$AV:/s:ro" -v "$SV:/a" pm3ds-host:1 sh -c 'cp -a /s/c /a/c && f=$(sed -n 1p /a/c/out.sha1 | cut -c43-) && printf X >> "/a/c/$f"'
++run "$SV" 2>/dev/null; rc=$?
++docker volume rm $SV >/dev/null
++[ "$rc" = 7 ] || { echo "genspeed FAIL seeded rc $rc (want 7)"; exit 1; }
++echo "genspeed ok"
