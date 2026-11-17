@@ -1,7 +1,7 @@
 # ws_NST3 (Haiku): debug switch dschk: core 1 nd_ds against core 0 at every command (stage S3 proof; sets the S3 counter base)
 Designer: oracle PHASEE2. WAIT: branch from main after the NST1 merge (nd_ds.h, nd_ds.c, nd_ds_apply). Worktree build3ds/wt/NST3,
 branch NST3. PM_ROW=NST3 PM_LANE=NST3. Edit only: nd_ds.h, nd_ds.c, nd_rec.c, nd_walk.c (3 counter lines), pm_fxtest.c (1 line),
-new 3ds/src/nd_dschk.c, new 3ds/tools/nd_dschk_test.c, new 3ds/tests/host.d/nst3.sh, new azt.d/NST3.json, new bench.d/NST3.json.
+new 3ds/src/nd_dschk.c, new 3ds/tools/nd_dschk_test.c, new 3ds/tests/host.d/nst3.sh, new azt.d/NST3.json, new bench.d/NST3.json, new 3ds/tools/fxrest.d/dschk_base.txt.
 ## Facts (code read, main 2c1130236f; read design_nstate.md sections 3, 5, 6)
 - rec_take (nd_rec.c:175) takes every record. `st_take` is 1 only for a state unit (:338). So `!st_take` in rec_take = a command.
 - Core 0 raises gv_epoch for state at nd_walk.c:283 (op_typed), :297 (MOVEMEM), :353 (op_ctl). fxtest done: pm_fxtest.c:299.
