@@ -1,0 +1,2 @@
+# FXSLOT2: sites with a captured entry (status_star_shimmer.c:189)
+src/status_star_shimmer.c
