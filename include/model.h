@@ -2,6 +2,7 @@
 #define _MODEL_H_
 
 #include "common.h"
+#include "nd_gtab.h"
 
 typedef union ModelNodePropertyData {
     s32 s;
@@ -111,7 +112,8 @@ typedef struct ModelLocalVertexCopy {
     /* 0x08 */ Gfx* gfxCopy[2];
     /* 0x10 */ Vtx* vtxCopy[2];
     /* 0x18 */ s32 selector;
-} ModelLocalVertexCopy; // size = 0x1C
+    NdNDev dev[2]; /* VCOPY: the device entry of each gfxCopy[i] */
+} ModelLocalVertexCopy;
 
 typedef ModelLocalVertexCopy* ModelLocalVertexCopyList[16];
 
