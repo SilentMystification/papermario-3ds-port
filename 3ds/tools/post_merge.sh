@@ -16,6 +16,6 @@ $PY 3ds/tools/bench.py base --prebuild --row MAINBIN || exit 2
 echo "post_merge 3: basebin and shots cachecheck"
 $PY 3ds/tools/bench.py base --check --row MAINBIN || exit 3
 if [ -n "$(git status --porcelain -- 3ds/logs/perf/runs.jsonl)" ]; then
-    git add -- 3ds/logs/perf/runs.jsonl && git commit -q -m "runs.jsonl: post_merge cachecheck runs" || exit 4
+    git add -f -- 3ds/logs/perf/runs.jsonl && git commit -q -m "runs.jsonl: post_merge cachecheck runs" || exit 4
 fi
 echo "post_merge ok"
