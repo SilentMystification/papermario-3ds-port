@@ -734,6 +734,9 @@ u16 blend_tattle_background_channel(u16 a, s32 b, s32 alpha) {
 #include "nd_xf.h"
 #include "nd_tx.h"
 
+extern int pm_wide;
+s32 pm_wide_x3d(s32 x, s32 up);
+
 void tattle_cam_pre_render(Camera* camera) {
     Camera* cam = &gCameras[gCurrentCamID];
     s32 fogEnabled = false;
@@ -843,6 +846,10 @@ void tattle_cam_pre_render(Camera* camera) {
         nd_rect_fill(cam->viewportStartX, cam->viewportStartY, cam->viewportStartX + cam->viewportW - 1, cam->viewportStartY + cam->viewportH - 1);
     }
 
+    if (pm_wide) { /* TATTLEAR: the scissor of the 3D draws; the 2D fills above keep the scissor of :821 */
+        nd_pso_scis(G_SC_NON_INTERLACE, pm_wide_x3d(cam->viewportStartX, 1), cam->viewportStartY,
+                    pm_wide_x3d(cam->viewportStartX + cam->viewportW, 0), cam->viewportStartY + cam->viewportH);
+    }
     nd_xf_pnorm(cam->perspNorm);
     guMtxF2L(cam->mtxPerspective, &gDisplayContext->camPerspMatrix[gCurrentCamID]);
     nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
