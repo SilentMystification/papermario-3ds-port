@@ -809,7 +809,7 @@ void* load_asset_by_name(const char* assetName, u32* decompressedSize);
 
 Gfx* mdl_get_copied_gfx(s32 copyIndex);
 void mdl_get_copied_vertices(s32 copyIndex, Vtx** firstVertex, Vtx** copiedVertices, s32* numCopied);
-void mdl_draw_hidden_panel_surface(Gfx** arg0, u16 treeIndex);
+void mdl_draw_hidden_panel_surface(u16 treeIndex);
 bool is_point_visible(f32 x, f32 y, f32 z, s32 depthQueryID, f32* screenX, f32* screenY);
 void set_screen_overlay_center_worldpos(s32 idx, s32 posIdx, s32 x, s32 y, s32 z);
 void* mdl_get_next_texture_address(s32);

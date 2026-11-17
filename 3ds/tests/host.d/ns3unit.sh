@@ -1,6 +1,6 @@
 #!/bin/sh
 # NS3UNIT: host test of the O forms (3ds/include/nd_at.h, nd_tx.h, nd_nr.h) against the gbi macros they replace (3ds/tools/nd_at_test.c).
-# Prints "ns3unit ok 25/25" or "ns3unit FAIL <shape>". First a seeded fault (the texture rectangle flag dropped from the O form in a copy of
+# Prints "ns3unit ok 27/27" or "ns3unit FAIL <shape>". First a seeded fault (the texture rectangle flag dropped from the O form in a copy of
 # nd_tx.h) must fail at rtex; then the real headers must pass.
 FP="-msse2 -mfpmath=sse -ffp-contract=off"
 FL="-m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"

@@ -22,7 +22,7 @@ void N(gfx_build_water)(void) {
     nd_pso_zsrc(G_ZS_PIXEL);
     nd_pso_rm(G_RM_PASS, G_RM_AA_ZB_XLU_SURF2);
 
-    mdl_draw_hidden_panel_surface(&gMainGfxPos, MODEL_water);
+    mdl_draw_hidden_panel_surface(MODEL_water);
 }
 
 EvtScript N(EVS_SetupWaterCustomGfx) = {

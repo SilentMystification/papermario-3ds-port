@@ -34,7 +34,7 @@ void entity_HiddenPanel_setupGfx(s32 entityIndex) {
         nd_xf_pop(G_MTX_MODELVIEW);
     }
     mdl_project_tex_coords(data->modelID, data->renderDList, data->entityMatrix, entity->gfxBaseAddr);
-    mdl_draw_hidden_panel_surface(&gMainGfxPos, data->modelID);
+    mdl_draw_hidden_panel_surface(data->modelID);
 }
 
 void entity_HiddenPanel_set_ispy_notification(Entity* entity) {

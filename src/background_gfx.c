@@ -8,6 +8,7 @@
 #include "nd_val.h"
 #include "nd_geo.h"
 #include "nd_tx.h"
+#include "nd_at.h"
 
 extern s32 gPauseBackgroundFade;
 extern int pm_wide; /* F07-4 */
@@ -370,7 +371,7 @@ void gfx_draw_background(void) {
                                SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
             nd_rect_tex(0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2, G_TX_RENDERTILE, 0 << 5, 0 << 5, 1 << 10, 1 << 10);
-            if (pm_wide) gPmNdGutter(gMainGfxPos++, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
+            if (pm_wide) nd_mark(G_PM_ND_GUTTER, gPauseBackgroundFade); /* PAUSEOPEN: the gutters from the pause slot, walker side (pm_gpu_pause_gutters) */
             break;
         default:
             // Draw the scene's background as normal
