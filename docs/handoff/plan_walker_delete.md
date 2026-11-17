@@ -40,7 +40,7 @@ Pre per stage:
 - S5: CONV2 tables complete (nd_gfx_conv.c). NCONV1 is Sonnet: one algorithm over 922 tables (FACT, plan_endgame.md:159), its error
   cases are not known per list before it runs (the CONV2C reason).
 - S7: reader 0 for the file of the row except its own grep terms. build 0 and gfxpos 0 in src (S0 rows merged).
-## 4. User decisions
+## 4. User decisions (orchestrator chose A for D1 and D2 on 2026-11-17. The user may override. S3-S6 follow A.)
 - D1 end form of the 1679 state setter calls (FACT, section 2). Option A: the setters write one core 1 draw state (NdPsoDesc fields,
   2 NdBindDesc, colours). Each draw finds its pso id in the table on core 1 and records one native draw record. Game code stays.
   Core 0 decides nothing. Option B: plan v3 section 2 as written: a static ND_PSO_DESC and NdBindDesc at every draw. The setters
