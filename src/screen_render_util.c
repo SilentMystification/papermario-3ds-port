@@ -154,7 +154,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     nd_pso_cc(PM_CC_CONST_1, PM_CC_CONST_1);
     guRotate(&gDisplayContext->matrixStack[gMatrixListPos], 0.0f, 0.0f, 0.0f, 1.0f);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
+    nd_rec_dl(NDN(Gfx_DarknessStencilQuad));
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_pso_cc(PM_CC_56, PM_CC_56);
 
@@ -178,7 +178,7 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
         guScale(&gDisplayContext->matrixStack[gMatrixListPos], f20, f20, 1.0f);
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, NDN(Gfx_DarknessStencilQuad));
+        nd_rec_dl(NDN(Gfx_DarknessStencilQuad));
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
