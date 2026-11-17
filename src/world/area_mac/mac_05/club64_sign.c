@@ -85,7 +85,7 @@ void N(gfx_build_club_64)(s32 index) {
         colors[2] = colB * 255.0f;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_3));
+    mdl_draw_vertex_copy(VTX_COPY_3);
     N(Club64SignAlphaModulus) += 0.01;
     if (N(Club64SignAlphaModulus) > 1.0) {
         N(Club64SignAlphaModulus) -= 1.0f;

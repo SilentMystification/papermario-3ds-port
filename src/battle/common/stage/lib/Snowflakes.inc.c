@@ -24,7 +24,7 @@ void N(build_gfx_star)(s32 index) {
         vtx->v.cn[0] = vtx->v.cn[0] * temp3 / 0x10000;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(index));
+    mdl_draw_vertex_copy(index);
     N(StarAnimPhases)[index] += 0x253;
 }
 

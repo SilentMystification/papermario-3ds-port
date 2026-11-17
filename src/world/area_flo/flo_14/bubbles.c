@@ -232,7 +232,7 @@ void N(gfx_build_big_bubble)(void) {
     while (new_var); // TODO required to match
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_0));
+    mdl_draw_vertex_copy(VTX_COPY_0);
 
     N(BubblePhase) += 1.0f;
 }
@@ -262,7 +262,7 @@ void N(gfx_build_bubble_flower)(void) {
         }
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_1));
+    mdl_draw_vertex_copy(VTX_COPY_1);
 
     if (evt_get_variable(nullptr, AF_FLO_BlowingBigBubble)) {
         if (N(FlowerPhase) > 90) {

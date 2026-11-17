@@ -32,7 +32,7 @@ void N(func_8024033C_A1B43C)(void) {
     }
 
     nd_pso_geom_clr(G_CULL_BOTH);
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_1));
+    mdl_draw_vertex_copy(VTX_COPY_1);
     N(D_80243BCE_A1ECCE) += 0x666;
 }
 
@@ -57,7 +57,7 @@ void N(func_8024060C_A1B70C)(void) {
         colors[2] = colors[0] * temp3 / 0x10000;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_2));
+    mdl_draw_vertex_copy(VTX_COPY_2);
     N(D_80243BD0_A1ECD0) += (s32)RAD_TO_BINANG(25.1898);
 }
 
@@ -78,7 +78,7 @@ void N(build_gfx_aurora)(void) {
         vtxDst->v.ob[1] = vtxSrc->v.ob[1] + v0 / 0x8000;
     }
 
-    gSPDisplayList(gMainGfxPos++, mdl_get_copied_gfx(VTX_COPY_0));
+    mdl_draw_vertex_copy(VTX_COPY_0);
     N(AuroraPhaseAngle) += 0xA3;
 }
 
