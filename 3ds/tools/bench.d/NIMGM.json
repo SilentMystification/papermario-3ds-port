@@ -3,7 +3,7 @@
     {
       "name": "nimgm_strip_drec",
       "kind": "azahar_pic",
-      "speed": "normal",
+      "speed": "turbo",
       "default": false,
       "purpose": "NIMGM: draw records of the Monstar overlay strip, frames 400 and 420, det. A head equals the base.",
       "scenario": "nimgm_strip_drec",
