@@ -276,11 +276,12 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
+unsigned nd_st_epoch; /* NST3: the state epoch count (raised with gv_epoch by the state ops); dschk reads and resets it */
 static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     if (nd_op_same(u)) return;
     const unsigned id = u[0] >> 24, op = id == NDO_RARE ? 0u : nd_op_n64[id - NDO_BASE];
     pm_gbi_cur_op = op;
-    gv_epoch++; /* GV1b */
+    gv_epoch++; nd_st_epoch++; /* GV1b */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     if (__builtin_expect(dbg & WD_CEN, 0) && nd_op_tex(id)) nd_tex_timed(u); /* sp0x census */
@@ -294,7 +295,7 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
     const u32 a = u[0] & 0xffffffu, b = u[1];
     if (id == NDO_MOVEMEM) {
         if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
-        gv_epoch++; /* GV1b */
+        gv_epoch++; nd_st_epoch++; /* GV1b */
     }
     pm_gbi_cur_op = op;
     int fp = 0;
@@ -350,7 +351,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
         op = misc_n64[sub < 5u ? sub : 0u];
     }
     pm_gbi_cur_op = op;
-    if (id != NDO_CALL && op != G_MODIFYVTX) gv_epoch++; /* GV1b */
+    if (id != NDO_CALL && op != G_MODIFYVTX) { gv_epoch++; nd_st_epoch++; } /* GV1b */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     switch (id) {

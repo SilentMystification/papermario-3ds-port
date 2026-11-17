@@ -15,6 +15,7 @@ int atoi(const char*);
 int pm_debug_value(const char*, char*, unsigned);
 void pm_gpu_shot_burst(int n);
 void nd_psochk_end(void);
+void nd_dschk_end(void); /* nd_dschk.c: the dschk end line (NST3) */
 extern EffectInstance* gEffectInstances[96];
 extern PlayerStatus gPlayerStatus;
 
@@ -296,7 +297,7 @@ void pm_fxtest_tick(unsigned f) {
     slot = (f - START) / slot_len;
     k = (f - START) % slot_len;
     if (slot >= nsel) {
-        if (slot == nsel && k == 0) { nd_psochk_end(); pm_log_evt("fxtest: done"); }
+        if (slot == nsel && k == 0) { nd_psochk_end(); nd_dschk_end(); pm_log_evt("fxtest: done"); }
         return;
     }
     i = sel[slot];

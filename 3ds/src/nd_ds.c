@@ -295,3 +295,42 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
     }
     return ch;
 }
+
+/* NST3 dschk compare (design_nstate.md section 3). The draw-time fields are zeroed in both copies first: core 0 writes them at draw
+ * time (td[], tile_x0/y0, tile_fx/fy, cur_tile) and sync_render writes fogmix_on. The table names every other field of NdDs (the
+ * NdWs fields one by one, tst1 and tm as blocks). Returns the count of differing fields; the first max names go to bad. */
+typedef struct { const char* name; unsigned off, size; } NdDsField;
+#define DSF(nm, f) { nm, offsetof(NdDs, f), sizeof(((NdDs*)0)->f) }
+#define DSW(f) { #f, offsetof(NdDs, w.f), sizeof(((NdDs*)0)->w.f) }
+static const NdDsField ds_fields[] = {
+    DSW(geom), DSW(omode_h), DSW(omode_l), DSW(prim), DSW(envc), DSW(fill), DSW(prim_z), DSW(om_kh), DSW(om_kl), DSW(prim_lod),
+    DSW(tex_on), DSW(timg), DSW(tlut), DSW(tlut_n), DSW(tex_ss), DSW(tex_ts), DSW(segbase), DSW(comb_w0), DSW(comb_w1), DSW(use_t1),
+    DSW(tst1),
+    DSF("conv_k4", conv_k4), DSF("keyc", keyc), DSF("keys", keys), DSF("dual_on", dual_on), DSF("box_prod", box_prod),
+    DSF("comb_set", comb_set), DSF("comb_alpha_shade", comb_alpha_shade), DSF("sci_x0", sci_x0), DSF("sci_y0", sci_y0),
+    DSF("sci_x1", sci_x1), DSF("sci_y1", sci_y1), DSF("fog_fm", fog_fm), DSF("fog_fo", fog_fo), DSF("fogc", fogc),
+    DSF("blendc", blendc), DSF("lt", lt), DSF("lt_n", lt_n), DSF("lk", lk), DSF("vp_sx", vp_sx), DSF("vp_sy", vp_sy),
+    DSF("vp_sz", vp_sz), DSF("vp_tx", vp_tx), DSF("vp_ty", vp_ty), DSF("vp_tz", vp_tz), DSF("tm", tm),
+};
+
+static void ds_zero_draw(NdDs* s) {
+    memset(s->w.td, 0, sizeof s->w.td);
+    s->w.tile_x0 = 0; s->w.tile_y0 = 0; s->w.tile_fx = 0.f; s->w.tile_fy = 0.f; s->w.cur_tile = 0;
+    s->fogmix_on = 0;
+}
+
+int nd_ds_cmp(const NdDs* a, const NdDs* b, const char** bad, int max) {
+    NdDs ca, cb;
+    int n = 0;
+    memcpy(&ca, a, sizeof ca);
+    memcpy(&cb, b, sizeof cb);
+    ds_zero_draw(&ca);
+    ds_zero_draw(&cb);
+    for (unsigned i = 0; i < sizeof ds_fields / sizeof ds_fields[0]; i++) {
+        const NdDsField* f = &ds_fields[i];
+        if (memcmp((const uint8_t*)&ca + f->off, (const uint8_t*)&cb + f->off, f->size) == 0) continue;
+        if (n < max && bad) bad[n] = f->name;
+        n++;
+    }
+    return n;
+}
