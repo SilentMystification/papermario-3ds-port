@@ -2603,7 +2603,6 @@ void pm_anchor_end(void) {
 }
 
 int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, int dsdx, int dtdy) {
-    const s32 slots = (4 * sizeof(Vtx) + sizeof(Gfx) - 1) / sizeof(Gfx);
     Vtx_t* vtx;
     s16 corners[4][4];
     s32 i;
@@ -2611,7 +2610,7 @@ int pm_anchor_rect(int ulx, int uly, int lrx, int lry, int tile, int s, int t, i
     if (!sAnchorOpen) {
         return false;
     }
-    vtx = (Vtx_t*) nd_rec_data(slots * sizeof(Gfx)); /* DIRECT D9: the corner vertices are stream data */
+    vtx = (Vtx_t*) nd_rec_data(4 * sizeof(Vtx)); /* DIRECT D9: the corner vertices are stream data */
 
     corners[0][0] = corners[3][0] = (ulx >> 2) - sAnchorX;
     corners[0][1] = corners[1][1] = (uly >> 2) - sAnchorY;
