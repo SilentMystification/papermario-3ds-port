@@ -2224,17 +2224,18 @@ def cmd_cmp(a):
     if not commit:
         print("no base commit (the merge-base of HEAD with main, or --commit %s is unknown). Nothing was compared." % a.commit)
         return 5
+    rr = row_shots_run(a.bench, a.row)
+    # AZTFAST: bench.py run found the build stale during this run. Checked before the base, so a void run never touches the store.
+    if rr is not None and (Path(rr["shot_path"]) / "STALE.txt").exists():
+        print("cmp %s: the row run is void: %s" % (a.bench, (Path(rr["shot_path"]) / "STALE.txt").read_text(encoding="utf-8").strip()))
+        return 5
     if not stored(commit, a.bench):
         print("no stored base of %s at %s. Run: bench.py base %s" % (a.bench, commit[:9], a.bench))
         return 5
-    rr = row_shots_run(a.bench, a.row)
     if rr is None:
         print("no run of %s under row %s with shots. Run the bench first." % (a.bench, a.row))
         return 5
     base_dir, row_dir = store_root() / commit / a.bench, Path(rr["shot_path"])
-    if (row_dir / "STALE.txt").exists():  # AZTFAST: bench.py run found the build stale during this run
-        print("cmp %s: the row run is void: %s" % (a.bench, (row_dir / "STALE.txt").read_text(encoding="utf-8").strip()))
-        return 5
     base_names = shot_names(base_dir)
     row_names = shot_names(row_dir)
     out = REPO / "build3ds" / "basecmp" / a.row / a.bench
