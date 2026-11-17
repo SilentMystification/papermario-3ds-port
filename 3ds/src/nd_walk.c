@@ -650,6 +650,7 @@ void nd_gtab_run(const uint32_t* rec) { const NdGTab* t = (const NdGTab*)(uintpt
 unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
 void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, NULL, nt, rec); }
 void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
+void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, NULL, &d, rec); } /* NTABFIND: the record-time copy (nd_gtab.h) */
 void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
