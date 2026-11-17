@@ -12,7 +12,7 @@ Usage:
   hostsel.py store <root> <k0 file> <host_in.txt> <list>   list lines: unit, trace log, out file, must read (tab separated)
   hostsel.py selftest                                                        seeded faults (host.d/hostsel.sh)
 """
-import hashlib, os, shutil, sys, tempfile
+import hashlib, os, shutil, sys, tempfile, time
 
 KEEP = 4  # read states kept per unit K0
 
@@ -119,8 +119,22 @@ def store_unit(root, k0u, ids, log, out, must=None, extra=(), prep=None):
     open(os.path.join(t, "out.txt"), "wb").write(ob)
     open(os.path.join(t, "key.txt"), "wb").write(key.encode("utf-8"))
     open(os.path.join(t, "out.sha1"), "w").write(sha1(ob + b"\0" + rd))
-    shutil.rmtree(d, ignore_errors=True)
-    os.rename(t, d)
+    for attempt in range(8):  # Windows: the rename fails when another run holds d open or stores the same unit at the same time
+        shutil.rmtree(d, ignore_errors=True)
+        try:
+            os.rename(t, d)
+            break
+        except OSError:
+            try:
+                same = open(os.path.join(d, "key.txt"), "rb").read() == key.encode("utf-8")
+            except OSError:
+                same = False
+            if same:  # another run stored the same unit with the same key: keep it
+                shutil.rmtree(t, ignore_errors=True)
+                break
+            if attempt == 7:
+                raise
+            time.sleep(0.25)
     olds = sorted((e for e in os.listdir(kd) if ".tmp." not in e), key=lambda e: os.path.getmtime(os.path.join(kd, e)), reverse=True)
     for e in olds[KEEP:]:
         shutil.rmtree(os.path.join(kd, e), ignore_errors=True)
