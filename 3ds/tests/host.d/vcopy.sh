@@ -14,4 +14,8 @@ gcc -I $N/seed $F -o $N/seed_t 3ds/tests/vcopy/vcopy_test.c $N/ext.c || { echo "
 got=$($N/seed_t | head -1)
 case "$got" in "vcopy FAIL dev"*) ;; *) echo "vcopy seeded fault not seen: [$got]"; exit 1;; esac
 gcc $F -o $N/t 3ds/tests/vcopy/vcopy_test.c $N/ext.c || exit 1
+tr -d '' < src/model.c | awk '/^void mdl_make_local_vertex_copy/ {on=1} on {print} on && /^}/ {exit}' > $N/mk.c
+grep -q 'nd_vcopy_dev(&copy->dev\[i\], copy->gfxCopy\[i\]);' $N/mk.c || { echo "vcopy FAIL dev not filled"; exit 1; }
+sed '/nd_vcopy_dev(&copy->dev/d' $N/mk.c > $N/seed/mk.c
+grep -q 'nd_vcopy_dev(&copy->dev\[i\], copy->gfxCopy\[i\]);' $N/seed/mk.c && { echo "vcopy seeded fault not seen (dev)"; exit 1; }
 $N/t || exit 1
