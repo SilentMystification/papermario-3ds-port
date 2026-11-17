@@ -31,10 +31,9 @@ G1. `sh 3ds/tests/host.d/drec.sh` prints `drec ok 3` and `drec seed ok`. Then `P
 G2. One build: `sh 3ds/build.sh`. Base: `python 3ds/tools/bench.py base fxops_drec` (merge-base, a tool cost, no budget).
 G3. `python 3ds/tools/bench.py run fxops_drec --row DRECTEX --why "DRECTEX gate"` until two warm runs exist (cap 3 starts; cmp refuses a cold run).
     Copy drec.txt after the first warm run to build3ds/out/drectex_a.txt. `cmp build3ds/out/drectex_a.txt build3ds/azt/shots/fxops_drec/DRECTEX/drec.txt`: equal.
-G4. Expected difference: B=$(git rev-parse --git-common-dir)/../build3ds/basecache/$(git merge-base HEAD main)/fxops_drec/drec.txt. Run
-    `sed -E 's/^(t [0-2] type (00000000 dim 01000200|00000002 dim 02000100) bytes [0-9]+ h )[0-9a-f]{16}$/\1gpu/' $B > build3ds/out/drectex_exp.txt`,
-    then `cmp build3ds/out/drectex_exp.txt <row drec.txt>`: equal. `grep -c ' h gpu$' <row drec.txt>`: 7 (GUESS; FACT 7 such lines in base 368b56a1b).
-    Self-test of G4: `cmp $B <row drec.txt>` must differ. A plain `bench.py cmp fxops_drec` fails by design (the base has hashes). Max 1 build, 3 starts.
+G4. B=$(git rev-parse --git-common-dir)/../build3ds/basecache/$(git merge-base HEAD main)/fxops_drec/drec.txt, R=row drec.txt. Same line count. Each differing line
+    is a base t line `... h <16 hex>` whose row text is the same with `gpu` for the hex. Expected: diff 9, bad [] (FACT row f8f224beba: 2 grab/slot + 7 small_blk).
+    Self-test: row line 6463 with `h gpu` set to `h 0000000000000000` gives bad [6463]. A plain `bench.py cmp fxops_drec` fails by design. Max 1 build, 3 starts.
 ## Edit rights, stop, hand-back
 To fix a failing host test, edit only the 5 files above. Do not edit bench.py, bench_defs.json or azt_scenarios.json. Old stored bases stay valid
 (key basecache/<commit>/<bench>, bench.py:1436, :1486). Stop when G1-G4 pass. Commit the 5 files, delete this page there. Hand back: hash, G1-G4, `h gpu` count.
