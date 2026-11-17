@@ -12,6 +12,7 @@
 #include "nd_geo.h"
 #include "nd_gtab.h"
 #include "nd_vcount.h"
+#include "nd_vcopy.h"
 #include "nd_at.h"
 #include "nd_tx.h"
 
@@ -3691,6 +3692,7 @@ void mdl_make_local_vertex_copy(s32 copyIndex, u16 modelID, s32 isMakingCopy) {
             copy->vtxCopy[i] = heap_malloc(numVertices * sizeof(*copy->vtxCopy[i]));
             mdl_local_gfx_update_vtx_pointers(nodeDlist, baseVtx, copy->gfxCopy[i], copy->vtxCopy[i]);
             mdl_local_gfx_copy_vertices(baseVtx, numVertices, copy->vtxCopy[i]);
+            nd_vcopy_dev(&copy->dev[i], copy->gfxCopy[i]); /* VCFIX: the entry that mdl_draw_vertex_copy records */
         }
         model->flags |= MODEL_FLAG_HAS_LOCAL_VERTEX_COPY;
         PM_REC_BUMP(model);
@@ -3698,6 +3700,7 @@ void mdl_make_local_vertex_copy(s32 copyIndex, u16 modelID, s32 isMakingCopy) {
         for (i = 0; i < ARRAY_COUNT(copy->gfxCopy); i++) {
             copy->gfxCopy[i] = nullptr;
             copy->vtxCopy[i] = nullptr;
+            copy->dev[i] = (NdNDev){ 0 };
         }
         model->flags |= MODEL_FLAG_HIDDEN;
     }
@@ -3725,6 +3728,11 @@ void mdl_draw_vertex_copy(s32 copyIndex) {
         mlvc->selector = 0;
     }
 
+    if (mlvc->gfxCopy[selector] == nullptr) {
+        return; /* VCFIX: a copy made without lists (MakeLocalVertexCopy false) records nothing */
+    }
+    { static unsigned vcn; if (vcn < 4u) { extern void pm_log(const char*, ...); vcn++; /* VCFIX proof line (debug tool) */
+        pm_log("vcopy draw %d nu %u ntri %u", copyIndex, (unsigned)mlvc->dev[selector].nu, (unsigned)mlvc->dev[selector].ntri); } }
     nd_rec_ndev(&mlvc->dev[selector]);
 }
 

@@ -1,0 +1,31 @@
+{
+  "scenarios": [
+    {
+      "name": "vcfix_hos01_drec",
+      "status": "unverified",
+      "subject": "VCFIX: debug battle Ember x2 (BTL_HOS_FORMATION_01:BTL_HOS_STAGE_01, stage hos_01 vertex copy) started at frame 100 from kmr_03, det, draw records of frames 400, 420 and 440 in shots/drec.txt.",
+      "proves": "VCFIX: the draw records of frames 400, 420 and 440 are byte-equal between the merge-base build and the head build.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town battle=BTL_HOS_FORMATION_01:BTL_HOS_STAGE_01 battlef=100 loglevel=debug fixedseed fs1off det drec=400:3:20",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "drec f440 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 30,
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "battle",
+          "regex": "debug battle: formation"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f440 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "VCFIX: vertex copy draws of hos_01 (mdl_draw_vertex_copy, src/model.c) fill their NdNDev. Copy of axns_kzn2_drec. Cap 30 s."
+    }
+  ]
+}
