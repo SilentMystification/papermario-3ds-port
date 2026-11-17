@@ -20,6 +20,14 @@ static const char expect[] =
     "v bytes 48 h 9bc4836d4ef03135\n"
     "i bytes 6 h 37f11cf1d36d7afe\n"
     "m 0 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000\n"
+    "end\n"
+    "draw 2 kind 1 n 3\n"
+    "r 0c0 f 000f0f0f\n"
+    "r 104 3 00000001\n"
+    "t 0 type 0000000d dim 00040004 bytes 16 h gpu\n"
+    "v bytes 48 h b9709bed602225a5\n"
+    "i bytes 6 h 37f11cf1d36d7afe\n"
+    "m 0 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000\n"
     "end\n";
 
 static NdDrecReg regs[2] = {
@@ -34,6 +42,20 @@ static uint16_t idx[3] = { 0, 1, 2 };
 static float ident[1][16] = {
     { 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f },
 };
+
+static NdDrecSpan spans[3] = { { 0x1000, 0x100 }, { 0x8000, 0x40 }, { 0x9000, 0 } };
+
+static int span_fails(void) {
+    static const struct { uintptr_t a; int want; } c[] = {
+        { 0x1000, 1 }, { 0x10FF, 1 }, { 0x1100, 0 }, { 0x0FFF, 0 },
+        { 0x803F, 1 }, { 0x8040, 0 }, { 0x9000, 0 },
+    };
+    unsigned i; int bad = 0;
+    for (i = 0; i < sizeof(c) / sizeof(c[0]); i++) {
+        if (nd_drec_in_span(c[i].a, spans, 3) != c[i].want) bad++;
+    }
+    return bad;
+}
 
 static void build(NdDrec* r, uint32_t seq, const uint8_t* v) {
     memset(r, 0, sizeof(*r));
@@ -55,7 +77,7 @@ static void build(NdDrec* r, uint32_t seq, const uint8_t* v) {
 }
 
 int main(void) {
-    NdDrec a, b;
+    NdDrec a, b, c;
     FILE* f;
     char got[4096];
     size_t len;
@@ -67,19 +89,22 @@ int main(void) {
     vtx_b[5] = 0xFF;
     build(&a, 0, vtx);
     build(&b, 1, vtx_b);
+    build(&c, 2, vtx);
+    c.tex_gpu[0] = 1;
 
     f = tmpfile();
     if (!f) { printf("drec FAIL\n"); return 1; }
     nd_drec_write(f, &a);
     nd_drec_write(f, &b);
+    nd_drec_write(f, &c);
     fflush(f);
     rewind(f);
     len = fread(got, 1, sizeof(got) - 1, f);
     got[len] = 0;
     fclose(f);
 
-    if (len == strlen(expect) && memcmp(got, expect, len) == 0) {
-        printf("drec ok 2\n");
+    if (len == strlen(expect) && memcmp(got, expect, len) == 0 && span_fails() == 0) {
+        printf("drec ok 3\n");
         return 0;
     }
     printf("drec FAIL\n%s", got);
