@@ -1984,8 +1984,10 @@ def base_check(a):
         print("CACHECHECK FAIL basebin %s: the entry failed its check (removed)" % commit[:9])
         return 1
     lane, scratch, lane_dir, gitdir, src3dsx = base_lane_paths(commit)
-    lane, scratch = "chk_" + commit[:9], REPO / "build3ds" / ("chk_" + commit[:9])
-    src3dsx = scratch / "build3ds" / ("lane-" + lane) / "pm_3ds.3dsx"
+    lk = base_lock_take(commit)
+    if lk is None:
+        print("cachecheck basebin %s: base lock held after 40 min" % commit[:9])
+        return 6
     os.environ["PM_CACHE"] = "off"
     try:
         rc, _bn = scratch_build(commit, gitdir, scratch, lane, a.row)
@@ -1994,6 +1996,11 @@ def base_check(a):
         os.environ.pop("PM_CACHE", None)
         shutil.rmtree(scratch, ignore_errors=True)
         drop_base_lane(lane, [])
+        shutil.rmtree(lane_dir, ignore_errors=True)
+        try:
+            lk.unlink()
+        except OSError:
+            pass
     if not same:
         print("CACHECHECK FAIL basebin %s: a cold build differs from the entry (build.sh exit %d), entry removed" % (commit[:9], rc))
         shutil.rmtree(ent, ignore_errors=True)

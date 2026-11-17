@@ -7,12 +7,16 @@
 
 # in_manifest <path>...: "path<TAB>id" of every file under the paths, sorted. id b:<blob> for a tracked file equal to the
 # index (git ls-files -s), h:<git hash-object --no-filters> for every other file (modified, untracked, ignored).
-# PM_BUILD_REV (an archive folder with the GIT_DIR of the main folder: the index is not this tree): every file gets h:.
+# PM_BUILD_REV (an archive of a commit): a file of the commit tree gets its blob id b:, as in a worktree build (git archive writes the bytes of a checkout); other files get h:.
 in_manifest() {
     im=$OUT/.inm.$$
     : > $im.b; : > $im.h; : > $im.d
     if [ -n "$PM_BUILD_REV" ]; then
-        find "$@" -type f | grep -v -E '(^|/)__pycache__/|\.pyc$|\.tmp\.' | LC_ALL=C sort > $im.h
+        find "$@" -type f | grep -v -E '(^|/)__pycache__/|\.pyc$|\.tmp\.' | LC_ALL=C sort > $im.all
+        git -c core.quotepath=off ls-tree -r "$PM_BUILD_REV" -- "$@" | awk '$2 == "blob" { i = index($0, "	"); print substr($0, i + 1) "	b:" $3 }' > $im.t
+        awk -F'	' 'FILENAME == ARGV[1] { have[$1] = 1; next } ($1 in have)' $im.all $im.t > $im.b
+        awk -F'	' 'FILENAME == ARGV[1] { t[$1] = 1; next } !($1 in t)' $im.b $im.all > $im.h
+        rm -f $im.all $im.t
     else
         git -c core.quotepath=off ls-files -s -- "$@" | awk '{ i = index($0, "\t"); print substr($0, i + 1) "\tb:" $2 }' > $im.b
         git -c core.quotepath=off ls-files -m -o -- "$@" | grep -v -E '(^|/)__pycache__/|\.pyc$|\.tmp\.' | LC_ALL=C sort -u > $im.mo || true
