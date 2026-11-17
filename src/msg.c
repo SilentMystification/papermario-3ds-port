@@ -85,7 +85,7 @@ u16 gMsgGlobalWaveCounter;
 MessageImageDataList gMsgVarImages;
 s32 gMsgBGScrollAmtY;
 u8* D_8015131C;
-Gfx* D_80151338;
+const u32* D_80151338; /* GFXPOS7: the frame stream position (nd_rec_pos) after the last message; nullptr after clear_printers */
 
 static char gMessageBuffers[2][1024];
 static MessagePrintState gMessagePrinters[3];

@@ -14,6 +14,10 @@
 void nd_pso_comb(uint32_t w0, uint32_t w1) {
     NDST_COMB(nd_nr, w0, w1);
 }
+void nd_pso_unit(uint32_t x0, uint32_t x1) {
+    if (x0 == ND_NOP_A) return; /* nd_gx_w drops a no-op unit (nd_rec.c IS_NOP) */
+    nd_nr(x0, x1);
+}
 void nd_pso_rm(unsigned c0, unsigned c1) {
     NDST_RM(nd_nr, c0, c1);
 }

@@ -23,8 +23,7 @@ s32 filemenu_specialSymbols[] = { (s32)filemenu_msg_C6, (s32)filemenu_msg_C7, (s
 
 NDN_DECL(filemenu_dl_draw_char_init);
 
-Gfx* filemenu_savedGfxPos = nullptr;
-static const u32* filemenu_savedStreamPos; /* DIRECT D6: the frame stream position after the last char (a recorded char does not move gMainGfxPos) */
+static const u32* filemenu_savedStreamPos; /* DIRECT D6, GFXPOS7: the frame stream position after the last char (NULL before the first) */
 s32 filemenu_charset = 0;
 s32 filemenu_charset_raster_id = 0;
 s32 filemenu_char_color = -1;
@@ -181,7 +180,7 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
 
     if (c < 0xA2) {
         charWidth = charData->charWidthTable[c];
-        if (gMainGfxPos != filemenu_savedGfxPos || nd_rec_pos() != filemenu_savedStreamPos) {
+        if (nd_rec_pos() != filemenu_savedStreamPos) {
             nd_draw_list(NDN(filemenu_dl_draw_char_init), ND_SELF);
             filemenu_char_color = -1;
         }
@@ -206,7 +205,6 @@ s32 filemenu_draw_char(s32 c, s32 x, s32 y, s32 flag1, s32 color, s32 flag2) {
         }
 
         filemenu_draw_rect(x * 4, y * 4, (x + texSizeX) * 4, (y + texSizeY) * 4, 0, 0, 0, 0x400, 0x400);
-        filemenu_savedGfxPos = gMainGfxPos;
         filemenu_savedStreamPos = nd_rec_pos();
         return charWidth;
     }

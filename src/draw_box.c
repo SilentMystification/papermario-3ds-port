@@ -456,10 +456,10 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
             nd_pso_scis(G_SC_NON_INTERLACE, 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
         }
 
-        { /* DIRECT D7: the preset combine word is recorded as a stream state op */
+        { /* DIRECT D7, GFXPOS7: the preset combine unit is recorded as a stream state op (nd_pso_unit) */
             const NdCmbW* cw = defaultStyle != nullptr ? &gBoxCombineModes[defaultStyle->combineModeIndex + (primA != 255 ? 2 : 0)]
                           : primA != 255 ? &customStyle->transparentCombineMode : &customStyle->opaqueCombineMode;
-            nd_gx_w(gMainGfxPos++, cw->w0, cw->w1);
+            nd_pso_unit(cw->w0, cw->w1);
         }
         nd_pso_filt(G_TF_POINT);
 

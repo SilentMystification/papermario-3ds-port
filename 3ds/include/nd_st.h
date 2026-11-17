@@ -8,6 +8,9 @@
 #include "nd_gbi.h"
 
 void nd_pso_comb(uint32_t w0, uint32_t w1);
+/* GFXPOS7: one typed unit as ND_CMB_W or ND_CMB_NOP stores it (nd_gbi.h; draw_box.c gBoxCombineModes, the window styles). The no-op unit
+ * records nothing; any other unit is one native record. The same stream as nd_gx_w(gMainGfxPos++, x0, x1) of a state unit. */
+void nd_pso_unit(uint32_t x0, uint32_t x1);
 #define nd_pso_cc(...) nd_pso_comb(ND_W0_CMB(__VA_ARGS__), ND_W1_CMB(__VA_ARGS__))
 
 /* G_SETOTHERMODE_H / _L (gbi.h gDPSet*): the mode words */
