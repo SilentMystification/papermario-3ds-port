@@ -10,7 +10,7 @@ printf '#include "common.h"
 grep -q "NDO_VTX" $N/ext.c || { echo "vcopy FAIL extract"; exit 1; }
 sed 's/ntri += 2;/ntri += 1;/' 3ds/include/nd_vcopy.h > $N/seed/nd_vcopy.h
 cmp -s $N/seed/nd_vcopy.h 3ds/include/nd_vcopy.h && { echo "vcopy seeded fault not made"; exit 1; }
-gcc $F -I $N/seed -o $N/seed_t 3ds/tests/vcopy/vcopy_test.c $N/ext.c || { echo "vcopy FAIL seed build"; exit 1; }
+gcc -I $N/seed $F -o $N/seed_t 3ds/tests/vcopy/vcopy_test.c $N/ext.c || { echo "vcopy FAIL seed build"; exit 1; }
 got=$($N/seed_t | head -1)
 case "$got" in "vcopy FAIL dev"*) ;; *) echo "vcopy seeded fault not seen: [$got]"; exit 1;; esac
 gcc $F -o $N/t 3ds/tests/vcopy/vcopy_test.c $N/ext.c || exit 1
