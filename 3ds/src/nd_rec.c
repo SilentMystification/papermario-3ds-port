@@ -17,6 +17,7 @@
 #include "nd_gtab.h"
 #include "nd_lkey.h"
 #include "nd_rmdef.h"
+#include "nd_ds.h"
 
 extern s32 gCurrentDisplayContextIndex;
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
@@ -375,6 +376,7 @@ static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
+    nd_ds_apply(&nd_ds, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
     rec_op_t(t);
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
