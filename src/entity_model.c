@@ -487,7 +487,8 @@ void appendGfx_entity_model(EntityModel* model) {
         guMtxF2L(mtx, &model->transform);
         gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
+        nd_rec_ent_draw(model->gfx.displayList, (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u,
+                        (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u, 0); /* NMDL6: the reflect draw takes the producer of the main draw (the words of entRec[1], :348) */
     } else {
         SpriteRasterInfo* imageData;
 
@@ -766,10 +767,12 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
                 break;
         }
         em_tail(entity_fog_enabled && !(model->flags & ENTITY_MODEL_FLAG_FOG_DISABLED), 1);
+        const u32 entSeg = (model->vertexArray != nullptr) ? (u32)D_80154374 : 0u; /* NMDL6: the vertex segment words of the entity record (as entRec[1], :348) */
+        const u32 entArr = (model->vertexArray != nullptr) ? (u32)VIRTUAL_TO_PHYSICAL(model->vertexArray) : 0u;
         if (model->vertexArray != nullptr) {
             nd_val_seg(D_80154374, VIRTUAL_TO_PHYSICAL(model->vertexArray));
         }
-        gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
+        nd_rec_ent_draw(model->gfx.displayList, entSeg, entArr, 0);
         nd_xf_pop(G_MTX_MODELVIEW);
         if (!(model->flags & ENTITY_MODEL_FLAG_REFLECT)) {
             return;
@@ -781,7 +784,7 @@ void draw_entity_model_E(s32 modelIdx, Mtx* transformMtx) {
         guMtxF2L(mtx, &model->transform);
         gDisplayContext->matrixStack[gMatrixListPos] = model->transform;
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        gSPDisplayList(gMainGfxPos++, model->gfx.displayList);
+        nd_rec_ent_draw(model->gfx.displayList, entSeg, entArr, 0);
     } else {
         SpriteRasterInfo* imageData;
 
