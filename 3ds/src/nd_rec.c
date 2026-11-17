@@ -576,11 +576,21 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
     static int n;
     if (n++ < 4) pm_log_e("ndc: bad command %08x at %p", (unsigned)h, (const void*)p);
 }
+const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
+/* POSTFAIL2: the context of the chain whose chunk holds p (*chunk: its index), else -1. Cold: the bad viewport log only. */
+int nd_rec_where(const void* p, unsigned* chunk) {
+    for (unsigned k = 0; k < 2u; k++)
+        for (unsigned i = 0; i < chain[k].nch; i++)
+            if ((const uint32_t*)p >= chain[k].ch[i] && (const uint32_t*)p < chain[k].ch[i] + CH_WORDS) { *chunk = i; return (int)k; }
+    return -1;
+}
+int nd_rec_ctx(void) { return rec_ctx; } /* POSTFAIL2: the chain core 1 records into now */
 static void stream_run(const uint32_t* p, const uint32_t* stop) {
     for (;;) {
         __builtin_prefetch(p + 16); /* HC9B: the stream 64 B ahead (no hardware prefetcher on the ARM11) */
         if (p == stop) return;
         const uint32_t h = p[0];
+        nd_stream_cur = p;
         switch (h >> 24) {
         case NDC_END: return;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;

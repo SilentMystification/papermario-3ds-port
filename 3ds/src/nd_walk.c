@@ -37,6 +37,27 @@ void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list) {
     static int bad; if (bad++ < 8) pm_log_e("bad vtx %08x w0 %08x list %08x", w1, w0, list);
 }
 
+/* POSTFAIL2 (debug tool): a viewport unit whose address is not host memory (one Azahar run read vp 0x00000001, postfail1_trace.txt).
+ * One line per case (4 at most): the unit, its neighbours, the stream chain and chunk that hold it, the stream command that runs (nd_stream_cur)
+ * and the chain the recorder (core 1) writes now. A unit in the chain that core 1 writes is a recycled stream buffer. */
+extern const uint32_t* nd_stream_cur;
+int nd_rec_where(const void* p, unsigned* chunk);
+int nd_rec_ctx(void);
+extern s32 gCurrentDisplayContextIndex;
+static __attribute__((cold, noinline)) void gbi_cold_bad_vp(const uint32_t* u) {
+    static unsigned n;
+    if (n++ >= 4u) return;
+    const int pv = is_host((u32)(uintptr_t)(u - 4)), nx = is_host((u32)(uintptr_t)(u + 3));
+    const uint32_t* s = nd_stream_cur;
+    unsigned uc = 0, sc = 0;
+    const int uk = nd_rec_where(u, &uc), sk = s ? nd_rec_where(s, &sc) : -1;
+    pm_log_evt("POSTFAIL2 bad vp f%u rm %d: unit %p %08x %08x prev %08x %08x %08x %08x next %08x %08x; unit ctx %d chunk %u; cmd %p ctx %d chunk %u h %08x w1 %08x; rec ctx %d dctx %d",
+        pm_frame_count(), rm_frame, (const void*)u, (unsigned)u[0], (unsigned)u[1],
+        pv ? (unsigned)u[-4] : 0u, pv ? (unsigned)u[-3] : 0u, pv ? (unsigned)u[-2] : 0u, pv ? (unsigned)u[-1] : 0u,
+        nx ? (unsigned)u[2] : 0u, nx ? (unsigned)u[3] : 0u, uk, uc, (const void*)s, sk, sc, s ? (unsigned)s[0] : 0u, s ? (unsigned)s[1] : 0u,
+        nd_rec_ctx(), (int)gCurrentDisplayContextIndex);
+}
+
 void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
     static unsigned bad; if (bad++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
         pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
@@ -294,7 +315,10 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
         load_mtx(a, b, 0);
         break;
     case NDO_POPMTX: gbi_popmtx(b); break;
-    default: gbi_movemem(a, b); break;
+    default:
+        if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) gbi_cold_bad_vp(u); /* POSTFAIL2 (debug tool) */
+        gbi_movemem(a, b);
+        break;
     }
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
