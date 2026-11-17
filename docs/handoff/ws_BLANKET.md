@@ -33,8 +33,7 @@ Main at release: 038ac581fe. Shares no file with ENTLST, EFXGT, RECBUF, EFFCEN, 
 2. Edits 3-5. Commit `BLANKET 2: toad house blanket list to 12 world twins`.
 3. `python 3ds/tools/bench.py base spot_mac01_drec --row BLANKET` (base run, not charged).
 4. `PM_HOSTSEL=all sh 3ds/tools/rowloop.sh --row BLANKET --bench spot_mac01_drec --why "BLANKET gate" > build3ds/out/blanket_loop.txt 2>&1`.
-## Tests that decide
-- `LOOP PASS`: host PASS (holds `blanket ok`), build rc 0 (no `gconv: moved` line), spot_mac01_drec byte-equal. Budget: 2 builds, 2 Azahar starts.
+## Tests that decide: `LOOP PASS`: host PASS (holds `blanket ok`), build rc 0 (no `gconv: moved` line), spot_mac01_drec byte-equal. Budget: 2 builds, 2 Azahar starts.
 - `python 3ds/tools/listcen.py | grep "^listcen total"`: data 39 lower, data_arrays 1 lower, gfxtype 1 lower than on the merge-base (read both).
 ## Fix rights: only the files above. A twin compile error, a `gconv:` line, a host FAIL or a cmp DIFF: stop, send the output path to the oracle, wait.
 ## Stop and hand-back
