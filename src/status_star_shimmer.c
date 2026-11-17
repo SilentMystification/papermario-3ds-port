@@ -17,8 +17,8 @@ Vp ShimmerViewport = {
 
 #include "A2B70.vtx.inc.c" // Vtx_StatusShimmer_Particle
 
-#include "A2BC0.gfx.inc.c" // Gfx_StatusShimmer_SetupTex
-#include "A2C88.gfx.inc.c" // Gfx_StatusShimmer_DrawParticle
+NDN_DECL(D_80109710);
+NDN_DECL(D_801097D8);
 
 #define NUM_PARTICLES 56
 
@@ -168,7 +168,7 @@ void star_power_shimmer_draw(void) {
     guMtxF2L(viewMtx, &gDisplayContext->matrixStack[gMatrixListPos]);
 
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);
-    nd_draw_list(D_80109710, ND_SELF); // setup texture
+    nd_draw_list(NDN(D_80109710), ND_SELF); // setup texture
     nd_val_env(127, 127, 127, 127);
 
     for (i = 0; i < ARRAY_COUNT(ShimmerEmitters); i++, emitter++) {
@@ -186,7 +186,7 @@ void star_power_shimmer_draw(void) {
 
                     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
                     nd_val_prim(0, 80 - particle->animTime, particle->rgba.r, particle->rgba.g, particle->rgba.b, particle->rgba.a);
-                    gSPDisplayList(gMainGfxPos++, D_801097D8); // draw particle
+                    gSPDisplayList(gMainGfxPos++, NDN(D_801097D8)); // draw particle
                     nd_xf_pop(G_MTX_MODELVIEW);
                 }
             }
