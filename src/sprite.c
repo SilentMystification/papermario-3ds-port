@@ -219,10 +219,10 @@ static void spr_flat_gfx(uint32_t** o, Quad* vertices, IMG_PTR raster, PAL_PTR p
                               0, 0, width - 1, height - 1, 0,
                               G_TX_CLAMP, G_TX_CLAMP, 8, 8, G_TX_NOLOD, G_TX_NOLOD,
                               256, 256);
-        gDPSetTile(gMainGfxPos++, G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
+        nd_tex_tile(G_IM_FMT_RGBA, G_IM_SIZ_16b, 4, 0x0100, 2, 0, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD, G_TX_WRAP, G_TX_NOMASK, G_TX_NOLOD);
         nd_val_tile_size(2, 0, 0, 63 << 2, 0);
         if (flags & SPR_SHADING_FLAG_SET_VIEWPORT) {
-            gSPViewport(gMainGfxPos++, vpAlt);
+            nd_xf_viewport(vpAlt);
 
             if (alpha == 255) {
                 nd_pso_rm(AA_EN | Z_CMP | Z_UPD | CVG_DST_FULL | ZMODE_OPA | CVG_X_ALPHA |

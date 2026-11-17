@@ -23,17 +23,13 @@ NDN_DECL(N(Gfx_TexSetup_TitleImage));
 void worker_render_title_image(void) {
     s32 i;
 
-    gSPDisplayList(gMainGfxPos++, NDN(N(Gfx_TexSetup_TitleImage)));
+    nd_draw_list(NDN(N(Gfx_TexSetup_TitleImage)), ND_SELF);
     nd_val_prim(0, 0, 0, 0, 0, TitlePrimAlpha);
 
     for (i = 0; i < 56; i++) {
         nd_tex_load_tile(&TitleImage[1600 * i], G_IM_FMT_RGBA, G_IM_SIZ_32b, 200, 112, 0, 0, 199, 1, 0, G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        gSPTextureRectangle(gMainGfxPos++,
-            /* ulx */ 60 * 4,
-            /* uly */ (i * 2 + TitlePosY) * 4,
-            /* lrx */ 260 * 4,
-            /* lry */ ((i * 2 + 2) + TitlePosY) * 4,
-            G_TX_RENDERTILE, 0, 0, 1024, 1024);
+        /* ulx, uly, lrx, lry */
+        nd_rect_tex(60 * 4, (i * 2 + TitlePosY) * 4, 260 * 4, ((i * 2 + 2) + TitlePosY) * 4, G_TX_RENDERTILE, 0, 0, 1024, 1024);
     }
 }
 

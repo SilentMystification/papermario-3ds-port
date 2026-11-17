@@ -1,6 +1,7 @@
 #include "pm_wide.h"
 #include "common.h"
 #include "hud_element.h"
+#include "nd_st.h"
 
 /* ZOOM: the wide world view starts at screen row 0 (the original view started at row 20), so the bar rests 20 rows higher. */
 #define FULLY_EXTENDED_Y  (pm_wide ? -2 : 18)
@@ -748,7 +749,7 @@ void update_status_bar(void) {
             break;
     }
 
-    gDPSetScissor(gMainGfxPos++, G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20) /* PT58: the wide view is the whole 240 rows */;
+    nd_pso_scis(G_SC_NON_INTERLACE, pm_wide ? 0 : 12, pm_wide ? 0 : 20, pm_wide ? SCREEN_WIDTH : SCREEN_WIDTH - 12, pm_wide ? SCREEN_HEIGHT : SCREEN_HEIGHT - 20); /* PT58: the wide view is the whole 240 rows */
     x = statusBar->drawPosX;
     y = statusBar->drawPosY;
     /* wide: the box ends sit on the screen edges (game x -40 and 360, screen x 0 and 399), so the end caps of the frame art are at the screen edges; the join of box 5 and 6 and the items keep their 4:3 place */

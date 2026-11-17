@@ -284,7 +284,7 @@ void N(build_gfx_thread)(void) {
     }
     N(ThreadData).overshootVel *= 0.5;
 
-    gSPDisplayList(gMainGfxPos++, NDN(N(ThreadGfx)));
+    nd_draw_list(NDN(N(ThreadGfx)), ND_SELF);
     guTranslate(&gDisplayContext->matrixStack[gMatrixListPos], N(ThreadData).anchorPos.x, N(ThreadData).anchorPos.y, N(ThreadData).anchorPos.z);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
 

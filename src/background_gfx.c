@@ -366,7 +366,7 @@ void gfx_draw_background(void) {
 
             /* PAUSE4A: the saved picture is one 320 x 240 image. One load and one texrect draw all of it (the strips below are the N64 TMEM split). */
             /* PAUSEOPEN: the other colour buffer (not the one drawn now) is the last frame. Its texture load is the GPU copy (nd_tex_set.c set_timg). */
-            gDPLoadTextureTile(gMainGfxPos++, pause_cfb_src(), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
+            nd_tex_load_tile(pause_cfb_src(), G_IM_FMT_RGBA, G_IM_SIZ_16b, SCREEN_WIDTH,
                                SCREEN_HEIGHT, 0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1, 0, G_TX_NOMIRROR | G_TX_WRAP,
                                G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
             nd_rect_tex(0 << 2, 0, SCREEN_WIDTH << 2, SCREEN_HEIGHT << 2, G_TX_RENDERTILE, 0 << 5, 0 << 5, 1 << 10, 1 << 10);

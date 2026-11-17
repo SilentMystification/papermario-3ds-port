@@ -437,7 +437,7 @@ void N(appendGfx_vines)(void* data) {
         N(VineRenderState) = VINE_RENDER_STATE_OK;
     }
 
-    gSPDisplayList(gMainGfxPos++, NDN(D_8021CF40_5A3620));
+    nd_draw_list(NDN(D_8021CF40_5A3620), ND_SELF);
 
     for (i = 0; i < NUM_VINES; i++) {
         LavaPiranhaVine* vine = &N(VineData)[i];

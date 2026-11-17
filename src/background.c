@@ -312,7 +312,7 @@ void appendGfx_background_texture(void) {
     nd_pso_cc(G_CC_DECALRGB, G_CC_DECALRGB);
     nd_pso_rm(G_RM_NOOP, G_RM_NOOP2);
     if (bgMix) { /* BTLDIM: the mix stage gets P = shroud colour, A = fogA: P * A + M * (1 - A) per sky texel */
-        gDPSetFogColor(gMainGfxPos++, fogR, fogG, fogB, fogA);
+        nd_val_fog(fogR, fogG, fogB, fogA);
         nd_val_blend(fogR, fogG, fogB, 255);
         nd_pso_rm(PM_RM_SHROUD, G_RM_NOOP2);
     }

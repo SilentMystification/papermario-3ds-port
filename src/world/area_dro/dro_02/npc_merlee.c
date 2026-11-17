@@ -232,7 +232,7 @@ u32 N(appendGfx_ritual_card)(RitualCard* card, Matrix4f mtxParent) {
         return 1;
     }
 
-    gSPDisplayList(gMainGfxPos++, NDN(N(card_setup_gfx)));
+    nd_draw_list(NDN(N(card_setup_gfx)), ND_SELF);
 
     if (card->unk_00 == 1 || card->unk_00 == 4 || card->unk_00 == 5) {
         guTranslateF(mtxTemp, card->pos.x, card->pos.y, card->pos.z);
