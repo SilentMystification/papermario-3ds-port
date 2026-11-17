@@ -1,4 +1,5 @@
 #include "tst_13.h"
+#include "nd_gtab.h"
 #include "nd_st.h"
 #include "nd_xf.h"
 
@@ -275,11 +276,9 @@ NpcGroupList N(DefaultNPCs) = {
 };
 
 #include "world/area_tst/tst_13/shockwave.vtx.inc.c"
-#include "world/area_tst/tst_13/shockwave.gfx.inc.c"
+NDN_DECL(N(shockwave_gfx));
 
-Gfx N(dummy_gfx)[] = {
-    gsSPEndDisplayList()
-};
+NDN_DECL(N(dummy_gfx));
 
 s32 N(BuildGfxCallCount) = 0;
 
@@ -298,13 +297,13 @@ void N(build_gfx_floor)(void) {
     guScaleF(sp50, x, y, z);
     guMtxCatF(sp50, sp10, sp10);
     guMtxF2L(sp10, &gDisplayContext->matrixStack[gMatrixListPos]);
-    mdl_project_tex_coords(MODEL_o152, N(shockwave_gfx), sp10, nullptr);
+    mdl_project_tex_coords(MODEL_o152, NDN(N(shockwave_gfx)), sp10, nullptr);
 
     nd_pso_cyc(G_CYC_1CYCLE);
     nd_pso_rm(G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
     mdl_draw_hidden_panel_surface(1);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    gSPDisplayList(gMainGfxPos++, N(shockwave_gfx));
+    gSPDisplayList(gMainGfxPos++, NDN(N(shockwave_gfx)));
     nd_xf_pop(G_MTX_MODELVIEW);
 }
 
