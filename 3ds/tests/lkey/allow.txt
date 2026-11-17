@@ -8,7 +8,6 @@
 3ds/src/nd_shape.c 7 MAP map shape lists (dlc_try takes only gMapShapeData, nd_shape.c:878) and seam tables
 3ds/src/nd_walk.c 11 KEY walk_call nd_ntab_find (nd_walk.c:230), gt_call nd_lkey_tab (LKEY), NDG_F_MOVED (nd_walk.c:441,489), record words
 src/animator.c 1 KEY MESH1 nd_ntab_find (animator.c:879)
-src/entity_model.c 2 KEY ent_vtx_range, entcheck_draw through nd_lkey_ (LKEY); entRec record words
 src/imgfx.c 1 LOCAL state->gfxBufs: heap copies of ROM data (imgfx.c:1260)
 src/model.c 3 KEY mdl_get_vertex_count nd_ntab_find (VCOUNT); MAP mdl_local_gfx_update_vtx_pointers and mdl_project_tex_coords (displayData->displayList) (NMDL0: the record and bind lists are NdNr word pairs, no LOCAL reader)
 src/world/area_omo/omo_02/barricade.c 1 MAP displayData->displayList (barricade.c:114)
