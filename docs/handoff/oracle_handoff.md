@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main d3cbe34bb3, 2026-11-17. NEXT3 wrote ws_MDLTYPE, ws_BARRICADE. DESIGN3 wrote ws_GPOS1, ws_FXCULL, ws_MISCP, ws_FXSLOT1,
+State: main d74594f376, 2026-11-17. NEXT3 wrote ws_MDLTYPE, ws_BARRICADE. DESIGN3 wrote ws_GPOS1, ws_FXCULL, ws_MISCP, ws_FXSLOT1,
 ws_TST13, ws_IMGOVL. Merged since NEXT2: BLANKET, FLTGT, GTSMALL, FXDIG, VCFIX.
 Counters FACT (listcen on 3b890c6d7f, after FLTGT): build 312, gfxpos 8, data 191, data_arrays 0, gfxtype 284, recdl 11, reader 792, model 15.
 Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 (include/PR/gbi.h definitions go in stage 4D).
@@ -15,11 +15,15 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
 - ws_FXSLOT1: fxslot=<n> switch, fxtest entry star_shimmer (153), warptest switch (pm_warp.c:846), shimmer line -> nd_rec_dl,
   capture fxslot_cap -> fxrest.d/cap3.txt (5 sites). build -1, gfxpos -1, recdl +1.
 - ws_TST13 (after MDLTYPE, FXSLOT1): tst_13 main.c:306 capture (warptest) and entry. build -1, gfxpos -1.
-- ws_IMGOVL (after IMGFXT): imgfx.c overlay nd_rec_dl capture in the monstar battle, entry. recdl -1.
+- ws_IMGOVL (after IMGFXT): imgfx.c overlay capture (monstar battle), entry. recdl -1. Loop check: no loop; N(dlist) has no state.
 ## Open work
 1. FXSLOT2 page (after FXSLOT1 merges and cap3.txt exists): `python 3ds/tools/entapply.py 3ds/tools/fxrest.d/cap3.txt` gives 5
    sites (chomp_drop 2, disable_x 2, shimmer 1); add ntab_ent.d/FXSLOT2.txt with src/status_star_shimmer.c (src root file);
    gate fxslot_drec (already in FXSLOT1) byte-equal, psochk bad equal. recdl -5. A multi line: design a key from cap3.txt.
+   Loop check (DIAG1, code read): the 5 lists hold only vertex, triangle and pipesync (no combine). chomp_drop.c:163,:166 run
+   once per call. disable_x numParts 2 (disable_x.c:46), so its loop runs once. Shimmer D_801097D8 is drawn per particle
+   (status_star_shimmer.c:174-189): leg_prev of particle 1 comes from the draw before, later particles from the shimmer draw.
+   A shimmer `multi 2` in cap3.txt: use the MISCP 1b form (first particle desc A, later particles desc B).
 2. After GPOS1, FXSLOT2, TST13: gfxpos 0 and src build 0 (FACT, listcen.py:291-292 scan src and include only). gMainGfxPos then
    lives in 3ds/src (nd_rec.c stray_word/nd_gx_w redirect, nd_gtab.c:127 fallback, nd_cen.c census) and variables.h:111.
    It leaves with the nd_gbi.h redirect (stage 3). Host tests nd_geo/st/tx/val/at_test.c use the macro form on gMainGfxPos.
@@ -30,6 +34,10 @@ Goal: elfgate.py prints func 0 data 0 gfxnames 0 and every listcen counter is 0 
 ## Facts that cost time
 - fxrest.d/cap.txt is the FXREST1 capture: geom and plod were still in the tuple (old "multi 2" and "multi 30"). cap2.txt is
   the FXREST2 capture: entcap zeroes geom, key_c, key_s, plod (nd_walk.c:537); psochk skips them (nd_psochk.c:12-16). Use cap2.
+- Loop lists: a list drawn more than once in a loop can enter later draws with other state than the first draw. A list that
+  sets its own combine does this (MISCP 1b, 7b25b8b3af: D_09001A80 later particles enter with cw0 fcffcdff), and so can
+  leg_prev (nd_comb.c:214, set by each decision at nd_comb.c:183, :306). Check each loop site before a page. Give it
+  2 descs (first draw, later draws) when the capture shows 2 tuples. A capture that runs only 1 draw does not show it.
 - conv_k4 (w7) is sticky state from earlier draws: 0x7f in multi-effect runs, 0 in a one-effect run (FXDIG). psochk compares it.
 - entcap logs a list with a v2 table only with the switch entcapt (nd_walk.c:533, :644). NDN(x) lists all have one (ndd_x).
 - entapply edits every site of its input file: filter the entcap.py output to the row's sites first. It needs the plain line
