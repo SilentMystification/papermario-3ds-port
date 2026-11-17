@@ -127,10 +127,11 @@ touch "$GE" "$GK0"; ls -dt $GC/*/ 2>/dev/null | tail -n +17 | xargs -r rm -rf
 stage gfx-table
 # HOSTSEL (3ds/tools/hostsel.py): one result entry per unit (the inline block, each host.d script), keyed by K0 (below) and the
 # content id of every file the unit read (traced, 3ds/tools/readtrace.c). A unit with a hit does not run; its stored output is
-# printed. PM_HOSTSEL=all runs every unit and fails a unit that had a hit but fails now (the post-merge check, post_merge.sh 4).
+# printed. hostsel.py adds the path list of the tar to K0 (new, removed, created files). The command lines and the environment of
+# every unit are text of this script (self) or of the image (img). PM_HOSTSEL=all runs every unit and fails a unit that had a hit but fails now (the post-merge check, post_merge.sh 4).
 PY=python; command -v py >/dev/null 2>&1 && PY="py -3"
 HS=$MAINR/build3ds/hostsel; HSR=build3ds/out/hs_run; rm -rf $HSR; mkdir -p $HSR/hd $HSR/rt
-printf '%s\n' "hostsel v1" "img $IMG_ID" "self $SELF" "assets $AHASH" "rk $(rk_id)" "paths $(sha1sum < $OUT/host_files.txt | cut -c1-40)" "gfx $(sha1sum < "$GE/key.txt" | cut -c1-40)" > $HSR/k0.txt
+printf '%s\n' "hostsel v1" "img $IMG_ID" "self $SELF" "assets $AHASH" "rk $(rk_id)" "gfx $(sha1sum < "$GE/key.txt" | cut -c1-40)" > $HSR/k0.txt
 { echo inline; for t in 3ds/tests/host.d/*.sh; do [ -f "$t" ] && echo "$t"; done; } > $HSR/units.txt
 : > $HSR/hits.txt
 if [ "${PM_CACHE:-on}" != off ]; then $PY 3ds/tools/hostsel.py lookup $HS $HSR/k0.txt $OUT/host_in.txt $HSR/units.txt $HSR/hits.txt || { echo "FAIL hostsel lookup"; exit 1; }; fi

@@ -32,8 +32,11 @@ def load_ids(p):
     return ids
 
 
-def k0_of(k0, unit):
-    return k0.rstrip("\n") + "\nunit " + unit
+def k0_of(k0, unit, ids):
+    """K0 of a unit: the K0 text of nd_host_test.sh, the sha1 of the full path list of the tar (every HOST_IN file: a new, a
+    removed or a created once-probed file changes it; this covers each directory listing, glob and failed open of a unit,
+    which the trace does not log), and the unit name."""
+    return k0.rstrip("\n") + "\npaths " + sha1("\n".join(sorted(ids)).encode("utf-8")) + "\nunit " + unit
 
 
 def full_key(k0u, reads, ids):
@@ -110,7 +113,8 @@ def selftest():
         log = os.path.join(r, "log"); out = os.path.join(r, "out")
         open(log, "w").write("cc1\ta.c\nsh\tb.h\nsh\tmade.o\n")
         open(out, "w").write("unit ok\n")
-        root = os.path.join(r, "hs"); k0u = k0_of("K v1", "t1")
+        root = os.path.join(r, "hs"); k0u = k0_of("K v1", "t1", ids)
+        look = lambda i: lookup_unit(root, k0_of("K v1", "t1", i), i)
         def chk(c, msg):
             if not c:
                 raise SystemExit("hostsel FAIL: " + msg)
@@ -118,11 +122,15 @@ def selftest():
         d, n = store_unit(root, k0u, ids, log, out)
         chk(n == 2, "reads %d, want 2 (made.o is no input)" % n)
         chk(lookup_unit(root, k0u, ids) == d, "no hit after store")
-        chk(lookup_unit(root, k0_of("K v1", "t2"), ids) is None, "another unit hit")
-        chk(lookup_unit(root, k0_of("K v2", "t1"), ids) is None, "another K0 hit")
-        chk(lookup_unit(root, k0u, dict(ids, **{"u.c": "b:9"})) == d, "an unread file edit missed")
-        chk(lookup_unit(root, k0u, dict(ids, **{"a.c": "b:9"})) is None, "a read file edit hit")
-        chk(lookup_unit(root, k0u, {"b.h": "b:2", "u.c": "b:3"}) is None, "a removed read file hit")
+        chk(lookup_unit(root, k0_of("K v1", "t2", ids), ids) is None, "another unit hit")
+        chk(lookup_unit(root, k0_of("K v2", "t1", ids), ids) is None, "another K0 hit")
+        chk(look(dict(ids, **{"u.c": "b:9"})) == d, "an unread file edit missed")
+        chk(look(dict(ids, **{"a.c": "b:9"})) is None, "a read file edit hit")
+        chk(look({"b.h": "b:2", "u.c": "b:3"}) is None, "a removed read file hit")
+        chk(look(dict(ids, **{"n.c": "b:4"})) is None, "a new file in a scanned folder hit")
+        chk(look({"a.c": "b:1", "b.h": "b:2"}) is None, "a deleted unread file hit")
+        chk(look(dict(ids, **{"inc/probe.h": "b:5"})) is None, "a created probed-missing file hit")
+        chk(look(ids) == d, "no hit after the list cases")
         open(os.path.join(d, "out.txt"), "a").write("X")
         chk(lookup_unit(root, k0u, ids) is None, "a changed stored byte hit")
         chk(not os.path.isdir(d), "the failed entry stayed")
@@ -133,7 +141,7 @@ def selftest():
         chk(lookup_unit(root, k0u, ids) is None, "a changed read list hit")
     finally:
         shutil.rmtree(r, ignore_errors=True)
-    print("hostsel ok (empty, store, hit, unit, K0, unread hit, read miss, removed read, byte, must, no trace, read list)")
+    print("hostsel ok (empty, store, hit, unit, K0, unread hit, read miss, removed read, new file, deleted file, probe, byte, must, no trace, read list)")
 
 
 def main(a):
@@ -143,7 +151,7 @@ def main(a):
         root, k0, ids, units, hits = a[2], open(a[3], encoding="utf-8").read(), load_ids(a[4]), a[5], a[6]
         with open(hits, "w", encoding="utf-8", newline="\n") as f:
             for u in [l.strip() for l in open(units, encoding="utf-8") if l.strip()]:
-                d = lookup_unit(root, k0_of(k0, u), ids)
+                d = lookup_unit(root, k0_of(k0, u, ids), ids)
                 if d:
                     f.write("%s\t%s\n" % (u, d))
         return 0
@@ -152,7 +160,7 @@ def main(a):
         bad = 0
         for l in open(a[5], encoding="utf-8"):
             u, log, out, must = l.rstrip("\r\n").split("\t")
-            d, n = store_unit(a[2], k0_of(k0, u), ids, log, out, must)
+            d, n = store_unit(a[2], k0_of(k0, u, ids), ids, log, out, must)
             if d is None:
                 print("HOSTSEL FAULT: the read trace of %s lacks %s (readtrace.c). Nothing stored for it." % (u, must))
                 bad = 1
