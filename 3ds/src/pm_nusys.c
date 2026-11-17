@@ -148,7 +148,7 @@ static void fr_push(void) {
     memset(&fr, 0, sizeof fr);
 }
 
-void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
+void nuGfxTaskStart(u32 ucode, u32 flag) {
     (void)ucode;
     int swap = (flag & NU_SC_SWAPBUFFER) != 0;
     if (swap) { FS_MARK(FS_AUDIO); pm_audio_step(); } /* AU1b: the game logic and the display list of this step are done: audio ticks here */
@@ -156,14 +156,13 @@ void nuGfxTaskStart(Gfx* gfxList, u32 gfxListSize, u32 ucode, u32 flag) {
     PH_PUSH(PH_DRAW);
     /* F06-2: the draw iteration shows the t = 0.5 pass of the swap task. the key frame replays every task of the step without
      * replacements in the idle iteration. The background task of the step comes before the swap task. */
-    (void)gfxList; /* DIRECT D9: the task is its stream (the game writes no task list) */
     const uint32_t* st = nd_rec_close();
-    if (pm_interp_on > 0 && nkey < MAX_KEY) { key_list[nkey] = st; key_size[nkey++] = gfxListSize; }
+    if (pm_interp_on > 0 && nkey < MAX_KEY) { key_list[nkey] = st; key_size[nkey++] = 0u; }
     if (!swap) {
         if (fr.bg.ptr) fr_push(); /* a second background task: the first goes alone */
-        fr.bg.ptr = (void*)st; fr.bg.n = gfxListSize;
+        fr.bg.ptr = (void*)st; fr.bg.n = 0u;
     } else {
-        fr.main.ptr = (void*)st; fr.main.n = gfxListSize;
+        fr.main.ptr = (void*)st; fr.main.n = 0u;
         if (pm_interp_on > 0) {
             if (pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
             else { pm_wq_frame_slot(); pm_interp_lerp(0.5f); fr.flags |= PMF_REPL; } /* the walker reads rtab: the frames before are walked first */

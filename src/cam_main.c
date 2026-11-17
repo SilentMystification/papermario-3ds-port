@@ -26,7 +26,6 @@ void render_item_entities(void);
 f32 CamLengthScale;
 s16 gCurrentCamID;
 u16* nuGfxCfb_ptr;
-Gfx* gMainGfxPos;
 DisplayContext* gDisplayContext;
 Camera gCameras[4];
 
