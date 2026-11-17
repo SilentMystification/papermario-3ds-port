@@ -20,6 +20,8 @@ MTX = re.compile(r"^(?:Mtx|Matrix4s)\s+(?:N\((\w+)\)|(\w+))\s*(\[[^\]]*\])?\s*="
 LIT = re.compile(r"^Lights1\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # LIT1
 RAW = re.compile(r"^unsigned char\s+(?:N\((\w+)\)|(\w+))\s*\[\w*\]\s*=", re.M)  # RAWIMG: a texture or palette as a C byte array
 RAW_RULE = True  # RAWIMG: seeded test in 3ds/tests/host.d/rawimg.sh
+VP = re.compile(r"^Vp\s+(?:N\((\w+)\)|(\w+))\s*=", re.M)  # THEATVP: a viewport object (the address of gsSPViewport)
+VP_RULE = True  # THEATVP: seeded test in 3ds/tests/host.d/vpsym.sh
 INC = re.compile(r'^\s*#include\s+"([^"]+\.inc\.c)"', re.M)
 INCLUDE = re.compile(r'^\s*#\s*include\s+"([^"]+)"', re.M)
 IMG = re.compile(r"INCLUDE_(?:IMG|PAL|RAW)\(\s*\"[^\"]*\"\s*,\s*(\w+)\s*\)")
@@ -107,6 +109,8 @@ def scan(path, out, moved=False, parent_ns=None, ren=None):
         out.append(("Img", ren.get(name, name), moved))
     for m in RAW.finditer(text) if RAW_RULE else ():
         out.append(("Raw", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
+    for m in VP.finditer(text) if VP_RULE else ():
+        out.append(("Vp", name_of(path, ns, m.group(1), ren.get(m.group(2), m.group(2)), pre_bad), moved))
     for m in INC.finditer(text):
         p = resolve(m.group(1), path)
         if p is None:
@@ -147,8 +151,8 @@ def entry_lines(entries):
         if k == "Img":
             lines.append(f'    {{ "{n}", GS_IMG, (const void*){n}, (const void*){n}_gend{tail}')
         else:
-            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT", "Vec3s": "GS_V3S", "Raw": "GS_IMG"}[k]
-            if k in ("Mtx", "Lit"):
+            gk = {"Gfx": "GS_GFX", "Vtx": "GS_VTX", "Mtx": "GS_MTX", "Lit": "GS_LIT", "Vec3s": "GS_V3S", "Raw": "GS_IMG", "Vp": "GS_VP"}[k]
+            if k in ("Mtx", "Lit", "Vp"):
                 lines.append(f'    {{ "{n}", {gk}, (const void*)&{n}, (const void*)((const char*)&{n} + sizeof {n}){tail}')
             else:
                 lines.append(f'    {{ "{n}", {gk}, (const void*){n}, (const void*)((const char*){n} + sizeof {n}){tail}')

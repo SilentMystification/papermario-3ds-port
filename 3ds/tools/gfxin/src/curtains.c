@@ -137,3 +137,22 @@ Gfx NoControllerGfx[] = {
     gsDPPipeSync(),
     gsSPEndDisplayList(),
 };
+Gfx TheaterInitGfx[] = {
+    gsSPViewport(&TheaterViewport),
+    gsDPSetCycleType(G_CYC_2CYCLE),
+    gsDPSetTextureLOD(G_TL_TILE),
+    gsDPSetTexturePersp(G_TP_PERSP),
+    gsDPSetTextureFilter(G_TF_BILERP),
+    gsDPSetTextureDetail(G_TD_CLAMP),
+    gsDPSetTextureConvert(G_TC_FILT),
+    gsDPSetCombineKey(G_CK_NONE),
+    gsDPSetAlphaCompare(G_AC_NONE),
+    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 320, 240),
+    gsDPSetColorDither(G_CD_MAGICSQ),
+    gsDPSetAlphaDither(G_AD_PATTERN),
+    gsSPClearGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
+                          G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH | G_CLIPPING | 0x0040F9FA),
+    gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
+    gsSPPerspNormalize(0x0014),
+    gsSPEndDisplayList(),
+};

@@ -56,25 +56,7 @@ Vp TheaterViewport = {
     }
 };
 
-Gfx TheaterInitGfx[] = {
-    gsSPViewport(&TheaterViewport),
-    gsDPSetCycleType(G_CYC_2CYCLE),
-    gsDPSetTextureLOD(G_TL_TILE),
-    gsDPSetTexturePersp(G_TP_PERSP),
-    gsDPSetTextureFilter(G_TF_BILERP),
-    gsDPSetTextureDetail(G_TD_CLAMP),
-    gsDPSetTextureConvert(G_TC_FILT),
-    gsDPSetCombineKey(G_CK_NONE),
-    gsDPSetAlphaCompare(G_AC_NONE),
-    gsDPSetScissor(G_SC_NON_INTERLACE, 0, 0, 320, 240),
-    gsDPSetColorDither(G_CD_MAGICSQ),
-    gsDPSetAlphaDither(G_AD_PATTERN),
-    gsSPClearGeometryMode(G_ZBUFFER | G_SHADE | G_CULL_BOTH | G_FOG | G_LIGHTING | G_TEXTURE_GEN |
-                          G_TEXTURE_GEN_LINEAR | G_LOD | G_SHADING_SMOOTH | G_CLIPPING | 0x0040F9FA),
-    gsSPSetGeometryMode(G_SHADE | G_SHADING_SMOOTH),
-    gsSPPerspNormalize(0x0014),
-    gsSPEndDisplayList(),
-};
+NDN_DECL(TheaterInitGfx);
 
 #if VERSION_PAL
 BSS IMG_BIN noControllerImgBuf[0x1000] ALIGNED(16);
@@ -130,7 +112,7 @@ void render_curtains(void) {
         s8 rgb;
 
         nd_target_end();
-        gSPDisplayList(gMainGfxPos++, TheaterInitGfx);
+        nd_draw_list(NDN(TheaterInitGfx), ND_SELF);
 
         guFrustumF(m, -80.0f * (pm_wide ? 1.25f : 1.0f), 80.0f * (pm_wide ? 1.25f : 1.0f), -60.0f, 60.0f, 160.0f, 640.0f, 1.0f);
         guMtxF2L(m, &D_8009BAA8[0]);
@@ -174,7 +156,7 @@ void render_curtains(void) {
 
             if (D_PAL_8009A204 == 0) {
 #endif
-                gSPDisplayList(gMainGfxPos++, TheaterInitGfx);
+                nd_draw_list(NDN(TheaterInitGfx), ND_SELF);
                 nd_draw_list(NDN(NoControllerSetupTexGfx), ND_SELF);
                 nd_val_prim(0, 0, 0xFF, 0x20, 0x10, alpha);
                 nd_draw_list(NDN(NoControllerGfx), ND_SELF);

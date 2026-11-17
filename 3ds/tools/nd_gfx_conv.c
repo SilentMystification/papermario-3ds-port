@@ -437,9 +437,9 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
     else if (id == NDO_TIMG) kind = GS_IMG;
     else if (id == NDO_CALL) kind = GS_GFX;
     else if (id == NDO_MTX) kind = GS_MTX;
-    else if (id == NDO_MOVEMEM) kind = GS_LIT;
+    else if (id == NDO_MOVEMEM) kind = (w0 & 0xffu) == G_MV_VIEWPORT ? GS_VP : GS_LIT; /* THEATVP: a viewport unit names a Vp */
     if (kind < 0 || !(w1 && (w1 >> 24) >= 16u)) return;
-    if (kind == GS_MTX || kind == GS_LIT) { /* an Mtx or a Lights1 is not an array: its address is the object itself */
+    if (kind == GS_MTX || kind == GS_LIT || kind == GS_VP) { /* an Mtx, a Lights1 or a Vp is not an array: its address is the object itself */
         unsigned off = 0;
         const GSym* ms = sym_of(w1, kind, &off);
         if (!ms) { v2_unsup("unit address outside the symbol map", k); return; }
@@ -510,6 +510,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             else if ((a >> 16) != NDO_MW_NONE) v2_unsup(v2_opname(id), k);
             break;
         case NDO_MOVEMEM: { /* LIT1: a light of a Lights1 symbol; FXLT: one NDN_LIT op (p = the light) */
+            if ((a & 0xffu) == G_MV_VIEWPORT && sym_of(w1, GS_VP, &(unsigned){0})) break; /* THEATVP: a unit only, no v2 op (nd_ntab_run runs the units) */
             unsigned loff;
             const GSym* ls = (a & 0xffu) == G_MV_LIGHT ? sym_of(w1, GS_LIT, &loff) : NULL;
             if (!ls) { v2_unsup(v2_opname(id), k); break; }
@@ -985,6 +986,7 @@ int main(int argc, char** argv) {
         else if (s->kind == GS_MTX) printf("extern Mtx %s;\n", s->name);
         else if (s->kind == GS_LIT) printf("extern Lights1 %s;\n", s->name);
         else if (s->kind == GS_V3S) printf("extern Vec3s %s[];\n", s->name);
+        else if (s->kind == GS_VP) printf("extern Vp %s;\n", s->name);
     }
     for (unsigned i = 0; i < gconv_nsym; i++) {
         if (gconv_sym[i].kind != GS_GFX) continue;
