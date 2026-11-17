@@ -379,7 +379,7 @@ s32 gPauseMessages[] = {
     [PAUSE_MSG_UNKNOWN_SPIRIT]      (s32) gPauseMsg_56,
 };
 
-Gfx* PauseGfxLabels[] = {
+NdLst PauseGfxLabels[] = {
     [PAUSE_LBL_HP]        NDN(PauseGfxBannerHp),
     [PAUSE_LBL_FP]        NDN(PauseGfxBannerFp),
     [PAUSE_LBL_BP]        NDN(PauseGfxBannerBp),

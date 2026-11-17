@@ -210,7 +210,7 @@ void N(appendGfx_piranha_vines)(void* data) {
         // here and leave space behind for the gSPBranchList command followed by two vertices
         // for each point in numPoints
 
-        vtxBuffer = (Vtx_t*) nd_rec_data(2 * (2 * numPoints) * sizeof(Gfx)); /* DIRECT D6c: the vine vertices are stream data */
+        vtxBuffer = (Vtx_t*) nd_rec_data(2 * numPoints * sizeof(Vtx)); /* DIRECT D6c: the vine vertices are stream data */
         vtx = vtxBuffer;
 
         for (j = 0; j < numPoints; j++) {
