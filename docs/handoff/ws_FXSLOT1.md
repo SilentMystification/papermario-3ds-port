@@ -23,9 +23,9 @@ static void fxt_star_shimmer(void) {
 ```
 3. status_star_shimmer.c:189 before `                    gSPDisplayList(gMainGfxPos++, NDN(D_801097D8)); // draw particle`
    after `                    nd_rec_dl(NDN(D_801097D8));` (no comment: entapply.py:32).
-5. pm_warp.c:846: append `&& !pm_debug_has("warptest")` to the return expression (the switch of 69c08779cd, deleted
+4. pm_warp.c:846: append `&& !pm_debug_has("warptest")` to the return expression (the switch of 69c08779cd, deleted
    unused in 3d14d6f763; row TST13 uses it). Comment :845: add `Switch warptest allows them.`
-4. FXSLOT.json (azt.d and bench.d, copies of the FXDIG.json forms), 2 scenarios and 2 benches. Order: shimmer, chomp, disable_x.
+5. FXSLOT.json (azt.d and bench.d, copies of the FXDIG.json forms), 2 scenarios and 2 benches. Order: shimmer, chomp, disable_x.
    fxslot_cap: `warp=mac_01:0 pos=0:0:200 det fxtest=153,71,132 fxslot=110 loglevel=debug entcap entcapt psochk`, until
    `fxtest: done`, cap 40, deadline 35, events warp, `entcap l [0-9a-f]{8} s [0-9a-f]{8}`, done.
    fxslot_drec: `warp=mac_01:0 pos=0:0:200 fxtest=153,71,132 fxslot=110 loglevel=debug det drec=412:3:155 psochk`, until
