@@ -1,7 +1,8 @@
 # ws_GTSMALL (Haiku): 9 Gfx tokens in 6 files leave, same code (C7 gfxtype -9)
 Designer: oracle NEXT2 (SendMessage). Worktree build3ds/wt/GTSMALL, branch GTSMALL from main, PM_ROW=GTSMALL PM_LANE=GTSMALL.
 Main at release: 1aa6e7fbc6. Edit only src/pause/pause_gfx.c, src/battle/area/kzn2/actor/lava_piranha.c, src/world/common/lava_piranha/part2.inc.c,
-src/entity.c, src/evt/map_api.c, 3ds/src/nd_direct.c. Shares no file with ENTLST, EFXGT, RECBUF, EFFCEN, DRECTEX, FLTGT, BLANKET. Model: Haiku.
+src/entity.c, src/evt/map_api.c, 3ds/src/nd_direct.c, 3ds/tests/lkey/allow.txt (line 2 only; RECBUF deletes its line 11: disjoint hunks).
+Shares no other file with ENTLST, EFXGT, RECBUF, EFFCEN, DRECTEX, FLTGT, BLANKET. Model: Haiku.
 ## Objective
 - Every edit keeps the same machine code: a pointer type, the same byte count, or the same initializer words.
 - FACT (gbi.h:1062-1092): sizeof(Gfx) 8, sizeof(Vtx) 16. FACT (nd_gbi.h:19, :50-51): `ND_GS(w0, w1)` is `{{ ND_X0(w0, w1), ND_X1(w0, w1) }}`,
@@ -19,15 +20,18 @@ src/entity.c, src/evt/map_api.c, 3ds/src/nd_direct.c. Shares no file with ENTLST
    :242, :243, :246 `gsDPSetCombineMode(G_CC_PRIMITIVE, G_CC_PRIMITIVE)` -> `ND_CMB_W(G_CC_PRIMITIVE, G_CC_PRIMITIVE)`.
    :245 `gsDPSetCombineLERP(0, 0, 0, PRIMITIVE, ...)` -> `ND_CMB_W(0, 0, 0, PRIMITIVE, ...)` (the 16 arguments stay).
    :262, :279, :280 `kFillKind[k].cc.words.w0` -> `kFillKind[k].cc.w0`, `.cc.words.w1` -> `.cc.w1`.
+6. 3ds/tests/lkey/allow.txt: delete line 2 `3ds/src/nd_direct.c 3 LOCAL kFillKind ...`. FACT (lkey_cen.py:16, :71-72): the 3 `words.w*` reads
+   were the only reader lines of nd_direct.c; a listed file with 0 reader lines fails host.d/lcen.sh.
 ## Loop (each output to build3ds/out/, read the last 20 lines)
 1. Edit. `grep -nw Gfx src/pause/pause_gfx.c src/entity.c src/evt/map_api.c 3ds/src/nd_direct.c src/battle/area/kzn2/actor/lava_piranha.c
-   src/world/common/lava_piranha/part2.inc.c` prints nothing. `python3 3ds/tools/lkey_cen.py 3ds/tests/lkey/allow.txt .` prints `lkey census ok`.
+   src/world/common/lava_piranha/part2.inc.c` prints nothing. `python 3ds/tools/lkey_cen.py 3ds/tests/lkey/allow.txt .` prints `lkey census ok`.
+   Do not run host.d scripts in Git Bash (no gcc): the rowloop host stage runs them in docker.
 2. Commit `GTSMALL 1: 9 Gfx tokens leave (handle, byte counts, void casts, fill kind words)`.
 3. `python 3ds/tools/bench.py base wscmb_pause_drec --row GTSMALL`, then the same for axns_kzn2_drec (base runs, not charged).
 4. `PM_HOSTSEL=all sh 3ds/tools/rowloop.sh --row GTSMALL --bench wscmb_pause_drec,axns_kzn2_drec --why "GTSMALL gate" > build3ds/out/gtsmall_loop.txt 2>&1`.
 ## Tests that decide
 - `LOOP PASS`: host PASS, build rc 0, both cmp lines byte-equal (base = merge-base of HEAD and main). Budget: 2 builds, 4 Azahar starts.
 - `python 3ds/tools/listcen.py | grep "^listcen total gfxtype"`: 9 lower than on the merge-base (read both values).
-## Fix rights: only the 6 files. A compile error, an lkey line, a host FAIL or a cmp DIFF: stop, send the output path to the oracle, wait for the reply.
+## Fix rights: only the 7 files. A compile error, an lkey line, a host FAIL or a cmp DIFF: stop, send the output path to the oracle, wait for the reply.
 ## Stop and hand-back
 Last commit `GTSMALL 2: gate. wscmb_pause_drec, axns_kzn2_drec byte-equal; gfxtype <n>` deletes this page. One SubagentHandback: hashes, LOOP lines, gfxtype.
