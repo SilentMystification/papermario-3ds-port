@@ -42,7 +42,6 @@ static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
  * (nd_list_run: the list start rules, then the ops; dlc_try never took a render mode list: it is not map shape data). */
 static __attribute__((noinline)) void rec_rm(unsigned i) {
     if (i >= ND_RM_N) return; /* HWFIX */
-    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(nd_rm_tab[i], 0u);
     nd_ops_run(nd_rm_tab[i], nd_rm_n[i], 0);
 }
 /* S3G-1: a model list of a record (the render mode list, the geometry): run as G_DL does (dlc_try first), else on the list executor
@@ -53,7 +52,6 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (dlc_on && dlc_try(l)) { /* DLC1: a compiled list, as G_DL */
         return;
     }
-    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 0u);
     nd_list_run(l);
 }
 /* S3G-2: the R13 ops after a record (HC4c: typed by nd_rec_model): n units run in place (D10b: a flat range on the op executor). */

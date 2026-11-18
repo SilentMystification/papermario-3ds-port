@@ -40,8 +40,6 @@ void nd_walk_ent(const Gfx* q, unsigned words) { (void)q; (void)words; }
 void nd_texrect_run(const uint32_t* p) { (void)p; }
 void nd_parts_run(const uint32_t* rec) { (void)rec; }
 void nd_parts_run_v(const uint32_t* rec) { (void)rec; }
-void nd_lstcen(const void* l, unsigned kind) { (void)l; (void)kind; }
-int nd_lc_frame = -1;
 const NdGTab* nd_gtab_find(const void* list) { (void)list; return 0; }
 uint32_t nd_mkey_a(const uint32_t* rec) { (void)rec; return 0; }
 
