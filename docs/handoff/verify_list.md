@@ -1,5 +1,5 @@
 # verify_list: reported faults with a merged fix and no console confirmation (next push test list; edit in place)
-Rule (user): only items the user has not confirmed go on a test list. Confirmed by the user: select menu flash, pipes, map change crash.
+Rule (user): only items the user has not confirmed go on a test list. Confirmed by the user: select menu flash, pipes, map change crash, the white and black rectangles, grey HUD, dim Mario and black menu part (HWFIX1, build 0f39de90cb, O3DS).
 Binary check before the push (FACT: every count above 0 in build3ds/pm_3ds.elf of 2026-11-16 02:53, binchk OK):
 `python 3ds/tools/binchk.py build3ds/pm_3ds.elf "pauseh f%u held 30 resets %u" nd_dual_keep ndnu_D_0900BE40_3F7CA0 "anim mesh f%u units %d dev %d" nd_mesh_size`
 nd_dual_keep and nd_mesh_size are names of static inline functions: they are in the ELF debug data only, not in the 3dsx. Check the ELF.
