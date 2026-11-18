@@ -1,67 +1,51 @@
-# plan_finish.md: every row from main today to the end proof (oracle, edit in place)
-Goal: all listcen totals 0 and elfgate `func 0 data 0 gfxnames 0`. Design: design_nstate.md (S3-S6). Stages: plan_walker_delete.md.
-This table replaces the Phase E row names of plan_endgame.md:193-197. Tags: FACT (source), GUESS, OPEN. H = Haiku, S = Sonnet.
-## 1. Counters (main, FACT: orchestrator brief 2026-11-17) and the stage that takes each to 0
+# plan_finish.md: every row from main today to the end proof, in waves (oracle, edit in place)
+Goal: all listcen totals 0 and elfgate `func 0 data 0 gfxnames 0`. Design: design_nstate.md (S3-S6). Replaces plan_endgame.md:193-197 (Phase E).
+Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them.
+## 1. Counters (main, FACT: orchestrator brief 2026-11-17) and the waves that take them to 0
 | counter | now | falls in |
 |---|---|---|
-| build 308, data 191 | all in include/ (FACT plan_walker_delete.md:4-5) | S7 DEL4D |
-| gfxtype 251 (246 after GFXT1, FACT e2a942d6f3) | nd_walk.c, nd_ent.c, nd_shape.c, nd_rec.c, nd_recs.c, nd_cen.c, PR headers (grep) | S6, S7 |
-| reader 772 | 3ds/src walker, setters, nd_ds.c 32 (grep) | S5 about -40 GUESS, S6 about -190 GUESS, S7 rest |
-| model 15 | nd_comb.c 3, nd_decide.c 2, nd_tex_set.c 3, nd_texwin.c 2, nd_rect.c 2, nd_set.c, nd_geom.c, nd_mtx_set.c (grep) | S7 DEL2A-F |
-| elfgate func 48 | nd_walk.c 12, nd_tex_set.c 6, nd_ent.c 3, nd_set.c 3, nd_target.c 2, pm_nusys.c 2, others (grep) | S4 NDR6, S7 |
-| elfgate data 365 | GUESS: ndg_ v1 tables of nd_gfx_tab.c plus gMainGfxPos | S7 DEL5B, DEL3C |
-| elfgate gfxnames | OPEN (not in the brief) | S8 reads it |
-S3 moves no listcen counter (FACT design_nstate.md:99). Its counter: dschk bad 0 and epbad 0 in the 4 dschk scenes.
-## 2. Rows by stage (34 rows to do: H 31, S 3; S rows have the user's yes, FACT design_nstate.md:121)
-Rule: each row gates drec byte-equal against `git merge-base HEAD main`. Every row of S3-S7 keeps drec equal, so a row may branch
-from an unmerged row branch. Parallel rows never write fxrest.d/dschk_base.txt: the last row of the stage writes it.
-S3 rest (3 rows; chain, shared files nd_ds.c, nd_direct.c, dschk_base.txt). NST3 merged (FACT oracle_handoff.md:11).
-| row | model | files | blocker |
-|---|---|---|---|
-| NST2B, NST2C | H | done: branch NST2B 80d31a92ce, NST2C d374ade498 (gates PASS, FACT git log). Merge only | - |
-| NST2D | H | ws_NST2D (nd_ds.c, nd_rec.c, nd_walk.c 2 lines, model.c 2 lines, nd_dschk.c). Step 1 done: b1975eb0c6 | NST2C |
-| NST2E | H | ws_NST2E (6 runner files, nd_direct.c, nd_api.h). Facts checked on branch NST2D: all lines match | NST2D |
-| NST2F | H | ws_NST2F (nd_ds.c, nd_ds.h, nd_dschk.c, nd_direct.c 2 lines). Facts checked on branch NST2D | NST2E |
-NST2G only if NST2F ends with bad or epbad above 0 (OPEN, 0 planned). Outside the chain: FALLBK (nd_walk.c 3 lines, oracle NSTO; fixes the wscmb drec variants),
-GFXT1, PSOCOV, BASELOG, OPTIONS (done on branches, merge only).
-S4 draws (7 rows). Blocker: NST2F gate. NDR0 defines every NdSnap field. NDR1-6 only call it: no edit of nd_snap.c or nd_ds.c.
-| NDR0 | S | new nd_snap.h, nd_snap.c (core 1 make, core 0 nd_snap_run), nd_ds.c pso dirty bit, lights and viewport blocks, nd_geo.c nd_mesh_tri1/2, nd_geom.c, new host test | NST2F |
-| NDR1 | H | nd_tx.h nd_rect_* macros (:50-56) to snap records, nd_rect.c new runner (walker arm stays) | NDR0 |
-| NDR2 | H | nd_direct.c (nd_direct_bind, 6 runners), hud_element.c, msg_draw.c, screen_overlays.c | NDR0 |
-| NDR3 | H | nd_direct.c nd_glyph_draw (:212), msg_draw.c glyph run | NDR2 (same files) |
-| NDR4 | H | sprite records: nd_rec.c nd_rec_spr (:255), nd_walk.c nd_walk_spr, sprite.c spr_state_run (:278) | NDR0 |
-| NDR5 | H | transform (UD2 native stack): nd_xf.c, nd_at.h NDXF macros, nd_mtx_set.c runner | NDR0 |
-| NDR6 | H | target role on core 1: nd_target.c (img_role, off_screen_check), nd_geo.c nd_target_beginw (:16) | NDR0 |
-Parallel after NDR0: NDR1, NDR2, NDR4, NDR5, NDR6 and NCONV1 (disjoint files). NDR3 after NDR2.
-S5 static lists (2 rows). Gate benches fxops_drec, fxcull_drec, entcape_kmr03_drec (FACT plan_walker_delete.md:32).
-| NCONV1 | S | nd_gfx_conv.c NDN_FS and NDN_DRAW output, nd_gtab.h, nd_gtab.c core 1 run, nd_ds.h enum NdFs, nd_ds.c nd_ds_fs, listcen.py class core1 (UD1) | NDR0 |
-| NCONV2 | H | delete the NDN_UNIT path: nd_walk.c gt_run (:634), nd_ntab_run, nd_ntab_rec, nd_gtab_test.c | NCONV1 |
-S6 records (5 rows). Gate benches vcfix_hos01_drec, spot_mac01_drec, sbk14_drec (FACT plan_walker_delete.md:33).
-| NREC1 | S | model record: nd_recs.c, nd_model.c, nd_rec.c nd_rec_model, model.c, entity_model.c, animator.c, nd_rmtab.c | NCONV1 (needs NdFs only) |
-| NREC2 | H | entity: nd_ent.c, nd_rec.c nd_rec_ent, nd_rec_ent_draw (:265, :278) | NREC1 |
-| NREC3 | H | map shapes: nd_shape.c, nd_dlc.c | NREC1 |
-| NREC4 | H | particles: nd_rec.c nd_parts_add (:329), nd_walk.c nd_parts_run (:453, :500) | NREC2 (nd_rec.c), NCONV2 (nd_walk.c) |
-| NREC5 | H | compiled defs: nd_scomp.c (ent_sdef user nd_ent.c:213 stays NREC2) | NREC1 |
-S7 delete (16 rows; the orchestrator tags `pre-list-removal` first, FACT plan_endgame.md:198). Blocker: S4, S5, S6 merged.
-| DEL3A | H | setters write nd_ds by ND_FS, no unit: nd_rec.c nd_rec_nr (:399), nd_nr.h, nd_st.c, nd_val.c, nd_geo.c, nd_xf.c, nd_tx.h, nd_at.h, nd_ds.c keys; delete nd_dschk.c; the 9 host tests of R4 | S6 |
-| DEL1A | H | nd_rec.c NDC_STATE, st_put, sh shadow, nd_rec_state, caller arms; nd_recs.c, nd_model.c, pm_phase.c, pm_nusys.c gbi_walk, gbi_task_w (:89, :100) | DEL3A |
-| DEL1B, DEL1C, DEL5A | H | nd_ent.c ENT_GBI path; nd_dlc.c and its CMake line; nd_shape.c list parse | DEL3A |
-| DEL5B | H | v1 tables: nd_gtab.h NdGTab, nd_gtab.c nd_rec_dl, nd_gfx_conv.c v1 output, gen_gfx_tab.sh (elfgate data ndg_) | DEL3A |
-| DEL3B | H | nd_scomp.c nd_scomp_exec, nd_scomp_exec_own (:341, :347) | DEL3A |
-| DEL1D | H | nd_walk.c walker and op arms, nd_cen.c, nd_c2haz.c (D2 A: census goes with the walker) | wave of DEL1A-DEL3B |
-| DEL2A-DEL2F | H | 2A nd_comb.c, nd_decide.c (UD4 first); 2B nd_set.c; 2C nd_tex_set.c, nd_texwin.c; 2D nd_rect.c; 2E nd_geom.c gv part; 2F nd_mtx_set.c, unread NdWs fields | DEL1D |
-| DEL3C | H | nd_op.h, nd_gbi.h, the last reader headers, gMainGfxPos (variables.h:111, game_stubs.c:9) | DEL2 wave |
-| DEL4D | H | gDP/gSP/gsDP/gsSP definitions and Gfx prototypes of gbi.h, gbi_custom.h, gs2dex.h, gt.h, sp.h, gu.h move to 3ds/tools/gconv_inc (host converter path, FACT gen_gfx_tab.sh:14) | DEL3C |
-Core 1 code reuses no name of listcen MODEL_NAMES (listcen.py:196-198) or of the elfgate func line (elfgate_patterns.txt:1).
-S8 (1 row): S9GATE (H): listcen all 0, elfgate 0 0 0, the full drec set, the console soak (G10, G11).
-## 3. Critical path: 15 rows
-NST2D, NST2E, NST2F, NDR0, NCONV1, NREC1, NREC2, NREC4, DEL3A, DEL1A wave, DEL1D, DEL2 wave, DEL3C, DEL4D, S9GATE.
-Off the path: NDR1-6, NCONV2, NREC3, NREC5 (they must merge before DEL3A). GUESS 1.5 to 3 h per path row: 25 to 45 h.
-## 4. Console checks (orchestrator rule 8): none until the end
-- A gated row merges on its gate (host PASS, byte-equal benches, dschk not higher). No stage waits for the user's check.
+| build 308, data 191 | all in include/ (FACT plan_walker_delete.md:4-5) | W14 DEL4D1-4 |
+| gfxtype 251 (246 after GFXT1, FACT e2a942d6f3) | nd_walk.c, nd_ent.c, nd_shape.c, nd_rec.c, nd_recs.c, nd_cen.c, PR headers (grep) | W6-W14 |
+| reader 772 | walker, setters, nd_ds.c 32 (grep) | W6 about -40 GUESS, W6-W8 about -190 GUESS, W9-W13 rest (NDO_ setters renamed to ND_FS_: class core1, UD1) |
+| model 15 | nd_comb.c 3, nd_decide.c 2, nd_tex_set.c 3, nd_texwin.c 2, nd_rect.c 2, nd_set.c, nd_geom.c, nd_mtx_set.c (grep) | W12 DEL2A-F |
+| elfgate func 48, data 365 | func: nd_walk.c 12, nd_tex_set.c 6 and others (grep). data GUESS: ndg_ v1 tables and gMainGfxPos | W9-W13 |
+| elfgate gfxnames | OPEN (not in the brief) | W15 reads it |
+## 2. Rules of the waves
+- A row gates drec byte-equal against `git merge-base HEAD main`, host PASS, dschk or snapchk not higher. It merges on its gate (no console check
+  until the end, rule 8). A row whose blocker is not merged branches from the blocker's gate commit.
+- Rows of one wave share no file. Only one row per wave writes fxrest.d/dschk_base.txt (named in the page).
+- Core 1 code reuses no name of listcen MODEL_NAMES (listcen.py:196-198) or of the elfgate func line (elfgate_patterns.txt:1).
+- nd_comb_core writes pm_comb_vprim (nd_decide.c:234, :244). A core 1 call (UD4) passes vprim and writes no core 0 global (NDR0D edit).
+## 3. Waves (47 rows; width = rows that run at once; the stop file blocks a wider split)
+| wave | rows (files) | needs merged | rows | stop file |
+|---|---|---|---|---|
+| W1 now | NDR0A snapchk (page b60f70c281: nd_snap*.c, nd_geo.c, nd_geom.c 1 line, nd_rec.c, nd_psolk.c); NCONV1A enum NdFs and nd_ds_fs (new nd_fs.h, nd_ds_fs.c, listcen.py class core1, host test); NDR5 transform record (nd_xf.c, nd_at.h NDXF, nd_mtx_set.c). Running: NST2F, FALLBK (oracle NSTO) | - | 3 | nd_ds.c (NST2F) |
+| W2 | NDR0B td on core 1 (page 5200d6d63a: nd_ds.c, nd_dschk.c); NDR0C target role and render block in the snap (nd_snap.c, nd_snap_in.c, nd_geo.c target, nd_target.c); NCONV1B converter emits NDN_FS for NDN_UNIT (nd_gfx_conv.c, nd_gtab.h, nd_gtab_test.c) | NST2F, NDR0A, NCONV1A | 3 | nd_snap_in.c |
+| W3 | NDR0D box fold texel test and t1_valid in the snap, core 1 miss path (nd_snap_in.c, nd_decide.c); NCONV1C core 1 runs the FS ops of a table (nd_gtab.c, nd_ds.c nd_ds_list) | NDR0B, NDR0C, NCONV1B | 2 | nd_ds.c |
+| W4 | NDR0E core 0 draws a mesh from the snap (nd_snap.c, nd_geom.c, nd_comb.c) | NDR0D | 1 | nd_geom.c, nd_comb.c |
+| W5 | NDR1 rectangles (nd_tx.h :50-56, nd_rect.c); NDR2 direct draws (nd_direct.c, hud_element.c, msg_draw.c, screen_overlays.c); NDR4 sprite records (nd_rec.c nd_rec_spr, nd_walk.c nd_walk_spr, sprite.c :278); NCONV1D NDN_DRAW as snaps (nd_gfx_conv.c, nd_gtab.c) | NDR0E, NCONV1C | 4 | nd_rec.c, nd_walk.c |
+| W6 | NDR3 glyphs (nd_direct.c :212); NCONV2 delete the NDN_UNIT path (nd_walk.c gt_run :634, nd_ntab_run); NREC1A model record payload as FS ops on core 1 (nd_rec.c nd_rec_model, nd_ds.c nd_ds_model); NREC3 map shapes (nd_shape.c, nd_dlc.c); NREC5 compiled defs (nd_scomp.c) | W5 | 5 | nd_rec.c |
+| W7 | NREC1B core 0 model runner reads snaps (nd_recs.c, nd_model.c); NREC2 entity (nd_ent.c, nd_rec.c :265 :278) | NREC1A | 2 | nd_rec.c |
+| W8 | NREC4 particles (nd_rec.c :329, nd_walk.c :453 :500) | NREC2, NCONV2 | 1 | nd_rec.c, nd_walk.c |
+| W9 | DEL3A nd_rec_nr records no unit (nd_rec.c :399), delete nd_dschk.c, snapchk; DEL1B nd_ent.c ENT_GBI; DEL1C nd_dlc.c; DEL5A nd_shape.c list parse; DEL5B v1 tables (nd_gtab.h NdGTab, nd_gtab.c nd_rec_dl, nd_gfx_conv.c v1, gen_gfx_tab.sh); DEL3B nd_scomp.c exec (:341 :347); DEL3A1-5 setters NDO_ to ND_FS_ (mechanical .patch: nd_st.c+nd_st.h, nd_val.c+nd_val.h, nd_tx.h, nd_at.h+nd_xf.c, nd_geo.c+nd_nr.h) | W8 | 11 | nd_rec.c |
+| W10 | DEL1A caller arms (nd_rec.c NDC_STATE, st_put, nd_rec_state; nd_recs.c, nd_model.c, pm_phase.c, pm_nusys.c :89 :100); DEL3A6 nd_ds.c keys to ND_FS_ | W9 | 2 | nd_walk.c |
+| W11 | DEL1D nd_walk.c walker and op arms, nd_cen.c, nd_c2haz.c (D2 A) | W10 | 1 | nd_walk.c |
+| W12 | DEL2A nd_comb.c, nd_decide.c (rename for core 1); DEL2B nd_set.c; DEL2C nd_tex_set.c, nd_texwin.c; DEL2D nd_rect.c; DEL2E nd_geom.c gv part; DEL2F nd_mtx_set.c, nd.h NdWs fields | W11 | 6 | nd.h |
+| W13 | DEL3C nd_op.h, nd_gbi.h, the last reader headers, gMainGfxPos (variables.h:111, game_stubs.c:9) | W12 | 1 | nd_op.h users |
+| W14 | DEL4D1-4: gDP/gSP/gsDP/gsSP definitions and Gfx prototypes to 3ds/tools/gconv_inc (FACT gen_gfx_tab.sh:14): gbi.h; gbi_custom.h; gs2dex.h and gt.h; sp.h and gu.h | W13 | 4 | one header per row |
+| W15 | S9GATE: listcen all 0, elfgate 0 0 0, the full drec set, then the user's end checks (section 5) | W14 | 1 | - |
+Width now: 3 new rows plus NST2F and FALLBK. Peak width 11 (W9). Critical path: 15 waves.
+## 4. Sonnet rows split into Haiku rows, and rows Haiku cannot do
+- NDR0 (Sonnet) is NDR0A-E. A, B and C are measured steps: snapchk and dschk counts name each missing input. D and E follow from those counts.
+- NCONV1 (Sonnet) is NCONV1A-D. Each NDN_UNIT unit becomes one NDN_FS op with the same a and b (the id set of NCONV1A). This adds no new error
+  case per list, so the CONV2C reason does not apply.
+- NREC1 (Sonnet) is NREC1A-B. The record layout stays. Only the payload units become FS ops, so the 3 writers (model.c, entity_model.c, animator.c) do not change.
+- OPEN, NDR0E: it is Haiku when snapchk bad is 0 after NDR0D. If NDR0D shows that the batch cut (F5, nd_geom.c:275) moves, NDR0E is Sonnet. Reason:
+  the row must then design a new batch rule, and no closed page can state it before the data exists.
+- Every other row is Haiku with a closed page.
+## 5. Console checks (orchestrator rule 8): none until the end
 - The user's checks run at the end: the UD3 prof push, verify_list.md, then the soak list (G10, G11, FACT plan_endgame.md:100).
-- An urgent fault is an exception: the orchestrator asks the user for a console.
-- A failed end check: push the row tips by halves (GUESS 3 pushes) to name the row.
-## 5. Decisions open for the user
+- An urgent fault is an exception: the orchestrator asks the user for a console. A failed end check: push the row tips by halves (GUESS 3 pushes).
+## 6. Decisions
 - UD4 (answered): keep nd_comb_core on core 1 for a miss. DEL2A renames decide and decide_miss (nd_decide.c:172, :214) on core 1.
-  Sonnet rows NDR0, NCONV1 and NREC1: standing yes.
+- Sonnet rows have a standing yes. They are used only where section 4 names them.
