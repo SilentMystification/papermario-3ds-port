@@ -7,4 +7,5 @@ echo "seeded fault (tex_on not copied), bad above 0 expected:"
 /tmp/nddec --fault 3ds/tests/ndref/ndref_*.bin > /tmp/nddec_fault.txt
 if grep -q "^decide entries [0-9]* bad 0$" /tmp/nddec_fault.txt; then echo "seeded fault not seen"; exit 1; fi
 tail -1 /tmp/nddec_fault.txt
+grep -q "^ndr0d core1 bad [1-9]" /tmp/nddec_fault.txt || { echo "ndr0d seeded fault not seen"; exit 1; }
 /tmp/nddec 3ds/tests/ndref/ndref_*.bin

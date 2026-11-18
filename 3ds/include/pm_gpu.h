@@ -74,10 +74,12 @@ void pm_gpu_set_tex1(float sx, float sy, float ox, float oy);
  * Returns 0 and fills `out`, or a reason: 1 more than 6 stages, 2 (unused), 3 COMBINED read after a
  * sub-stage, 4 more constants than the PICA has, 5 no vertex or texture source for a name. */
 int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out);
+int pm_comb_build_v(unsigned w0, unsigned w1, int two, int t1only, int vprim, PmPlan* out); /* NDR0D: vprim as an argument, build statics locked */
 void pm_comb_swap_c2(unsigned s[8]);
 void pm_comb_set_k4(unsigned k4); /* G_SETCONVERT K4, 0..255: the combiner input K4 */
 /* Fill the constants. prim, env RGBA 0xRRGGBBAA, plod 0..255 (PRIM_LOD_FRAC), key and keys RGBA 0xRRGGBB00 (CENTER, SCALE). */
 void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys);
+void pm_comb_colours_k(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys, unsigned k4); /* NDR0D: K4 as an argument */
 /* What the stages give, as the PICA computes them. t0, shade: RGBA 0..1. out: RGBA 0..1. */
 void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const float shade[4], float out[4]);
 void pm_gpu_set_const(unsigned rgba); /* combine mode 4: flat colour (a = factor on texture alpha) */

@@ -45,11 +45,10 @@ void nd_snap_mesh(void) {
     if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u)) return; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, 0u, &o);
     r.plan_on = -1;
-    if (r.key >= 0) {
-        nd_pso_fix(&o, &r.in, sn_mode5);
-        sn_leg = o.leg; sn_mode5 = o.mode5; sn_pat = o.pat;
-        r.plan_on = o.plan_on;
-    }
+    if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
+    else nd_comb_core1(&r.in, 0u, sn_mode5, &o); /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
+    sn_leg = o.leg; sn_mode5 = o.mode5; sn_pat = o.pat;
+    r.plan_on = o.plan_on;
     r.leg = sn_leg; r.mode5 = sn_mode5; r.pat = sn_pat;
     sn_last = r;
     nd_rec_napi(nd_snapchk_run, &r, sizeof r / 8u);
@@ -94,14 +93,11 @@ void nd_snapchk_tri(void) {
     if (sc_cur.fogc != fogc) sc_add("fogc");
     if (sc_cur.blendc != blendc) sc_add("blendc");
     if (memcmp(sc_cur.in.tst, mine.tst, sizeof mine.tst)) sc_add("tst");
-    if (sc_cur.key >= 0) {
-        if (sc_cur.leg != leg_mode) sc_add("leg");
-        if (sc_cur.mode5 != comb_mode5) sc_add("mode5");
-        if (sc_cur.pat != box_pat) sc_add("pat");
-        if (sc_cur.plan_on != plan_active) sc_add("plan_on");
-    } else {
-        sc_miss++;
-    }
+    if (sc_cur.leg != leg_mode) sc_add("leg");
+    if (sc_cur.mode5 != comb_mode5) sc_add("mode5");
+    if (sc_cur.pat != box_pat) sc_add("pat");
+    if (sc_cur.plan_on != plan_active) sc_add("plan_on");
+    if (sc_cur.key < 0) sc_miss++;
     if (sc_nb) {
         sc_bad++;
         sc_fbad += (unsigned)sc_nb;

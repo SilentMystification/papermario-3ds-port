@@ -18,6 +18,8 @@ _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
 void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in);
 /* nd_snap_in.c: the render inputs of an NdDs (oml, geom, fogc, blendc) into the snapshot (role left 0). */
 void nd_snap_rnd(const NdDs* s, NdSnapChk* r);
+/* nd_snap_in.c: 1 when every texel of the tile d is 1.0 (tile0_white of nd_comb.c on d). */
+int nd_td_white(const NdTd* d);
 /* nd_snap.c, core 1: the target record of set_cimg (w0 = siz << 12 | width - 1, w1 = the address; nd_target_beginw). */
 void nd_snap_tgt(uint32_t w0, uint32_t w1);
 /* nd_snap.c, core 1: the snapshot of the triangle about to be recorded (PMDL("snapchk") only). */

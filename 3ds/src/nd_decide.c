@@ -10,7 +10,9 @@
  *   leg_mode -> in->leg_mode (leg_prev)     nd_ws.tex_on -> tex_on     nd_ws.use_t1 -> use_t1     nd_ws.td[1].valid -> t1_valid   dual_on -> dual_on
  *   box_prod, box_folded, comb_set, comb_alpha_shade -> the fields of the same name     box_pat -> in->box_pat (desc: 0, no field)
  *   pm_comb_vprim -> the vprim argument (desc vprim)     comb_mode5 (kept when leg 4) -> the mode5_prev argument (desc: 0)
- * pm_comb.c module state kept: pm_k4 (pm_comb_set_k4, nd_pso_build sets it from conv_k4). */
+ * pm_comb.c module state kept: pm_k4 (pm_comb_set_k4, nd_pso_build sets it from conv_k4).
+ * NDR0D: nd_comb_core1 (core 1, the snapchk record) has its own decision table (dt1), its own K4 (conv_k4 of the record) and the locked
+ * pm_comb_build_v; the core 0 table dt0 and nd_comb_core keep the old behaviour. */
 #include <stdint.h>
 #include <string.h>
 #include <math.h>
@@ -20,7 +22,6 @@
 #include "pm_gpu.h"
 
 void unpack8(unsigned c, float o[4]); /* nd_tex_set.c */
-extern int pm_comb_vprim;             /* pm_comb.c */
 
 
 /* ---- the legacy combine mode (sync_legacy) on explicit state. c->leg_mode and c->box_pat are updated. o: mode5, cc_on, cc, env_on. ---- */
@@ -162,35 +163,36 @@ static void dc_eval(const unsigned s[2][8], int two, const DcIn* in, float prlod
     memcpy(out, cb, sizeof cb);
 }
 
-/* the 24 random inputs of the decision: a fixed seed per decision, so the choice is repeatable */
-static unsigned lcg_s = 12345u;
-static float lcg_f(void) { lcg_s = lcg_s * 1664525u + 1013904223u; return (float)((lcg_s >> 8) & 0xffff) / 65535.f; }
+/* NDR0D: one decision table per core. A full table replaces the oldest entry (a decision is recomputed in microseconds). */
+typedef struct { Dec* dec; int cap, n, next; unsigned last; } DecTab;
+static Dec dec0[128], dec1[64];
+static DecTab dt0 = { dec0, 128, 0, 0, 0 }, dt1 = { dec1, 64, 0, 0, 0 };
 
-static Dec dec[128];
-static int dec_n, dec_next; /* a full table replaces the oldest entry (a decision is recomputed in microseconds) */
+/* the 24 random inputs of the decision: a fixed seed per decision, so the choice is repeatable (the seed is the caller's) */
+static float lcg_f(unsigned* s) { *s = *s * 1664525u + 1013904223u; return (float)((*s >> 8) & 0xffff) / 65535.f; }
 
-static Dec* decide_miss(const NdCombIn* c, int two, unsigned key) {
+static Dec* decide_miss(DecTab* tb, const NdCombIn* c, int two, unsigned key, unsigned vprim, int own_k4) {
     Dec* d;
-    if (dec_n < 128) d = &dec[dec_n++];
-    else { d = &dec[dec_next]; dec_next = (dec_next + 1) & 127; }
+    if (tb->n < tb->cap) d = &tb->dec[tb->n++];
+    else { d = &tb->dec[tb->next]; if (++tb->next == tb->cap) tb->next = 0; }
     unsigned s[2][8];
     float plod_f = (float)(uint8_t)c->prim_lo8 / 255.f;
     memset(d, 0, sizeof *d);
     d->key = key;
     dc_decode(c->w0, c->w1, s);
     if (c->leg_mode == 4) { d->why = -2; return d; } /* mode 4 is exact by construction (nd_const_rgb) */
-    d->why = pm_comb_build(c->w0, c->w1, two, c->use_t1, &d->plan);
+    d->why = pm_comb_build_v(c->w0, c->w1, two, c->use_t1, (int)vprim, &d->plan);
     if (!d->why && d->plan.uses_tex1 && !c->t1_valid) d->why = 6; /* TEXEL1 read, tile 1 not loaded */
     {
         float el = 0.f, ep = 0.f;
-        lcg_s = 777u;
+        unsigned ls = 777u;
         for (int k = 0; k < 24; k++) {
             DcIn in;
             float f[4], g[4], h[4];
             unsigned pc = 0, ec = 0, pcs[2];
             for (int ch = 0; ch < 4; ch++) {
-                in.t0[ch] = lcg_f(); in.t1[ch] = lcg_f(); in.sh[ch] = lcg_f();
-                pcs[0] = (unsigned)(lcg_f() * 255.f + .5f); pcs[1] = (unsigned)(lcg_f() * 255.f + .5f);
+                in.t0[ch] = lcg_f(&ls); in.t1[ch] = lcg_f(&ls); in.sh[ch] = lcg_f(&ls);
+                pcs[0] = (unsigned)(lcg_f(&ls) * 255.f + .5f); pcs[1] = (unsigned)(lcg_f(&ls) * 255.f + .5f);
                 pc = pc << 8 | pcs[0]; ec = ec << 8 | pcs[1];
             }
             unpack8(pc, in.pr); unpack8(ec, in.en); unpack8(c->key_c, in.ke); unpack8(c->key_s, in.ks); in.k4 = (float)c->conv_k4 / 255.f;
@@ -199,7 +201,8 @@ static Dec* decide_miss(const NdCombIn* c, int two, unsigned key) {
             for (int ch = 0; ch < 4; ch++) { float e = f[ch] > g[ch] ? f[ch] - g[ch] : g[ch] - f[ch]; if (e > el) el = e; }
             if (!d->why) {
                 PmPlan t = d->plan;
-                pm_comb_colours(&t, pc, ec, (uint8_t)c->prim_lo8, c->key_c, c->key_s);
+                if (own_k4) pm_comb_colours_k(&t, pc, ec, (uint8_t)c->prim_lo8, c->key_c, c->key_s, c->conv_k4 & 255u);
+                else pm_comb_colours(&t, pc, ec, (uint8_t)c->prim_lo8, c->key_c, c->key_s);
                 pm_comb_eval(&t, c->use_t1 ? in.t1 : in.t0, in.t1, in.sh, h);
                 for (int ch = 0; ch < 4; ch++) { float e = f[ch] > h[ch] ? f[ch] - h[ch] : h[ch] - f[ch]; if (e > ep) ep = e; }
             }
@@ -211,38 +214,38 @@ static Dec* decide_miss(const NdCombIn* c, int two, unsigned key) {
     return d;
 }
 
-static Dec* decide(const NdCombIn* c, int two) {
+static Dec* decide(DecTab* tb, const NdCombIn* c, int two, unsigned vprim, int own_k4) {
     unsigned key = 2166136261u, i;
     unsigned parts[] = { c->w0, c->w1, (unsigned)two, (unsigned)c->leg_mode, (unsigned)(c->tex_on | c->use_t1 << 1 | c->t1_valid << 2), (unsigned)c->comb_alpha_shade,
-                         (unsigned)(uint8_t)c->prim_lo8, c->key_c, c->key_s, c->conv_k4, (unsigned)pm_comb_vprim }; /* pm_comb_colours and the K4 input read these too */
+                         (unsigned)(uint8_t)c->prim_lo8, c->key_c, c->key_s, c->conv_k4, vprim }; /* pm_comb_colours and the K4 input read these too */
     for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
     {
-        static unsigned last_i;
-        if (last_i < (unsigned)dec_n && dec[last_i].key == key) return &dec[last_i];
-        for (i = 0; i < (unsigned)dec_n; i++)
-            if (dec[i].key == key) { last_i = i; return &dec[i]; }
+        if (tb->last < (unsigned)tb->n && tb->dec[tb->last].key == key) return &tb->dec[tb->last];
+        for (i = 0; i < (unsigned)tb->n; i++)
+            if (tb->dec[i].key == key) { tb->last = i; return &tb->dec[i]; }
     }
-    return decide_miss(c, two, key); /* HCCUT4: the miss part (a new combine key) is cold */
+    return decide_miss(tb, c, two, key, vprim, own_k4); /* HCCUT4: the miss part (a new combine key) is cold */
 }
 
 /* The combine decision (the dry sync_combine_work) on the inputs in. The plan in out has the colour names and constants as pm_comb_build makes them
  * (not coloured). Fields the work leaves as they were are 0 here, or the previous value for mode5 (mode5_prev, kept when the constant mode 4 is chosen). */
-void nd_comb_core(const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut* out) {
+static void comb_core(DecTab* tb, int own_k4, const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut* out) {
     NdCombIn c = *in;
-    const int svp = pm_comb_vprim;
     const unsigned cyc = (c.omode_h >> G_MDSFT_CYCLETYPE) & 3;
-    pm_comb_vprim = (int)vprim;
     memset(out, 0, sizeof *out);
     dc_legacy(&c, mode5_prev, out);
     out->use = -1; out->cyc = (int)cyc; out->dual = c.dual_on | c.box_prod << 1 | c.box_pat << 2;
     if (cyc <= 1 && c.comb_set && !c.dual_on && (!c.box_prod || !c.box_folded)) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too */
-        Dec* d = decide(&c, (int)cyc);
+        Dec* d = decide(tb, &c, (int)cyc, vprim, own_k4);
         out->use = d->use; out->why = d->why;
         if (d->use) { out->plan = d->plan; out->plan_on = 1; }
     }
     out->leg = c.leg_mode; out->pat = c.box_pat;
-    pm_comb_vprim = svp;
 }
+
+void nd_comb_core(const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut* out) { comb_core(&dt0, 0, in, vprim, mode5_prev, out); }
+/* NDR0D: the core 1 decision (nd_snap.c): own table dt1, own K4 from conv_k4, the build locked. Same parameters as nd_comb_core. */
+void nd_comb_core1(const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut* out) { comb_core(&dt1, 1, in, vprim, mode5_prev, out); }
 
 /* ---- the description form ---- */
 
