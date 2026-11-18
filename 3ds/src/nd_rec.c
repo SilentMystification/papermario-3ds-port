@@ -177,6 +177,7 @@ static void rec_ctx_check(void) {
  * guards the dschk record itself (its nested rec_take). ds_rec holds the NdDs copy and the ep word (8-byte units). */
 static uint8_t ds_ep, ds_sclost, ds_in;
 static uint32_t ds_epw; /* NST2H: rule << 8 | unit id of the first ep rule since the last dschk record */
+unsigned char nd_cmd_last; /* NST2I: the op of the last command core 0 ran (not a state run, not the dschk record) */
 #define DS_EP(r, i) do { if (!ds_ep) ds_epw = (uint32_t)(r) << 8 | ((i) & 0xffu); ds_ep = 1; } while (0)
 extern unsigned nd_st_epoch; /* nd_walk.c, core 0 */
 void nd_dschk_run(const uint32_t* rec) __attribute__((weak)); /* nd_dschk.c, core 0. Weak (NST3 mechanical fix): the host units that link
@@ -200,6 +201,7 @@ static uint32_t* rec_take(unsigned n) {
             ds_in = 0;
             ds_ep = 0;
             ds_epw = 0;
+            DS_EP(9, 0); /* NST2I: core 0 runs every command with a gv_epoch cut; the key names the quiet ones */
         }
         ds_sclost = 1;
     }
@@ -255,6 +257,9 @@ void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
         if ((ch & 1u) && id != NDO_VTX && id != NDO_TRI1 && id != NDO_TRI2 && id != NDO_MTX && id != NDO_POPMTX) DS_EP(1, id);
         if (ds_sclost && (id == NDO_OMH || id == NDO_PRIM || id == NDO_ENV || id == NDO_TEXTURE || id == NDO_COMB)) DS_EP(2, id);
         if (id == NDO_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) DS_EP(3, id);
+        if ((id >= NDO_TIMG && id <= NDO_LOADTLUT) || id == NDO_FILL || id == NDO_PRIMZ || id == NDO_SCISSOR || id == NDO_RARE) DS_EP(6, id);   /* nd_op_same never skips */
+        if (id == NDO_MW && ((w0 & 0xffffffu) >> 16) != NDO_MW_LIGHTCOL) DS_EP(7, id);                                                       /* nd_set.c:142-144 */
+        if (id == NDO_RECT || (id == NDO_MISC && w0 != ND_NOP_A && ((w0 & 0xffffffu) >> 16) != NDO_MISC_MODVTX)) DS_EP(8, id);               /* op_ctl nd_walk.c:357 */
     }
 }
 void nd_rec_model(const void* rec, unsigned words) {
@@ -656,6 +661,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         const uint32_t h = p[0];
         nd_stream_cur = p;
         { const unsigned op = h >> 24; if (op != NDC_JUMP && (op != NDC_NAPI || p[1] != (uint32_t)(uintptr_t)nd_nr_run)) nd_snap_arm = 0; } /* NDR0A: a command but the native runs disarms the snapchk */
+        { const unsigned op = h >> 24; if (op != NDC_JUMP && !(op == NDC_NAPI && (p[1] == (uint32_t)(uintptr_t)nd_nr_run || p[1] == (uint32_t)(uintptr_t)nd_dschk_run))) nd_cmd_last = (uint8_t)op; } /* NST2I */
         switch (h >> 24) {
         case NDC_END: nd_snapchk_tick(); return; /* NDR0A: the snapchk frame line (nd_snap.c) */
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
