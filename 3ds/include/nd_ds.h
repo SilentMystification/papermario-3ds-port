@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "nd.h"
 #include "nd_int.h"
+#include "nd_fs.h"
 
 typedef struct NdDs {
     NdWs w;
@@ -25,13 +26,13 @@ typedef struct NdDs {
 extern NdDs nd_ds;
 /* Applies one typed unit (w0 = id << 24 | a, w1 = b). Bit 0 of the result: a field value changed. Other ids change nothing. */
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v);
-/* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an NDO_CALL unit of nd_rec_nr); see nd_ds.c. */
+/* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an ND_FS_CALL unit of nd_rec_nr); see nd_ds.c. */
 void nd_ds_list(NdDs* s, const void* l, int depth);
-/* NST2b: applies one typed unit of a record (the ds_unit of nd_rec.c: nd_ds_apply, the NDO_CALL list, the ep rule). */
+/* NST2b: applies one typed unit of a record (the ds_unit of nd_rec.c: nd_ds_apply, the ND_FS_CALL list, the ep rule). */
 typedef void (*NdDsUnitFn)(NdDs* s, uint32_t w0, uint32_t w1);
 /* NST2b: the state units of one model record q (the payload, pair Rk = q[2k], q[2k+1]), its R13 units and the render mode pairs rm (nrm). */
 void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit);
-/* NST2C: one typed unit into the core 1 state (ds_unit of nd_rec.c: nd_ds_apply, the NDO_CALL list, the ep rule). */
+/* NST2C: one typed unit into the core 1 state (ds_unit of nd_rec.c: nd_ds_apply, the ND_FS_CALL list, the ep rule). */
 void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1);
 /* NST2C: the state units of a record fed to core 1 (nd_rec.c: each unit by nd_ds_unit; syncs skipped). */
 void nd_ds_feed(const uint32_t* u, unsigned n);

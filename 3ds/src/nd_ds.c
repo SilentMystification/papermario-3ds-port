@@ -12,6 +12,7 @@
 #include "nd_op.h"
 #include "nd_dual.h"
 #include "macros.h"
+#include "nd_fs.h"
 
 extern int pm_wide;  /* nd_set.c set_scissor: the wide sign rule */
 int is_host(u32 p);  /* nd_walk.c: the range test of ptr_res */
@@ -108,8 +109,8 @@ static unsigned ds_comb(NdDs* s, u32 w0, u32 w1) {
 /* nd_set.c set_rare: G_SETCONVERT, G_SETKEYR, G_SETKEYGB. */
 static unsigned ds_rare(NdDs* s, unsigned k, u32 w1) {
     unsigned ch = 0;
-    if (k == NDO_RARE_CONV) SET(s->conv_k4, (w1 >> 9) & 0xffu);
-    else if (k == NDO_RARE_KEYR) {
+    if (k == ND_FS_RARE_CONV) SET(s->conv_k4, (w1 >> 9) & 0xffu);
+    else if (k == ND_FS_RARE_KEYR) {
         SET(s->keyc, (s->keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24));
         SET(s->keys, (s->keys & 0x00ffffffu) | ((w1 & 0xffu) << 24));
     } else {
@@ -123,15 +124,15 @@ static unsigned ds_rare(NdDs* s, unsigned k, u32 w1) {
 static unsigned ds_mw(NdDs* s, unsigned kind, unsigned arg, u32 w1) {
     unsigned ch = 0;
     switch (kind) {
-    case NDO_MW_NUMLIGHT: { unsigned n = w1 / 24; if (n > 7) n = 7; SET(s->lt_n, n); break; }
-    case NDO_MW_LIGHTCOL:
+    case ND_FS_MW_NUMLIGHT: { unsigned n = w1 / 24; if (n > 7) n = 7; SET(s->lt_n, n); break; }
+    case ND_FS_MW_LIGHTCOL:
         if (arg >= 9) break; /* core 0 does not test it; the game writes slots 0-8 */
         SET(s->lt[arg].col[0], (uint8_t)(w1 >> 24));
         SET(s->lt[arg].col[1], (uint8_t)(w1 >> 16));
         SET(s->lt[arg].col[2], (uint8_t)(w1 >> 8));
         break;
-    case NDO_MW_FOG: SET(s->fog_fm, (int16_t)(w1 >> 16)); SET(s->fog_fo, (int16_t)w1); break;
-    case NDO_MW_SEG: {
+    case ND_FS_MW_FOG: SET(s->fog_fm, (int16_t)(w1 >> 16)); SET(s->fog_fo, (int16_t)w1); break;
+    case ND_FS_MW_SEG: {
         if (arg >= 16) break;
         u32 b = (u32)(uintptr_t)ds_ptr(s, w1);
         if (!b) b = w1;
@@ -342,27 +343,27 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
     const u32 a = k & 0xffffffu, b = v;
     unsigned ch = 0;
     switch (k >> 24) {
-    case NDO_OMH: return ds_om(s, 1, nd_op_om_mask(a), b);
-    case NDO_OML: return ds_om(s, 0, nd_op_om_mask(a), b);
-    case NDO_GEOM: SET(s->w.geom, (s->w.geom & a) | b); break; /* nd_set.c set_geom */
-    case NDO_PRIM: SET(s->w.prim, b); SET(s->w.prim_lod, a & 0xffffu); break; /* nd_set_prim */
-    case NDO_ENV: SET(s->w.envc, b); break; /* gbi_setenv */
-    case NDO_FOG: SET(s->fogc, b); break;
-    case NDO_BLEND: SET(s->blendc, b); break;
-    case NDO_FILL: SET(s->w.fill, b); break;
-    case NDO_PRIMZ: SET(s->w.prim_z, (b >> 16) & 0x7fffu); break;
-    case NDO_SCISSOR: return ds_scissor(s, a, b);
-    case NDO_TEXTURE: SET(s->w.tex_on, (int)a); SET(s->w.tex_ss, b >> 16); SET(s->w.tex_ts, b & 0xffffu); break; /* set_texture */
-    case NDO_MW: return ds_mw(s, a >> 16, a & 0xffffu, b);
-    case NDO_RARE: return ds_rare(s, a, b);
-    case NDO_COMB: return ds_comb(s, NDO_COMB_W0(a), b);
-    case NDO_TIMG: return ds_timg(s, a, b);
-    case NDO_TILE: return ds_tile(s, a, b);
-    case NDO_TILESIZE: return ds_tilesize(s, a, b);
-    case NDO_LOADBLOCK: return ds_loadblock(s, b);
-    case NDO_LOADTILE: return ds_loadtile(s, a, b);
-    case NDO_LOADTLUT: return ds_loadtlut(s, b);
-    case NDO_MOVEMEM: return ds_movemem(s, a, b);
+    case ND_FS_OMH: return ds_om(s, 1, nd_op_om_mask(a), b);
+    case ND_FS_OML: return ds_om(s, 0, nd_op_om_mask(a), b);
+    case ND_FS_GEOM: SET(s->w.geom, (s->w.geom & a) | b); break; /* nd_set.c set_geom */
+    case ND_FS_PRIM: SET(s->w.prim, b); SET(s->w.prim_lod, a & 0xffffu); break; /* nd_set_prim */
+    case ND_FS_ENV: SET(s->w.envc, b); break; /* gbi_setenv */
+    case ND_FS_FOG: SET(s->fogc, b); break;
+    case ND_FS_BLEND: SET(s->blendc, b); break;
+    case ND_FS_FILL: SET(s->w.fill, b); break;
+    case ND_FS_PRIMZ: SET(s->w.prim_z, (b >> 16) & 0x7fffu); break;
+    case ND_FS_SCISSOR: return ds_scissor(s, a, b);
+    case ND_FS_TEXTURE: SET(s->w.tex_on, (int)a); SET(s->w.tex_ss, b >> 16); SET(s->w.tex_ts, b & 0xffffu); break; /* set_texture */
+    case ND_FS_MW: return ds_mw(s, a >> 16, a & 0xffffu, b);
+    case ND_FS_RARE: return ds_rare(s, a, b);
+    case ND_FS_COMB: return ds_comb(s, ND_FS_COMB_W0(a), b);
+    case ND_FS_TIMG: return ds_timg(s, a, b);
+    case ND_FS_TILE: return ds_tile(s, a, b);
+    case ND_FS_TILESIZE: return ds_tilesize(s, a, b);
+    case ND_FS_LOADBLOCK: return ds_loadblock(s, b);
+    case ND_FS_LOADTILE: return ds_loadtile(s, a, b);
+    case ND_FS_LOADTLUT: return ds_loadtlut(s, b);
+    case ND_FS_MOVEMEM: return ds_movemem(s, a, b);
     default: break;
     }
     return ch;
@@ -370,18 +371,18 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
 
 /* NST2A nd_ds_list (design_nstate.md section 5, NST2a). Applies the state units of a static list to nd_ds in the order core 0 runs them:
  * a v2 table its units nt->u (nu pairs); a v1 table its ops in gt_ops order (NDG_DEF d.u, NDG_UNIT, NDG_CALL); any other list its typed
- * pairs to NDO_END (at most DS_LIST_MAX). A call unit recurses at depth + 1 (ND_LIST_DEPTH 12, nd_walk.c); a call with w0 bit 0 (the
+ * pairs to ND_FS_END (at most DS_LIST_MAX). A call unit recurses at depth + 1 (ND_LIST_DEPTH 12, nd_walk.c); a call with w0 bit 0 (the
  * branch form) ends the list that holds it. */
 #define DS_LIST_MAX 200000u
 #define DS_LIST_DEPTH 12u
 static void ds_list_at(NdDs* s, uint32_t w, unsigned depth);
 static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth);
-/* n pairs of u; raw: stop at NDO_END (the list end of a typed list). */
+/* n pairs of u; raw: stop at ND_FS_END (the list end of a typed list). */
 static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int raw) {
     for (unsigned i = 0; i < n; i++) {
         const uint32_t w0 = u[2u * i], w1 = u[2u * i + 1u];
-        if (raw && (w0 >> 24) == NDO_END) return;
-        if ((w0 >> 24) == NDO_CALL) {
+        if (raw && (w0 >> 24) == ND_FS_END) return;
+        if ((w0 >> 24) == ND_FS_CALL) {
             ds_list_at(s, w1, depth + 1u);
             if (w0 & 1u) return;
         } else {
@@ -414,33 +415,33 @@ static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth) {
         }
     }
 }
-/* nd_rec_dl (nd_gtab.c) and nd_rec_nr (nd_rec.c, an NDO_CALL unit with depth 1). l: a host address or a segment address. */
+/* nd_rec_dl (nd_gtab.c) and nd_rec_nr (nd_rec.c, an ND_FS_CALL unit with depth 1). l: a host address or a segment address. */
 void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(uintptr_t)l, (unsigned)depth); }
 
 /* NST2b nd_ds_model (design_nstate.md section 5, row NST2b): the state units of one model record, in the order of rec_apply (nd_recs.c:72-103)
  * and rec_lights (nd_mtx_set.c:202). q: the record payload (pair Rk = q[2k], q[2k+1]). The R13 units (kept count q[26], from q[28]) and the
  * render mode pairs rm (nrm) go through unit. Left out: the matrix loads, the ranges (R11) and the billboard matrix (R8). */
-#define T(id, a, b) nd_ds_apply(s, NDO_W0(id, a), (b))
-#define FOGP(x) T(NDO_MW, NDO_MW_FOG << 16, x)
+#define T(id, a, b) nd_ds_apply(s, ND_FS_W0(id, a), (b))
+#define FOGP(x) T(ND_FS_MW, ND_FS_MW_FOG << 16, x)
 void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit) {
     const uint32_t f = q[6];
-    if (f & 4u) T(NDO_PRIM, 0, q[12]);
-    if (f & 8u) T(NDO_ENV, 0, q[13]);
-    if (f & 64u) { T(NDO_FOG, 0, q[8]); FOGP(q[11]); }
+    if (f & 4u) T(ND_FS_PRIM, 0, q[12]);
+    if (f & 8u) T(ND_FS_ENV, 0, q[13]);
+    if (f & 64u) { T(ND_FS_FOG, 0, q[8]); FOGP(q[11]); }
     if (q[7] && q[4] <= 7u) {
         const unsigned n = q[4] ? q[4] : 1u;
         const Lightsn* L = (const Lightsn*)(uintptr_t)q[7];
-        T(NDO_MW, NDO_MW_NUMLIGHT << 16, NUML(n));
+        T(ND_FS_MW, ND_FS_MW_NUMLIGHT << 16, NUML(n));
         for (unsigned i = 1; i <= n + 1u; i++)
-            T(NDO_MOVEMEM, (((uint32_t)sizeof(Light) - 1u) / 8u) << 19 | (3u * i + 3u) << 8 | G_MV_LIGHT,
+            T(ND_FS_MOVEMEM, (((uint32_t)sizeof(Light) - 1u) / 8u) << 19 | (3u * i + 3u) << 8 | G_MV_LIGHT,
               (uint32_t)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a));
     }
     if (q[26]) { for (unsigned k = 0; k < q[26]; k++) unit(s, q[28 + 2 * k], q[29 + 2 * k]); }
-    else if (q[1]) for (const uint32_t* u = (const uint32_t*)(uintptr_t)q[1]; (u[0] >> 24) != NDO_END; u += 2) nd_ds_apply(s, u[0], u[1]);
+    else if (q[1]) for (const uint32_t* u = (const uint32_t*)(uintptr_t)q[1]; (u[0] >> 24) != ND_FS_END; u += 2) nd_ds_apply(s, u[0], u[1]);
     if (q[9]) { const uint32_t* c = (const uint32_t*)(uintptr_t)q[9]; nd_ds_apply(s, c[0], c[1]); }
     for (unsigned k = 0; k < nrm; k++) unit(s, rm[2 * k], rm[2 * k + 1]);
-    if (f & 32u) { T(NDO_OML, NDO_A_RENDERMODE, (uint32_t)(PM_RM_SHROUD) | q[15]); T(NDO_FOG, 0, q[8]); if (f & 16u) T(NDO_BLEND, 0, q[14]); FOGP(q[11]); }
-    else if (f & 2u) { T(NDO_FOG, 0, q[8]); FOGP(q[11]); }
+    if (f & 32u) { T(ND_FS_OML, ND_FS_A_RENDERMODE, (uint32_t)(PM_RM_SHROUD) | q[15]); T(ND_FS_FOG, 0, q[8]); if (f & 16u) T(ND_FS_BLEND, 0, q[14]); FOGP(q[11]); }
+    else if (f & 2u) { T(ND_FS_FOG, 0, q[8]); FOGP(q[11]); }
     if (q[22]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[22], NULL); /* NST2D: custom gfx pre (R11, nd_range_run) */
     if (q[18]) nd_ds_apply(s, q[18], q[19]);
     if (q[20]) nd_ds_apply(s, q[20], q[21]);

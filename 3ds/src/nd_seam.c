@@ -14,6 +14,7 @@
 #include "nd.h"
 #include "nd_ops.h"
 #include "nd_op.h"
+#include "nd_fs.h"
 
 #define SEAM_MAXL 1024u
 #define SEAM_FAR 8192
@@ -332,9 +333,9 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
         uint32_t w0 = rd32(p), w1 = rd32(p + 4);
         { uint32_t t[2]; t[0] = w0; t[1] = w1; w0 = t[0]; w1 = t[1]; } /* HC4f3: a typed shape list or a raw one */
         unsigned op = w0 >> 24;
-        if (op == NDO_END) break;
+        if (op == ND_FS_END) break;
         switch (op) {
-        case NDO_VTX: {
+        case ND_FS_VTX: {
             unsigned n = (w0 >> 12) & 0xFF, v0n = (w0 >> 1) & 0x7F, v0 = v0n >= n ? v0n - n : 0;
             const uint8_t* src = n ? at(w, w1, 16u * n) : NULL;
             if (!src || n > 64 || v0 >= 64) { ok = 0; goto done; }
@@ -353,8 +354,8 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
             }
             break;
         }
-        case NDO_TRI1: case NDO_TRI2:
-            for (int t = 0; t < (op == NDO_TRI2 ? 2 : 1); t++) {
+        case ND_FS_TRI1: case ND_FS_TRI2:
+            for (int t = 0; t < (op == ND_FS_TRI2 ? 2 : 1); t++) {
                 uint32_t ww = t ? w1 : w0;
                 unsigned ix[3] = { ((ww >> 16) & 0xFF) / 2, ((ww >> 8) & 0xFF) / 2, (ww & 0xFF) / 2 };
                 unsigned o = ord++;
@@ -367,15 +368,15 @@ static void list_decode(SWalk* w, uint32_t addr, const SXf* x, int depth) {
                 }
             }
             break;
-        case NDO_CALL:
+        case ND_FS_CALL:
             ok = 0; /* nd_dlc_compile refuses OP_DL: the list runs on the interpreter, its sub list compiles on its own */
             list_add(w, w1, x, depth + 1);
-            if (w0 & 1u) goto done; /* branch: no return (HC4f3: NDO_CALL a = 1 for the branch form) */
+            if (w0 & 1u) goto done; /* branch: no return (HC4f3: ND_FS_CALL a = 1 for the branch form) */
             break;
-        case NDO_GEOM:
+        case ND_FS_GEOM:
             break;
-        case NDO_MISC: /* HC4f3: the typed no-op (ND_NOP_A) and the typed syncs are no-ops; the other misc ops refuse */
-            if ((w0 & 0xFFFFFFu) != (NDO_MISC_NOP << 16)) ok = 0;
+        case ND_FS_MISC: /* HC4f3: the typed no-op (ND_NOP_A) and the typed syncs are no-ops; the other misc ops refuse */
+            if ((w0 & 0xFFFFFFu) != (ND_FS_MISC_NOP << 16)) ok = 0;
             break;
         default:
             ok = 0;
