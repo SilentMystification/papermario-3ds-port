@@ -51,6 +51,7 @@ GFXTYPE_RX = r'\bGfx\b'
 RECDL_RX = r'\bnd_rec_dl\s*\(|\bnd_scomp_rec\s*\('
 READER_RX = (r'\bNDO_[A-Z0-9_]+|\bG_(DL|VTX|TRI1|TRI2|TEXRECT|SETCOMBINE|SETOTHERMODE_[HL]|MTX|POPMTX)\b'
              r'|\bnd_ops_run\b|\bnd_walk_state\b|\bnd_rec_state\b|\bNDC_STATE\b|\bENT_GBI\b')
+CORE1_RX = r'\bND_FS_[A-Z0-9_]+'
 
 CONDITIONAL_WORDS = ('if', 'ifdef', 'ifndef', 'elif', 'else', 'endif')
 DIRECTIVE_RX = re.compile(r'^\s*#\s*(\w+)\s*(.*?)\s*$')
@@ -299,6 +300,7 @@ def main(argv):
     plain = []
     reader_paths = list(files(['3ds/src/*.c', '3ds/include/*.h']))
     plain.append(('reader', count_regex(reader_paths, READER_RX)))
+    core1 = count_regex(reader_paths, CORE1_RX)
     model_paths = list(files(['src/**/*.c', '3ds/src/**/*.c']))
     plain.append(('model', count_model(model_paths)))
 
@@ -337,6 +339,7 @@ def main(argv):
             print('listcen file %s %s %d' % (name, rel(p), n))
     for name, res in classes:
         print('listcen total %s %d' % (name, sum(res.values())))
+    print('listcen core1 %d' % sum(core1.values()))
     return 0
 
 
