@@ -8,6 +8,7 @@
 #include "nd_op.h"
 #include "nd_api.h"
 #include "nd_xf.h"
+#include "nd_ds.h"
 
 uint32_t f32tof24(float vf) {
     union { float f; uint32_t i; } v;
@@ -23,7 +24,9 @@ uint32_t f32tof24(float vf) {
 
 /* test doubles: the recorder keeps the units of the last call; the walker is not run here */
 static uint32_t last[2]; static unsigned nlast;
-void nd_rec_nr(uint32_t w0, uint32_t w1) { last[0] = w0; last[1] = w1; nlast = 2u; }
+void nd_rec_xf(NdNapiRun run, const uint32_t* rec) { (void)run; last[0] = rec[0]; last[1] = rec[1]; nlast = 2u; }
+void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) { (void)s; (void)w0; (void)w1; }
+NdDs nd_ds;
 void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; (void)n; }
 
 static int fails;
