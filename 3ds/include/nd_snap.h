@@ -35,7 +35,7 @@ void nd_snapchk_run(const uint32_t* rec);
 int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned* col);
 /* NDR0F1, nd_snap.c, core 0: the compare of the render block and the mix with the last sync_render, at its triangle epoch (nd_geom.c). */
 void nd_snapchk_rnd(void);
-extern unsigned char nd_snap_rpend; /* NDR0F1: a triangle compare waits for its epoch (nd_snapchk_rnd) */
+extern unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snapchk_rnd */
 /* nd_snap.c, core 0: the compare of the armed snapshot at a triangle draw (nd_geom.c). */
 void nd_snapchk_tri(void);
 /* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */

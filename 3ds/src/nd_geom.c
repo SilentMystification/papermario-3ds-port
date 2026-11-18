@@ -342,9 +342,12 @@ void draw_tri(unsigned w) {
     idx[1] = i1;
     idx[2] = i2;
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    nd_snap_rpend = nd_snap_arm; /* NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
     if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) nd_snapchk_rnd(); } /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
-        if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
+        const int done = vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx);
+        nd_snap_rpend = 0; /* NDR0F1B */
+        if (done) return;
     }
     /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
     tri_drop[(vert_ring[i0] == GV_NONE || vert_ring[i1] == GV_NONE || vert_ring[i2] == GV_NONE) ? 0 : 1]++;

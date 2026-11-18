@@ -63,7 +63,7 @@ void nd_snap_mesh(void) { /* NDR0E2: the snap is taken at every mesh triangle an
 
 /* ---- core 0 ---- */
 unsigned char nd_snap_arm;
-unsigned char nd_snap_rpend; /* NDR0F1: set by sc_compare, cleared by nd_snapchk_rnd */
+unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snapchk_rnd */
 static NdSnapChk sc_cur;
 static unsigned sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_nlog, sc_bucket;
 static int sc_nb;
@@ -125,12 +125,12 @@ static void sc_compare(void) {
             pm_log_evt("snapchk bad f%u%s", pm_frame_n, names);
         }
     }
-    nd_snap_rpend = 1; /* NDR0F1: the render block is compared at the epoch of this triangle (nd_snapchk_rnd) */
 }
 void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch (nd_geom.c gv_epoch_enter) */
     extern NdRender nd_sr_rs; extern int nd_sr_mixk; extern unsigned nd_sr_mixc;
     char names[192];
     nd_snap_rpend = 0;
+    if (!PMDL("snapchk")) return; /* NDR0F1B: draw_tri sets the flag in every run */
     sc_nb = 0;
     if (memcmp(&sc_cur.rs, &nd_sr_rs, sizeof nd_sr_rs)) sc_add("rs");
     if (sc_cur.mixk != nd_sr_mixk || sc_cur.mixc != nd_sr_mixc) sc_add("mix");
