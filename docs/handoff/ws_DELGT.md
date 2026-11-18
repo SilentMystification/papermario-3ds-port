@@ -1,6 +1,6 @@
-# ws_DELGT (Haiku): the port code names its 8-byte word pair NdW2, not the N64 Gfx. Same layout, no logic change. Counter: C7 gfxtype to 1 (FACT listcen rules per line, main a5dcbad433: every Gfx line of 3ds/src and include/gbi_custom.h:33 goes; the one left is the typedef include/PR/gbi.h:1657). Gate: 2 drec byte-equal.
+# ws_DELGT (Haiku): the port code names its 8-byte word pair NdW2, not the N64 Gfx. Same layout, no logic change. Counter: C7 gfxtype to 0 (FACT listcen rules per line, main a5dcbad433: every Gfx line of 3ds/src and include/gbi_custom.h:33 goes; the typedef include/PR/gbi.h:1637-1657 moves to the host gbi.h). Gate: 2 drec byte-equal.
 Designer: oracle DEL helper. WAIT: branch from main after the DEL2E, DEL3C2 and DEL3C3 merges (each writes lines that hold Gfx: nd_ent.c, nd_gbi.h, nd_rec.c, nd_walk.c). Worktree build3ds/wt/DELGT, branch DELGT. PM_ROW=DELGT PM_LANE=DELGT.
-Edit only: 3ds/src/*.c, 3ds/include/*.h (not nd_nolist.h), include/gbi_custom.h (the macro line 33 and its comments), 3ds/tools/*.c (casts only, fix rights), 3ds/tests/lkey/allow.txt (count only).
+Edit only: 3ds/src/*.c, 3ds/include/*.h (not nd_nolist.h), include/gbi_custom.h (the macro line 33 and its comments), include/PR/gbi.h (:1637-1657 only), 3ds/tools/gbi_inc/PR/gbi.h, 3ds/tools/*.c (casts only, fix rights), 3ds/tests/lkey/allow.txt (count only).
 ## Facts (code read, main a5dcbad433)
 - FACT Gfx is the union of include/PR/gbi.h:1628-1657: 8 bytes, `words` is Gwords `{ unsigned int w0; unsigned int w1; }`, `long long force_structure_alignment` sets the 8-byte alignment. The port code reads only `.words.w0`, `.words.w1` and the size (git grep `\.words\.` in 3ds/src).
 - FACT game TUs build with `-Wno-incompatible-pointer-types` (CMakeLists.txt:326); port TUs (3ds/src) do not, and the host tests use -Werror: a missed Gfx/NdW2 pair is a compile error, not a silent change.
@@ -10,7 +10,7 @@ Edit only: 3ds/src/*.c, 3ds/include/*.h (not nd_nolist.h), include/gbi_custom.h 
 ```c
 /* DELGT: the 8-byte word pair of a record or a unit (the layout of the N64 Gfx union: w0, w1, 8-byte aligned) */
 typedef union NdW2 { struct { unsigned int w0, w1; } words; long long force_structure_alignment; } NdW2;
-_Static_assert(sizeof(NdW2) == 8 && _Alignof(NdW2) == 8, "NdW2");
+_Static_assert(sizeof(NdW2) == 8, "NdW2"); /* alignment as Gfx: the same long long member (4 on the -m32 host, 8 on the ARM) */
 ```
 2. One command (bytes in, bytes out, keeps CRLF; nd_cmd.h is skipped so the typedef stays):
 ```python
@@ -26,14 +26,15 @@ print('delgt files', n)
 EOF
 ```
 3. A file of edit 2 that names NdW2 and does not see nd_cmd.h: add `#include "nd_cmd.h"` after its last include (include/gbi_custom.h: put it before the macros).
-4. `git grep -nw "Gfx" -- 3ds/src 3ds/include/*.h include/gbi_custom.h ':!3ds/include/nd_nolist.h' > build3ds/out/delgt_grep.txt`: no line.
+4. Move the union `typedef union { ... } Gfx;` (include/PR/gbi.h:1637-1657) into 3ds/tools/gbi_inc/PR/gbi.h after its `#include_next <PR/gbi.h>` (:4): the host macros keep Gfx, the device has none.
+5. `git grep -nw "Gfx" -- 3ds/src 3ds/include/*.h include/gbi_custom.h ':!3ds/include/nd_nolist.h' > build3ds/out/delgt_grep.txt`: no line.
 ## Steps (one command per step, output to build3ds/out/, read the last 20 lines; Bash `timeout: 600000`; 1 lane build; at most 4 Azahar starts of 8)
-1. Edits 1-4. `sh 3ds/tools/nd_host_test.sh > build3ds/out/delgt_host.txt 2>&1`: PASS. Commit `DELGT 1: the port word pair is NdW2`.
+1. Edits 1-5. `sh 3ds/tools/nd_host_test.sh > build3ds/out/delgt_host.txt 2>&1`: PASS. Commit `DELGT 1: the port word pair is NdW2`.
 2. `python 3ds/tools/bench.py base entcape_kmr03_drec --commit $(git merge-base HEAD main) > build3ds/out/delgt_base1.txt 2>&1`. `sh 3ds/tools/rowloop.sh --row DELGT --bench entcape_kmr03_drec --no-host --why "DELGT word pair type" > build3ds/out/delgt_loop1.txt 2>&1`. Then the same 2 commands for spot_mac01_drec (delgt_base2.txt, delgt_loop2.txt).
 3. `python 3ds/tools/listcen.py > build3ds/out/delgt_listcen.txt`.
 ## Gate (exact)
-Host PASS. Both rowloops exit 0 (byte-equal). delgt_grep.txt empty. listcen gfxtype 1 (`listcen file gfxtype include/PR/gbi.h 1` only) when DEL3C1 is merged; reader and model not higher.
+Host PASS. Both rowloops exit 0 (byte-equal). delgt_grep.txt empty. Device build rc 0 (a game or asset TU that names Gfx fails here: stop and send it). listcen gfxtype 0 when DEL3C1 is merged; reader and model not higher.
 ## Fix rights and stop
 Fix rights: the listed files; compile errors of the retype: an incompatible pointer between a port NdW2* and a game or host Gfx* (cast it at that call, `(NdW2*)` or `(Gfx*)`, name each cast in the commit). `lkey census bad <file> <n> listed <m>`: set that count in allow.txt to n. Stop: a DIFF, a crash, a tool fault, more than 10 casts (send the list). Commit the outputs (`git add -f`), send the paths to the oracle of the launch prompt with SendMessage, wait. Pitfalls: one host test at a time; one bench per rowloop call.
 ## Hand-back
-Last commit `DELGT 2: gate. entcape and spot_mac01 drec equal; gfxtype -> 1` deletes this page. One SubagentHandback: commit hash, listcen totals, the cast list.
+Last commit `DELGT 2: gate. entcape and spot_mac01 drec equal; gfxtype -> 0` deletes this page. One SubagentHandback: commit hash, listcen totals, the cast list.
