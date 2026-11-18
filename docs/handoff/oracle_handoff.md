@@ -9,7 +9,7 @@ Run listcen for fresh numbers.
 - User 2026-11-17: as many parallel Haiku coders as the plan allows. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0.
 ## Merged on main: NST1, NST3, NST2A-H, FALLBK, NDR0A-E1, NDR5, NCONV1A, REN1-REN7, MREN, PSOFB, HWFIX1, BOTSCR, BBRACE.
 ## Pages on main (oracle FIN)
-- Running: NST2I (step 1 339c372f03). Waiting: NDR0E2 and NST2J (after NST2I, together: disjoint hunks), REN8 (after both),
+- Running: NST2I (step 1 339c372f03). Ready: DEL4D34 (7294a1f351, include/PR headers). Waiting: NDR0E2 and NST2J (after NST2I, together: disjoint hunks), REN8 (after both),
   NDR0F1 (after NDR0E2). NST2J: core 1 NdDs.sc_lost/sc_dirty follow sc_ok/sc_sig (nd_ds.c ds_sync); dschk sclbad, sigbad.
 - NST2H keys (FACT, a06c9a7b4c): spot 10130 2022d 1033e 1012a 1012b; wscmb 20130 1033e 10130 2022d 20220; axns and fxchk_a 20220 20121 10130.
 - NDR5 gap (answered): no row. load_mtx guards the source itself (nd_mtx_set.c:134 mtx_bad); gbi_cold_bad_mtx is a warning with list context.
@@ -19,7 +19,8 @@ Run listcen for fresh numbers.
    NDR0G (binds: ensure_tile, dual_bind nd_geom.c:212-213 from td in the snap). Then W5: NDR2 direct (nd_pso_decide nd_direct.c:69 desc form), NDR4, NCONV1D.
 3. NST2I rule 9 (every command sets ep first) masks rules 1-8 in the dschk word: epbad then counts quiet commands only (key 9xx, op).
    The per-draw ep (S4) needs sc_lost precision: NST2J measures it (sclbad, sigbad). From its scl lines: the next sc row (ranges, glyphs, box pattern).
-4. After REN5-8 and MREN: no rename row is left. Files with NDO_ that stay: none outside the deleted set (nd_op.h, nd_set.c, nd_walk.c,
+4. Dead declarations for DEL1D: nd_walk_state at nd_api.h:13 and nd_direct.c:252 (no caller outside nd_walk.c; host stubs define it).
+5. After REN5-8 and MREN: no rename row is left. Files with NDO_ that stay: none outside the deleted set (nd_op.h, nd_set.c, nd_walk.c,
    nd_dlc.c, nd_shape.c, nd_tex_set.c, nd_gtab.c, nd_mtx_set.c 1, nd_geo.c REN5). Comment-only NDO_ in nd_int.h, nd_target.c, nd_scomp.h, nd_gtab.h, nd_api.h.
 ## Facts that cost time
 - Core 1 (logic thread, pm_logic.c) runs at the same time as core 0 (walker). Det runs are serial: a race does not show in a bench.
