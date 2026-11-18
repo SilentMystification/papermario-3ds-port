@@ -14,7 +14,7 @@ typedef struct NdSnapChk {
     NdCombOut o; /* NDR0E1: the coloured combine decision of core 1 */
     uint32_t pad2; /* NDR0E1: size to a multiple of 8 */
     NdRender rs; /* NDR0F1: nd_render_state of the snapshot (core 1) */
-    int32_t mixk; uint32_t mixc; /* NDR0F1: nd_snap_mix of the snapshot (kind, colour) */
+    int32_t mixk; unsigned mixc; /* NDR0F1: nd_snap_mix of the snapshot (kind, colour) */
     uint32_t pad3; /* NDR0F1: size to a multiple of 8 (the rs and mix words) */
 } NdSnapChk;
 _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
