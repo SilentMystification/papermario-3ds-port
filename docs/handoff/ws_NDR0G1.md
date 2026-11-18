@@ -1,7 +1,7 @@
 # ws_NDR0G1 (Haiku): the snap carries the bind block of tiles 0 and 1; snapchk compares it with the walker tiles (stage S4; counter: none of C1-C12, snapchk bad stays 0)
 Designer: oracle FIN. WAIT: branch from main after the NDR0F1 merge. Worktree build3ds/wt/NDR0G1, branch NDR0G1. PM_ROW=NDR0G1 PM_LANE=NDR0G1.
 Edit only: 3ds/include/nd_snap.h (struct and the nd_snap_rnd prototype area), 3ds/src/nd_snap_in.c, 3ds/src/nd_snap.c (nd_snap_mesh and sc_compare only), 3ds/tools/nd_snap_test.c.
-Runs in parallel with NDR0F2 (it edits nd_snap.c below sc_compare, the last line of sc_compare and the nd_snapchk_rnd prototypes).
+Runs in parallel with NDR0F2 (it edits nd_snap.c below sc_compare and the nd_snapchk_rnd prototypes). WAIT also for the NDR0F1B fix in the NDR0F1 merge.
 ## Facts (code read, main 15887422d3 and NDR0F1 138c5a5a2a)
 - ensure_tile (nd_tex_set.c:441-449) and ensure_tile_slow (:335-385) read nd_ws.td[n], tst1.tile_wrap[n], tst1.tile_sz[n]. dual_bind (nd_comb.c:408-435) also reads tst1.tile_shift[0..1].
 - Core 1 keeps td[0..1] and tst1 in nd_ds.w (nd_ds.c ds_td0 :176, ds_td1 :184). dschk compares td (invalid td zeroed, nd_ds.c:524) and tst1: bad 0 (NST2J gate).
