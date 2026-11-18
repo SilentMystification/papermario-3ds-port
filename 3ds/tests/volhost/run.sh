@@ -4,7 +4,7 @@
 # container holds exactly the files of the key list. Seeded faults: a list with one file outside HOST_IN (3ds/HANDOFF.md) gives
 # a container tree that differs from the key list; one appended byte in a copy of the asset volume gives rc 7.
 # Usage, from the repo root after one nd_host_test.sh run: sh 3ds/tests/volhost/run.sh. Prints "volhost ok" or "volhost FAIL <why>".
-O=build3ds/out/hostkey
+O=$(ls -dt build3ds/out/hostkey_*/ 2>/dev/null | head -1) # HSRUN: the newest hostkey_<RUN> folder of nd_host_test.sh
 [ -s $O/asset_now.txt ] && [ -s $O/host_in.txt ] || { echo "volhost FAIL no $O/asset_now.txt or $O/host_in.txt (run nd_host_test.sh first)"; exit 1; }
 AV=pm3ds-assets-$(sha1sum < $O/asset_now.txt | cut -c1-16)
 SV=pm3ds-assets-vhseed$$
