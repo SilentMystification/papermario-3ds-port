@@ -868,11 +868,6 @@ void appendGfx_model(void* data) {
                    (int)model->textureVariation, model->textureID ? (void*)TextureHandles[model->textureID + model->textureVariation].gfx : NULL, (int)gCurrentCameraID, (void*)model->modelNode, (int)(model->modelNode ? model->modelNode->type : -1));
         }
     }
-    { /* MDL1: model census mark, phase on only (pm_gbi.c mdc_*) */
-        extern int pm_ph_on;
-        extern void pm_gbi_mdl_mark(unsigned id, int pan);
-        if (pm_ph_on) pm_gbi_mdl_mark(model->modelID, (model->flags & MODEL_FLAG_HAS_TEX_PANNER) != 0);
-    }
     if (model->textureID != 0) {
         textureHandle = &TextureHandles[model->textureID + model->textureVariation];
         textureHeader = &textureHandle->header;
@@ -936,15 +931,6 @@ void appendGfx_model(void* data) {
     /* RC1: plain flag, hoisted out of the census block below. It is the record capture test (header w1 bit 9). */
     int plain = (renderClass == RENDER_CLASS_1CYC || renderClass == RENDER_CLASS_2CYC)
         && tintCombineType == TINT_COMBINE_NONE && !(flags & (MODEL_FLAG_USES_CUSTOM_GFX | MODEL_FLAG_HAS_TEX_PANNER | MODEL_FLAG_BILLBOARD));
-    { /* MR0 and MS0: plain model flag for the census (pm_gbi.c mr0_*, ms0_*), phase on only */
-        extern int pm_ph_on;
-        extern void pm_gbi_mr0_plain(int plain);
-        extern void pm_gbi_ms0_mark(int opaque, unsigned tex);
-        if (pm_ph_on) {
-            pm_gbi_mr0_plain(plain);
-            pm_gbi_ms0_mark(plain && renderMode == RENDER_MODE_SURFACE_OPA, model->textureID ? (unsigned)(model->textureID + model->textureVariation) : 0u);
-        }
-    }
 
     /* M4-2: plain opaque model = 1CYC, SURFACE_OPA, one texture bind, no local vertex copy (plain is checked above). The record replaces its texture and render mode words. */
     /* S3F-2: 1CYC, 2CYC and FOG classes, every render mode, the combine word and the fog words in the record. Not in the record yet: the tint
@@ -4078,23 +4064,11 @@ RenderTask* queue_render_task(RenderTask* task) {
 }
 
 extern int pm_ph_on;
-extern void pm_gbi_mdl_mark(unsigned id, int pan);
 /* EFFCEN: per-task cost census (pm_effcen.c), word effcen only */
 extern int pm_effcen_on(void);
 extern unsigned pm_effcen_t0(void);
 extern void pm_effcen_task(const void* fn, const void* arg, unsigned t0);
 extern void pm_effcen_frame(void);
-/* MDL1 task census, phase on only: the ops of a task go to a pseudo model ID, not to the last model mark.
- * 0xF001 render_transform_group, 0xF002 appendGfx_model_group, 0xF0FF other task. 0xF0FE is the tail (pm_gbi.c mdc_*). */
-static __attribute__((cold, noinline)) void census_task_mark(void (*fn)(void*)) {
-    extern unsigned pm_gbi_task_id(const void* fn);
-    unsigned id;
-    if (fn == render_transform_group) id = 0xF001;
-    else if (fn == appendGfx_model_group) id = 0xF002;
-    else id = pm_gbi_task_id((const void*)fn); /* T2b: one ID per function pointer */
-    pm_gbi_mdl_mark(id, 0);
-}
-#define CENSUS_TASK(fn) do { if (pm_ph_on) census_task_mark(fn); } while (0)
 
 /* BAT1: plain opaque model task = the MR0/MS0 census test in appendGfx_model (1CYC or 2CYC class, no tint, no custom gfx,
  * panner, billboard, floor reflection, no fog). Only these tasks are reordered. */
@@ -4266,7 +4240,6 @@ void execute_render_tasks(void) {
             }
 
             /* the key is (draw function, argument): the argument alone is not always an object pointer (PaperBoat note) */
-            CENSUS_TASK(appendGfx);
             if (ec_on) ec_t0 = pm_effcen_t0();
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
@@ -4281,7 +4254,6 @@ void execute_render_tasks(void) {
         for (i = 0; i < taskCount; i++) {
             task = &taskList[sorted[i]];
             appendGfx = task->appendGfx;
-            CENSUS_TASK(appendGfx);
             if (ec_on) ec_t0 = pm_effcen_t0();
             FI_OPEN(task->appendGfx, task->appendGfxArg);
             appendGfx(task->appendGfxArg);
@@ -4289,7 +4261,6 @@ void execute_render_tasks(void) {
             if (ec_on) pm_effcen_task(appendGfx, task->appendGfxArg, ec_t0);
         }
     }
-    if (pm_ph_on) pm_gbi_mdl_mark(0xF0FE, 0); /* tail: ops after the last task */
     if (ec_on) pm_effcen_frame();
 
     RenderTaskListIdx++;

@@ -28,7 +28,6 @@ float vp_tx = 160.f, vp_ty = 120.f, vp_tz = 127.75f;
 
 unsigned gm_last = 0xffffu; /* GV1: the gm_tab entry of the last G_VTX */
 
-unsigned gm_steps; /* W1: entries compared by gv_matrix_id, summed over the report window */
 
 float (*gm_tab)[4][4]; /* matrices of the frame, PM_GM_N */
 
@@ -86,7 +85,6 @@ unsigned gv_matrix_id(int need_nm) {
     /* H3: the newest entry with the same combined matrix (and normal when needed), found by probing its hash chain */
     for (p = gm_hash(combined); gm_idx[p]; p = (p + 1) & (2u * PM_GM_N - 1u)) {
         unsigned e = gm_idx[p] - 1u;
-        gm_steps++;
         if ((best == GV_NONE || e > best) && memcmp(gm_tab[e], combined, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm[e], nm, sizeof nm) == 0) &&
             (!tw || (memcmp(gm_tab_k[e], combined_k, sizeof(float[4][4])) == 0 && (!need_nm || memcmp(gm_nrm_k[e], nm_k, sizeof nm_k) == 0)))) best = e;
     }

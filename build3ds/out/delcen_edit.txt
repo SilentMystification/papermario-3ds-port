@@ -1,0 +1,28 @@
+3ds/src/nd_cen.c: 602 lines in, 162 out
+3ds/include/nd_int.h: 426 lines in, 397 out
+3ds/src/nd_walk.c: 822 lines in, 812 out
+3ds/src/nd_tex_set.c: 665 lines in, 653 out
+3ds/src/nd_recs.c: 341 lines in, 336 out
+3ds/src/nd_mtx_set.c: 305 lines in, 303 out
+3ds/src/nd_ent.c: 549 lines in, 549 out
+3ds/src/pm_gpu.c: 4750 lines in, 4747 out
+3ds/src/pm_interp.c: 199 lines in, 197 out
+3ds/src/pm_phase.c: 1178 lines in, 1173 out
+src/model.c: 4406 lines in, 4377 out
+src/cam_main.c: 590 lines in, 585 out
+src/main_loop.c: 417 lines in, 404 out
+rc=0
+ 3ds/include/nd_int.h |  33 +---
+ 3ds/src/nd_cen.c     | 440 ---------------------------------------------------
+ 3ds/src/nd_ent.c     |   2 +-
+ 3ds/src/nd_mtx_set.c |   2 -
+ 3ds/src/nd_recs.c    |   5 -
+ 3ds/src/nd_tex_set.c |  14 +-
+ 3ds/src/nd_walk.c    |  20 +--
+ 3ds/src/pm_gpu.c     |   7 +-
+ 3ds/src/pm_interp.c  |   2 -
+ 3ds/src/pm_phase.c   |   7 +-
+ src/cam_main.c       |   5 -
+ src/main_loop.c      |  13 --
+ src/model.c          |  29 ----
+ 13 files changed, 12 insertions(+), 567 deletions(-)

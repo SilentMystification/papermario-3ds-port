@@ -1,0 +1,6 @@
+3ds/src/nd_cen.c:2: * census (os_*), the producer census (pk_*, pm_gbi_prod_mark), the model census (mdc_*), the window and frame end hooks.
+3ds/src/nd_cen.c:3: * Cold except os_op_hook and mdc_op, which the walk calls per op under phase. */
+3ds/src/pm_tex.c:1085:    unsigned n = 0, bytes = 0, u0n = 0, u0b = 0, rec_b = 0, rec_n = 0;
+3ds/src/pm_tex.c:1099:        if (age <= 300) { rec_n++; rec_b += b; }
+3ds/src/pm_tex.c:1119:    pm_log_d("texstat live: %u slots %uKB, never hit %u (%uKB), used in last 300 frames %u (%uKB)", n, bytes >> 10, u0n, u0b >> 10, rec_n, rec_b >> 10);
+grep_rc=0
