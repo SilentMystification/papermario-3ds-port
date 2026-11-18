@@ -400,6 +400,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
     const unsigned ch = nd_ds_apply(&nd_ds, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
+    if ((w0 >> 24) == NDO_CALL) nd_ds_list(&nd_ds, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
     { /* NST3 ep rule (design section 6), core 1 data only */
         const unsigned id = w0 >> 24;
         if ((ch & 1u) && id != NDO_VTX && id != NDO_TRI1 && id != NDO_TRI2 && id != NDO_MTX && id != NDO_POPMTX) ds_ep = 1;

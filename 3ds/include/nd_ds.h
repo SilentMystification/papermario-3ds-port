@@ -24,6 +24,8 @@ typedef struct NdDs {
 extern NdDs nd_ds;
 /* Applies one typed unit (w0 = id << 24 | a, w1 = b). Bit 0 of the result: a field value changed. Other ids change nothing. */
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v);
+/* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an NDO_CALL unit of nd_rec_nr); see nd_ds.c. */
+void nd_ds_list(NdDs* s, const void* l, int depth);
 /* NST3 dschk: the count of differing fields of two NdDs copies (draw-time fields zeroed first); the first max names into bad. */
 int nd_ds_cmp(const NdDs* a, const NdDs* b, const char** bad, int max);
 #endif

@@ -4,10 +4,14 @@
 #include <string.h>
 #include "nd_ds.h"
 #include "nd_op.h"
+#include "nd_gtab.h"
 
 int pm_wide;
 int is_host(u32 p) { return p >= 0x00100000u; }
 void tex_win_s25(int* a, int* b, int* c, int* d, unsigned e, unsigned f, unsigned g, unsigned h) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; }
+/* NST2A: no device table and no v1 table in the host test (the list case below is a raw typed list). */
+const NdNDev* nd_ntab_find(const void* list) { (void)list; return NULL; }
+const NdGTab* nd_gtab_find(const void* list) { (void)list; return NULL; }
 
 static int nf, bad;
 #define CHK(name, got, want) do { nf++; if ((unsigned long)(got) != (unsigned long)(want)) { bad++; printf("nst1 BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
@@ -70,6 +74,18 @@ int main(int argc, char** argv) {
     CHK("segbase6", s->w.segbase[6], fault ? 0x00300004u : 0x00300000u);
     /* a repeat changes nothing */
     CHK("repeat ch", U(NDO_ENV, 0, 0x55667788u), 0);
+    /* 13 NST2A list: a raw typed list {PRIM, CALL B, END}, B = {ENV, END} (fault: B without its ENV) */
+    {
+        static uint32_t lb[4], la[8];
+        lb[0] = NDO_W0(NDO_ENV, 0); lb[1] = 0xCAFE0001u; lb[2] = NDO_W0(NDO_END, 0); lb[3] = 0;
+        if (fault) lb[0] = NDO_W0(NDO_END, 0);
+        la[0] = NDO_W0(NDO_PRIM, 5); la[1] = 0x11223344u;
+        la[2] = NDO_W0(NDO_CALL, 0); la[3] = (uint32_t)(uintptr_t)lb;
+        la[4] = NDO_W0(NDO_END, 0); la[5] = 0; la[6] = 0; la[7] = 0;
+        nd_ds_list(&nd_ds, la, 0);
+        CHK("list prim", s->w.prim, 0x11223344u); CHK("list prim_lod", s->w.prim_lod, 5);
+        CHK("list env", s->w.envc, 0xCAFE0001u);
+    }
     printf("nst1 fields %d bad %d\n", nf, bad);
     return bad ? 1 : 0;
 }

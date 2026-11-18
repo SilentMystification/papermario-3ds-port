@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "nd_ds.h"
+#include "nd_gtab.h"
 #include "nd_ops.h"
 #include "nd_op.h"
 #include "nd_dual.h"
@@ -295,6 +296,55 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
     }
     return ch;
 }
+
+/* NST2A nd_ds_list (design_nstate.md section 5, NST2a). Applies the state units of a static list to nd_ds in the order core 0 runs them:
+ * a v2 table its units nt->u (nu pairs); a v1 table its ops in gt_ops order (NDG_DEF d.u, NDG_UNIT, NDG_CALL); any other list its typed
+ * pairs to NDO_END (at most DS_LIST_MAX). A call unit recurses at depth + 1 (ND_LIST_DEPTH 12, nd_walk.c); a call with w0 bit 0 (the
+ * branch form) ends the list that holds it. */
+#define DS_LIST_MAX 200000u
+#define DS_LIST_DEPTH 12u
+static void ds_list_at(NdDs* s, uint32_t w, unsigned depth);
+static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth);
+/* n pairs of u; raw: stop at NDO_END (the list end of a typed list). */
+static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int raw) {
+    for (unsigned i = 0; i < n; i++) {
+        const uint32_t w0 = u[2u * i], w1 = u[2u * i + 1u];
+        if (raw && (w0 >> 24) == NDO_END) return;
+        if ((w0 >> 24) == NDO_CALL) {
+            ds_list_at(s, w1, depth + 1u);
+            if (w0 & 1u) return;
+        } else {
+            nd_ds_apply(s, w0, w1);
+        }
+    }
+}
+static void ds_list_at(NdDs* s, uint32_t w, unsigned depth) {
+    if (depth >= DS_LIST_DEPTH) return;
+    const void* l = ds_ptr(s, w);
+    if (!l) return;
+    const NdNDev* nt = nd_ntab_find(l);
+    if (nt) { ds_pairs(s, nt->u, nt->nu, depth, 0); return; }
+    const NdGTab* g = nd_gtab_find(l);
+    if (g) { ds_gtab(s, g, depth); return; }
+    ds_pairs(s, (const uint32_t*)l, DS_LIST_MAX, depth, 1);
+}
+static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth) {
+    if (depth >= DS_LIST_DEPTH) return;
+    for (const NdGOp* o = t->op;; o++) {
+        switch (o->k) {
+        case NDG_DEF: { const NdGDef* g = (const NdGDef*)o->p; ds_pairs(s, (const uint32_t*)g->d.u, g->d.n, depth, 0); break; }
+        case NDG_UNIT: ds_pairs(s, (const uint32_t*)o->p, 1u, depth, 0); break;
+        case NDG_CALL:
+            ds_gtab(s, (const NdGTab*)o->p, depth + 1u);
+            if (o->a & 1u) return; /* a branch ends the list that holds it */
+            break;
+        case NDG_VTX: case NDG_TRI: break; /* no state */
+        default: return; /* NDG_END */
+        }
+    }
+}
+/* nd_rec_dl (nd_gtab.c) and nd_rec_nr (nd_rec.c, an NDO_CALL unit with depth 1). l: a host address or a segment address. */
+void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(uintptr_t)l, (unsigned)depth); }
 
 /* NST3 dschk compare (design_nstate.md section 3). The draw-time fields are zeroed in both copies first: core 0 writes them at draw
  * time (td[], tile_x0/y0, tile_fx/fy, cur_tile) and sync_render writes fogmix_on. The table names every other field of NdDs (the
