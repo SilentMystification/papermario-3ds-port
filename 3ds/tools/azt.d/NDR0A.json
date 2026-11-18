@@ -25,7 +25,7 @@
         },
         {
           "name": "snapchk",
-          "regex": "snapchk f200 cmds [1-9]\\d* "
+          "regex": "snapchk f200 recs [1-9]\\d* "
         }
       ]
     },
