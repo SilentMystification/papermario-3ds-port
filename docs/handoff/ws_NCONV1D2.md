@@ -1,24 +1,39 @@
-# ws_NCONV1D2 (Haiku): a list draw takes its combine, render state and binds from its snap, in path P1 and path P2 (stage S5. Counter: none of C1-C12. Gate: byte-equal, no expected-diff)
-Designer: oracle NCONV1D. WAIT: branch from main after the NCONV1D1 merge, and only when its hand-back shows `lsnap` bad 0, tmis 0, over 0, p1 above 0 and wst 0 in both list scenes. A wst above 0 means the walker tiles of a list are stale: the oracle asks the user for an expected-diff gate first.
-Worktree build3ds/wt/NCONV1D2, branch NCONV1D2. PM_ROW=NCONV1D2 PM_LANE=NCONV1D2. Edit only (Edit tool, keep CRLF): 3ds/src/nd_snap.c, 3ds/src/nd_geom.c, 3ds/src/nd_shape.c.
-## Facts (code read, main after NCONV1D1. Find each line by its text.)
-- FACT nd_geom.c draw_tri: the lines `nd_snap_rpend = nd_snap_arm;` and `if (nd_snap_arm) { nd_snapchk_tri(); ...}` consume an armed snap (combine apply, render state and binds at the epoch enter, the bind epoch bump of NDR0G2). P2 draws through draw_tri.
-- FACT nd_shape.c:428-433: dlc_seg (path P1) has no draw_tri. It enters the epoch itself (`if (ep_epoch != gv_epoch) gv_epoch_enter();`). So it takes the same steps. dlc_seg is shared with map shapes: nd_ls_on gates every new line.
-- After NCONV1D1, nd_lsr_tri loads the range snap into sc_cur at each range start and compares it under snapchk. This row replaces that compare with the arm: nd_snapchk_tri compares and applies.
-- A walker epoch bump inside a snap range (a light, for example) needs the snap too: `nd_snap_rpend` is `arm | nd_ls_on`.
-## Edits
-1. nd_snap.c nd_lsr_tri. Before (after `lr_cur = r;`): `if (!PMDL("snapchk")) return;` then the memcpy, `const unsigned b0 = sc_bad, w0 = sc_wst;`, `lr_cmp++; lr_c1 += lr_p1; sc_compare(); nd_snapchk_rnd(); lr_wst += sc_wst - w0;` and the `if (sc_bad != b0) {...}` line.
-   After: `lr_cur = r; memcpy(&sc_cur, (const char*)lr_b + ND_LS_HDR(n) + r * sizeof sc_cur, sizeof sc_cur); nd_snap_arm = 1; lr_cmp++; lr_c1 += lr_p1; }`. Delete `lr_nlog` from the declaration (unused). The `bad` and `wst` of the lsnap line now stay 0: the snapchk line counts them.
-2. nd_geom.c draw_tri: `nd_snap_rpend = nd_snap_arm;` becomes `nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NCONV1D2 */`.
-3. nd_shape.c dlc_seg. Before: `if (nd_ls_on) nd_lsr_seg(nd_ls_ord);` and the next line `if (ep_epoch != gv_epoch) gv_epoch_enter();`. After:
-   `if (nd_ls_on) nd_lsr_seg(nd_ls_ord); const unsigned char sn = nd_ls_on && nd_snap_arm; /* NCONV1D2: the steps of draw_tri */`
-   `if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; nd_snap_rpend = nd_ls_on; if (sn) { nd_snapchk_tri(); if (ep_epoch == gv_epoch) nd_snapchk_rnd(); }`
-   `if (ep_epoch != gv_epoch) gv_epoch_enter(); nd_snap_rpend = 0;`
-## Steps (output to build3ds/out/, read the last 20 lines. 1 build, at most 8 Azahar starts)
-1. `sh 3ds/tools/nd_host_test.sh > build3ds/out/nc1d2_host.txt 2>&1`: PASS. Commit `NCONV1D2 1: list draws consume their snap`.
-2. One call each: `python 3ds/tools/bench.py base <b>` and `sh 3ds/tools/rowloop.sh --row NCONV1D2 --bench <b> --no-host` for b = fxops_drec, entcape_kmr03_drec, nimgm_strip_drec. For a DIFF: `python 3ds/tools/drecsum.py <b> --row NCONV1D2` and `grep -a "bindsnap\|drec frame" build3ds/azt/logs/<b>.txt`.
-3. One call each: `python 3ds/tools/bench.py run <s> --row NCONV1D2 --why "NCONV1D2 consume"` for s = fxops_snapchk, entcape_kmr03_snapchk. `grep -a "snapchk\|lsnap" build3ds/azt/logs/<s>.txt > build3ds/out/nc1d2_<s>.txt`.
-Gate (exact). Host PASS. The 3 drec benches are byte-equal. In both runs the last `snapchk` line has bad 0 (it counts the list compares now) and the last `lsnap` line has tmis 0, over 0 and cmp above 0. The sum of p1 over both runs is above 0. Report wst, cmp, p1 per run.
-Stop: any DIFF (no expected-diff gate has the user's yes for this row: send the drecsum line, the first DIFF draw and the bindsnap lines to the oracle), a crash, a fatal line, bad above 0, a tool fault. Commit the outputs, send the paths to the oracle with SendMessage, wait. Fix rights: the 3 listed files, compile errors.
-Pitfalls: one host test at a time (rowloop takes --no-host), PM_CACHE=off only as a prefix of one command, one bench per rowloop call. The perf cost is OPEN: the end prof push measures it.
-Hand-back: last commit `NCONV1D2 2: gate. 3 drec equal; snapchk bad 0, lsnap cmp <n> p1 <n>` deletes this page. One SubagentHandback: commit hash, the lsnap and snapchk lines of both runs.
+# ws_NCONV1D2 (Haiku): a list draw takes its combine, render state and tile words from its range snap, in path P1 (dlc_seg) and path P2 (draw_tri). Stage S5. Counter: none of C1-C12. Gate: byte-equal, no expected-diff. New counter: lsnap `bst`.
+Designer: oracle NCONV1D2. Branch from main (5eddc668ee or later). Worktree build3ds/wt/NCONV1D2, branch NCONV1D2. PM_ROW=NCONV1D2 PM_LANE=NCONV1D2.
+Edit only (Edit tool, keep CRLF): 3ds/src/nd_snap.c, 3ds/include/nd_snap.h, 3ds/src/nd_geom.c, 3ds/src/nd_shape.c. Find each line by its text.
+## Facts (code read, main 5eddc668ee)
+- FACT NCONV1D1 hand-back: fxops_snapchk lsnap cmp 1583, wst 1577. The old `wst` compares the walker tiles at the range start. It does not show the tiles that the draw binds.
+- FACT nd_geom.c:213: gv_epoch_enter binds from the snap blocks (nd_ep_bs) only when nd_snap_rpend is 1, else from the walker tiles (nd_ws.td, nd_ws.tst1).
+- The new counter `bst` counts list triangles in an open epoch whose bound tile words (nd_ep_bs, NULL = walker) differ from the range snap. This row makes every list epoch bind from the snap, so bst goes to 0.
+- FACT: no host unit links nd_snap.c, nd_geom.c or nd_shape.c (oracle_handoff.md). Add no host test. Step 1 is the seeded-fault self-test of bst: the code before step 2 binds walker tiles.
+## Step 1 edits (the counter only)
+1a. nd_snap.c:245, in the declaration line: `lr_tmis, lr_nlog;` becomes `lr_tmis, lr_nlog, lr_bst;`. After the nd_lsr_tri function (after its closing `}`), add:
+   `void nd_lsr_bst(void) { if (PMDL("snapchk") && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) lr_bst++; } /* NCONV1D2: a list triangle whose epoch binds other tile words than its range snap */`
+1b. nd_snap.c:270, the lsnap line: `wst %u tmis %u` becomes `wst %u bst %u tmis %u`, and `lr_wst, lr_tmis` becomes `lr_wst, lr_bst, lr_tmis`.
+1c. nd_snap.h:93: at the end of the line `... void nd_lsc_unit(uint32_t w0);` add ` void nd_lsr_bst(void);`.
+1d. nd_geom.c:357. Before: `        nd_snap_rpend = 0; /* NDR0F1B */`. After: `        nd_snap_rpend = 0; /* NDR0F1B */ if (nd_ls_on) nd_lsr_bst(); /* NCONV1D2 */`.
+1e. nd_shape.c:435. Before: `    if (ep_epoch != gv_epoch) gv_epoch_enter();`. After: `    if (ep_epoch != gv_epoch) gv_epoch_enter(); if (nd_ls_on) nd_lsr_bst(); /* NCONV1D2 */`.
+## Step 2 edits (consume the snap)
+2a. nd_snap.c nd_lsr_tri. Before (after `lr_cur = r;`): the 6 lines from `if (!PMDL("snapchk")) return;` to the `if (sc_bad != b0) {...}` line. After (keep the closing `}`):
+   `    memcpy(&sc_cur, (const char*)lr_b + ND_LS_HDR(n) + r * sizeof sc_cur, sizeof sc_cur);`
+   `    nd_snap_arm = 1; lr_cmp++; lr_c1 += lr_p1; /* NCONV1D2: the next draw step consumes the range snap (nd_snapchk_tri) */`
+   In the declaration line delete `lr_bad, lr_wst, ` and `lr_nlog, `. Lsnap line: `p1 %u bad %u wst %u bst %u` becomes `p1 %u bst %u`, and `lr_c1, lr_bad, lr_wst, lr_bst` becomes `lr_c1, lr_bst`.
+2b. nd_geom.c:353. Before: `nd_snap_rpend = nd_snap_arm; /* NDR0F1B: ...` (keep the comment). After: `nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NCONV1D2: a list triangle binds from its range snap. NDR0F1B: ...`.
+2c. nd_shape.c dlc_seg. Before: `    if (nd_ls_on) nd_lsr_seg(nd_ls_ord);` and the line from 1e. After (6 lines in place of the 2):
+   `    if (nd_ls_on) nd_lsr_seg(nd_ls_ord);`
+   `    const unsigned char sn = nd_ls_on && nd_snap_arm; /* NCONV1D2: the snap steps of draw_tri (nd_geom.c) */`
+   `    if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;`
+   `    nd_snap_rpend = nd_ls_on; if (sn) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } }`
+   `    if (ep_epoch != gv_epoch) gv_epoch_enter();`
+   `    nd_snap_rpend = 0; if (nd_ls_on) nd_lsr_bst(); /* NCONV1D2 */`
+## Steps (one command per step, output to build3ds/out/, read the last 20 lines. Bash `timeout: 600000`. 2 builds, 3 counted Azahar starts of 8)
+1. Step 1 edits. `sh 3ds/tools/nd_host_test.sh > build3ds/out/nc1d2_host1.txt 2>&1`: PASS. `PM_ROW=NCONV1D2 PM_LANE=NCONV1D2 sh 3ds/build.sh > build3ds/out/nc1d2_build1.txt 2>&1`.
+2. `PM_ROW=NCONV1D2 PM_LANE=NCONV1D2 python 3ds/tools/bench.py run fxops_snapchk --row NCONV1D2 --why "NCONV1D2 bst before"`, then `grep -a "snapchk f\|lsnap f" build3ds/azt/logs/fxops_snapchk.txt > build3ds/out/nc1d2_before.txt`.
+   Pass: the last lsnap line has bst above 0 (GUESS: above 0, the walker tiles differ in 1577 ranges). bst 0 is a fault of the counter: stop. Commit `NCONV1D2 1: lsnap bst; fxops bst <n> before`.
+3. Step 2 edits. `sh 3ds/tools/nd_host_test.sh > build3ds/out/nc1d2_host2.txt 2>&1`: PASS. Commit `NCONV1D2 2: list draws consume their range snap`.
+4. `python 3ds/tools/bench.py base fxops_drec --commit $(git merge-base HEAD main) > build3ds/out/nc1d2_base.txt 2>&1`. Then `sh 3ds/tools/rowloop.sh --row NCONV1D2 --bench fxops_drec --no-host --why "NCONV1D2 consume"` (it builds).
+5. `PM_ROW=NCONV1D2 PM_LANE=NCONV1D2 python 3ds/tools/bench.py run fxops_snapchk --row NCONV1D2 --why "NCONV1D2 consume"`, then grep as in step 2 into build3ds/out/nc1d2_after.txt.
+Gate (exact): host PASS twice. fxops_drec cmp byte-equal (rowloop exit 0). After run: last snapchk line bad 0. Last lsnap line bst 0, tmis 0, over 0, cmp above 0, p1 above 0.
+Stop: a DIFF (the user has not said yes to an expected-diff gate for this row). Run `python 3ds/tools/drecsum.py fxops_drec --row NCONV1D2 > build3ds/out/nc1d2_drecsum.txt` and `grep -a "bindsnap\|drec frame" build3ds/azt/logs/fxops_drec.txt > build3ds/out/nc1d2_bindsnap.txt`. Also stop for: bst above 0 after step 2, bad above 0, a crash, a fatal line, a tool fault. Commit the outputs (`git add -f`), send the paths to the oracle with SendMessage, wait.
+Fix rights: the 4 listed files, compile errors only. Pitfalls: one host test at a time. One bench per rowloop call. The perf cost is OPEN (the end prof push measures it).
+Hand-back: last commit `NCONV1D2 3: gate. fxops drec equal; snapchk bad 0; lsnap bst <before> to 0, cmp <n> p1 <n>` deletes this page. One SubagentHandback: commit hash, the snapchk and lsnap lines of both fxops_snapchk runs.
