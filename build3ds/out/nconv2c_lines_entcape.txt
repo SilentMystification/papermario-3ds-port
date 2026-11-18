@@ -1,0 +1,6 @@
+#279 snapchk f100 recs 504 cmp 2360 bad 0 fbad 0 miss 1572 wst 0
+#280 lsnap f100 lists 1992 snaps 2114 cmp 1992 p1 1992 bst 0 tmis 0 over 0
+#281 lscut f100 epc 1952 epm 0 epx 0 dup 124 rect 0
+#306 snapchk f200 recs 1304 cmp 6120 bad 0 fbad 0 miss 3932 wst 0
+#307 lsnap f200 lists 5152 snaps 5474 cmp 5152 p1 5152 bst 0 tmis 0 over 0
+#308 lscut f200 epc 5152 epm 0 epx 0 dup 324 rect 0

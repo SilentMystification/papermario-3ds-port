@@ -1,0 +1,44 @@
+LIST: 2 scenarios, one kept slot, warm restart between them: fxops_snapchk, fxops_snapchk
+LIST: start fxops_snapchk at 16:21:07
+queue: position 1 of 1 waiting (lane 'base_6abfb4136', speed normal, scenario fxops_snapchk, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario fxops_snapchk, row BASECACHE, lane 'base_6abfb4136', slot 1, cap 30 s, deadline 25 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 25 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 25 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 5s: matched 'lsnap f500 lists [1-9]' (Azahar running; stopped by this run) warm kept; until at 5.0 s; end at 5.5 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: fxops_snapchk cap 30 until 5
+PASS  warp: #134 warp: mac_01 entry 0 (area 1 map 2) story -128 flag 0
+PASS  lsnap: #521 lsnap f500 lists 5768 snaps 6233 cmp 6233 p1 6233 bst 0 tmis 0 over 0
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NCONV2C\build3ds\azt\logs\fxops_snapchk.txt (copy of this run's log; slot 1)
+SUBJECT: FXOPS effects (fxtest 27, 45, 87, 105, 123) on mac_01 (pos 0 0 200), cold det start with the snapchk switch, no shots.
+SHOTS: 0 from this run
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NCONV2C\build3ds\lane-base_6abfb4136\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1886386, build 6902, commit 6abfb4136f40f5515246ef4247523f94bc5c4785
+  scene -                              windows   0 fps - ft -
+LIST: fxops_snapchk rc 0, wall 15.6 s
+LIST: start fxops_snapchk at 16:21:23
+queue: position 1 of 1 waiting (lane 'base_6abfb4136', speed normal, scenario fxops_snapchk, want slot 1)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario fxops_snapchk, row BASECACHE, lane 'base_6abfb4136', slot 1, cap 30 s, deadline 25 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 25 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 25 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 5s: matched 'lsnap f500 lists [1-9]' (Azahar running; stopped by this run) warm kept; until at 5.3 s; end at 5.7 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: fxops_snapchk cap 30 until 5.3
+PASS  warp: #134 warp: mac_01 entry 0 (area 1 map 2) story -128 flag 0
+PASS  lsnap: #521 lsnap f500 lists 5768 snaps 6233 cmp 6233 p1 6233 bst 0 tmis 0 over 0
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NCONV2C\build3ds\azt\logs\fxops_snapchk.txt (copy of this run's log; slot 1)
+SUBJECT: FXOPS effects (fxtest 27, 45, 87, 105, 123) on mac_01 (pos 0 0 200), cold det start with the snapchk switch, no shots.
+SHOTS: 0 from this run
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NCONV2C\build3ds\lane-base_6abfb4136\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1887213, build 6902, commit 6abfb4136f40f5515246ef4247523f94bc5c4785
+  scene -                              windows   0 fps - ft -
+LIST: fxops_snapchk rc 0, wall 16.3 s
+LIST DONE: wall 32.0 s. fxops_snapchk rc 0 15.6 s; fxops_snapchk rc 0 16.3 s
+base fxops_snapchk at 6abfb4136: not stored. One base build of that commit (lane base_6abfb4136), then the runs.
+base 6abfb4136: build from the basebin store (entry 7cfe04c834207488), no build
+list of 2 benches on one kept slot: fxops_snapchk, fxops_snapchk
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.
+base fxops_snapchk at 6abfb4136: two runs equal, stored 0 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\6abfb4136f40f5515246ef4247523f94bc5c4785\fxops_snapchk
