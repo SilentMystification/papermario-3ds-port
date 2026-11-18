@@ -9,46 +9,47 @@
 #include "nd_cmd.h"
 #include "nd_gbi.h"
 #include "nd_nr.h"
+#include "nd_fs.h"
 
 /* word setters: the image, tile, load and load-tlut commands (gbi.h gDPSetTextureImage, gDPSetTile, gDPLoadTile, gDPLoadBlock, gDPLoadTLUTCmd) */
-#define NDTX_IMG(O, f, s, w, i) O(NDO_W0(NDO_TIMG, ND_NR_IMG(f, s, w)), (unsigned int)(i))
+#define NDTX_IMG(O, f, s, w, i) O(ND_FS_W0(ND_FS_TIMG, ND_NR_IMG(f, s, w)), (unsigned int)(i))
 #define nd_tex_img(...) NDTX_IMG(nd_nr, __VA_ARGS__)
 #define NDTX_TILE(O, fmt, siz, line, tmem, tile, palette, cmt, maskt, shiftt, cms, masks, shifts) \
-    O(NDO_W0(NDO_TILE, ND_NR_TILE_A(fmt, siz, line, tmem)), ND_NR_TILE_B(tile, palette, cmt, maskt, shiftt, cms, masks, shifts))
+    O(ND_FS_W0(ND_FS_TILE, ND_NR_TILE_A(fmt, siz, line, tmem)), ND_NR_TILE_B(tile, palette, cmt, maskt, shiftt, cms, masks, shifts))
 #define nd_tex_tile(...) NDTX_TILE(nd_nr, __VA_ARGS__)
-#define NDTX_LDTILE(O, t, uls, ult, lrs, lrt) O(NDO_W0(NDO_LOADTILE, ND_NR_XY12(uls, ult)), ND_NR_TXY(t, lrs, lrt))
+#define NDTX_LDTILE(O, t, uls, ult, lrs, lrt) O(ND_FS_W0(ND_FS_LOADTILE, ND_NR_XY12(uls, ult)), ND_NR_TXY(t, lrs, lrt))
 #define nd_tex_ldtile(...) NDTX_LDTILE(nd_nr, __VA_ARGS__)
-#define NDTX_TSZ(O, t, uls, ult, lrs, lrt) O(NDO_W0(NDO_TILESIZE, ND_NR_XY12(uls, ult)), ND_NR_TXY(t, lrs, lrt))
+#define NDTX_TSZ(O, t, uls, ult, lrs, lrt) O(ND_FS_W0(ND_FS_TILESIZE, ND_NR_XY12(uls, ult)), ND_NR_TXY(t, lrs, lrt))
 #define nd_tex_tsz(...) NDTX_TSZ(nd_nr, __VA_ARGS__)
 #define nd_tex_hilite1(t, hl, wd, ht) nd_tex_tsz(t, ((hl)->h.x1 & 0xfff), ((hl)->h.y1 & 0xfff), (((((wd)-1)*4)+(hl)->h.x1) & 0xfff), (((((ht)-1)*4)+(hl)->h.y1) & 0xfff)) /* gDPSetHilite1Tile */
 #define nd_tex_hilite2(t, hl, wd, ht) nd_tex_tsz(t, ((hl)->h.x2 & 0xfff), ((hl)->h.y2 & 0xfff), (((((wd)-1)*4)+(hl)->h.x2) & 0xfff), (((((ht)-1)*4)+(hl)->h.y2) & 0xfff)) /* gDPSetHilite2Tile */
-#define NDTX_LDBLK(O, tile, uls, ult, lrs, dxt) O(NDO_W0(NDO_LOADBLOCK, ND_NR_XY12(uls, ult)), ND_NR_TXY(tile, MIN(lrs, G_TX_LDBLK_MAX_TXL), dxt))
+#define NDTX_LDBLK(O, tile, uls, ult, lrs, dxt) O(ND_FS_W0(ND_FS_LOADBLOCK, ND_NR_XY12(uls, ult)), ND_NR_TXY(tile, MIN(lrs, G_TX_LDBLK_MAX_TXL), dxt))
 #define nd_tex_ldblk(...) NDTX_LDBLK(nd_nr, __VA_ARGS__)
-#define NDTX_LDTLUT(O, tile, count) O(NDO_W0(NDO_LOADTLUT, 0u), ND_NR_TLUT(tile, count))
+#define NDTX_LDTLUT(O, tile, count) O(ND_FS_W0(ND_FS_LOADTLUT, 0u), ND_NR_TLUT(tile, count))
 #define nd_tex_ldtlut(...) NDTX_LDTLUT(nd_nr, __VA_ARGS__)
 
 /* colour and value setters: gDPSetFillColor, gDPSetFogColor, gDPSetBlendColor (the DPRGBColor word), gSPViewport (gDma2p) */
-#define nd_val_fill(d) nd_nr(NDO_W0(NDO_FILL, 0u), (unsigned int)(d))
-#define nd_val_fog(r, g, b, a) nd_nr(NDO_W0(NDO_FOG, 0u), ND_NR_RGBA(r, g, b, a))
-#define nd_val_blend(r, g, b, a) nd_nr(NDO_W0(NDO_BLEND, 0u), ND_NR_RGBA(r, g, b, a))
+#define nd_val_fill(d) nd_nr(ND_FS_W0(ND_FS_FILL, 0u), (unsigned int)(d))
+#define nd_val_fog(r, g, b, a) nd_nr(ND_FS_W0(ND_FS_FOG, 0u), ND_NR_RGBA(r, g, b, a))
+#define nd_val_blend(r, g, b, a) nd_nr(ND_FS_W0(ND_FS_BLEND, 0u), ND_NR_RGBA(r, g, b, a))
 #define NDTX_VIEWPORT(O, v) O(ND_NR_MOVEMEM(sizeof(Vp), G_MV_VIEWPORT, 0), (unsigned int)(v))
 #define nd_xf_viewport(v) NDTX_VIEWPORT(nd_nr, v)
 
 /* pipeline, fog, geometry and key setters: gSPFogPosition (gMoveWd), gDPPipelineMode (gSPSetOtherMode), gSPLoadGeometryMode (c = -1), gDPSetKeyR, gDPSetKeyGB */
-#define nd_pso_fogpos(min, max) nd_nr(ND_NR_MW(NDO_MW_FOG, 0u), \
+#define nd_pso_fogpos(min, max) nd_nr(ND_NR_MW(ND_FS_MW_FOG, 0u), \
     ND_NR_HL((128000/((max)-(min))), ((500-(min))*256/((max)-(min)))))
 #define nd_pso_pipe(m) nd_nr(ND_NR_OM(1, G_MDSFT_PIPELINE, 1), (unsigned int)(m))
 #define nd_pso_geom_load(w) nd_nr(ND_NR_GEOM(0xffffffffu), (u32)(w))
-#define nd_pso_keyr(cR, sR, wR) nd_nr(NDO_W0(NDO_RARE, NDO_RARE_KEYR), ND_NR_KEYR(cR, sR, wR))
-#define nd_pso_keygb(cG, sG, wG, cB, sB, wB) nd_nr(NDO_W0(NDO_RARE, NDO_RARE_KEYGB), ND_NR_RGBA(cG, sG, cB, sB)), \
+#define nd_pso_keyr(cR, sR, wR) nd_nr(ND_FS_W0(ND_FS_RARE, ND_FS_RARE_KEYR), ND_NR_KEYR(cR, sR, wR))
+#define nd_pso_keygb(cG, sG, wG, cB, sB, wB) nd_nr(ND_FS_W0(ND_FS_RARE, ND_FS_RARE_KEYGB), ND_NR_RGBA(cG, sG, cB, sB)), \
     (void)(wG), (void)(wB)
 
 /* scissor and rectangle setters: gDPSetScissorFrac, gDPFillRectangle, gDPScisFillRectangle, gSPTextureRectangle, gSPScisTextureRectangle */
-#define nd_pso_scisf(mode, ulx, uly, lrx, lry) nd_nr(NDO_W0(NDO_SCISSOR, ND_NR_XY12((int)(ulx), (int)(uly))), \
+#define nd_pso_scisf(mode, ulx, uly, lrx, lry) nd_nr(ND_FS_W0(ND_FS_SCISSOR, ND_NR_XY12((int)(ulx), (int)(uly))), \
     ND_NR_XY12((int)(lrx), (int)(lry))), (void)(mode)
-#define NDTX_FILL(O, ulx, uly, lrx, lry) O(NDO_W0(NDO_RECT, ND_NR_XY10(lrx, lry)), ND_NR_XY10(ulx, uly))
+#define NDTX_FILL(O, ulx, uly, lrx, lry) O(ND_FS_W0(ND_FS_RECT, ND_NR_XY10(lrx, lry)), ND_NR_XY10(ulx, uly))
 #define nd_rect_fill(ulx, uly, lrx, lry) NDTX_FILL(nd_nr, ulx, uly, lrx, lry)
-#define nd_rect_sfill(ulx, uly, lrx, lry) nd_nr(NDO_W0(NDO_RECT, ND_NR_XY10(MAX((lrx), 0), MAX((lry), 0))), \
+#define nd_rect_sfill(ulx, uly, lrx, lry) nd_nr(ND_FS_W0(ND_FS_RECT, ND_NR_XY10(MAX((lrx), 0), MAX((lry), 0))), \
     ND_NR_XY10(MAX((ulx), 0), MAX((uly), 0)))
 #define nd_rect_tex(xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
     nd_rec_texrect(ND_NR_TR_W0(xh, yh), ND_NR_TXY(tile, xl, yl), ND_TR_H1(s, t), ND_TR_H2(dsdx, dtdy))
@@ -63,9 +64,9 @@
 
 /* the texture rectangle as three units (the walker reads the rectangle and its two RDPHALF units at op_ctl, nd_gx_w merges them): gSPTextureRectangle,
  * gSPScisTextureRectangle (the scissor form: the 4 values of nd_rect_scis), and the window rectangle (screen_overlays.c, w0 and w1 as the gbi words). */
-#define NDTX_RECT_TEX(O, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) do {     O(NDO_W0(NDO_RECT, ND_NR_XY12(xh, yh)), NDO_RECT_TEX | ND_NR_TXY(tile, xl, yl));     O(ND_NOP_A, ND_TR_H1(s, t));     O(ND_NOP_A, ND_TR_H2(dsdx, dtdy)); } while (0)
-#define NDTX_RECT_SCIS(O, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) do {     O(NDO_W0(NDO_RECT, ND_NR_XY12(PM_SCIS_XH(xh), MAX((s16)(yh), 0))), NDO_RECT_TEX | ND_NR_TXY((tile), PM_SCIS_XL(xl), MAX((s16)(yl), 0)));     O(ND_NOP_A, (_SHIFTL(((s) - (PM_SCIS_CLIP(xl) ? (((s16)(dsdx) < 0) ? (MAX((((s16)(xl) * (s16)(dsdx)) >> 7), 0))                                                                     : (MIN((((s16)(xl) * (s16)(dsdx)) >> 7), 0))) : 0)), 16, 16) |                 _SHIFTL(((t) - (((yl) < 0) ? (((s16)(dtdy) < 0) ? (MAX((((s16)(yl) * (s16)(dtdy)) >> 7), 0))                                                               : (MIN((((s16)(yl) * (s16)(dtdy)) >> 7), 0))) : 0)), 0, 16)));     O(ND_NOP_A, (_SHIFTL((dsdx), 16, 16) | _SHIFTL((dtdy), 0, 16))); } while (0)
-#define NDTX_RECT_W(O, w0, w1, hs, hd) do {     O(NDO_W0(NDO_RECT, (w0)), NDO_RECT_TEX | ((uint32_t)(w1) & 0x07ffffffu));     O(ND_NOP_A, (hs));     O(ND_NOP_A, (hd)); } while (0)
+#define NDTX_RECT_TEX(O, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) do {     O(ND_FS_W0(ND_FS_RECT, ND_NR_XY12(xh, yh)), ND_FS_RECT_TEX | ND_NR_TXY(tile, xl, yl));     O(ND_NOP_A, ND_TR_H1(s, t));     O(ND_NOP_A, ND_TR_H2(dsdx, dtdy)); } while (0)
+#define NDTX_RECT_SCIS(O, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) do {     O(ND_FS_W0(ND_FS_RECT, ND_NR_XY12(PM_SCIS_XH(xh), MAX((s16)(yh), 0))), ND_FS_RECT_TEX | ND_NR_TXY((tile), PM_SCIS_XL(xl), MAX((s16)(yl), 0)));     O(ND_NOP_A, (_SHIFTL(((s) - (PM_SCIS_CLIP(xl) ? (((s16)(dsdx) < 0) ? (MAX((((s16)(xl) * (s16)(dsdx)) >> 7), 0))                                                                     : (MIN((((s16)(xl) * (s16)(dsdx)) >> 7), 0))) : 0)), 16, 16) |                 _SHIFTL(((t) - (((yl) < 0) ? (((s16)(dtdy) < 0) ? (MAX((((s16)(yl) * (s16)(dtdy)) >> 7), 0))                                                               : (MIN((((s16)(yl) * (s16)(dtdy)) >> 7), 0))) : 0)), 0, 16)));     O(ND_NOP_A, (_SHIFTL((dsdx), 16, 16) | _SHIFTL((dtdy), 0, 16))); } while (0)
+#define NDTX_RECT_W(O, w0, w1, hs, hd) do {     O(ND_FS_W0(ND_FS_RECT, (w0)), ND_FS_RECT_TEX | ((uint32_t)(w1) & 0x07ffffffu));     O(ND_NOP_A, (hs));     O(ND_NOP_A, (hd)); } while (0)
 
 /* texture load macros (gbi.h gDPLoadTextureTile and its _4b, gDPLoadMultiTile and its _4b, gDPLoadTextureBlock and its _4b,
  * gDPLoadTLUT_pal16 and _pal256; gbi_custom.h gDPScroll*). The packet argument is removed; each sync is dropped. */
