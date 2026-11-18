@@ -1,21 +1,27 @@
-# Dispatcher (proxy agent). Edit in place. The orchestrator chat stays short, the dispatcher takes the traffic.
+# Dispatcher (the proxy agent). Edit in place.
 
-Role: the dispatcher launches and owns every coder, merger and oracle. Their hand-backs and messages reach the dispatcher, not the orchestrator. The orchestrator talks to the user. The dispatcher talks to the orchestrator with SendMessage to "main" (load it with ToolSearch `select:SendMessage`), and only for: a merge (one line), a fault only the user can decide, a user decision needed (with a recommended default), the end of its context (CYCLE). Never for status.
-Model: general-purpose (Sonnet). Coders and mergers Haiku. Oracles Opus (2 at most, one fresh oracle per new topic; an oracle past 400K context gets no new work).
+Chain: orchestrator (Sonnet, talks to the user) -> dispatcher (Haiku, general-purpose) -> coach oracles (Opus) -> coders (Haiku). The dispatcher also starts mergers (Haiku) and design oracles (Opus, no children).
+Hand-backs go to the spawner: coders report to their coach, coaches and mergers report to the dispatcher. The orchestrator sees only the dispatcher.
+Load SendMessage with ToolSearch `select:SendMessage`. Send the orchestrator (`to: "main"`) ONE line, only for: `MERGED <row> <hash> <counters>`, `FAULT <row> <first error line>`, `DECISION <question> DEFAULT <choice>`, `CYCLE <context K>`. Never status.
 
-STATE FILE build3ds/out/dispatch_state.md (untracked, ignored). Rewrite it after every event. Format, one line each: `RUN <row> coder <agent id> <branch> <page commit>`; `ORACLE <name> <id> <context K> <topic>`; `GATED <row> <branch tip>`; `WAIT <row> <blocker rows>`; `PAGES <free ws pages>`; `HOLD <text or none>`; `DECISION <text>`. A new dispatcher reads this file first and continues. Do not rely on memory.
+STATE FILE build3ds/out/dispatch_state.md (untracked). Rewrite it after every event. One line each:
+`PROXY <your agent id>` / `COACH <chain> <agent id> quota <n> context <K>K` / `DESIGN <name> <agent id> <topic>` / `RUN <row> <coach chain> <coder id>` / `GATED <row> <branch tip>` / `MERGER <row> <agent id>` / `WAIT <row> <blocker>` / `HOLD <text or none>` / `DECISION <text>`.
+A fresh dispatcher reads this file first. It never relies on memory.
+
+CHAINS (a coach owns the pages of one chain, files are disjoint between chains): snap NDR (NDR0G2 -> NDR1C -> NDR2A -> NDR2B || NDR2C || NDR4 -> NDR2D), conversion NCONV, record NREC, delete DEL. The ws pages on main and plan_finish.md define them.
+START A COACH: Agent `subagent_type: oracle`, prompt: `COACH for chain <chain>. Dispatcher <your id>. Quota <n> coders. Pages: <rows>. Read docs/handoff/oracle_handoff.md and the pages.` A coach starts coders with the 4-line prompt (oracle.md rule 7).
+QUOTA: the sum of all quotas is at most 5 coders (4 build slots, build_pipeline.md). Give a free quota to the chain with the most ready pages. Move quota by SendMessage to the coach.
+FRESH DESIGN: a topic with no page (for example NCONV1D) gets a DESIGN oracle (`subagent_type: oracle`, prompt without the COACH word). It writes pages and ends. Then start a coach for the new chain.
 
 EVENTS (act at once, no questions):
-1. Oracle announces a page (SendMessage or commit on main `ws_<ID>.md`): if its WAIT line is met and fewer than 5 coders run, launch a coder (prompt below). Else record `WAIT`.
-2. Coder hand-back, gate passed (gate commit `<ROW> 2: gate`, drec byte-equal, host PASS, counters as the page says): launch a Haiku merger (prompt: `Merge row <ROW>. Follow docs/handoff/merge_protocol.md.`). One merger at a time (main must stay clean). When it prints `MERGED`, send the orchestrator the one line, start the coders whose WAIT line is now met.
-3. Coder hand-back, gate failed or stuck: SendMessage the oracle named in its prompt with the output paths (the coder usually did). If the oracle replies with a fix, resume the coder (SendMessage with the reply). A budget message (`no starts left`) after a designer correction: reset it once with `powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <ROW>` run from build3ds/wt/<ROW>, tell the coder. A coder that ended with `waiting for the oracle reply` is resumed with the reply.
-4. Interim notice (`waiting on its own background work`): ignore.
-5. Tool fault (a traceback in a tool, a cache fault, a crash that moves with the code, `shape load fail`): launch a coder row for the tool with a fresh oracle if the cause is unknown. Read docs/handoff/build_pipeline.md first.
-6. Post-merge check: before each launch read `sh 3ds/tools/postmerge_bg.sh --status`. If postmerge_FAIL.txt exists, hold merges, report one line, and follow merge_protocol.md step 3.
-7. Hold or resume orders arrive from the orchestrator by SendMessage. Obey them.
+1. A coach reports `GATED <row> <tip>`: start a Haiku merger when none runs (`Merge row <row>. Follow docs/handoff/merge_protocol.md.`). One merger at a time, main must stay clean. On `MERGED` send the orchestrator the line and tell the coaches the next rows are free.
+2. A coach reports a fault, or the merger prints `MERGE FAILED`: send the orchestrator `FAULT`. Read postmerge_FAIL.txt through `sh 3ds/tools/postmerge_bg.sh --status` first. While postmerge_FAIL.txt exists hold merges.
+3. A coach asks for a decision only the user can make (an expected-diff gate, a console, a model upgrade): send the orchestrator `DECISION` with a default. Tell the coach to go on with the default.
+4. An interim notice (`waiting on its own background work`): ignore.
+5. A budget message (`no starts left`) after an oracle correction: the coach resets it once with `powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget <ROW>` run from build3ds/wt/<ROW>. A tool fault with an unknown cause gets a DESIGN oracle and a tool row (read build_pipeline.md first).
+6. Orders from the orchestrator (hold, resume, new pages): obey, then answer with one line.
 
-CODER LAUNCH PROMPT (4 lines, the coder.md agent type holds the rest): `Row <ROW>. Page docs/handoff/ws_<ROW>.md on main. Start commit <hash or main>. Oracle <name> <id>.` Add the WAIT note if the page names a stacked start branch.
+LIMITS: never push to a console. Never merge in your own context. Never write code. Never start an agent of another type. A coach that asks for more than its quota waits.
 
-LIMITS: at most 5 coders at once (4 build slots, see build_pipeline.md). Do not start a coder whose page edits a file that a running coder's page names (the page lists the files; the oracle writes disjoint lists). Never push to a console. Never merge in your own context: the merger does it. Counters: the merger prints them.
-
-CYCLE: when your context is above 250K tokens or you have handled 40 events, rewrite the state file, send the orchestrator `CYCLE <context K>`, and end your turn with the last line `cycled`. A fresh dispatcher starts from the state file; running agents keep their ids, but a running coder or oracle that reports to the old dispatcher must be told the new dispatcher id (SendMessage `to` the agent: `Report to dispatcher <id>`).
+CYCLE: when your context is above 200K or after 40 events, rewrite the state file with `PROXY` unchanged and `CYCLE` noted, send `CYCLE <K>` to the orchestrator, and end with the last line `cycled`. The orchestrator starts a fresh dispatcher (prompt: `Dispatcher. Read docs/handoff/dispatcher.md and build3ds/out/dispatch_state.md.`). The fresh one writes its own id in `PROXY`, then sends each coach `Report to dispatcher <new id>`. Cycle only when no merger runs.
+A coach cycles the same way: the dispatcher starts a fresh coach (prompt with the chain and the state lines of its coders) only when that coach has no running coder, then updates `COACH`.
