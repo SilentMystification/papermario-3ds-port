@@ -1,6 +1,6 @@
 # ws_NDR1C (Haiku): every texture rectangle takes a snap; its render state and binds come from the snap (stage S4; counter: none of C1-C12)
-Designer: oracle FIN. WAIT: branch from main after the NDR0G2 and REN8 merges (nd_snap_render of NDR0F2, nd_bsrc of NDR0G2, nd_rec.c of REN8).
-Worktree build3ds/wt/NDR1C, branch NDR1C. PM_ROW=NDR1C PM_LANE=NDR1C. Edit only: 3ds/src/nd_rec.c (3 lines), 3ds/src/nd_snap.c, 3ds/include/nd_snap.h, 3ds/src/nd_rect.c.
+Designer: oracle FIN. WAIT: branch from main after the NDR0G2, REN8 and NDR3 merges (nd_snap_render, nd_bsrc; nd_rec.c: NDR3 stops the snap per rectangle in nd_rec_cmds).
+Worktree build3ds/wt/NDR1C, branch NDR1C. PM_ROW=NDR1C PM_LANE=NDR1C. Edit only: 3ds/src/nd_rec.c (2 lines), 3ds/src/nd_snap.c, 3ds/include/nd_snap.h, 3ds/src/nd_rect.c.
 ## Facts (code read, main 5fc6cf135b; find each line by its text)
 - nd_rec_texrect takes the snap only with the snapchk switch (nd_rec.c:309). So in a drec run no rectangle is armed: the NDR1B combine apply (nd_rect.c:241) never ran in a drec gate.
 - nd_texrect renders with sync_render at :237, :238, :242 and in nd_texrect_zprim :205; it binds at :245-248 (rtile, ensure_tile, dual_bind).
@@ -14,7 +14,6 @@ Worktree build3ds/wt/NDR1C, branch NDR1C. PM_ROW=NDR1C PM_LANE=NDR1C. Edit only:
    Add `void nd_snap_bsrc(int on) { nd_bsrc = on ? sc_cur.b : NULL; } /* NDR1C: the bind source of a rectangle */` at the end. nd_snap.h: declare nd_snap_rect and nd_snap_bsrc.
 2. nd_rec.c. Before (:307-309): `void nd_snap_mesh(void); /* NDR0E2: ... */` and `    if (PMDL("snapchk")) nd_snap_mesh(); /* NDR0E2: ... */`
    After: `void nd_snap_rect(void); /* NDR1C: strong in nd_snap.c */` and `    nd_snap_rect(); /* NDR1C: the snap of every texture rectangle */`. Next to the weak nd_snap_mesh (:654): `__attribute__((weak)) void nd_snap_rect(void) {}`.
-   nd_rec_cmds (:648): delete `ndc_n[NDC_TEXRECT] + ` (a rectangle after a rectangle with the same inputs takes no new snap; GUESS 640 bytes per snap record).
 3. nd_rect.c above nd_texrect_zprim:
    `static unsigned char rc_sn; /* NDR1C: the rectangle in progress has an armed snap */`
    `static void rc_render(void) { if (rc_sn) nd_snap_render(); else sync_render(); } /* NDR1C */`
