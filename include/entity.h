@@ -245,7 +245,7 @@ typedef struct HiddenPanelData {
     /* 0x34 */ Matrix4f entityMatrix;
     /* 0x74 */ u16 modelID;
     /* 0x76 */ char unk_76[0x2];
-    /* 0x78 */ Gfx* renderDList;
+    /* 0x78 */ const void* renderDList; /* NdLst */
 }   HiddenPanelData; // size = 0x7C
 
 typedef struct SignpostData {
@@ -456,7 +456,7 @@ typedef struct EntityModel {
     /* 0x0C */ f32 timeScale; ///< Default is 1.0
     /* 0x10 */ EntityModelScript* cmdListReadPos;
     /* 0x14 */ union {
-                    Gfx* displayList;
+                    const void* displayList; /* NdLst */
                     SpriteRasterInfo* imageData;
                } gfx;
     /* 0x18 */ Mtx transform;

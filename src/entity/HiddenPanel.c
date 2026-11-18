@@ -295,7 +295,7 @@ void entity_HiddenPanel_init(Entity* entity) {
     HiddenPanelData* data = entity->dataBuf.hiddenPanel;
     Matrix4f sp18;
     Matrix4f sp58;
-    Gfx* dlist;
+    const void* dlist; /* NdLst */
 
     mem_clear(&gCurrentHiddenPanels, sizeof(gCurrentHiddenPanels));
     entity->renderSetupFunc = entity_HiddenPanel_setupGfx;
@@ -327,7 +327,7 @@ void entity_HiddenPanel_init(Entity* entity) {
     } else {
         dlist = NDN(Gfx_HiddenPanel_RenderTop);
     }
-    data->renderDList = ENTITY_ADDR(entity, Gfx*, dlist);
+    data->renderDList = ENTITY_ADDR(entity, const void*, dlist);
 
     mdl_project_tex_coords(data->modelID, data->renderDList, data->entityMatrix, entity->gfxBaseAddr);
     gCurrentHiddenPanels.panelsCount++;
