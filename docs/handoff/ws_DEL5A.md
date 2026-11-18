@@ -1,7 +1,7 @@
-# ws_DEL5A (Haiku): nd_shape.c reads the map shape lists as ND_FS unit pairs (uint32_t), not as Gfx words; the dead dlc_end goes. Counters: C8 reader nd_shape.c 11 -> 1 (nd_ops_run :875 stays for DEL1A), total 387 -> 377; C7 gfxtype nd_shape.c 20 -> 1 (ent_flat_buf :951 stays), total 116 -> 97 (FACT listcen e3d2f6523b). Gate: 2 drec byte-equal.
-Designer: oracle DEL helper. Start commit main e3d2f6523b. No WAIT. Overlaps: nd_int.h lines 58, 100, 350 only (DELCEN merged; no running row edits them). Worktree build3ds/wt/DEL5A, branch DEL5A. PM_ROW=DEL5A PM_LANE=DEL5A.
+# ws_DEL5A (Haiku): nd_shape.c reads the map shape lists as ND_FS unit pairs (uint32_t), not as Gfx words; the dead dlc_end goes. Counters: C8 reader nd_shape.c 11 -> 1 (nd_ops_run :875 stays for DEL1A), total 387 -> 377; C7 gfxtype nd_shape.c 20 -> 1 (ent_flat_buf :951 stays), total 116 -> 97 (FACT listcen 3c2469a282). Gate: 2 drec byte-equal.
+Designer: oracle DEL helper. Start commit main 3c2469a282. No WAIT. Overlaps: nd_int.h lines 58, 100, 350 only (DELCEN merged; no running row edits them). Worktree build3ds/wt/DEL5A, branch DEL5A. PM_ROW=DEL5A PM_LANE=DEL5A.
 Edit only (Edit tool, keep CRLF): 3ds/src/nd_shape.c, 3ds/include/nd_int.h (lines 58, 100, 350).
-## Facts (code read, main e3d2f6523b; find the quoted text, line numbers move)
+## Facts (code read, main 3c2469a282; find the quoted text, line numbers move)
 - FACT the shape lists are typed units: the .dlc and the shape blob hold ND_X0 words (nd_shape_conv.c:11, :156). nd_shape.c reads them as `l[j].words.w0` (8-byte Gfx). ND_FS ids equal the NDO ids (nd_fs.h:1-3). A uint32_t pair read gives the same words: byte-equal by construction.
 - FACT dlc_end (nd_shape.c:33) has no user (grep: only the 2 extern lines nd_int.h:100, :350). dlc_hash, dlc_build, dlc_find, dlc_run_group, sbkw_dlchash, dlc_try_slow, dlc_group_slow have no caller outside nd_shape.c. dlc_try callers (nd_walk.c, nd_recs.c) pass a Gfx*: a `const void*` parameter takes it without a cast.
 - FACT host.d dlcpre.sh seds nd_shape.c:649-650 (dlc_reset) and mapconv.sh cuts the dlcp block (DlcPreIdx to `/* the dlcpre line`): this row edits none of these lines.

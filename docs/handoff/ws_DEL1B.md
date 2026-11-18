@@ -1,9 +1,9 @@
-# ws_DEL1B (Haiku): the entity path runs its gap and fallback units with nd_ent_units, not with ENT_GBI (nd_ops_run). Counter: C8 reader nd_ent.c 5 -> 0, total 387 -> 382 (FACT listcen e3d2f6523b; nd_ent.c tokens: ENT_GBI 4, nd_ops_run 1). Gate: 2 drec byte-equal.
-Designer: oracle DEL helper. Start commit main e3d2f6523b. No WAIT: NREC4, NCONV2C, DELCEN are merged. Overlaps: none. NCONV2D (page on main) edits nd_walk.c after nd_nr_run (:414) and nd_ntab_run (:630); this row adds lines after nd_ops_run (:443). Worktree build3ds/wt/DEL1B, branch DEL1B. PM_ROW=DEL1B PM_LANE=DEL1B.
-Edit only (Edit tool, keep CRLF): 3ds/src/nd_ent.c (485-500), 3ds/src/nd_walk.c (after line 443), 3ds/include/nd_int.h (after line 321).
-## Facts (code read, main e3d2f6523b; find the quoted text, line numbers move)
+# ws_DEL1B (Haiku): the entity path runs its gap and fallback units with nd_ent_units, not with ENT_GBI (nd_ops_run). Counter: C8 reader nd_ent.c 5 -> 0, total 387 -> 382 (FACT listcen 3c2469a282; nd_ent.c tokens: ENT_GBI 4, nd_ops_run 1). Gate: 2 drec byte-equal.
+Designer: oracle DEL helper. Start commit main 3c2469a282. No WAIT: NREC4, NCONV2C, DELCEN, NCONV2D are merged. Overlaps: none (this row adds lines after nd_ops_run, nd_walk.c:454). Worktree build3ds/wt/DEL1B, branch DEL1B. PM_ROW=DEL1B PM_LANE=DEL1B.
+Edit only (Edit tool, keep CRLF): 3ds/src/nd_ent.c (485-500), 3ds/src/nd_walk.c (after line 454), 3ds/include/nd_int.h (after line 321).
+## Facts (code read, main 3c2469a282; find the quoted text, line numbers move)
 - FACT ENT_GBI (nd_ent.c:485) is `(nd_ent_gbi++, nd_ops_run((l_), (n_) >> 3, 1))`. Its uses: ent_gap (:488, n units), ent_run_seg_interp (:499 one VTX unit per call, :500 the segment ops). The units are the ND_FS units of k->fw (nd_ent.c:284-288).
-- FACT nd_ops_run with keep 1 (nd_walk.c:427-443): census test, gv_epoch++, dlc_on = 1, gp_prev_op = -1, pm_walk_side++, ex_depth + 1, nd_walk_state, restore, gv_streak_flush, tex_streak_flush, census end. nd_nr_exec is nd_walk_state (nd_walk.c:413). nd_ent_units below has the same steps in the same order: byte-equal by construction.
+- FACT nd_ops_run with keep 1 (nd_walk.c:439-455): census test, gv_epoch++, dlc_on = 1, gp_prev_op = -1, pm_walk_side++, ex_depth + 1, nd_walk_state, restore, gv_streak_flush, tex_streak_flush, census end. nd_nr_exec is nd_walk_state (nd_walk.c:413). nd_ent_units below has the same steps in the same order: byte-equal by construction.
 - FACT no host test builds nd_ent.c or nd_walk.c. No host.d script seds them (grep 3ds/tests/host.d).
 ## Edits
 1. nd_walk.c: after the closing `}` of nd_ops_run (the line after `    if (cen) ops_cen_end();`) add:
@@ -37,5 +37,4 @@ void nd_ent_units(const uint32_t* u, unsigned n) {
 Host PASS. Both rowloops exit 0 (byte-equal). The grep of edit 4 is empty. listcen: no `file reader 3ds/src/nd_ent.c` line, total reader 382, every other total as at the start commit.
 ## Fix rights and stop
 Fix rights: the 3 files, compile errors only. Stop: a DIFF, a crash, a fatal line, a tool fault, a total off the gate. Commit the outputs (`git add -f`), send the paths to the oracle of the launch prompt with SendMessage, wait. Pitfalls: one host test at a time. One bench per rowloop call. PM_CACHE=off only as a prefix of one command.
-## Hand-back
-Last commit `DEL1B 2: gate. entcape and spot_mac01 drec equal; reader nd_ent.c 5 -> 0` deletes this page. One SubagentHandback: commit hash, the listcen reader total.
+Hand-back: last commit `DEL1B 2: gate. entcape and spot_mac01 drec equal; reader nd_ent.c 5 -> 0` deletes this page. One SubagentHandback: commit hash, the listcen reader total.
