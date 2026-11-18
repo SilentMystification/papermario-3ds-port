@@ -172,10 +172,33 @@ static void rec_ctx_check(void) {
     sh_all();
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
+/* NST3 dschk (design_nstate.md section 6): ds_ep is the batch bit before the next command, ds_sclost the scalar-lost bit, ds_in
+ * guards the dschk record itself (its nested rec_take). ds_rec holds the NdDs copy and the ep word (8-byte units). */
+static uint8_t ds_ep, ds_sclost, ds_in;
+extern unsigned nd_st_epoch; /* nd_walk.c, core 0 */
+void nd_dschk_run(const uint32_t* rec) __attribute__((weak)); /* nd_dschk.c, core 0. Weak (NST3 mechanical fix): the host units that link
+ * nd_rec.c do not link nd_dschk.c; the call is behind PMDL("dschk"), never true on host. */
+enum { DS_REC_W = (sizeof(NdDs) / 4u + 2u) & ~1u };
+_Static_assert(DS_REC_W / 2u <= 255u, "dschk record units");
+static uint32_t ds_rec[DS_REC_W] __attribute__((aligned(8)));
+/* NST3: a list call with triangles draws (nd_gtab.c nd_rec_dl) and clears the scalar-lost bit. */
+void nd_rec_scl(unsigned ntri) { if (ntri) ds_sclost = 0; }
 static int st_take; /* HC4b: rec_take of a state op (the shadow stays) */
 static uint32_t* rec_take(unsigned n) {
     st_hdr = NULL; /* any record closes the open state run (nd_rec_nr reopens its own) */
     if (!st_take) sh_all(); /* HC4b: any other command resets the shadow */
+    if (!st_take) { /* NST3: the dschk record before a command; the command sets sc_lost */
+        if (!ds_in && PMDL("dschk")) {
+            ds_in = 1;
+            memset(ds_rec, 0, sizeof ds_rec);
+            memcpy(ds_rec, &nd_ds, sizeof nd_ds);
+            ds_rec[sizeof nd_ds / 4u] = ds_ep;
+            nd_rec_napi(nd_dschk_run, ds_rec, DS_REC_W / 2u);
+            ds_in = 0;
+            ds_ep = 0;
+        }
+        ds_sclost = 1;
+    }
     if (wp + n > wend) {
         NdChain* c = &chain[rec_ctx];
         uint32_t* j = wp;
@@ -376,7 +399,13 @@ static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
-    nd_ds_apply(&nd_ds, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
+    const unsigned ch = nd_ds_apply(&nd_ds, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
+    { /* NST3 ep rule (design section 6), core 1 data only */
+        const unsigned id = w0 >> 24;
+        if ((ch & 1u) && id != NDO_VTX && id != NDO_TRI1 && id != NDO_TRI2 && id != NDO_MTX && id != NDO_POPMTX) ds_ep = 1;
+        if (ds_sclost && (id == NDO_OMH || id == NDO_PRIM || id == NDO_ENV || id == NDO_TEXTURE || id == NDO_COMB)) ds_ep = 1;
+        if (id == NDO_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) ds_ep = 1;
+    }
     rec_op_t(t);
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
@@ -410,6 +439,7 @@ static int rec_inline(uint32_t a) {
         if (k == 3u) break;
         if (!k) return 0;
     }
+    ds_ep = 1; /* NST3: the list marker ends a batch */
     { static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0 }; rec_op_t(lst); }
     for (unsigned i = 0; i < n; i++) if (st_kind(w[2u * i]) == 1u) nd_rec_nr(w[2u * i], w[2u * i + 1u]);
     return 1;

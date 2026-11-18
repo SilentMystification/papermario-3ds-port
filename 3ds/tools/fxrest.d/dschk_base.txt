@@ -1,0 +1,64 @@
+#131 dschk bad f1 tst1
+#132 dschk bad f1 tst1
+#139 dschk bad f3 tst1
+#140 dschk bad f3 tst1
+#141 dschk bad f5 tst1
+#142 dschk bad f5 tst1
+#143 dschk bad f7 tst1
+#144 dschk bad f7 tst1
+#221 dschk f100 cmds 10554 bad 10554 epbad 2567
+#246 dschk f200 cmds 27392 bad 27392 epbad 6536
+#132 dschk bad f1 tst1
+#133 dschk bad f1 tst1
+#140 dschk bad f3 tst1
+#141 dschk bad f3 tst1
+#142 dschk bad f5 tst1
+#143 dschk bad f5 tst1
+#144 dschk bad f7 tst1
+#145 dschk bad f7 tst1
+#202 dschk f100 cmds 13685 bad 13685 epbad 4914
+#357 dschk f200 cmds 35072 bad 35072 epbad 8306
+#131 dschk bad f1 tst1
+#132 dschk bad f1 tst1
+#139 dschk bad f3 tst1
+#140 dschk bad f3 tst1
+#141 dschk bad f5 tst1
+#142 dschk bad f5 tst1
+#143 dschk bad f7 tst1
+#144 dschk bad f7 tst1
+#199 dschk f100 cmds 8486 bad 8486 epbad 2118
+#227 dschk f200 cmds 19417 bad 19417 epbad 4549
+#251 dschk f300 cmds 29883 bad 29883 epbad 6092
+#264 dschk f400 cmds 40583 bad 40583 epbad 7692
+#132 dschk bad f1 tst1
+#133 dschk bad f1 tst1
+#140 dschk bad f3 fill timg tst1 tm
+#141 dschk bad f3 fill timg tst1 tm
+#142 dschk bad f5 fill timg tst1 tm
+#143 dschk bad f5 fill timg tst1 tm
+#144 dschk bad f7 fill timg tst1 tm
+#145 dschk bad f7 fill timg tst1 tm
+#222 dschk f100 cmds 10554 bad 10554 epbad 2567
+#247 dschk f200 cmds 27392 bad 27392 epbad 6536
+#273 dschk f300 cmds 44128 bad 44128 epbad 10324
+#292 dschk f400 cmds 61628 bad 61628 epbad 12224
+#332 dschk f500 cmds 79674 bad 79674 epbad 14200
+#375 dschk f600 cmds 97390 bad 97390 epbad 16310
+#407 dschk f700 cmds 115219 bad 115219 epbad 18272
+#448 dschk f800 cmds 132807 bad 132807 epbad 20254
+#489 dschk f900 cmds 150539 bad 150539 epbad 22280
+#519 dschk f1000 cmds 168154 bad 168154 epbad 24237
+#560 dschk f1100 cmds 185946 bad 185946 epbad 26226
+#606 dschk f1200 cmds 203818 bad 203818 epbad 28182
+#639 dschk f1300 cmds 221997 bad 221997 epbad 30166
+#676 dschk f1400 cmds 240075 bad 240075 epbad 32156
+#720 dschk f1500 cmds 258261 bad 258261 epbad 34140
+#778 dschk f1600 cmds 277097 bad 277097 epbad 36884
+#822 dschk f1700 cmds 295102 bad 295102 epbad 39452
+#977 dschk f1800 cmds 313190 bad 313190 epbad 41424
+#1021 dschk f1900 cmds 331068 bad 331068 epbad 43478
+#1062 dschk f2000 cmds 348674 bad 348674 epbad 45482
+#1103 dschk f2100 cmds 366518 bad 366518 epbad 47494
+#1140 dschk f2200 cmds 384258 bad 384258 epbad 49446
+#1179 dschk end f2292 cmds 400779 bad 400779 epbad 51224
+#1181 dschk f2300 cmds 402180 bad 402180 epbad 51376

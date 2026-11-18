@@ -1,0 +1,66 @@
+{
+  "benches": [
+    {
+      "name": "spot_mac01_dschk",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NST3: dschk lines of mac_01 frames 0 to 200 (cold det start). bad and epbad are the S3 counter base.",
+      "scenario": "spot_mac01_dschk",
+      "cap": 30,
+      "until": "dschk f200 ",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "wscmb_pause_dschk",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NST3: dschk lines of the pause menu run (cold det start). bad and epbad are the S3 counter base.",
+      "scenario": "wscmb_pause_dschk",
+      "cap": 30,
+      "until": "dschk f200 ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "axns_sam2_dschk",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "NST3: dschk lines of the Monstar battle, frames 100 to 400 (det). bad and epbad are the S3 counter base.",
+      "scenario": "axns_sam2_dschk",
+      "cap": 30,
+      "until": "dschk f400 ",
+      "tags": [
+        "azahar",
+        "det",
+        "battle"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxchk_a_dschk",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "NST3: dschk lines of fxtest effects 0 to 42 (cold det start). bad and epbad are the S3 counter base.",
+      "scenario": "fxchk_a_dschk",
+      "cap": 45,
+      "until": "dschk end",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    }
+  ]
+}
