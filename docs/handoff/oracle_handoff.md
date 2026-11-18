@@ -19,7 +19,7 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
    Design need: a snap per draw epoch inside a list record that the DLC and entity native paths also read, with no change of their batch cuts. Then NCONV2, NREC1A-5, DEL rows.
 3. NDR4 sprsnap: a DIFF there is a stale walker; only the user can allow an expected-diff gate for NDR4.
 4. Stream size: NdSnapChk about 640 bytes (GUESS), 16 x 32 KB per context (FACT nd_rec.c:30-31). Rectangles and sprites add snaps; the compact NdSnap (design section 7) is a later row.
-5. DEL1D: dead declarations nd_walk_state at nd_api.h:13 and nd_direct.c:254 (no caller outside nd_walk.c; host stubs define it).
+5. DEL1D: dead declarations nd_walk_state at nd_api.h:16 and nd_direct.c:254 (no caller outside nd_walk.c; host stubs define it).
 ## Facts that cost time
 - Git Bash `sed -i` writes LF and turns a CRLF file into a whole-file diff (FACT dry run 2026-11-18). Pages say `sed -b -i` or the Edit tool.
 - drec_cmp (bench.py:1658) names only the first DIFF draw. drec.txt has `frame` lines only with a step above 1 (pm_gpu.c:605); NDR0G2 logs `drec frame <f> seq <s>`.
