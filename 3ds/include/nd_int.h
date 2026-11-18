@@ -68,7 +68,7 @@ unsigned rec_run(const Gfx* q);
 int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
 unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
-void gbi_cold_modifyvtx(unsigned where, unsigned vi); /* HC4d2: NDO_MISC_MODVTX fields */
+void nd_modvtx(unsigned where, unsigned vi); /* HC4d2: NDO_MISC_MODVTX fields */
 void gbi_movemem(u32 w0, u32 w1);
 void gbi_popmtx(u32 w1);
 void gbi_setcimg(u32 a, u32 b); /* HC4d2: NDO_MISC_CIMG (a = sub << 16 | siz << 12 | width - 1, b = address) */
@@ -145,9 +145,9 @@ extern unsigned vert_tss[64];
 /* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the the former pm_gbi.c helpers it calls ---- */
 int nd_op_same(const uint32_t* u);    /* HC4a: nd_set.c, the typed scalar ops (nd_op.h) */
 void nd_op_apply(const uint32_t* u);
-void gbi_cold_bad_next(u32 w1, u32 w0, u32 list);
-void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list);
-void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc);
+void nd_bad_next(u32 w1, u32 w0, u32 list);
+void nd_bad_vtx(u32 w1, u32 w0, u32 list);
+void nd_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc);
 void set_scissor(u32 w0, u32 w1);
 void set_blendcolor(u32 w1);
 void set_fogcolor(u32 w1);

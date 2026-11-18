@@ -1,5 +1,5 @@
 /* nd_walk.c: the replay side of the frame stream commands (DIRECT) and the op executor (nd_walk_state): the stream state runs, flat op ranges
- * (nd_nr_list) and lists (nd_list_run, walk_call) run on it. D10c: the list walker of the former pm_gbi.c (nd_walk_run: its pc loop, stack,
+ * (nd_nr_list) and lists (nd_list_run, nr_call) run on it. D10c: the list walker of the former pm_gbi.c (nd_walk_run: its pc loop, stack,
  * host range check and g1 skip table) is deleted. The op handlers live in nd_int.h's groups. */
 #include <stdio.h>
 #include <string.h>
@@ -31,11 +31,11 @@ unsigned pm_gbi_cur_op; /* PI2: the unit id (ND_FS_*) of the step now running, o
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
 
 
-void gbi_cold_bad_next(u32 w1, u32 w0, u32 list) {
+void nd_bad_next(u32 w1, u32 w0, u32 list) {
     static int bad; if (bad++ < 8) pm_log_e("bad dl target %08x w0 %08x list %08x", w1, w0, list);
 }
 
-void gbi_cold_bad_vtx(u32 w1, u32 w0, u32 list) {
+void nd_bad_vtx(u32 w1, u32 w0, u32 list) {
     static int bad; if (bad++ < 8) pm_log_e("bad vtx %08x w0 %08x list %08x", w1, w0, list);
 }
 
@@ -46,7 +46,7 @@ extern const uint32_t* nd_stream_cur;
 int nd_rec_where(const void* p, unsigned* chunk);
 int nd_rec_ctx(void);
 extern s32 gCurrentDisplayContextIndex;
-static __attribute__((cold, noinline)) void gbi_cold_bad_vp(const uint32_t* u) {
+static __attribute__((cold, noinline)) void nd_bad_vp(const uint32_t* u) {
     static unsigned n;
     if (n++ >= 4u) return;
     const int pv = is_host((u32)(uintptr_t)(u - 4)), nx = is_host((u32)(uintptr_t)(u + 3));
@@ -60,12 +60,12 @@ static __attribute__((cold, noinline)) void gbi_cold_bad_vp(const uint32_t* u) {
         nd_rec_ctx(), (int)gCurrentDisplayContextIndex);
 }
 
-void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
+void nd_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
     static unsigned bad; if (bad++ < 6) pm_log_w("gbi: matrix w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
         pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
 }
 
-/* FX1-3 orbdbg (debug tool): a display list an effect registers (pm_gbi_dbg_reg, energy_orb_wave.c) gets a tag. DIRECT D10c: walk_call keeps the tag of the list it runs
+/* FX1-3 orbdbg (debug tool): a display list an effect registers (pm_gbi_dbg_reg, energy_orb_wave.c) gets a tag. DIRECT D10c: nr_call keeps the tag of the list it runs
  * (orb_tag, restored at its end). Under the orbdbg switch a tagged list runs on the op executor, not the ent or DLC path, so orb_log (pm_gpu.c)
  * sees its draws. Nothing is tagged without the switch. */
 static const void* orb_lst[32];
@@ -183,14 +183,13 @@ void nd_walk_ent(const Gfx* q, unsigned words) {
     NDT_E(te, NDT_ENT);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
-    if (!drawn && words > G_PM_ENT_WORDS) nd_nr_list(q + G_PM_ENT_WORDS, 1u, 1); /* D10c: its G_DL on the op executor (walk_call) */
+    if (!drawn && words > G_PM_ENT_WORDS) nd_nr_list(q + G_PM_ENT_WORDS, 1u, 1); /* D10c: its G_DL on the op executor (nr_call) */
     nd_lsr_end(); /* NREC2 */
 }
 /* DIRECT D10c: the list executor. A list (a G_DL target, a render mode list) runs on nd_walk_state from its first op to its G_ENDDL (no length:
  * ND_LIST_MAX bounds a list without one, as the walker's op guard). ex_depth counts the lists running now: a G_DL inside a list runs its
  * target nested (no list start or end rules, as the walker's G_DL push), at most ND_LIST_DEPTH deep (the walker's stack of 12; a deeper G_DL is
  * dropped as the walker dropped it). */
-void nd_walk_state(const uint32_t* q, unsigned n);
 #define ND_LIST_MAX 200000u
 #define ND_LIST_DEPTH 12
 static int ex_depth;
@@ -202,10 +201,10 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
 /* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
  * static list goes to the entity path (ent_gdl) or a compiled map shape (dlc_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_nr_list), inside a list nested. */
-static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
+static void nr_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     Gfx* next = (Gfx*)ptr_of(w1);
     if (!next) return;
-    if (!is_host((u32)next)) { gbi_cold_bad_next(w1, w0, (u32)(uintptr_t)at); return; }
+    if (!is_host((u32)next)) { nd_bad_next(w1, w0, (u32)(uintptr_t)at); return; }
     __builtin_prefetch(next);
     const NdNDev* nt = nd_ntab_find(next);
     const unsigned ot = orb_tag;
@@ -223,17 +222,17 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
         if (dh) return;
     }
     if (!ex_depth) { if (nt) nd_nr_list(nt->u, nt->nu, 1); else nd_nr_list(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
-    else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_walk_state((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
+    else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_nr_exec((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
 /* DIRECT D4b-3, D5: native record run (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
- * list: its skip test (typed ops: nd_op_same, the light memory test of op_geo), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
+ * list: its skip test (typed ops: nd_op_same, the light memory test of nr_geo), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_nr_list): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
-static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
+static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
     if (nd_op_same(u)) return;
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
@@ -245,10 +244,10 @@ static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
 }
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
  * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
-static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, const void* at) {
+static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, const void* at) {
     const unsigned id = u[0] >> 24;
     const u32 a = u[0] & 0xffffffu, b = u[1];
-    if (id == NDO_MOVEMEM) {
+    if (id == ND_FS_MOVEMEM) {
         if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
         gv_epoch++; /* GV1b; NST2H source */
     }
@@ -256,23 +255,23 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, id, u[0], u[1]);
     switch (id) {
-    case NDO_VTX: nd_geom_vtx(a, b, (const Gfx*)at); break;
-    case NDO_TRI1:
+    case ND_FS_VTX: nd_geom_vtx(a, b, (const Gfx*)at); break;
+    case ND_FS_TRI1:
         tri_prep_ok = 0;
         draw_tri(a);
         break;
-    case NDO_TRI2:
+    case ND_FS_TRI2:
         tri_prep_ok = 0;
         draw_tri(a);
         draw_tri(b);
         break;
-    case NDO_MTX:
-        if (!is_host((u32)(uintptr_t)ptr_of(b))) gbi_cold_bad_mtx(a, b, (Gfx*)at, (Gfx*)at + 1);
+    case ND_FS_MTX:
+        if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (Gfx*)at, (Gfx*)at + 1);
         load_mtx(a, b, 0);
         break;
-    case NDO_POPMTX: gbi_popmtx(b); break;
+    case ND_FS_POPMTX: gbi_popmtx(b); break;
     default:
-        if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) gbi_cold_bad_vp(u); /* POSTFAIL2 (debug tool) */
+        if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); /* POSTFAIL2 (debug tool) */
         gbi_movemem(a, b);
         break;
     }
@@ -281,33 +280,33 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
 /* HC4d2: one control op (nd_op_ctl) with the walker's prologue (pm_gbi_cur_op; gv_epoch but not for a list call or G_MODIFYVTX; the debug
  * op hook), then its handler. u: the typed unit, at: its place in the run (a texture rectangle reads the b of the two units after it).
  * Returns the units it took after u (2 for a texture rectangle), or ~0u when a branch ends the run. */
-static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u, const uint32_t* at, const uint32_t* e) {
+static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u, const uint32_t* at, const uint32_t* e) {
     const unsigned id = u[0] >> 24;
     const u32 a = u[0] & 0xffffffu, b = u[1];
     const unsigned sub = a >> 16;
     /* DEL1D1: the unit id; a list mark keeps its record op (G_PM_LST, G_PM_ND) */
-    const unsigned op = id != NDO_MISC ? id : sub == NDO_MISC_LST ? (unsigned)G_PM_LST : sub == NDO_MISC_ND ? (unsigned)G_PM_ND : (unsigned)NDO_MISC;
+    const unsigned op = id != ND_FS_MISC ? id : sub == ND_FS_MISC_LST ? (unsigned)G_PM_LST : sub == ND_FS_MISC_ND ? (unsigned)G_PM_ND : (unsigned)ND_FS_MISC;
     unsigned r = 0;
     pm_gbi_cur_op = op;
-    if (id != NDO_CALL && !(id == NDO_MISC && sub == NDO_MISC_MODVTX)) { gv_epoch++; } /* GV1b; no cut for a list call or a vertex modify */
+    if (id != ND_FS_CALL && !(id == ND_FS_MISC && sub == ND_FS_MISC_MODVTX)) { gv_epoch++; } /* GV1b; no cut for a list call or a vertex modify */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     switch (id) {
-    case NDO_CALL:
-        walk_call(dbg, (const Gfx*)at, a, b);
+    case ND_FS_CALL:
+        nr_call(dbg, (const Gfx*)at, a, b);
         if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
         break;
-    case NDO_RECT:
+    case ND_FS_RECT:
         
-        if (!(b & NDO_RECT_TEX)) nd_fillrect(a, b);
+        if (!(b & ND_FS_RECT_TEX)) nd_fillrect(a, b);
         else if (at + 4 < e) { nd_texrect(a, b & 0x07ffffffu, at[3], at[5]); r = 2; } /* D10b: the op and its two RDPHALF units */
         break;
     default:
         switch (sub) {
-        case NDO_MISC_LST: ent_skipgen = 0; gp_prev_op = -1; break; /* D11a: an in-line static state list (nd_rec.c rec_inline): its list start as walk_call and nd_nr_list */
-        case NDO_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
-        case NDO_MISC_MODVTX: gbi_cold_modifyvtx((a >> 8) & 0xffu, a & 0xffu); break;
-        case NDO_MISC_CIMG: gbi_setcimg(a, b); break;
+        case ND_FS_MISC_LST: ent_skipgen = 0; gp_prev_op = -1; break; /* D11a: an in-line static state list (nd_rec.c rec_inline): its list start as nr_call and nd_nr_list */
+        case ND_FS_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
+        case ND_FS_MISC_MODVTX: nd_modvtx((a >> 8) & 0xffu, a & 0xffu); break;
+        case ND_FS_MISC_CIMG: gbi_setcimg(a, b); break;
         default: break;
         }
         break;
@@ -316,7 +315,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
     return r;
 }
 /* An op with no typed form (not one the game writes): the walker's unknown op note. */
-static __attribute__((cold, noinline)) void op_unknown(unsigned dbg, const uint32_t* q) {
+static __attribute__((cold, noinline)) void nr_unknown(unsigned dbg, const uint32_t* q) {
     const unsigned op = q[0] >> 24;
     pm_gbi_cur_op = op;
     gv_epoch++; /* GV1b */
@@ -326,26 +325,25 @@ static __attribute__((cold, noinline)) void op_unknown(unsigned dbg, const uint3
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4d2: the op executor runs typed ops only. HC4e4: every list is typed; the RDP syncs and G_SPNOOP are the typed no-op (ND_NOP_A);
- * NDO_END ends the run. */
-void nd_walk_state(const uint32_t* q, unsigned n) {
+ * ND_FS_END ends the run. */
+void nd_nr_exec(const uint32_t* q, unsigned n) { /* DEL1D2: was nd_walk_state */
     const unsigned dbg = pm_walk_dbg;
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
         const uint32_t* u = q;
         unsigned id = q[0] >> 24;
-        if (q[0] == ND_NOP_A) continue; /* HC4f3: a typed sync or no-op, skipped as a raw sync: no op_ctl, no gv_epoch */
-        if (__builtin_expect(!nd_op_typed(id), 0)) { op_unknown(dbg, q); continue; } /* HC4e4: every list is typed */
-        if (nd_op_geo(id)) op_geo(dbg, u, q);
+        if (q[0] == ND_NOP_A) continue; /* HC4f3: a typed sync or no-op, skipped as a raw sync: no nr_ctl, no gv_epoch */
+        if (__builtin_expect(!nd_op_typed(id), 0)) { nr_unknown(dbg, q); continue; } /* HC4e4: every list is typed */
+        if (nd_op_geo(id)) nr_geo(dbg, u, q);
         else if (nd_op_ctl(id)) {
-            const unsigned r = op_ctl(dbg, u, q, e);
+            const unsigned r = nr_ctl(dbg, u, q, e);
             if (r == ~0u) q = e - 2;
             else q += 2u * r;
         }
-        else if (id == NDO_END) break;
-        else op_typed(dbg, u, q);
+        else if (id == ND_FS_END) break;
+        else nr_set(dbg, u, q);
     }
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
-void nd_nr_exec(const uint32_t* u, unsigned n) { nd_walk_state(u, n); } /* NSTREAM2: the record runs; stage 1D gives it the arms and deletes nd_walk_state */
 void nd_nr_run(const uint32_t* rec) { nd_nr_exec(rec, (rec[-2] >> 16) & 0xffu); }
 void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
     nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
@@ -354,9 +352,9 @@ static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) { const unsigned id = q[0] >> 24;
         if (q[0] == ND_NOP_A || id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) continue;
         if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_set_texture(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { if (!nd_op_same(q)) nd_op_apply(q); }
-        else if (__builtin_expect(!nd_op_typed(id), 0)) op_unknown(dbg, q); else if (nd_op_geo(id)) op_geo(dbg, q, q);
-        else if (nd_op_ctl(id)) { const unsigned r = op_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
-        else if (id == ND_FS_END) break; else op_typed(dbg, q, q);
+        else if (__builtin_expect(!nd_op_typed(id), 0)) nr_unknown(dbg, q); else if (nd_op_geo(id)) nr_geo(dbg, q, q);
+        else if (nd_op_ctl(id)) { const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
+        else if (id == ND_FS_END) break; else nr_set(dbg, q, q);
     } }
 
 /* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words
@@ -376,7 +374,7 @@ void nd_nr_list(const void* l, unsigned n, int keep) {
     if (!keep) { sc_ok = 0; sr_ok = 0; } /* DIP2: a new list starts with a full sync (not a piece of one flattened list) */
     pm_walk_side++;
     ex_depth = d + 1;
-    nd_walk_state((const uint32_t*)l, n);
+    nd_nr_exec((const uint32_t*)l, n);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();
@@ -431,7 +429,7 @@ void nd_parts_run(const uint32_t* u) {
 }
 /* NATIVEAPI S4 (S4PDIR): the runner of a run whose units are all MTX, PRIM, ENV, TILESIZE, POPMTX and the list call (nd_rec.c nd_parts_end).
  * The frame of nd_parts_run; each unit goes to its setter by id with what nd_walk_state does around it: the skip test and gv_epoch of a scalar
- * op (op_typed), pm_gbi_cur_op, the cold bad-matrix check of NDO_MTX (op_geo: no gv_epoch for a matrix op). With a walker debug switch on, the
+ * op (nr_set), pm_gbi_cur_op, the cold bad-matrix check of ND_FS_MTX (nr_geo: no gv_epoch for a matrix op). With a walker debug switch on, the
  * units take nd_walk_state (the census hooks live there). */
 static inline void part_units(const uint32_t* p, unsigned n) {
     for (; n; n--, p += 2) {
@@ -439,16 +437,16 @@ static inline void part_units(const uint32_t* p, unsigned n) {
         const u32 a = p[0] & 0xffffffu, b = p[1];
         pm_gbi_cur_op = id;
         switch (id) {
-        case NDO_MTX:
-            if (!is_host((u32)(uintptr_t)ptr_of(b))) gbi_cold_bad_mtx(a, b, (Gfx*)p, (Gfx*)p + 1);
+        case ND_FS_MTX:
+            if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (Gfx*)p, (Gfx*)p + 1);
             load_mtx(a, b, 0);
             break;
-        case NDO_POPMTX: gbi_popmtx(b); break;
+        case ND_FS_POPMTX: gbi_popmtx(b); break;
         default:
             if (nd_op_same(p)) break;
             gv_epoch++; /* GV1b */
-            if (id == NDO_PRIM) nd_set_prim(a, b);
-            else if (id == NDO_ENV) gbi_setenv(b);
+            if (id == ND_FS_PRIM) nd_set_prim(a, b);
+            else if (id == ND_FS_ENV) gbi_setenv(b);
             else nd_set_tilesize(a, b);
             break;
         }
@@ -507,10 +505,10 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
 }
 /* S7RUN (nd_gtab.h nd_rec_dl): the core 0 runner of one static list call from its table. rec[0] = the table, rec[1] = the state-only flag.
  * Arm rule (the commit names it): a state-only list (nd_rec.c rec_inline: fewer than 64 units, all state ops) never reached the walker's G_DL arms,
- * so it runs as G_PM_LST and its ops (the list start of that unit: gv_epoch, ent_skipgen, gp_prev_op); any other list takes the arms of walk_call
+ * so it runs as G_PM_LST and its ops (the list start of that unit: gv_epoch, ent_skipgen, gp_prev_op); any other list takes the arms of nr_call
  * in its order (ent_skipgen, ent_gdl, dlc_try) and, when neither draws it, the list start of nd_nr_list (keep) and its table ops. A def whose value
  * units all precede the statics (nv == pre, the S6E rule of ent_gap) runs compiled, else as units. A debug walk (pm_walk_dbg) runs the G_DL unit on
- * the walker so its census hooks see the list. Vertex and triangle ops are the walker's typed units (op_geo), so clip, cull, lit loads and the
+ * the walker so its census hooks see the list. Vertex and triangle ops are the walker's typed units (nr_geo), so clip, cull, lit loads and the
  * ring stay the walker's. */
 unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
@@ -525,7 +523,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     PM_WALK_OWN();
     if (rec[1] & 1u) { /* state-only */
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
-        static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
+        static const uint32_t lst[2] = { ND_FS_W0(ND_FS_MISC, ND_FS_MISC_LST << 16), 0u };
         pm_walk_side++;
         nd_nr_exec(lst, 1u);
         gt_body(nt);
@@ -535,7 +533,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     if (__builtin_expect(PMDL("entcap") && (!nt || PMDL("entcapt")), 0)) entcap_rec(key, rec[2], rec[3]); /* ENTSRC: entcapt adds the lists with a v2 table */
     if (__builtin_expect(pm_walk_dbg, 0)) {
         const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)key };
-        nd_walk_state(u, 1u);
+        nd_nr_exec(u, 1u);
         return;
     }
     const Gfx* next = (const Gfx*)key;
@@ -627,7 +625,7 @@ int lt_mem_same(u32 w0, u32 w1) {
     return l && slot >= 0 && slot < 9 && !lit_pending && lt[slot].col[0] == l[0] && lt[slot].col[1] == l[1] && lt[slot].col[2] == l[2] &&
            lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10];
 }
-void gbi_cold_modifyvtx(unsigned where, unsigned vi) { /* B5 (HC4d2: typed NDO_MISC fields). Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
+void nd_modvtx(unsigned where, unsigned vi) { /* B5 (HC4d2: typed ND_FS_MISC fields). Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
     /* the screen position (b) is not used: a triangle with such a vertex is dropped (gv_tri GVR_SCR) */
     if (where == G_MWO_POINT_XYSCREEN && vi < 64) vert_scr[vi] = 1;
 }

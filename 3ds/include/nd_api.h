@@ -13,7 +13,6 @@ void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units); /* nd_rec.c,
 void nd_snap_mesh(void); /* nd_snap.c, core 1: the snap of the next draw (NDR3: also before a glyph record) */
 void nd_rec_xf(NdNapiRun run, const uint32_t* rec); /* NDR5, nd_rec.c, core 1: one transform record taken as a state op */
 void nd_rec_st(NdNapiRun run, const void* rec, unsigned units); /* NDR0E2, nd_rec.c, core 1: a snap record taken as a state op */
-void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the typed op executor, as native record runs it */
 void nd_nr_exec(const uint32_t* u, unsigned n); /* nd_walk.c, core 0: n native records (nd_nr.h) */
 void nd_nr_run(const uint32_t* rec); /* nd_walk.c, core 0: the NDC_NAPI runner of a run; n = the units field of its header at rec[-2] */
 

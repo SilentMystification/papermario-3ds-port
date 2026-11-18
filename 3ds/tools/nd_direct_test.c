@@ -83,7 +83,6 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
 }
 static uint32_t gx_log[16][2];
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) { (void)g; if (n_gx < 16) { gx_log[n_gx][0] = w0; gx_log[n_gx][1] = w1; } n_gx++; }
-void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void nd_ds_feed(const uint32_t* u, unsigned n) { (void)u; (void)n; }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); } /* NST2J: the page left this stub out (nd_direct.c calls it) */
 NdDs nd_ds; /* NDR2A: nd_dir_prim1 and nd_dir_rec read it */

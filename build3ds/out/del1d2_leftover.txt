@@ -1,0 +1,35 @@
+3ds/include/nd_gtab.h:102:    NDN_UNIT,     /* p = const uint32_t* the depth-0 typed units of the list (word pairs, NOPs kept, the end left out, a call stays a unit), b = their count; the first op of every table; CONV2D2 runs them with nd_walk_state */
+3ds/include/nd_gtab.h:116:/* CONV2D2, core 0 only. n = the word pairs of the list from unit 0 to the stop (NOPs counted): nd_walk_state(list, n) runs the unit copy. */
+3ds/include/nd_tx.h:65:/* the texture rectangle as three units (the walker reads the rectangle and its two RDPHALF units at op_ctl, nd_gx_w merges them): gSPTextureRectangle,
+3ds/include/nd_vcopy.h:3: * walker takes ent_gdl for the heap list as walk_call did; dlc_try refuses a heap list in both paths). */
+3ds/include/nd_xf.h:2: * gives it for the matching F3DEX2 word. Core 1 records, core 0 runs it through nd_walk_state, the walker's own matrix code.
+3ds/src/nd_direct.c:204: * primitive colour as ops, then one fill rectangle (lower right exclusive, as passed). n = 4 ops (nd_walk_state counts ops). */
+3ds/src/nd_direct.c:272: * state lets a direct rectangle draw (nd_direct_ready == 1); else the same load and rectangle ops into a local list, walked with nd_walk_state. */
+3ds/src/nd_mtx_set.c:120: * as the walker's G_MTX check (nd_walk.c gbi_cold_bad_mtx). pm_log_evt passes the logging gate in every mode (console log, prof mode). */
+3ds/src/nd_rec.c:266:    nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0); nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at ent_run or walk_call) NREC2: the list snap table in header word 1 */
+3ds/src/nd_rec.c:432: * ops without the RDP syncs. The replay ran such a list on the op executor (walk_call: ent_gdl refuses a list without triangles, dlc_try a
+3ds/src/nd_rec.c:574: * list: the syncs dropped, a texture rectangle as NDC_TEXRECT, a branch followed, a push G_DL kept as a state op (walk_call at replay), the
+3ds/src/nd_rec.c:627:const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
+3ds/src/nd_scomp.c:156:/* DEL3B: a compiled record in the order of the old sc_exec: the pre value units, the static and no-op units of d in def order (nd_walk_state
+3ds/src/nd_shape.c:756:    if (!is_host((u32)(uintptr_t)l)) { pm_dlc_vm = 0; pm_dlc_vm_ok = 1; return 0; } /* rec_dl: a list outside host memory is not run (gbi_cold_bad_next): no draw */
+3ds/src/nd_target.c:102:/* NTGT: the NDC_NAPI runner of nd_target_begin and nd_target_end (nd_geo.c): one G_SETCIMG unit as the walker runs a control op (op_ctl, nd_walk.c):
+3ds/src/nd_walk.c:1:/* nd_walk.c: the replay side of the frame stream commands (DIRECT) and the op executor (nd_walk_state): the stream state runs, flat op ranges
+3ds/src/nd_walk.c:188:/* DIRECT D10c: the list executor. A list (a G_DL target, a render mode list) runs on nd_walk_state from its first op to its G_ENDDL (no length:
+3ds/src/nd_walk.c:200:/* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
+3ds/src/nd_walk.c:328:void nd_nr_exec(const uint32_t* q, unsigned n) { /* DEL1D2: was nd_walk_state */
+3ds/src/nd_walk.c:349:static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of a list with a snap table: nd_walk_state without the combine units */
+3ds/src/nd_walk.c:360: * of a model record, an interpreted map shape group) on the op executor (nd_walk_state), with the list start and end rules of nd_walk_run:
+3ds/src/nd_walk.c:430: * The frame of nd_parts_run; each unit goes to its setter by id with what nd_walk_state does around it: the skip test and gv_epoch of a scalar
+3ds/src/nd_walk.c:432: * units take nd_walk_state (the census hooks live there). */
+3ds/src/nd_walk.c:513:/* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
+3ds/src/nd_xf.c:18:/* core 0: op_geo's MTX and POPMTX arms for one record unit */
+3ds/tests/lkey/allow.txt:7:3ds/src/nd_walk.c 6 KEY walk_call nd_ntab_find (nd_walk.c:230), record words (DEL5B2: gt_call and the 2 parts .list reads go)
+3ds/tools/azt_scenarios.json:12410:      "proves": "NAPI3B: pm_gpu_tex_rect calls equal base and head; nd_walk_state calls lower by the glyph count; gfb 0.",
+3ds/tools/elfgate_patterns.txt:1:func ^(nd_walk_state|nd_ops_run|op_typed|op_geo|walk_call|nd_op_apply|nd_op_same|nd_op_xlate|nd_rec_state|sync_combine|nd_comb_decide|decide|decide_miss|sync_render|set_tilesize|tex_win[01]|ensure_tile|ensure_tile_slow|nd_texrect|nd_fillrect|gv_tri|op_setcombine|load_mtx|ent_flat|ent_run|ent_compile|dlc_try|dlc_build|nd_gtab_run|gt_ops|nd_scomp_exec.*|nd_rec_dl|nd_set_(timg|tile|tilesize|loadblock|loadtile|loadtlut|texture)|gbi_.*|nd_lstcen|img_role|off_screen_check)$
+3ds/tools/nd_at_test.c:45:/* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
+3ds/tools/nd_direct_test.c:205:    /* S5CHUDA: nd_direct_quad runs MTX, VTX, TRI, TRI, POP with the words the typed recorder makes of the old ops (low 24 bits of w0, as op_geo passes them) */
+3ds/tools/nd_geo_test.c:45:/* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
+3ds/tools/nd_st_test.c:44:/* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
+3ds/tools/nd_tx_test.c:46:/* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
+3ds/tools/nd_val_test.c:45:/* the walker side: nd_stream_run hands each state run to nd_walk_state; the double logs each unit (word pair) */
+3ds/tools/rowlint_fixtures/symbol.md:9:1. Edit 3ds/src/nd_gtab.c: add `void nd_ntab_run(const NdNTab* t) { nd_walk_state((const uint32_t*)t->list, 1u); }`.

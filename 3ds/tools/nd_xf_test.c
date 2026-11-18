@@ -27,7 +27,6 @@ static uint32_t last[2]; static unsigned nlast;
 void nd_rec_xf(NdNapiRun run, const uint32_t* rec) { (void)run; last[0] = rec[0]; last[1] = rec[1]; nlast = 2u; }
 void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) { (void)s; (void)w0; (void)w1; }
 NdDs nd_ds;
-void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; (void)n; }
 
 static int fails;
 static void check(const char* name, const uint32_t want[2]) {
