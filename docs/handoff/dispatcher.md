@@ -13,6 +13,8 @@ START A COACH: Agent `subagent_type: oracle`, prompt: `COACH for chain <chain>. 
 QUOTA: the sum of all quotas is at most 5 coders (4 build slots, build_pipeline.md). Give a free quota to the chain with the most ready pages. Move quota by SendMessage to the coach.
 FRESH DESIGN: a topic with no page (for example NCONV1D) gets a DESIGN oracle (`subagent_type: oracle`, prompt without the COACH word). It writes pages and ends. Then start a coach for the new chain.
 
+SATURATE (every event, before you end a turn): quota 5 coders. Count the running coders. For each free slot start a coder on a free page. If no free page exists, a DESIGN oracle must run to write the next pages now. Pages are written AHEAD from the branch data of a gated or running row: never wait for its merge to design the next row. A page lists only real shared-file dependencies. Ask the design oracle if a row marked WAIT has disjoint files. Never end a turn with a free slot and a free page, or with no design oracle while rows are unwritten.
+
 EVENTS (act at once, no questions):
 1. A coach reports `GATED <row> <tip>`: start a Haiku merger when none runs (`Merge row <row>. Follow docs/handoff/merge_protocol.md.`). One merger at a time, main must stay clean. On `MERGED` send the orchestrator the line and tell the coaches the next rows are free.
 2. A coach reports a fault, or the merger prints `MERGE FAILED`: send the orchestrator `FAULT`. Read postmerge_FAIL.txt through `sh 3ds/tools/postmerge_bg.sh --status` first. While postmerge_FAIL.txt exists hold merges.

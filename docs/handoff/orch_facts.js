@@ -74,6 +74,7 @@ if (mode === 'facts') { // orchestrator: main and the dispatcher state only. Age
     const hold = sl.find(l => l.startsWith('HOLD '));
     lines.push('dispatch state: ' + (px || 'PROXY ?') + ', ' + n('RUN') + ' coders, ' + n('GATED') + ' gated, ' + n('WAIT') + ' waiting, ' + (hold || 'HOLD none'));
   }
+  { const pg = freePages(); lines.push('SATURATE: quota 5 coders. Worktrees with a branch: ' + wts.length + '. Free goal pages: ' + (pg.length ? pg.join(' ') : 'NONE') + '. Compare with ListAgents: a free slot, or no design oracle writing ahead, is a fault: order the dispatcher.'); }
   process.stdout.write(lines.join('\n') + '\n');
   process.exit(0);
 }
