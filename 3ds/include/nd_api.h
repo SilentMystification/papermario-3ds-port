@@ -105,6 +105,7 @@ typedef struct NdTRect {
 _Static_assert(sizeof(NdTRect) % 8 == 0 && sizeof(NdTRect) == 104, "NdTRect: 13 whole 8-byte units");
 void nd_trect_run(const uint32_t* u);
 void nd_trect_feed(const uint32_t* u); /* nd_direct.c, core 1: the units of an NdTRect feed nd_ds (NST2E) */
+void nd_trect_rec(const NdTRect* r); /* nd_direct.c, core 1, NDR2B: pso snap, record (nd_rec_napi_s) and feed of one texture rectangle */
 void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c, core 1 (NST2E) */
 void nd_ds_feed_dir(const uint32_t* u, unsigned n); /* nd_rec.c, NST2J: nd_ds_feed for a direct draw (sc_lost 1) */
 

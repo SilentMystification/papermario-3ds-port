@@ -2253,8 +2253,7 @@ void draw_digit(IMG_PTR img, s32 charset, s32 posX, s32 posY) {
         r.w1 = ND_W1_TR(G_TX_RENDERTILE, 4 * posX, 4 * posY);
         r.hs = ND_TR_H1(0, 0);
         r.hd = ND_TR_H2(1 << 10, 1 << 10);
-        nd_rec_napi(nd_trect_run, &r, sizeof r / 8u);
-        nd_trect_feed((const uint32_t*)&r);
+        nd_trect_rec(&r); /* NDR2B */
         return;
     }
     nd_tex_load_tile_4b(img, G_IM_FMT_CI, num->texWidth, num->texHeight, 0, 0, num->texWidth - 1, num->texHeight - 1, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
