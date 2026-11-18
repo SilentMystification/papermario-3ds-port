@@ -1,4 +1,4 @@
-# ws_NST2F (Haiku): dschk end of S3: adopt after direct draws, box fold, shaded sprite dual_on (counter: dschk bad 0, epbad 0)
+# ws_NST2F (Haiku): dschk end of S3: adopt after direct draws, box fold, shaded sprite dual_on (counter: dschk fbad lower, bad not higher)
 Designer: oracle NSTO. WAIT: branch from branch NST2E at its gate commit (plan_finish.md section 4; facts checked on NST2D b1975eb0c6). Worktree build3ds/wt/NST2F, branch NST2F. PM_ROW=NST2F PM_LANE=NST2F.
 Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_dschk.c, 3ds/src/nd_direct.c (2 lines), 3ds/tools/nd_ds_test.c,
 3ds/tests/host.d/nst1.sh, 3ds/tools/fxrest.d/dschk_base.txt.
@@ -31,7 +31,10 @@ Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_dschk.c, 3ds/src/nd_
 ## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 6 Azahar starts; the 4 dschk scenes of azt.d/NST3.json)
 1. Edits 1-6. Host PASS with `nst2f shaded bad 0` and the fault seen. Commit `NST2F 1: dschk adopt after direct draws, box fold, shaded dual_on`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2F --bench the same 2: LOOP PASS, byte-equal.
-3. bench.py run the 4 dschk scenes; grep their dschk lines > build3ds/out/nst2f_dschk.txt. Pass: bad 0 and epbad 0 in the last line of each
-   scene. Write the grep into dschk_base.txt.
+3. bench.py run the 4 dschk scenes; grep their dschk lines > build3ds/out/nst2f_dschk.txt. Pass (oracle round 1, gate corrected): in spot_mac01_dschk
+   and fxchk_a_dschk the last fbad is lower and bad is not higher than dschk_base.txt (NST2E). epbad and the 2 scenes without a base are recorded,
+   not judged: dir_adopt sets box_folded 0 (nd_dschk.c), so sc_sig_now (nd_comb.c:191-193) changes and core 0 runs TEXTURE and COMB units it
+   would skip (nd_set.c:139-141): nd_st_epoch rises under dschk only. bad 0 and epbad 0 move to row NST2G (on main with FALLBK 91d6172eb3).
+   Write the grep into dschk_base.txt.
 ## Fix rights: the listed files; compile errors. bad or epbad above 0, a crash, a DIFF: stop, send the output path (with the `dschk bad` name
-  lines) to oracle NSTO. Wait. Stop: last commit `NST2F 2: gate. dschk bad 0 epbad 0 (x4); adopt <4> adiff <4>` deletes this page. One SubagentHandback.
+  lines) to oracle NSTO. Wait. Stop: last commit `NST2F 2: gate. dschk fbad <2> (base <2>), bad <2> (base <2>); epbad <4>; adopt <4> adiff <4>` deletes this page. One SubagentHandback.

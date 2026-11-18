@@ -1,4 +1,4 @@
-# ws_NDR0B (Haiku): the texture descriptors td[0], td[1] on core 1, compared by dschk (stage S4; counter: dschk bad 0 with td)
+# ws_NDR0B (Haiku): the texture descriptors td[0], td[1] on core 1, compared by dschk (stage S4; counter: dschk bad not higher with td)
 Designer: oracle FIN. WAIT: branch from branch NST2F at its gate commit. Worktree build3ds/wt/NDR0B, branch NDR0B. PM_ROW=NDR0B PM_LANE=NDR0B.
 Edit only: 3ds/src/nd_ds.c, 3ds/src/nd_dschk.c, 3ds/tools/nd_ds_test.c, 3ds/tests/host.d/nst1.sh, 3ds/tools/fxrest.d/dschk_base.txt.
 ## Facts (code read, main 59a0ffc265 and branch NST2F 2f8d939b64)
@@ -40,6 +40,7 @@ Edit only: 3ds/src/nd_ds.c, 3ds/src/nd_dschk.c, 3ds/tools/nd_ds_test.c, 3ds/test
 ## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 6 Azahar starts; the 4 dschk scenes of azt.d/NST3.json)
 1. Edits 1-6. Host PASS with `ndr0b cases 2 bad 0` and the fault seen. Commit `NDR0B 1: td on core 1, dschk compares td`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NDR0B --bench the same 2: LOOP PASS, byte-equal.
-3. bench.py run the 4 dschk scenes; grep the dschk lines > build3ds/out/ndr0b_dschk.txt. Pass: bad 0 and epbad 0 in the last line of each. Write the grep into dschk_base.txt.
+3. bench.py run the 4 dschk scenes; grep the dschk lines > build3ds/out/ndr0b_dschk.txt. Pass: in each scene the last bad and fbad are not
+   higher than dschk_base.txt (NST2F), and no `dschk bad` line names td. epbad is recorded, not judged. Write the grep into dschk_base.txt.
 ## Fix rights: the listed files; compile errors. bad above 0 (a `dschk bad` line names td), a crash, a DIFF: stop, send the output path to the oracle. Wait.
-  Stop: last commit `NDR0B 2: gate. dschk bad 0 epbad 0 (x4) with td; adopt <4> adiff <4>` deletes this page. One SubagentHandback.
+  Stop: last commit `NDR0B 2: gate. dschk bad <4> fbad <4> (base <4>) with td; epbad <4>` deletes this page. One SubagentHandback.
