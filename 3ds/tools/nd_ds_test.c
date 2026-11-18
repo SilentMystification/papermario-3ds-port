@@ -165,11 +165,12 @@ int main(int argc, char** argv) {
         bad += (int)xb; nf += (int)xf;
 #undef C3
     }
-    /* NREC4: the same record with nd_lsc_on 1: a static table {VTX 3, TRI 0 1 2, TRI 0 2 1, END} at each CALL word. The snap hooks get 2 + 2 = 4
+    /* NREC4: the same record with nd_lsc_on 1: a static table {VTX 3, TRI2 (0 1 2) (0 2 1)} at each CALL word. The snap hooks get 2 + 2 = 4
      * list triangles and 4 non-list units (PRIM and ENV of 2 instances). fault: the expected triangle sum is 5. */
     {
-        static const NdGOp nrec4_ops[] = { { NDG_VTX, 3, 0, 0, NULL }, { NDG_TRI, 0, 1, 2, NULL }, { NDG_TRI, 0, 2, 1, NULL }, { NDG_END, 0, 0, 0, NULL } };
-        static const NdGTab nrec4_tab = { NULL, nrec4_ops, 4, 0, 3, 2 };
+        static const uint32_t nrec4_u[4] = { ND_FS_W0(ND_FS_VTX, 3u << 12 | 3u << 1), 0u, ND_FS_W0(ND_FS_TRI2, 0u << 16 | 2u << 8 | 4u), 0u << 16 | 4u << 8 | 2u }; /* DEL5B1: VTX 3, TRI2 (0 1 2) (0 2 1) */
+        static const NdNDev nrec4_dev = { &nrec4_dev, NDN_FL_PARTS | 3u << 16, nrec4_u, 2u, 2u };
+        static const NdGTab nrec4_tab = { (const uint32_t*)(const void*)&nrec4_dev, NULL, 0, NDG_F_PARTS | NDG_F_MOVED, 3, 2 };
         static NdDs nz;
         static uint32_t nu[2 + 2 * 6];
         unsigned xb = 0;
