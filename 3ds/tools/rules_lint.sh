@@ -1,6 +1,6 @@
 #!/bin/sh
 # rules_lint.sh: the rule files are edited in place. Fails when one grows past its cap or holds a stale phrase.
-# Run by the Stop hook (docs/handoff/orch_facts.js). Exit 0 OK, 1 problem. User 2026-11-16: rules were appended, not updated.
+# Run by the Stop hook (docs/handoff/orch_facts.js). Exit 0 OK, 1 problem. Rule files are a current list, never a log.
 cd "$(git rev-parse --show-toplevel)" || exit 2
 bad=0
 chk() { # file max-lines
@@ -15,6 +15,12 @@ chk CLAUDE.md 60
 for f in docs/handoff/orchestrator_rules.md CLAUDE.md .claude/agents/coder.md .claude/agents/oracle.md; do
     if grep -q -E 'handback_<id>|INDEX\.md line' "$f"; then
         echo "rules_lint: $f holds a stale phrase (handback_<id> or INDEX.md line): rewrite that rule in place"
+        bad=1
+    fi
+done
+for f in docs/handoff/orchestrator_rules.md CLAUDE.md .claude/agents/coder.md .claude/agents/oracle.md docs/handoff/push_runbook.md; do
+    if grep -q -E '20[0-9]{2}-[0-9]{2}-[0-9]{2}|\(user [0-9]|violations? on' "$f"; then
+        echo "rules_lint: $f holds a date or a (user ...) tag: a rule file is a current list, history is in git. Remove it"
         bad=1
     fi
 done

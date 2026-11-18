@@ -1,12 +1,12 @@
 # Push runbook (one page, edit in place). Every agent reads this before a console push. No guessing.
 
-## Facts (checked 2026-11-17)
+## Facts
 - Consoles: O3DS 192.168.1.170 (`o`), N3DS 192.168.1.224 (`n`), O3DS XL 192.168.1.131 (give `-ip 192.168.1.131`, target `o`).
 - The netloader broadcast probe does NOT reach the consoles from this PC. go.ps1 uses the address above, so no probe runs.
 - The user opens the netloader. The user's word "ready" is a fact. A probe, ping or send failure is never a console state.
 - `go.ps1 push` builds unless `-NoBuild`. A build runs only when build3ds/pm_3ds.3dsx is stale. Never start a push while a build is needed.
 
-## Order (the user's rule, 4 violations on 2026-11-17)
+## Order (the user's rule)
 1. Merge and build main (`sh 3ds/build.sh` as ONE background job, run directly, not in a subshell with `&`; wait for its notice). The 3dsx time and `build3ds/out/main_build*.done` show it.
 2. Gate: `python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt` prints `binchk OK`. Key check: `PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh` equals `build3ds/build_key.txt`.
 3. Write ONE plain line to the user: `Build <commit> ready. Say the console.` No AskUserQuestion popup (the user rejects it). Never write that line before steps 1 and 2 are done.

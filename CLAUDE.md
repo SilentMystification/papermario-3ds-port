@@ -1,7 +1,7 @@
 # papermario-3ds-port rules
 
 Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after every compaction. Code agents: read your goal page
-(docs/handoff/ws_<id>.md) first, then this file only. Edit rules in place, never append.
+(docs/handoff/ws_<id>.md) first, then this file only. Update the rule that covers a topic first; add a new line only when no rule covers it. No dates, no incident stories: git is the log.
 
 1. BUGS. A fault or a state the user reports (the game runs, the console is online, FTP or the netloader is open) is fact: never
    probe it to doubt it. When a tool cannot reach a reported state, read the tool and the game code for the cause. Read the code
@@ -9,7 +9,7 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    runs, no premise-check runs unless the user allows them. No cause found: hand back the trace. The orchestrator asks the user.
 2. NO VISUAL CHECKS. No agent looks at a shot, describes a picture or counts pixels. Proof is the code read, the host unit tests
    (nd_host) and the mechanical byte compare (`bench.py base <bench>`, then `bench.py cmp <bench> --row <id>`).
-3. TESTS. Coders run all tests. The oracle runs none (user 2026-11-17). The main proof is the host unit tests
+3. TESTS. Coders run all tests. The oracle runs none. The main proof is the host unit tests
    (`sh 3ds/tools/nd_host_test.sh`, seconds). The emulator runs once per group of files, never per file. A gate costs at most
    1 build and 2 Azahar runs. Budget: 8 Azahar starts per task. Every run uses
    `python 3ds/tools/bench.py run <bench> --row <id> --why "<text>"` with PM_ROW=<id> and PM_LANE=<id>. A scenario has an
@@ -22,10 +22,10 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    (it fails on this PC). The user's word that the console is ready is fact. A probe or send failure is not a console state: read the log. Coders never touch the console.
 4. TOOL FAULTS STOP THE GATE: a base run that fails or hangs, an abnormal exit, a stale build, a shot copy failure, two runs
    that disagree. Hand back the exact output. Never skip a scene, change the base or reset the budget to pass. The orchestrator
-   resets a task's budget once per designer correction (user 2026-11-12). Every compare is exact: one differing bit fails the
-   gate, no rounding exception (user 2026-11-12).
+   resets a task's budget once per designer correction. Every compare is exact: one differing bit fails the
+   gate, no rounding exception.
 5. STOP RULE. Fix a mechanical fault of the goal page or of a tool yourself and note it in the commit. Any other failed gate or
-   unexpected fact: the coder does not diagnose (user 2026-11-17). Send the output path to the designer (oracle) with
+   unexpected fact: the coder does not diagnose. Send the output path to the designer (oracle) with
    SendMessage, apply its reply and rerun (3 rounds per cause, then hand back). Go on with a next group that does not depend on
    the answer. Hand back only when the task is done, when only the user can decide, or after 90 minutes without a commit.
 6. WORK. One command per step: write a script, not many small commands (every command re-reads your whole context). Grep and
@@ -35,7 +35,7 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    waiting inside a turn is not possible). Stop every background task you start. Hand back with ONE
    SubagentHandback message (commit hash, gate values, counter change) and one short last line. No hand-back file.
 7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash. Claude
-   attribution lines in commits are allowed (user 2026-11-12). Debug tools may stay. Untested code stays on a branch. Follow
+   attribution lines in commits are allowed. Debug tools may stay. Untested code stays on a branch. Follow
    docs/handoff/hw_guidelines.md (ARM11: hot loops fit 16 KB L1, no division, no double, sequential access).
 8. WORKTREES. One per agent: build3ds/wt/<id>, branch <id>. The orchestrator merges and cleans up. Workstreams own disjoint
    directories, so merges do not conflict. Windows: repo-relative paths, the .ps1 tools, Git Bash for sh tools. build.sh
@@ -43,5 +43,5 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    lines, azt_scenarios.json, bench_defs.json) unless the goal page says so. Do not merge main into your branch unless told.
 9. DOCS. State lives in a few files, edited in place. Git history is the log. The commit that completes a task deletes its goal
    page. Numbers go into the bench database (runs.jsonl is append-only), not into prose. Only the oracle and the orchestrator
-   add a docs/handoff file. `ls docs/handoff` is the index (user 2026-11-16).
+   add a docs/handoff file. `ls docs/handoff` is the index.
 10. CLEAN MAIN. The main folder has no uncommitted or untracked files. Every file is committed or listed in .gitignore.

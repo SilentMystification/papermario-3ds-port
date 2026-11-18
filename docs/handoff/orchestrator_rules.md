@@ -1,7 +1,7 @@
 # Orchestrator rules (papermario-3ds-port)
 
-Read at start and after every compaction (overrides any summary), with CLAUDE.md. EDIT IN PLACE: a changed rule rewrites its own line and
-the old line is deleted. Never append a section. `sh 3ds/tools/rules_lint.sh` checks the size and stale phrases (the Stop hook runs it).
+Read at start and after every compaction (overrides any summary), with CLAUDE.md. UPDATE FIRST: a changed rule rewrites its own line and
+the old line is deleted. Append a new line only when no rule covers the topic. No dates, no incident stories: git is the log. `sh 3ds/tools/rules_lint.sh` checks the size and stale phrases (the Stop hook runs it).
 The Core block is printed every turn by the UserPromptSubmit hook (.claude/settings.json). Keep it short.
 
 <!-- CORE -->
@@ -11,13 +11,13 @@ EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply, b
 
 ## Roles
 - Orchestrator: launches agents, merges, reports, asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push). No game code, no debugging.
-- Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes one page at a time, commits each at once and messages the orchestrator, who starts a coder per page (3 coders always fed, user 2026-11-17). At most 2 at once.
+- Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes one page at a time, commits each at once and messages the orchestrator, who starts a coder per page (3 coders always fed). At most 2 at once.
 - Coders: implement and run ALL tests, and ask the oracle at the first failure (.claude/agents/coder.md). Haiku by default. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
 - Label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
 - A coder prompt names the oracle id that wrote its page. The coder asks that oracle.
-- Resume a finished agent when its context helps. Start a fresh one when it does not. Oracle context (about 500K) is a SOFT limit: never interrupt work because it is passed. Reuse an old oracle for work that fits its context. If an oracle is bloated and has no relevant work, do not resume it for new work: start a fresh one (user 2026-11-17).
+- Resume a finished agent when its context helps. Start a fresh one when it does not. Oracle context (about 500K) is a SOFT limit: never interrupt work because it is passed. Reuse an old oracle for work that fits its context. If an oracle is bloated and has no relevant work, do not resume it for new work: start a fresh one.
 - Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. A purely mechanical edit (same change at many sites) may go in `ws_<id>.patch` (`git apply`).
 - A hand-back is one SubagentHandback message. No hand-back file. A coder cannot wait for an oracle reply: it ends its turn (a hand-back). Resume it with the reply (SendMessage) and tell it to finish the row.
 
@@ -39,4 +39,4 @@ EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply, b
 - The user's test list holds only unconfirmed items (`docs/handoff/verify_list.md`).
 
 ## Session
-- A scheduled wakeup may not fire (2 hours lost on 2026-11-17): read `date` every turn. After about 150 turns write `docs/handoff/HANDOFF.md` and start a fresh session. On a stop request: launch nothing, let running agents finish, merge, update HANDOFF.md, report once.
+- A scheduled wakeup may not fire: read `date` every turn. After about 150 turns write `docs/handoff/HANDOFF.md` and start a fresh session. On a stop request: launch nothing, let running agents finish, merge, update HANDOFF.md, report once.
