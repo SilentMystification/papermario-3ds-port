@@ -1,0 +1,6 @@
+LOOP NREC4 host rc 0, build rc 0, 4 s
+STAGE key-inputs 3 s STAGE gen 0 s --- build up to date (key 8f6ea88ca80e), skipping --- STAGE key 1 s 
+
+cmp fxparts_drec:   drec draw 324 DIFF line 31292: base 'r 0cb f ffffffff', row 'r 0cb f 00000000' 0/1 byte-equal 
+LOOP TIME host+build 4 s, run+cmp 25 s, total 29 s
+LOOP FAIL: cmp, read build3ds/out/loop_NREC4_cmp_<bench>.txt

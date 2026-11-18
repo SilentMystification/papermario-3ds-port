@@ -1,0 +1,52 @@
+{
+  "scenarios": [
+    {
+      "name": "fxp_snapchk",
+      "status": "unverified",
+      "subject": "NREC4 particle snaps: the 7 nd_parts_add effects (shimmer_burst 50, effect_3D 55, snowfall 63, snaking_static 81, water_block 84, embers 105, pink_sparkles 124) on mac_01 (pos 0 0 200), cold det start with the snapchk switch (no drec), no shots.",
+      "proves": "NREC4: the instance snap table of the particle runs gives the lsnap counters (lists, snaps, tmis) and the snapchk bad count of the parts draws.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=50,55,63,81,84,105,124 loglevel=debug det snapchk",
+      "until": "lsnap f800 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "lsnap",
+          "regex": "lsnap f800 "
+        }
+      ],
+      "reason": "NREC4: copy of fxp_drec with the snapchk switch in place of drec. Cap 30 s, deadline 25 s, until the lsnap line of frame 800."
+    },
+    {
+      "name": "fxparts_drec",
+      "status": "unverified",
+      "subject": "NREC4 parts effects: the 7 nd_parts_add effects (shimmer_burst 50, effect_3D 55, snowfall 63, snaking_static 81, water_block 84, embers 105, pink_sparkles 124) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 676, step 44), no shots.",
+      "proves": "NREC4: the draw record of the nd_parts_add effects is byte-equal between a base and a conversion head.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=50,55,63,81,84,105,124 loglevel=debug det drec=412:7:44",
+      "until": "drec f676 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f676 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "NREC4: copy of fxp_drec with the parts effect list. Cap 25 s, deadline 20 s, until the drec line of frame 676."
+    }
+  ]
+}

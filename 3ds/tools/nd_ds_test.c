@@ -17,6 +17,11 @@ const NdNDev* nd_ntab_find(const void* list) { (void)list; return NULL; }
 const NdGTab* nd_gtab_find(const void* list) { (void)list; return NULL; }
 
 static int nf, bad;
+/* NREC4: the snap collector hooks of nd_ds_parts (nd_snap.c in the device build) */
+extern unsigned char nd_lsc_on;
+static unsigned nrec4_tris, nrec4_units;
+void nd_lsc_tris(unsigned n) { nrec4_tris += n; }
+void nd_lsc_unit(uint32_t w0) { (void)w0; nrec4_units++; }
 /* NST2b: the unit of nd_ds_model (the test form of ds_unit: the state write only) */
 static void nd_model_unit(NdDs* s, uint32_t w0, uint32_t w1) { nd_ds_apply(s, w0, w1); }
 #define CHK(name, got, want) do { nf++; if ((unsigned long)(got) != (unsigned long)(want)) { bad++; printf("nst1 BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
@@ -159,6 +164,30 @@ int main(int argc, char** argv) {
         printf("nst2c parts fields %u bad %u\n", xf, xb);
         bad += (int)xb; nf += (int)xf;
 #undef C3
+    }
+    /* NREC4: the same record with nd_lsc_on 1: a static table {VTX 3, TRI 0 1 2, TRI 0 2 1, END} at each CALL word. The snap hooks get 2 + 2 = 4
+     * list triangles and 4 non-list units (PRIM and ENV of 2 instances). fault: the expected triangle sum is 5. */
+    {
+        static const NdGOp nrec4_ops[] = { { NDG_VTX, 3, 0, 0, NULL }, { NDG_TRI, 0, 1, 2, NULL }, { NDG_TRI, 0, 2, 1, NULL }, { NDG_END, 0, 0, 0, NULL } };
+        static const NdGTab nrec4_tab = { NULL, nrec4_ops, 4, 0, 3, 2 };
+        static NdDs nz;
+        static uint32_t nu[2 + 2 * 6];
+        unsigned xb = 0;
+        memset(nu, 0, sizeof nu);
+        nu[0] = 2u | 1u << 8 | 3u << 16;
+        nu[2] = NDO_W0(NDO_PRIM, 5); nu[3] = 0x1111u;
+        nu[4] = NDO_W0(NDO_CALL, 0); nu[5] = (uint32_t)(uintptr_t)&nrec4_tab;
+        nu[6] = NDO_W0(NDO_ENV, 0); nu[7] = 0x2222u;
+        nu[8] = NDO_W0(NDO_PRIM, 7); nu[9] = 0x3333u;
+        nu[10] = NDO_W0(NDO_CALL, 0); nu[11] = (uint32_t)(uintptr_t)&nrec4_tab;
+        nu[12] = NDO_W0(NDO_ENV, 0); nu[13] = 0x4444u;
+        nrec4_tris = 0; nrec4_units = 0; nd_lsc_on = 1;
+        nd_ds_parts(&nz, nu, nd_model_unit);
+        nd_lsc_on = 0;
+        if (nrec4_tris != (fault ? 5u : 4u)) xb++;
+        if (nrec4_units != 4u) xb++;
+        printf("nrec4 parts tris %u units %u bad %u\n", nrec4_tris, nrec4_units, xb);
+        bad += (int)xb; nf += 2;
     }
     /* NST2C (b): a compiled def {PRIM value slot, ENV}, vmask 1, one value PRIM (0x5, 0xABCD): prim from the value, envc from the static unit. */
     {

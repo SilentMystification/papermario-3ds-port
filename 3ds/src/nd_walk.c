@@ -459,12 +459,14 @@ static __attribute__((cold, noinline)) void pr_cen(void) {
     pr_next = (f / 300u + 1u) * 300u;
     pm_log_evt("partsrun f%u v %u old %u", f, pr_v, pr_old);
 }
+static __attribute__((cold, noinline)) void pr_lsr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("lsnap parts f%u", pm_frame_count()); } } /* NREC4 */
 void nd_parts_run(const uint32_t* u) {
     PM_WALK_OWN();
     pr_old++;
     if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     pm_walk_side++;
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4 */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
@@ -476,6 +478,7 @@ void nd_parts_run(const uint32_t* u) {
         if (!nd_part_draw(t)) { if (t->flags & NDG_F_MOVED) nd_ntab_run((const NdNDev*)(const void*)t->list); else nd_ops_run(t->list, ND_LIST_MAX, 1); } /* PMOVE: a moved list runs its NdNDev units */
         nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u);
     }
+    nd_lsr_end(); /* NREC4 */
     pm_comb_vprim = 0; sc_ok = 0; sync_combine(); /* S4COL: the normal plan is back in gs before the next walker draw */
     pm_walk_side--;
     gv_streak_flush();
@@ -513,6 +516,7 @@ void nd_parts_run_v(const uint32_t* u) {
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     const unsigned dbg = pm_walk_dbg;
     pm_walk_side++;
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4 */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
@@ -524,6 +528,7 @@ void nd_parts_run_v(const uint32_t* u) {
         if (!nd_part_draw(t)) { if (t->flags & NDG_F_MOVED) nd_ntab_run((const NdNDev*)(const void*)t->list); else nd_ops_run(t->list, ND_LIST_MAX, 1); } /* PMOVE: a moved list runs its NdNDev units */
         if (__builtin_expect(dbg, 0)) nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
     }
+    nd_lsr_end(); /* NREC4 */
     pm_comb_vprim = 0; sc_ok = 0; sync_combine();
     pm_walk_side--;
     gv_streak_flush();

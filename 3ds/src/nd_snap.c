@@ -27,6 +27,7 @@ static int sn_leg, sn_mode5, sn_pat;
 static NdSnapChk sn_last;
 static unsigned sn_cmds = ~0u;
 static NdTgt sn_tgt;
+static unsigned sn_vprim; /* NREC4: 1 while a particle table is taken */
 /* the target record of set_cimg (nd_target.c:87-99) without the GPU calls */
 void nd_snap_tgt(uint32_t w0, uint32_t w1) {
     void* nc = (void*)(uintptr_t)w1;
@@ -49,10 +50,10 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
     if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
-    r.key = nd_pso_find_i(&r.in, 0u, &o);
+    r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
     r.plan_on = -1;
     if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
-    else nd_comb_core1(&r.in, 0u, sn_mode5, &o); /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
+    else nd_comb_core1(&r.in, sn_vprim, sn_mode5, &o); /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
     if (o.plan_on) pm_comb_colours_k(&o.plan, r.in.prim, r.in.env, r.in.prim_lo8 & 0xffu, r.in.key_c, r.in.key_s, r.in.conv_k4 & 255u);
     r.o = o;
     sn_leg = o.leg; sn_mode5 = o.mode5; sn_pat = o.pat;
@@ -67,8 +68,10 @@ static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, z
 static NdSnapChk ls_s[LS_MAX]; static uint32_t ls_f[LS_MAX]; static unsigned ls_n, ls_ord, ls_over; static unsigned char ls_chg;
 static unsigned char ls_ovl; /* NREC2: this list has more ranges than LS_MAX */
 void nd_lsc_begin(void) { ls_n = 0; ls_ord = 0; ls_chg = 1; ls_ovl = 0; sn_cmds = ~0u; nd_lsc_on = 1; }
+void nd_lsc_begin_v(unsigned v) { nd_lsc_begin(); sn_vprim = v; } /* NREC4 */
 void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) { ls_over++; ls_ovl = 1; } else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord; sn_cmds = nd_rec_cmds(); } } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
-void nd_lsc_end_at(uint32_t* dst) { nd_lsc_on = 0; sn_cmds = ~0u; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
+void nd_lsc_tris(unsigned n) { if (!n) return; nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); ls_ord += n - 1u; } /* NREC4: n list triangles, one snap test */
+void nd_lsc_end_at(uint32_t* dst) { nd_lsc_on = 0; sn_cmds = ~0u; sn_vprim = 0; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
     const unsigned h = ND_LS_HDR(ls_n); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0]); b[0] = ls_n; b[1] = ls_ord; memcpy(b + 2, ls_f, 4u * ls_n); memcpy((char*)b + h, ls_s, ls_n * sizeof ls_s[0]); *dst = (uint32_t)(uintptr_t)b; }
 void nd_lsc_end(void) { nd_lsc_end_at(nd_rec_last_pay() + 4); }
 static NdDs sn_tmp; /* NDR2A, core 1: nd_ds with the pso words of a direct draw */
@@ -262,6 +265,8 @@ void nd_snap_rlog(void) {
     }
 }
 void nd_snapchk_rect(void) { nd_snap_arm = 0; if (PMDL("snapchk")) sc_compare(); }   /* NDR0E2: a texture rectangle: compare only */
+static unsigned pr_cmp, pr_bad; /* NREC4: the particle compares (no combine apply) */
+void nd_snapchk_part(void) { nd_snap_arm = 0; if (!PMDL("snapchk")) return; const unsigned b0 = sc_bad; sc_compare(); pr_cmp++; pr_bad += sc_bad != b0; } /* NREC4 */
 /* NCONV1D1: core 0 compares each list range with the walker at its first triangle (nd_lsr_tri); the counters go to the lsnap line. */
 unsigned char nd_ls_on; unsigned nd_ls_ord; static const uint32_t* lr_b; static unsigned char lr_p1; static unsigned lr_cur, lr_nx, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_tmis, lr_bst;
 void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; if (b) { lr_lists++; lr_snaps += b[0]; } }
@@ -287,6 +292,7 @@ void nd_snapchk_tick(void) {
         pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
         pm_log_evt("lsnap f%u lists %u snaps %u cmp %u p1 %u bst %u tmis %u over %u", pm_frame_n, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_bst, lr_tmis, ls_over);
         pm_log_evt("tsnap f%u cmp %u wtss %u tris %u vtss %u", pm_frame_n, ts_cmp, ts_bad, ts_vn, ts_vb); /* NCONV2A */
+        pm_log_evt("psnap f%u cmp %u bad %u", pm_frame_n, pr_cmp, pr_bad); /* NREC4 */
     }
 }
 /* NDR4: the snap of a sprite record (pm_gpu_spr_build reads it). core 0. */

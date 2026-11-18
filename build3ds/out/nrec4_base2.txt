@@ -1,0 +1,44 @@
+LIST: 2 scenarios, one kept slot, warm restart between them: fxparts_drec, fxparts_drec
+LIST: start fxparts_drec at 15:43:44
+queue: position 1 of 1 waiting (lane 'base_73359b439', speed normal, scenario fxparts_drec, want slot any)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario fxparts_drec, row BASECACHE, lane 'base_73359b439', slot 1, cap 25 s, deadline 20 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 20 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 20 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 8s: matched 'drec f676 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 8.1 s; end at 8.6 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+PASS  warp: #134 warp: mac_01 entry 0 (area 1 map 2) story -128 flag 0
+PASS  drec: #602 drec f676 draws 930 bytes 1629177
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\azt\logs\fxparts_drec.txt (copy of this run's log; slot 1)
+SUBJECT: NREC4 parts effects: the 7 nd_parts_add effects (shimmer_burst 50, effect_3D 55, snowfall 63, snaking_static 81, water_block 84, embers 105, pink_sparkles 124) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 676, step 44), no shots.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\azt\shots\fxparts_drec\base_73359b439\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\lane-base_73359b439\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1853301, build 6865, commit 73359b439a0dc5f095fdd34c1b83bf1d12290496
+  scene -                              windows   0 fps - ft -
+LIST: fxparts_drec rc 0, wall 17.3 s
+LIST: start fxparts_drec at 15:44:01
+queue: position 1 of 1 waiting (lane 'base_73359b439', speed normal, scenario fxparts_drec, want slot 1)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario fxparts_drec, row BASECACHE, lane 'base_73359b439', slot 1, cap 25 s, deadline 20 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 20 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 20 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 8s: matched 'drec f676 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 8.1 s; end at 8.5 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+PASS  warp: #134 warp: mac_01 entry 0 (area 1 map 2) story -128 flag 0
+PASS  drec: #602 drec f676 draws 930 bytes 1629177
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\azt\logs\fxparts_drec.txt (copy of this run's log; slot 1)
+SUBJECT: NREC4 parts effects: the 7 nd_parts_add effects (shimmer_burst 50, effect_3D 55, snowfall 63, snaking_static 81, water_block 84, embers 105, pink_sparkles 124) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 676, step 44), no shots.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\azt\shots\fxparts_drec\base_73359b439\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\lane-base_73359b439\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1854128, build 6865, commit 73359b439a0dc5f095fdd34c1b83bf1d12290496
+  scene -                              windows   0 fps - ft -
+LIST: fxparts_drec rc 0, wall 17.6 s
+LIST DONE: wall 34.8 s. fxparts_drec rc 0 17.3 s; fxparts_drec rc 0 17.6 s
+base fxparts_drec at 73359b439: not stored. One base build of that commit (lane base_73359b439), then the runs.
+base 73359b439: build from the basebin store (entry 70903da6912cd159), no build
+list of 2 benches on one kept slot: fxparts_drec, fxparts_drec
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.
+base fxparts_drec at 73359b439: two runs equal, stored 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\73359b439a0dc5f095fdd34c1b83bf1d12290496\fxparts_drec

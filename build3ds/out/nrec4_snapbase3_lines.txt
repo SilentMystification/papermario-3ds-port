@@ -1,0 +1,2 @@
+#630 snapchk f800 recs 19780 cmp 16765 bad 0 fbad 0 miss 16765 wst 16585
+#631 lsnap f800 lists 10432 snaps 11197 cmp 11197 p1 10097 bst 0 tmis 0 over 0

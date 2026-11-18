@@ -67,6 +67,7 @@ void nd_snapchk_tri(void);
 void nd_tsnap_vtx(unsigned vt); /* NCONV2A, nd_snap.c, core 0: the vertex load tss of a snap triangle (snapchk only) */
 /* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */
 void nd_snapchk_rect(void);
+ void nd_snapchk_part(void); /* NREC4 */
 /* NDR2A, nd_snap.c, core 1: the snap of a direct draw: nd_ds with the pso words (nd_direct_bind order), prim and env. */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env);
 /* NDR2D, nd_snap.c, core 0: the decision of the live snap (the core 1 pso decision), NULL when no snap is live. */
@@ -91,6 +92,6 @@ int nd_snap_spr(uint32_t o[9]); /* NDR4, nd_snap.c, core 0: the snap words of a 
 /* NCONV1D1, nd_snap.c and nd_snap_in.c: the snap table of a list (rec[4] of a drawing list, nd_rec_dl). */
 #define ND_LS_HDR(n) ((8u + 4u * (n) + 7u) & ~7u)
 extern unsigned char nd_ls_on, nd_lsc_on; extern unsigned nd_ls_ord;
-void nd_lsr_begin(const uint32_t* b); void nd_lsr_end(void); void nd_lsr_tri(unsigned ord); void nd_lsr_seg(unsigned ord); void nd_lsc_unit(uint32_t w0); void nd_lsr_bst(void);
+void nd_lsr_begin(const uint32_t* b); void nd_lsr_end(void); void nd_lsr_tri(unsigned ord); void nd_lsr_seg(unsigned ord); void nd_lsc_unit(uint32_t w0); void nd_lsr_bst(void); void nd_lsc_tris(unsigned n);
 unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #endif

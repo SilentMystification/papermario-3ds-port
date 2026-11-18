@@ -413,7 +413,7 @@ void nd_parts_end(NdParts* b) {
             if (j == b->pre ? id != ND_FS_CALL : !(id == ND_FS_MTX || id == ND_FS_PRIM || id == ND_FS_ENV || id == ND_FS_TILESIZE || id == ND_FS_POPMTX)) { v = 0; break; }
         }
     nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
-    nd_ds_parts(&nd_ds, b->u, nd_ds_unit); /* NST2C: the instances' state on core 1 */
+    nd_lsc_begin_v(1u); nd_ds_parts(&nd_ds, b->u, nd_ds_unit); nd_lsc_end_at(nd_rec_last_pay() + 1u); /* NST2C: the instances' state on core 1; NREC4: the instance snap table in payload word 1 */
     nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NST2J: the parts runner ends with sync_combine */
     b->n = 0;
 }
@@ -681,6 +681,7 @@ __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; 
 __attribute__((weak)) void nd_msnap_tick(void) {} /* NREC1A */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
 __attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
+__attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 unsigned char nd_snap_live __attribute__((weak)); /* NDR1C */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
