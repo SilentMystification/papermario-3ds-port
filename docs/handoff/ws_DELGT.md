@@ -10,7 +10,7 @@ Edit only: 3ds/src/*.c, 3ds/include/*.h (not nd_nolist.h), include/gbi_custom.h 
 ```c
 /* DELGT: the 8-byte word pair of a record or a unit (the layout of the N64 Gfx union: w0, w1, 8-byte aligned) */
 typedef union NdW2 { struct { unsigned int w0, w1; } words; long long force_structure_alignment; } NdW2;
-_Static_assert(sizeof(NdW2) == 8 && _Alignof(NdW2) == 8, "NdW2");
+_Static_assert(sizeof(NdW2) == 8, "NdW2"); /* alignment as Gfx: the same long long member (4 on the -m32 host, 8 on the ARM) */
 ```
 2. One command (bytes in, bytes out, keeps CRLF; nd_cmd.h is skipped so the typedef stays):
 ```python
