@@ -418,6 +418,18 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
 }
 void nd_nr_exec(const uint32_t* u, unsigned n) { nd_walk_state(u, n); } /* NSTREAM2: the record runs; stage 1D gives it the arms and deletes nd_walk_state */
 void nd_nr_run(const uint32_t* rec) { nd_nr_exec(rec, (rec[-2] >> 16) & 0xffu); }
+void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
+    nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
+static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of a list with a snap table: nd_walk_state without the combine units */
+    const unsigned dbg = pm_walk_dbg;
+    for (const uint32_t* e = q + 2u * n; q < e; q += 2) { const unsigned id = q[0] >> 24;
+        if (q[0] == ND_NOP_A || id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) continue;
+        if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_set_texture(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { if (!nd_op_same(q)) nd_op_apply(q); }
+        else if (__builtin_expect(!nd_op_typed(id), 0)) op_unknown(dbg, q); else if (nd_op_geo(id)) op_geo(dbg, q, q);
+        else if (nd_op_ctl(id)) { const unsigned r = op_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
+        else if (__builtin_expect(id == ND_FS_DROP, 0)) { q += 2; if (q < e) t4_check(dbg, q); } else if (id == ND_FS_END) break; else op_typed(dbg, q, q);
+    } }
+
 /* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words
  * of a model record, an interpreted map shape group) on the op executor (nd_walk_state), with the list start and end rules of nd_walk_run:
  * gv_epoch, dlc_on, a full combine and render sync unless keep (PERF2: a piece of one list), the vertex and texture streak flush. */
@@ -637,7 +649,7 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
     return sc;
 }
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
-void nd_ntab_run(const NdNDev* e) { nd_nr_exec(e->u, e->nu); }
+void nd_ntab_run(const NdNDev* e) { if (nd_ls_on) { nd_lsr_geo(); ls_run(e->u, e->nu); } else nd_nr_exec(e->u, e->nu); } /* NCONV2D: a list with a snap table runs without its combine units */
 /* CONV2D2: a list's ops: its v2 device entry when it has one, else its v1 table ops (gt_ops). */
 static void gt_body(const NdGTab* t, const NdNDev* nt) {
     if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }

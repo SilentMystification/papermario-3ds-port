@@ -16,7 +16,7 @@ typedef struct NdSnapChk {
     int32_t key, leg, mode5, pat, plan_on;
     int32_t role; uint32_t oml, geom, fogc, blendc, tss; /* NCONV2A: tex_ss << 16 | tex_ts (was pad) */
     NdCombOut o; /* NDR0E1: the coloured combine decision of core 1 */
-    uint32_t pad2; /* NDR0E1: size to a multiple of 8 */
+    uint32_t plod; /* NCONV2D: the 16-bit prim LOD word (was pad2) */
     NdRender rs; /* NDR0F1: nd_render_state of the snapshot (core 1) */
     int32_t mixk; unsigned mixc; /* NDR0F1: nd_snap_mix of the snapshot (kind, colour) */
     uint32_t pad3; /* NDR0F1: size to a multiple of 8 (the rs and mix words) */
@@ -98,4 +98,6 @@ unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #define ND_LS_DUP 0x40000000u /* NCONV2C: the range repeats the snap before it; core 0 does not arm it */
 #define ND_LS_ORD(f) ((f) & 0x3fffffffu)
 void nd_lsr_noep(void); extern unsigned nd_lsr_rect; /* NCONV2C */
+#define ND_LS_DSB ((((unsigned)sizeof(NdDs)) + 7u) & ~7u) /* NCONV2D: the core 1 end state after the snaps of a list table */
+void nd_lsr_geo(void);
 #endif

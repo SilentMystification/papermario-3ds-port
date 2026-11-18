@@ -49,7 +49,7 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
     nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
-    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
+    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.plod == sn_last.plod && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
     r.plan_on = -1;
     if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
@@ -73,7 +73,7 @@ void nd_lsc_begin_v(unsigned v) { nd_lsc_begin(); sn_vprim = v; } /* NREC4 */
 void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) { ls_over++; ls_ovl = 1; } else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord | (ls_ep ? ND_LS_EP : 0u); sn_cmds = nd_rec_cmds(); } else if (ls_ep && ls_n) { ls_s[ls_n] = ls_s[ls_n - 1u]; ls_f[ls_n++] = ls_ord | ND_LS_EP | ND_LS_DUP; ls_dup++; } ls_ep = 0; } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
 void nd_lsc_tris(unsigned n) { if (!n) return; nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); ls_ord += n - 1u; } /* NREC4: n list triangles, one snap test */
 void nd_lsc_end_at(uint32_t* dst) { nd_lsc_on = 0; sn_cmds = ~0u; sn_vprim = 0; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
-    const unsigned h = ND_LS_HDR(ls_n); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0]); b[0] = ls_n; b[1] = ls_ord; memcpy(b + 2, ls_f, 4u * ls_n); memcpy((char*)b + h, ls_s, ls_n * sizeof ls_s[0]); *dst = (uint32_t)(uintptr_t)b; }
+    const unsigned h = ND_LS_HDR(ls_n); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0] + ND_LS_DSB); b[0] = ls_n; b[1] = ls_ord; memcpy(b + 2, ls_f, 4u * ls_n); memcpy((char*)b + h, ls_s, ls_n * sizeof ls_s[0]); memcpy((char*)b + h + ls_n * sizeof ls_s[0], &nd_ds, sizeof nd_ds); /* NCONV2D: the end state */ *dst = (uint32_t)(uintptr_t)b; }
 void nd_lsc_end(void) { nd_lsc_end_at(nd_rec_last_pay() + 4); }
 static NdDs sn_tmp; /* NDR2A, core 1: nd_ds with the pso words of a direct draw */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { /* NDR2A: the state words of nd_direct_bind, in its order */
@@ -229,6 +229,26 @@ void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed sna
     if (nd_sr_same(sg)) return;
     nd_render_apply(&sc_cur.rs, sc_cur.mixk, sc_cur.mixc, sc_cur.in.omode_h, sc_cur.oml, sg);
 }
+static unsigned char lr_geo; void nd_lsr_geo(void) { lr_geo = 1; } /* NCONV2D: the open list runs ls_run (nd_walk.c) */
+extern int sc_ok, box_folded, dual_on, box_prod, comb_set, comb_alpha_shade; extern unsigned keyc, keys, conv_k4; extern unsigned box_save[4]; /* nd_comb.c */
+void pm_comb_set_k4(unsigned k4); void pm_gpu_set_prim(unsigned rgba, unsigned lod); void pm_gpu_set_env(unsigned rgba); void pm_gpu_flush(void); /* pm_gpu.h */
+static void ls_gpu(uint32_t w0, uint32_t w1, int cset, uint32_t prim, uint32_t plod, uint32_t env, uint32_t k4) { /* NCONV2D: the GPU calls of the skipped units */
+    if (nd_ws.comb_w0 != w0 || nd_ws.comb_w1 != w1 || (cset && !comb_set)) pm_gpu_flush(); if (nd_ws.prim != prim || nd_ws.prim_lod != plod) pm_gpu_set_prim(prim, plod);
+    if (nd_ws.envc != env) pm_gpu_set_env(env); if (conv_k4 != k4) pm_comb_set_k4(k4); nd_ws.prim_lod = plod; }
+static void ds_take(const NdDs* c) { /* NCONV2D: list end: the fields of the skipped units from the core 1 end state (dschk: core 1 equals core 0 at each command) */
+    ls_gpu(c->w.comb_w0, c->w.comb_w1, c->comb_set, c->w.prim, c->w.prim_lod, c->w.envc, c->conv_k4);
+    nd_ws.omode_l = c->w.omode_l; nd_ws.om_kl = c->w.om_kl; nd_ws.prim = c->w.prim; nd_ws.envc = c->w.envc; nd_ws.comb_w0 = c->w.comb_w0; nd_ws.comb_w1 = c->w.comb_w1;
+    {   /* NST2G: a folded core 0 keeps its folded combine; box_save takes the core 1 (unfolded) values, so dschk_fill and the unfold give them */
+        const NdTst k = nd_ws.tst1; const int ku = nd_ws.use_t1;
+        nd_ws.tst1 = c->w.tst1; nd_ws.use_t1 = c->w.use_t1;
+        if (box_folded) {
+            box_save[0] = c->w.tst1.comb_a; box_save[1] = c->w.tst1.comb_b; box_save[2] = c->w.tst1.comb_c; box_save[3] = c->w.tst1.comb_d;
+            nd_ws.tst1.comb_a = k.comb_a; nd_ws.tst1.comb_b = k.comb_b; nd_ws.tst1.comb_c = k.comb_c; nd_ws.tst1.comb_d = k.comb_d;
+            nd_ws.tst1.comb_aa = k.comb_aa; nd_ws.tst1.comb_ab = k.comb_ab; nd_ws.tst1.comb_ac = k.comb_ac; nd_ws.tst1.comb_ad = k.comb_ad;
+            nd_ws.use_t1 = ku;
+        }
+    }
+    fogc = c->fogc; blendc = c->blendc; keyc = c->keyc; keys = c->keys; conv_k4 = c->conv_k4; comb_set = c->comb_set; box_prod = c->box_prod; comb_alpha_shade = c->comb_alpha_shade; dual_on = c->dual_on; sc_ok = 0; }
 /* NCONV2B: the walker takes the combine and render inputs of the consumed snap (the 1:1 fields of comb_in_walker, nd_comb.c:200).
  * sc_compare names each of these fields when it differs, so with no bad name the writes change nothing. geom and tss stay core 0 state. */
 static void sc_adopt(void) {
@@ -236,6 +256,7 @@ static void sc_adopt(void) {
     extern unsigned keyc, keys, conv_k4; /* nd_comb.c:24-25 */
     extern int dual_on, box_prod, box_folded, comb_set, comb_alpha_shade; /* nd_comb.c:26-32 */
     const NdCombIn* i = &sc_cur.in;
+    if (lr_geo) ls_gpu(i->w0, i->w1, i->comb_set, i->prim, sc_cur.plod, i->env, i->conv_k4); /* NCONV2D */
     nd_ws.comb_w0 = i->w0; nd_ws.comb_w1 = i->w1; nd_ws.omode_h = i->omode_h; nd_ws.prim = i->prim; nd_ws.envc = i->env;
     keyc = i->key_c; keys = i->key_s; conv_k4 = i->conv_k4;
     for (int k = 0; k < 16; k++) *tst_f[k] = i->tst[k];
@@ -275,8 +296,8 @@ void nd_lsr_noep(void) { lr_noep = 1; }
 static void lsr_cut(unsigned ord) { /* NCONV2C: the walker cut before this triangle against the ep flag of its range start */
     const uint32_t f = lr_b[2u + nd_snap_lsr(lr_b, ord)]; const unsigned flag = (f & ND_LS_EP) && ND_LS_ORD(f) == ord, cut = nd_st_epoch != lr_st;
     lr_st = nd_st_epoch; if (lr_noep) return; lr_epc += flag; if (cut && !flag) lr_epm++; else if (flag && !cut) lr_epx++; }
-void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; lr_st = nd_st_epoch; lr_noep = 0; if (b) { lr_lists++; lr_snaps += b[0]; } }
-void nd_lsr_end(void) { if (nd_ls_on && nd_ls_ord != lr_b[1]) lr_tmis++; nd_ls_on = 0; }
+void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; lr_geo = 0; lr_st = nd_st_epoch; lr_noep = 0; if (b) { lr_lists++; lr_snaps += b[0]; } }
+void nd_lsr_end(void) { if (nd_ls_on && nd_ls_ord != lr_b[1]) lr_tmis++; if (nd_ls_on && lr_geo) ds_take((const NdDs*)(const void*)((const char*)lr_b + ND_LS_HDR(lr_b[0]) + lr_b[0] * sizeof sc_cur)); lr_geo = 0; nd_ls_on = 0; } /* NCONV2D */
 void nd_lsr_seg(unsigned ord) { lr_p1 = 1; nd_lsr_tri(ord); lr_p1 = 0; }
 void nd_lsr_tri(unsigned ord) {
     if (PMDL("snapchk")) lsr_cut(ord); /* NCONV2C */
@@ -285,6 +306,7 @@ void nd_lsr_tri(unsigned ord) {
     lr_nx = r + 1u < n ? ND_LS_ORD(lr_b[2u + r + 1u]) : ~0u;
     if (r == lr_cur) return;
     lr_cur = r;
+    if (lr_geo && (lr_b[2u + r] & ND_LS_EP)) gv_epoch++; /* NCONV2D: the cut of the skipped units */
     if (lr_b[2u + r] & ND_LS_DUP) return; /* NCONV2C: an ep-only range: the armed snap stays */
     memcpy(&sc_cur, (const char*)lr_b + ND_LS_HDR(n) + r * sizeof sc_cur, sizeof sc_cur);
     nd_snap_arm = 1; lr_cmp++; lr_c1 += lr_p1; /* NCONV1D2: the next draw step consumes the range snap (nd_snapchk_tri) */
