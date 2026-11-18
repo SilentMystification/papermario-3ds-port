@@ -5,6 +5,7 @@
 #include "pm_gpu.h"
 #include "pm_port.h"
 #include "pm_gpu_int.h"
+void pm_log_sink_kick(void); /* pm_log.c */
 volatile int pos_on, stats_on; /* set by pm_gpu_hud on the game thread: the Mario row and the stats row are drawn */
 int frame_key = -1, frame_lay = -1; /* LOG5: pm_log_header_key of the drawn header, and the layout key; -1: not drawn yet */
 volatile int hud_new, foot_new;
@@ -65,7 +66,7 @@ void pm_gpu_menu_draw(const char* text) {
             menu_on = 0;
             consoleSetWindow(c, 1, LOG_TOP, 40, LOG_ROWS); /* the log window again, new lines come at its top (the rows are blank) */
             c->cursorX = 1; c->cursorY = 1; /* window-relative: the top row of the log window */
-            hud_new = 1; foot_new = 1; frame_key = -1; /* BOTLAYOUT: the menu blanked the HUD, footer and frame rows: draw them again */
+            hud_new = 1; foot_new = 1; frame_key = -1; pm_log_sink_kick(); /* BOTSCR */ /* BOTLAYOUT: the menu blanked the HUD, footer and frame rows: draw them again */
             fflush(stdout);
         }
         pm_con_unlock();
@@ -120,6 +121,7 @@ void pm_gpu_hud(const char* line0, const char* stats, char (*mem)[40], const cha
     stats_on = stats != NULL;
     if (stats) row_copy(stat_row, stats);
     hud_new = 1;
+    pm_log_sink_kick(); /* BOTSCR */
 }
 
 /* BOTLAYOUT: the separator, the log header and the footer. Absolute rows (ANSI), window the whole screen while they print, then the log window again.
@@ -150,6 +152,7 @@ void pm_gpu_footer(const char* map, const char* sys) {
     strncpy(foot_row[1], sys, 39);
     foot_row[1][39] = 0;
     foot_new = 1;
+    pm_log_sink_kick(); /* BOTSCR */
 }
 
 /* Log sink thread only. Draws the HUD rows, the footer and the frame (header levels) on the bottom console. */

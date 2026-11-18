@@ -22,3 +22,6 @@ Row VCFIX (vertex copy entry, model.c mdl_make_local_vertex_copy). User: in Toad
   Summit battle look at the stage stars (they twinkle); in Club 64 (mac_05) look at the sign. Each draws whole, no crash.
 Row TATTLEAR (wide tattle view, cam_main.c set_cam_viewport, 16C8E0.c scissor). User: in battle, use Tattle on an enemy in widescreen: the zoomed-in enemy picture fills the tattle window at its true proportions (not stretched 1.25 x).
 Row FPS60MENU (revert of FSKIP2 1e7ddd7ea1, Select menu and Options panel tab 0). User: open the Select menu, General tab. Rows: Frame skip, Resolution Mode, 60 FPS. Set 60 FPS to On: the log shows `options: live row 0 value 1 (On)` and the game draws 60 frames a second (prof line).
+## d. Bottom screen with Logging off (BOTSCR)
+Fix: Merge BOTSCR (pm_log_sink_kick from the HUD, footer and menu close: pm_gpu_ui.c, pm_log.c). Host test botscr.sh.
+User: select menu > Debug > Logging page, set Logging Off, close the menu. The bottom screen shows the HUD (fps row updates) and the footer.
