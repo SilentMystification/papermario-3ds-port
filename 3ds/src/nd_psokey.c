@@ -1,5 +1,5 @@
 /* nd_psokey.c: PSOFB, the device part of the pso decision: the key compare of the table lookup
- * (nd_psolk.c) and the constant colour. The decision is host only (3ds/tools/nd_decide.c, gen_pso_tab). */
+ * (nd_psolk.c) and the constant colour. The decision is in nd_decide.c, device and host (3ds/src/nd_decide.c, gen_pso_tab). */
 #include <stdint.h>
 #include <string.h>
 #include "ultra64.h"

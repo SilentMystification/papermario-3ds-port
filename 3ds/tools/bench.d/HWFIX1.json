@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "hwfix1_psooff",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "HWFIX1: draw records (drec.txt) of frame 722 with psooff (every pso key misses). Compare with fxslot_drec: byte-equal.",
+      "scenario": "hwfix1_psooff",
+      "cap": 40,
+      "until": "fxtest: done",
+      "tags": [
+        "azahar",
+        "det",
+        "drec",
+        "fxslot"
+      ],
+      "gates": []
+    }
+  ]
+}
