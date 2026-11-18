@@ -65,9 +65,12 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
 static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, zc, &r)) return; nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */ sn_cmds = nd_rec_cmds(); }
 #define LS_MAX 16u
 static NdSnapChk ls_s[LS_MAX]; static uint32_t ls_f[LS_MAX]; static unsigned ls_n, ls_ord, ls_over; static unsigned char ls_chg;
-void nd_lsc_begin(void) { ls_n = 0; ls_ord = 0; ls_chg = 1; sn_cmds = ~0u; nd_lsc_on = 1; }
-void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) ls_over++; else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord; sn_cmds = nd_rec_cmds(); } } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
-void nd_lsc_end(void) { nd_lsc_on = 0; sn_cmds = ~0u; if (!ls_n) return; const unsigned h = ND_LS_HDR(ls_n); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0]); b[0] = ls_n; b[1] = ls_ord; memcpy(b + 2, ls_f, 4u * ls_n); memcpy((char*)b + h, ls_s, ls_n * sizeof ls_s[0]); nd_rec_last_pay()[4] = (uint32_t)(uintptr_t)b; }
+static unsigned char ls_ovl; /* NREC2: this list has more ranges than LS_MAX */
+void nd_lsc_begin(void) { ls_n = 0; ls_ord = 0; ls_chg = 1; ls_ovl = 0; sn_cmds = ~0u; nd_lsc_on = 1; }
+void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) { ls_over++; ls_ovl = 1; } else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord; sn_cmds = nd_rec_cmds(); } } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
+void nd_lsc_end_at(uint32_t* dst) { nd_lsc_on = 0; sn_cmds = ~0u; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
+    const unsigned h = ND_LS_HDR(ls_n); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0]); b[0] = ls_n; b[1] = ls_ord; memcpy(b + 2, ls_f, 4u * ls_n); memcpy((char*)b + h, ls_s, ls_n * sizeof ls_s[0]); *dst = (uint32_t)(uintptr_t)b; }
+void nd_lsc_end(void) { nd_lsc_end_at(nd_rec_last_pay() + 4); }
 static NdDs sn_tmp; /* NDR2A, core 1: nd_ds with the pso words of a direct draw */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { /* NDR2A: the state words of nd_direct_bind, in its order */
     sn_tmp = nd_ds;

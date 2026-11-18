@@ -181,11 +181,13 @@ void nd_walk_spr(const Gfx* q) {
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(q, 3u);
     { extern int nd_spr_walk; nd_spr_walk = 1; nd_ops_run(q + G_PM_SPR_WORDS, 2u, 1); nd_spr_walk = 0; } /* WALLSHADE */
 }
+static __attribute__((cold, noinline)) void ent_lsr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("lsnap ent f%u", pm_frame_count()); } } /* NREC2 */
 /* DIRECT D3: NDC_ENT (nd_rec.c): an entity record. A DRAW record that the native path refuses leaves its G_DL to the walker (ent_skipgen,
  * as the walker's G_PM_ENT arm and the G_DL after it). */
 void nd_walk_ent(const Gfx* q, unsigned words) {
     const unsigned dbg = pm_walk_dbg;
     pm_gbi_cur_op = G_PM_ENT;
+    const uint32_t* const lsb = (const uint32_t*)(uintptr_t)((const uint32_t*)q)[-1]; nd_lsr_begin(lsb); if (lsb) ent_lsr_note(); /* NREC2: the list snap table (nd_rec_ent_draw) */
     gv_epoch++; /* GV1b, as the walker's prologue of G_PM_ENT */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_ENT, q->words.w0, q->words.w1); walk_dbg_rec(dbg, q, G_PM_ENT_WORDS); }
@@ -196,6 +198,7 @@ void nd_walk_ent(const Gfx* q, unsigned words) {
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
     if (!drawn && words > G_PM_ENT_WORDS && __builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(q, 4u);
     if (!drawn && words > G_PM_ENT_WORDS) nd_ops_run(q + G_PM_ENT_WORDS, 1u, 1); /* D10c: its G_DL on the op executor (walk_call) */
+    nd_lsr_end(); /* NREC2 */
 }
 /* DIRECT D10c: the list executor. A list (a G_DL target, a render mode list) runs on nd_walk_state from its first op to its G_ENDDL (no length:
  * ND_LIST_MAX bounds a list without one, as the walker's op guard). ex_depth counts the lists running now: a G_DL inside a list runs its
