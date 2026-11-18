@@ -417,6 +417,19 @@ void nd_ops_run(const void* l, unsigned n, int keep) {
     tex_streak_flush();
     if (cen) ops_cen_end();
 }
+/* DEL1B: n flat units of an entity list (a gap, the loads and ops of a refused segment) with the list start and end of nd_ops_run (keep 1).
+ * ENT_GBI (nd_ent.c) ran them with nd_ops_run; the steps and their order are the same. */
+void nd_ent_units(const uint32_t* u, unsigned n) {
+    PM_WALK_OWN();
+    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & (WD_CEN | WD_C2), 0) && d == 0;
+    if (cen) ops_cen_begin(u);
+    gv_epoch++; dlc_on = 1; gp_prev_op = -1; /* GV1b, as nd_ops_run */
+    pm_walk_side++; ex_depth = d + 1;
+    nd_nr_exec(u, n);
+    ex_depth = d; pm_walk_side--;
+    gv_streak_flush(); tex_streak_flush();
+    if (cen) ops_cen_end();
+}
 /* NATIVEAPI S4 (nd_api.h NdParts): the core 0 runner of a particle run. Per instance: the pre units on the walker, the list drawn natively
  * (nd_part_draw) or run as a list (nd_ops_run, keep), the post units on the walker. One list start for the run (gv_epoch once: the state
  * ops of the units bump it themselves). */
