@@ -208,7 +208,7 @@ $(rk_ids $OUT/in_now.txt $OUT/rk_pso_tab_scan.txt)"
     gen_put $OUT/gen_out/nd_pso_tab.c 3ds/src/nd_pso_tab.c
     # the scan reads of python (.c under src and 3ds/src) leave; the compiles (cc1) of 3ds/src files stay
     awk -F'	' '!($1 ~ /^python/ && $2 ~ /^(src|3ds\/src)\/.*\.c$/)' $OUT/rk_gen_pso_tab.log > $OUT/rk_pso_tab_log2.txt
-    rk_reads $OUT/rk_pso_tab_log2.txt $OUT/rk_pso_tab_paths.txt $OUT/rk_pso_tab_reads.txt 3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c 3ds/src/nd_decide.c
+    rk_reads $OUT/rk_pso_tab_log2.txt $OUT/rk_pso_tab_paths.txt $OUT/rk_pso_tab_reads.txt 3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c 3ds/tools/nd_decide.c 3ds/src/nd_psokey.c
     gc_put "$RK_DIR" "$(rk_full "$k0" $OUT/in_now.txt $OUT/rk_pso_tab_reads.txt)" nd_pso_tab.c:3ds/src/nd_pso_tab.c reads.txt:$OUT/rk_pso_tab_reads.txt || true
     gc_trim pso_tab
 }
