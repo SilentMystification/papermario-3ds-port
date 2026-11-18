@@ -220,7 +220,7 @@ int main(void) {
         CHECK(q_n == 5 && gv_epoch == 6 && nd_dq_on == 1);
         CHECK(q_log[0][0] == 1 && q_log[0][1] == (gx_log[0][0] & 0xffffffu) && q_log[0][2] == 0x1234u && q_log[0][3] == 0u && gx_log[0][1] == 0x1234u);
         CHECK(q_log[1][0] == 2 && q_log[1][1] == (gx_log[1][0] & 0xffffffu) && q_log[1][2] == (u32)(uintptr_t)vq && gx_log[1][1] == (u32)(uintptr_t)vq);
-        CHECK(q_log[2][0] == 3 && q_log[2][1] == (gx_log[2][0] & 0xffffffu) && q_prep[2] == 0 && q_log[2][3] == G_TRI1);
+        CHECK(q_log[2][0] == 3 && q_log[2][1] == (gx_log[2][0] & 0xffffffu) && q_prep[2] == 0 && q_log[2][3] == ND_FS_TRI1);
         CHECK(q_log[3][0] == 3 && q_log[3][1] == (gx_log[3][0] & 0xffffffu) && q_prep[3] == 0);
         CHECK(q_log[4][0] == 4 && q_log[4][2] == gx_log[4][1]);
         nd_direct_end();

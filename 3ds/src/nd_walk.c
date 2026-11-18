@@ -10,6 +10,7 @@
 #include "pm_gpu.h"
 #include "nd.h"
 #include "pm_tex.h"
+#include "nd_fs.h"
 #include "pm_port.h"
 #include "nd_cmd.h"
 #include "variables.h"
@@ -24,7 +25,7 @@
 #include "nd_gbi.h" /* FALLBK: pm_gbi_fallback's macros write typed units (nd_gx_w, nd_rec.c:487) */
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
-unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
+unsigned pm_gbi_cur_op; /* PI2: the unit id (ND_FS_*) of the step now running, or a record op G_PM_* (DEL1D1; one store per op) */
 
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
 
@@ -59,7 +60,7 @@ static __attribute__((cold, noinline)) void gbi_cold_bad_vp(const uint32_t* u) {
 }
 
 void gbi_cold_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
-    static unsigned bad; if (bad++ < 6) pm_log_w("gbi: G_MTX w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
+    static unsigned bad; if (bad++ < 6) pm_log_w("gbi: matrix w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
         pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
 }
 
@@ -94,11 +95,11 @@ void pm_walk_dbg_set(void) {
 /* PERF2 step 6: the op class of each op for the class timers (nd.h NDT_TEX..NDT_LIST); unlisted ops are list class */
 static uint8_t walk_cls_tab[256];
 static void walk_cls_init(void) {
-    static const uint8_t tex[] = { G_SETTIMG, G_SETTILE, G_LOADTILE, G_LOADBLOCK, G_SETTILESIZE, G_LOADTLUT, G_TEXTURE };
-    static const uint8_t comb[] = { G_SETCOMBINE, G_SETENVCOLOR, G_SETPRIMCOLOR, G_SETBLENDCOLOR, G_SETFOGCOLOR, G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_RDPSETOTHERMODE, G_SETPRIMDEPTH };
-    static const uint8_t geo[] = { G_VTX, G_MODIFYVTX, G_TRI1, G_TRI2, G_QUAD, G_GEOMETRYMODE, G_CULLDL };
-    static const uint8_t mtx[] = { G_MTX, G_POPMTX, G_MOVEWORD, G_MOVEMEM };
-    static const uint8_t rect[] = { G_TEXRECT, G_TEXRECTFLIP, G_FILLRECT, G_SETFILLCOLOR, G_SETSCISSOR, G_SETCIMG, G_SETZIMG };
+    static const uint8_t tex[] = { ND_FS_TIMG, ND_FS_TILE, ND_FS_LOADTILE, ND_FS_LOADBLOCK, ND_FS_TILESIZE, ND_FS_LOADTLUT, ND_FS_TEXTURE };
+    static const uint8_t comb[] = { ND_FS_COMB, ND_FS_ENV, ND_FS_PRIM, ND_FS_BLEND, ND_FS_FOG, ND_FS_OMH, ND_FS_OML, ND_FS_PRIMZ };
+    static const uint8_t geo[] = { ND_FS_VTX, ND_FS_TRI1, ND_FS_TRI2, ND_FS_GEOM };
+    static const uint8_t mtx[] = { ND_FS_MTX, ND_FS_POPMTX, ND_FS_MW, ND_FS_MOVEMEM };
+    static const uint8_t rect[] = { ND_FS_RECT, ND_FS_FILL, ND_FS_SCISSOR };
     for (unsigned i = 0; i < 256u; i++) walk_cls_tab[i] = NDT_LIST;
     for (unsigned i = 0; i < sizeof tex; i++) walk_cls_tab[tex[i]] = NDT_TEX;
     for (unsigned i = 0; i < sizeof comb; i++) walk_cls_tab[comb[i]] = NDT_COMB;
@@ -120,7 +121,7 @@ static __attribute__((cold, noinline)) int walk_dbg_op(unsigned dbg, const Gfx* 
     }
     if (dbg & WD_FINE) {
         /* only these three: the thousands of state ops stay in the gbi phase (a tick read costs 1.3 us in Azahar) */
-        fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
+        fp = op == ND_FS_VTX ? PH_GVTX : (op == ND_FS_TRI1 || op == ND_FS_TRI2) ? PH_GTRI : op == ND_FS_MTX ? PH_GMTX : 0;
         if (fp) pm_ph_push(fp);
     }
     (void)at; (void)sp; (void)w0; (void)w1; /* DELCEN: the op and model census are deleted */
@@ -237,26 +238,26 @@ unsigned nd_st_epoch; /* NST3: the state epoch count (raised with gv_epoch by th
 unsigned nd_st_why; /* NST2H: site << 8 | unit id of the first nd_st_epoch raise since the last dschk record */
 static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     if (nd_op_same(u)) return;
-    const unsigned id = u[0] >> 24, op = id == NDO_RARE ? 0u : nd_op_n64[id - NDO_BASE];
-    pm_gbi_cur_op = op;
+    const unsigned id = u[0] >> 24;
+    pm_gbi_cur_op = id; /* DEL1D1: the unit id */
     gv_epoch++; if (!nd_st_epoch) nd_st_why = 1u << 8 | id; nd_st_epoch++; /* GV1b; NST2H source */
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, id, u[0], u[1]);
     nd_op_apply(u);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
  * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
 static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, const void* at) {
-    const unsigned id = u[0] >> 24, op = nd_op_n64[id - NDO_BASE];
+    const unsigned id = u[0] >> 24;
     const u32 a = u[0] & 0xffffffu, b = u[1];
     if (id == NDO_MOVEMEM) {
         if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
         gv_epoch++; if (!nd_st_epoch) nd_st_why = 2u << 8 | id; nd_st_epoch++; /* GV1b; NST2H source */
     }
-    pm_gbi_cur_op = op;
+    pm_gbi_cur_op = id; /* DEL1D1: the unit id */
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, id, u[0], u[1]);
     switch (id) {
     case NDO_VTX: nd_geom_vtx(a, b, (const Gfx*)at); break;
     case NDO_TRI1:
@@ -287,14 +288,11 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
     const unsigned id = u[0] >> 24;
     const u32 a = u[0] & 0xffffffu, b = u[1];
     const unsigned sub = a >> 16;
-    unsigned op = nd_op_n64[id - NDO_BASE], r = 0;
-    if (id == NDO_RECT && (b & NDO_RECT_TEX)) op = G_TEXRECT;
-    if (id == NDO_MISC) {
-        static const uint8_t misc_n64[5] = { G_NOOP, G_PM_LST, G_PM_ND, G_MODIFYVTX, G_SETCIMG };
-        op = misc_n64[sub < 5u ? sub : 0u];
-    }
+    /* DEL1D1: the unit id; a list mark keeps its record op (G_PM_LST, G_PM_ND) */
+    const unsigned op = id != NDO_MISC ? id : sub == NDO_MISC_LST ? (unsigned)G_PM_LST : sub == NDO_MISC_ND ? (unsigned)G_PM_ND : (unsigned)NDO_MISC;
+    unsigned r = 0;
     pm_gbi_cur_op = op;
-    if (id != NDO_CALL && op != G_MODIFYVTX) { gv_epoch++; if (!nd_st_epoch) nd_st_why = 3u << 8 | id; nd_st_epoch++; } /* GV1b; NST2H source */
+    if (id != NDO_CALL && !(id == NDO_MISC && sub == NDO_MISC_MODVTX)) { gv_epoch++; if (!nd_st_epoch) nd_st_why = 3u << 8 | id; nd_st_epoch++; } /* GV1b; NST2H source; no cut for a list call or a vertex modify */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     switch (id) {
@@ -441,7 +439,7 @@ static inline void part_units(const uint32_t* p, unsigned n) {
     for (; n; n--, p += 2) {
         const unsigned id = p[0] >> 24;
         const u32 a = p[0] & 0xffffffu, b = p[1];
-        pm_gbi_cur_op = nd_op_n64[id - NDO_BASE];
+        pm_gbi_cur_op = id;
         switch (id) {
         case NDO_MTX:
             if (!is_host((u32)(uintptr_t)ptr_of(b))) gbi_cold_bad_mtx(a, b, (Gfx*)p, (Gfx*)p + 1);
@@ -520,7 +518,7 @@ unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
 static void gt_ops(const NdGTab* t);
 static void gt_call(const NdGTab* c) { /* a table call inside a list: the walker's G_DL arm at depth */
     const Gfx* next = (const Gfx*)c->list;
-    pm_gbi_cur_op = nd_op_n64[NDO_CALL - NDO_BASE];
+    pm_gbi_cur_op = ND_FS_CALL;
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
     else if (dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
@@ -614,7 +612,7 @@ static void gt_run0(const void* key, const NdGTab* t, const NdNDev* nt, const ui
         return;
     }
     const Gfx* next = (const Gfx*)key;
-    pm_gbi_cur_op = nd_op_n64[NDO_CALL - NDO_BASE];
+    pm_gbi_cur_op = ND_FS_CALL;
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
     else if (dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {

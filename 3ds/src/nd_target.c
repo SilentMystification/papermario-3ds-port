@@ -9,6 +9,7 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_fs.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -101,7 +102,7 @@ void gbi_setcimg(u32 a, u32 b) { set_cimg(b, (int)((a >> 12) & 3), (int)(a & 0xf
 /* NTGT: the NDC_NAPI runner of nd_target_begin and nd_target_end (nd_geo.c): one G_SETCIMG unit as the walker runs a control op (op_ctl, nd_walk.c):
  * no skip test, the prologue (pm_gbi_cur_op, gv_epoch), then the setter. rec: w0 = siz << 12 | width - 1, w1 = the address. */
 void nd_tgt_run(const uint32_t* rec) {
-    pm_gbi_cur_op = G_SETCIMG;
+    pm_gbi_cur_op = ND_FS_MISC;
     gv_epoch++; /* GV1b */
     gbi_setcimg(rec[0], rec[1]);
 }

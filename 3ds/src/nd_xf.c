@@ -18,7 +18,7 @@ extern unsigned pm_gbi_cur_op; /* nd_walk.c */
 /* core 0: op_geo's MTX and POPMTX arms for one record unit */
 static void nd_xf_run(const uint32_t* r) {
     const unsigned id = r[0] >> 24;
-    pm_gbi_cur_op = nd_op_n64[id - ND_FS_BASE];
+    pm_gbi_cur_op = id;
     if (id == ND_FS_MTX) load_mtx(r[0] & 0xffffffu, r[1], 0);
     else gbi_popmtx(r[1]);
 }

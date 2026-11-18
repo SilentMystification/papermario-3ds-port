@@ -12,6 +12,7 @@
 #include "nd_op.h"
 #include "nd_api.h"
 #include "nd_snap.h"
+#include "nd_fs.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdTexM nd_tm; /* D4a: the load side of the texture model (nd_int.h) */
@@ -229,7 +230,7 @@ void nd_set_texture(u32 a, u32 b) { set_texture(a, b >> 16, b & 0xffffu); }
  * pm_gbi_cur_op), then the rectangle. */
 #define TX_OP(op) do { gv_epoch++; pm_gbi_cur_op = (op); } while (0)
 void nd_texrect_run(const uint32_t* p) {
-    TX_OP(G_TEXRECT);
+    TX_OP(ND_FS_RECT);
     nd_texrect(p[2], p[3], p[4], p[5]);
 }
 #undef TX_OP
@@ -545,7 +546,7 @@ __attribute__((noinline)) void nd_bind_run(const uint32_t* u) {
     for (;; u += 2) {
         const unsigned id = u[0] >> 24;
         if (id == NDO_END) break;
-        pm_gbi_cur_op = nd_op_n64[id - NDO_BASE];
+        pm_gbi_cur_op = id;
         if (id == NDO_COMB) {
             op_setcombine(NDO_COMB_W0(u[0]), u[1]);
             if ((u[2] >> 24) != NDO_TEXTURE) sync_combine();
@@ -632,21 +633,21 @@ void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h) {
     unsigned texels = (unsigned)(((w * h + 3) >> 2) - 1);
     gv_epoch++;
     if (tlut) {
-        pm_gbi_cur_op = G_SETTIMG;
+        pm_gbi_cur_op = ND_FS_TIMG;
         set_timg(pal, 0, 2, 1);
-        pm_gbi_cur_op = G_SETTILE;
+        pm_gbi_cur_op = ND_FS_TILE;
         set_tile(7, 0, 0, 256, 0, wr, 0, 0);
-        pm_gbi_cur_op = G_LOADTLUT;
+        pm_gbi_cur_op = ND_FS_LOADTLUT;
         set_loadtlut(7, 15);
     }
-    pm_gbi_cur_op = G_SETTIMG;
+    pm_gbi_cur_op = ND_FS_TIMG;
     set_timg(raster, 2, 2, 1);
-    pm_gbi_cur_op = G_SETTILE;
+    pm_gbi_cur_op = ND_FS_TILE;
     set_tile(7, 2, 2, 0, 0, wr, 0, 0);
-    pm_gbi_cur_op = G_LOADBLOCK;
+    pm_gbi_cur_op = ND_FS_LOADBLOCK;
     set_loadblock(7, texels > G_TX_LDBLK_MAX_TXL ? G_TX_LDBLK_MAX_TXL : texels);
-    pm_gbi_cur_op = G_SETTILE;
+    pm_gbi_cur_op = ND_FS_TILE;
     set_tile(0, 2, 0, 0, 0, wr, 0, 0);
-    pm_gbi_cur_op = G_SETTILESIZE;
+    pm_gbi_cur_op = ND_FS_TILESIZE;
     set_tilesize(0, 0, 0, (w - 1) << 2, (h - 1) << 2);
 }
