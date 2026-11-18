@@ -166,8 +166,7 @@ s32 draw_image_with_clipping(IMG_PTR raster, u32 width, u32 height, s32 fmt, s32
                 r.cms = G_TX_WRAP; r.cmt = G_TX_WRAP; r.masks = 6; r.maskt = 5;
                 r.w0 = ND_W0_TR(G_TEXRECT, drawRect.lrx * 4, drawRect.lry * 4); r.w1 = ND_W1_TR(0, drawRect.ulx * 4, drawRect.uly * 4);
                 r.hs = ND_TR_H1(texOffsetX * 32, texOffsetY * 32); r.hd = ND_TR_H2(1024, 1024);
-                nd_rec_napi(nd_trect_run, &r, sizeof r / 8u);
-                nd_trect_feed((const uint32_t*)&r);
+                nd_trect_rec(&r); /* NDR2B */
             } else
             {
                 if (bitDepth == G_IM_SIZ_4b) {

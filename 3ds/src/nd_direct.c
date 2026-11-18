@@ -350,6 +350,9 @@ static void trect_emit(const NdTRect* r, uint32_t** o) {
     *o = nrp;
 }
 
+/* NDR2B: the pso of one texture rectangle (both cores). */
+static void trect_pso(const NdTRect* r, NdPsoN64* pd) { pd->cw0 = r->cw0; pd->cw1 = r->cw1; pd->oml = r->oml; pd->omh = r->omh; pd->omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT); }
+
 void nd_trect_run(const uint32_t* u) {
     static uint32_t buf[32];
     static unsigned nfb;
@@ -364,7 +367,8 @@ void nd_trect_run(const uint32_t* u) {
     const int ok = nd_tex_win_desc(&d, r->img, stride, r->fmt, r->siz, wrap, lu >> 2, r->ult, ((ll - lu) >> 2) + 1, r->lrt - r->ult + 1,
                                    r->uls << 2, r->ult << 2, r->lrs << 2, r->lrt << 2, r->pal, (int)r->pal_n);
     if (ok && nd_direct_ready() == 1) {
-        const NdPsoN64 pd = { .cw0 = r->cw0, .cw1 = r->cw1, .oml = r->oml, .omh = r->omh, .omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT) };
+        NdPsoN64 pd;
+        trect_pso(r, &pd);
         const NdPso id = nd_pso_n64(&pd);
         if (nd_direct_bind(id, (r->pad & 1u) ? nd_direct_prim() : r->prim, nd_direct_env())) {
             nd_direct_tex(&d);
@@ -373,6 +377,7 @@ void nd_trect_run(const uint32_t* u) {
             return;
         }
     }
+    nd_dir_drop(); /* NDR2B: the walk takes no pso snap */
     if (nfb++ < 16u) pm_log_d("trect fallback f%u", pm_frame_count());
     trect_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
@@ -385,6 +390,9 @@ void nd_trect_feed(const uint32_t* u) {
     trect_emit((const NdTRect*)u, &p);
     nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
 }
+
+/* NDR2B, core 1: one texture rectangle: its pso snap and record (nd_dir_rec), then the feed of nd_ds. */
+void nd_trect_rec(const NdTRect* r) { NdPsoN64 pd; trect_pso(r, &pd); nd_dir_rec(nd_trect_run, r, sizeof *r / 8u, &pd, (r->pad & 1u) ? nd_ds.w.prim : r->prim); nd_trect_feed((const uint32_t*)r); }
 
 /* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by
  * nd_direct_end: gv_epoch_enter (nd_geom.c) then skips ensure_tile and dual_bind, which would rebind tile 0 from the walker's stale td[0] over
