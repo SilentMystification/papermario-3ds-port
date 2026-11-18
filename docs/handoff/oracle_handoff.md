@@ -9,8 +9,9 @@ Run listcen for fresh numbers.
 - User 2026-11-17: as many parallel Haiku coders as the plan allows. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0.
 ## Merged on main: NST1, NST3, NST2A-H, FALLBK, NDR0A-E1, NDR5, NCONV1A, REN1-REN7, MREN, PSOFB, HWFIX1, BOTSCR, BBRACE.
 ## Pages on main (oracle FIN)
-- Running: NDR0F1, NST2J (a41cc4d4d4 crashes in Azahar at map model lookup; no code path from the diff; clean rebuild asked).
-  Running: NDR1B (75024c7929, rect compare after box_fold_sync + snap combine). Waiting: REN8 (NST2J), NST2K (NST2J), NDR0F2/G (NDR0F1 data).
+- NST2J crash = tool fault (FACT): partial shape cache entry gencache/shape/3ae2c60cfbbd7a66 (689 of 1467 files), log `shape load fail mac_01_shape`.
+  Fix: delete the entry, rebuild the lane. Guard row SHAPECACHE (692e7f6361). Probe NST2JP and bisect NST2JB are done (no merge).
+  Running: NDR0F1, NDR1B. REN8 may branch from NST2J a41cc4d4d4 now. NST2K waits for the NST2J gate (dschk_base.txt). NDR0F2/G wait for NDR0F1 data.
 - NDR0E2 data (FACT 4df41cf45a): rect snapchk bad 486 = fold names (rect compares before box_fold_sync). NST2I: epbad all 2090a (rule 9, NAPI).
 - Two oracles write pages: read `git log -5 -- docs/handoff` and `ls docs/handoff` before a page (NDR0E3 was a duplicate of NDR1B, dropped a6cd9f0033).
 - NST2H keys (FACT, a06c9a7b4c): spot 10130 2022d 1033e 1012a 1012b; wscmb 20130 1033e 10130 2022d 20220; axns and fxchk_a 20220 20121 10130.
@@ -25,6 +26,7 @@ Run listcen for fresh numbers.
 5. After REN5-8 and MREN: no rename row is left. Files with NDO_ that stay: none outside the deleted set (nd_op.h, nd_set.c, nd_walk.c,
    nd_dlc.c, nd_shape.c, nd_tex_set.c, nd_gtab.c, nd_mtx_set.c 1, nd_geo.c REN5). Comment-only NDO_ in nd_int.h, nd_target.c, nd_scomp.h, nd_gtab.h, nd_api.h.
 ## Facts that cost time
+- A crash at map load: read last_log.txt for `shape load fail` and count the lane romfs/shape files before any code theory.
 - Core 1 (logic thread, pm_logic.c) runs at the same time as core 0 (walker). Det runs are serial: a race does not show in a bench.
   Shared statics of a core 1 call need a lock or a per-core copy (NDR0D: pm_comb.c build statics, nd_decide.c table).
 - Every setter unit passes nd_rec_nr (nd_rec.c:419); core 0 runs it in nd_walk_state (nd_walk.c:394).
