@@ -57,19 +57,11 @@ S8 (1 row): S9GATE (H): listcen all 0, elfgate 0 0 0, the full drec set, the con
 ## 3. Critical path: 15 rows
 NST2D, NST2E, NST2F, NDR0, NCONV1, NREC1, NREC2, NREC4, DEL3A, DEL1A wave, DEL1D, DEL2 wave, DEL3C, DEL4D, S9GATE.
 Off the path: NDR1-6, NCONV2, NREC3, NREC5 (they must merge before DEL3A). GUESS 1.5 to 3 h per path row: 25 to 45 h.
-## 4. Console checks (orchestrator rule 8): one per stage, by batch
-- Each stage merges as one batch: the orchestrator merges its branches in row order in one sitting, builds once, runs the stage
-  benches (1 build, 2 Azahar runs), then writes the ready line. The first merge of the next stage waits for the user's check.
-- Work never waits: rows of the next stage branch from the tip of the current batch branch.
-| check | after | gates the merge of | content |
-|---|---|---|---|
-| K3 | NST2F merged (NST2B-F) | NDR0 | UD3 prof push (core 1 cost, R1) plus verify_list.md |
-| K4 | NDR0-6 merged | NCONV1 | verify_list.md (all draw kinds now snaps) |
-| K5 | NCONV1-2 merged | NREC1 | effect and list scenes. Option: fold K5 into K6 (S6 branches from the S5 tip) |
-| K6 | NREC1-5 merged | DEL3A | map, model, entity, particles |
-| K7 | DEL3A-DEL4D merged | S9GATE | the soak list |
-| K8 | S9GATE | end | G10, G11 (FACT plan_endgame.md:100) |
-- A failed check: push the row tips of the stage by halves (GUESS 3 pushes for 7 rows) to name the row.
+## 4. Console checks (orchestrator rule 8): none until the end
+- A gated row merges on its gate (host PASS, byte-equal benches, dschk not higher). No stage waits for the user's check.
+- The user's checks run at the end: the UD3 prof push, verify_list.md, then the soak list (G10, G11, FACT plan_endgame.md:100).
+- An urgent fault is an exception: the orchestrator asks the user for a console.
+- A failed end check: push the row tips by halves (GUESS 3 pushes) to name the row.
 ## 5. Decisions open for the user
 - UD4 (answered): keep nd_comb_core on core 1 for a miss. DEL2A renames decide and decide_miss (nd_decide.c:172, :214) on core 1.
   Sonnet rows NDR0, NCONV1 and NREC1: standing yes.
