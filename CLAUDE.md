@@ -5,8 +5,8 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
 
 1. BUGS. A fault or a state the user reports (the game runs, the console is online, FTP or the netloader is open) is fact: never
    probe it to doubt it. When a tool cannot reach a reported state, read the tool and the game code for the cause. Read the code
-   (producer, state, draw call, pixel) to a file, line and value. Fix each path that can cause it. No repro runs, no debug-log
-   runs, no premise-check runs unless the user allows them. No cause found: hand back the trace. The orchestrator asks the user.
+   (producer, state, draw call, pixel) to a file, line and value. Fix each path that can cause it. Azahar runs need no user
+   permission, but a run never replaces the code read (no guess and check). No cause found: hand back the trace.
 2. NO VISUAL CHECKS. No agent looks at a shot, describes a picture or counts pixels. Proof is the code read, the host unit tests
    (nd_host) and the mechanical byte compare (`bench.py base <bench>`, then `bench.py cmp <bench> --row <id>`).
 3. TESTS. Coders run all tests. The oracle runs none. The main proof is the host unit tests
