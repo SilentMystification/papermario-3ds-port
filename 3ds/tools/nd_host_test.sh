@@ -9,7 +9,14 @@
 # one tar of the HOST_IN files (the key list is the tar list, so a test that reads a file outside the key fails) and the
 # shared asset volume pm3ds-assets-<AHASH> (checked against its out.sha1 first: exit 7 removes it). Only the crash page run
 # (2 files, 1 s FACT) keeps the bind mount; no other read crosses WSL2 9p. Self-test: 3ds/tests/volhost/run.sh.
+# HOSTTMP: the fixed /tmp paths of the units run inside the docker container (pm3ds-host:1), and each docker run has its own
+# /tmp (FACT 2026-11-18: a second run does not see the first run's /tmp file). Git Bash /tmp does not follow TMP (FACT: it is
+# the Windows temp folder), so no host-side step may write a fixed /tmp path. Parallel runs (PM_LANE) do not share /tmp.
 cd "$(dirname "$0")/../.." || exit 2
+# HSRUN: each run has its own out folders (hs_run_, host_run_, hostkey_ and $RUN), so two runs in one worktree do not share them.
+# Folders of older runs (more than 1 day) are removed at the start.
+RUN=$(printf '%s' "${PM_LANE:-${PM_ROW:-run}}" | tr -c 'A-Za-z0-9_' _)_$$
+find build3ds/out -maxdepth 1 \( -name 'hs_run_*' -o -name 'hostkey_*' -o -name 'host_run_*' \) -mtime +1 -exec rm -rf {} + 2>/dev/null
 t0=$(date +%s); stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
 ROOT=$(pwd -W 2>/dev/null || pwd)
 # WTASSETS: assets/us and ver/us/build are git-ignored. A worktree without them reads them from the main worktree (read
@@ -34,7 +41,7 @@ SELF=$(sha1sum 3ds/tools/nd_host_test.sh | cut -d' ' -f1)
 # 3ds/CMakeLists.txt). It is the key list and the tar list. The asset files are AHASH (asset_manifest).
 HOST_IN="3ds/tools 3ds/src 3ds/include 3ds/stub_include 3ds/tests 3ds/build.sh 3ds/push_3ds.sh 3ds/CMakeLists.txt include src docker/Dockerfile.build docker/Dockerfile.host"
 HOST_AV='mkdir -p /work/ver/us; tar -xf - -C /work; (cd /a/c && sha1sum -c --status out.sha1) || { echo "ASSET VOLUME CHECK FAILED" >&2; exit 7; }; ln -s /a/c/assets /work/assets; ln -s /a/c/ver/us/build /work/ver/us/build'
-OUT=build3ds/out/hostkey; mkdir -p $OUT
+OUT=build3ds/out/hostkey_$RUN; mkdir -p $OUT
 ASSET_BASE=$AR; ASSET_DIRS="assets/us ver/us/build"; IMG=pm3ds-host:1
 . 3ds/tools/src_sync.sh
 GC_EXCL=""; . 3ds/tools/readkey.sh # GENKEY: every id comes from host_in.txt (the host test writes no generator output)
@@ -73,11 +80,11 @@ rm -rf $TC
 . 3ds/tools/build_slot.sh
 build_slot_take
 # PM_CACHE=off: asset_manifest named a new cold volume; it goes at the end.
-cold_rm() { if [ "${PM_CACHE:-on}" = off ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; fi; }
+cold_rm() { [ -z "$HSR" ] || rm -rf "$HSR"; if [ "${PM_CACHE:-on}" = off ]; then docker volume rm $AVOL >/dev/null 2>&1 || true; fi; }
 trap 'build_slot_release; cold_rm' EXIT
 trap 'build_slot_release; cold_rm; exit 130' INT TERM
 stage slot-wait
-TMPLOG=build3ds/out/host_run.txt
+TMPLOG=build3ds/out/host_run_$RUN.txt
 # VOLHOST: the tar of the key files, and the asset volume of AHASH (made once when it is missing).
 tar -cf $OUT/host_in.tar -T $OUT/host_files.txt || { echo "FAIL host tar of HOST_IN"; exit 1; }
 case "$(MSYS_NO_PATHCONV=1 docker run --rm -v $AVOL:/a:ro -e K=$AHASH $IMG sh -c '[ "$(cat /a/c/key.txt 2>/dev/null)" = "$K" ] && echo assets-ok; true')" in
@@ -134,7 +141,7 @@ stage gfx-table
 # printed. hostsel.py adds the path list of the tar to K0 (new, removed, created files). The command lines and the environment of
 # every unit are text of this script (self) or of the image (img). PM_HOSTSEL=all runs every unit and fails a unit that had a hit but fails now (the post-merge check, post_merge.sh 4).
 PY=python; command -v py >/dev/null 2>&1 && PY="py -3"
-HS=$MAINR/build3ds/hostsel; HSR=build3ds/out/hs_run; rm -rf $HSR; mkdir -p $HSR/hd $HSR/rt
+HS=$MAINR/build3ds/hostsel; HSR=build3ds/out/hs_run_$RUN; rm -rf $HSR; mkdir -p $HSR/hd $HSR/rt
 printf '%s\n' "hostsel v1" "img $IMG_ID" "self $SELF" "assets $AHASH" "rk $(rk_id)" "gfx $(sha1sum < "$GE/key.txt" | cut -c1-40)" > $HSR/k0.txt
 { echo inline; for t in 3ds/tests/host.d/*.sh; do [ -f "$t" ] && echo "$t"; done; } > $HSR/units.txt
 : > $HSR/hits.txt
@@ -299,9 +306,9 @@ stage crash-page
 cat "$TMPLOG"
 if [ "$fail" = 0 ]; then
     echo "ND HOST TESTS PASS"
-    mkdir -p build3ds/out/hostcache; rm -rf "$TC.tmp"; mkdir -p "$TC.tmp"
-    cp "$TMPLOG" "$TC.tmp/out.txt"; echo 0 > "$TC.tmp/rc.txt"; sha1sum "$TC.tmp/out.txt" | cut -d' ' -f1 > "$TC.tmp/out.sha1"
-    rm -rf "$TC"; mv "$TC.tmp" "$TC"
+    mkdir -p build3ds/out/hostcache; rm -rf "$TC.tmp.$RUN"; mkdir -p "$TC.tmp.$RUN"
+    cp "$TMPLOG" "$TC.tmp.$RUN/out.txt"; echo 0 > "$TC.tmp.$RUN/rc.txt"; sha1sum "$TC.tmp.$RUN/out.txt" | cut -d' ' -f1 > "$TC.tmp.$RUN/out.sha1"
+    rm -rf "$TC"; mv "$TC.tmp.$RUN" "$TC"
     exit 0
 fi
 echo "ND HOST TESTS FAIL"
