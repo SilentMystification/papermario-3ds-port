@@ -1587,7 +1587,7 @@ def base_records(bench, row, label, commit, since):
             and same_commit(r.get("commit") or "", commit) and (r.get("ts") or "") >= since]
 
 
-def snap_shots(shots, scenario_name):
+def snap_shots(shots, scenario_name, log=None):
     """Copies the shot folder of one run into PM_BASE_SNAP (set by base_run) as <snap>/<NN>_<scenario>. Returns the copy's path,
     None when PM_BASE_SNAP is not set or the folder holds no shot. Each start empties the shared shot archive, so the second
     run of a list would otherwise hide the shots of the first."""
@@ -1599,7 +1599,19 @@ def snap_shots(shots, scenario_name):
     root.mkdir(parents=True, exist_ok=True)
     dst = root / ("%02d_%s" % (len(list(root.iterdir())) + 1, scenario_name))
     shutil.copytree(shots, dst)
+    if log and Path(log).is_file():
+        shutil.copy2(log, str(dst) + ".log")  # BASELOG: the run log beside its shot copy
     return str(dst)
+
+
+def keep_logs(keep, first, last):
+    """BASELOG: copies the run log of each run of a differing pair (snap_shots wrote <shot copy>.log) to keep/a.log and keep/b.log."""
+    got = []
+    for k, r in (("a", first), ("b", last)):
+        lg = Path((r.get("shot_path") or "") + ".log")
+        if lg.is_file():
+            shutil.copy2(lg, Path(keep) / (k + ".log")); got.append(k + ".log")
+    return got
 
 
 FHASH_RX = re.compile(r"fhash f(\d+) h ([0-9a-f]{16}) draws (\d+) words (\d+)")
@@ -1757,8 +1769,9 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             keep = REPO / "build3ds" / "basesnap_fail" / (lane or "main") / time.strftime("%Y%m%d-%H%M%S")
             shutil.copytree(first["shot_path"], keep / "a")
             shutil.copytree(last["shot_path"], keep / "b")
-            print("base %s: two runs differ, not stored, %d shots: %s, kept at %s" % (
-                bd["name"], len(fails), "; ".join("%s %s" % f for f in fails), keep))
+            logs = keep_logs(keep, first, last)  # BASELOG
+            print("base %s: two runs differ, not stored, %d shots: %s, kept at %s, logs %s" % (
+                bd["name"], len(fails), "; ".join("%s %s" % f for f in fails), keep, " ".join(logs) or "none"))
             bad += 1
             continue
         names = store_base(commit, bd["name"], s["name"], Path(last["shot_path"]), REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
@@ -2374,7 +2387,7 @@ def cmd_ingest_last(a):
     note = "picture: a person reads the shot" if bd and bd["kind"] == "azahar_pic" else ""
     shot = a.shots or str(SHOTS / s / (os.environ.get("PM_LANE") or "main"))  # SHOTLANE: per scenario and build
     ingest_fhash(bd, p, shot)  # FRAMEHASH4: before snap_shots, so the base copy holds fhash.txt
-    shot = snap_shots(shot, s) or shot  # BASEVERIFY: a base list's run keeps its own shot copy (PM_BASE_SNAP)
+    shot = snap_shots(shot, s, p) or shot  # BASEVERIFY: a base list's run keeps its own shot copy (PM_BASE_SNAP)
     dv = os.environ.get("PM_BENCH_DIRTY")
     lb, _ = log_build(text)
     if a.build is not None and lb is not None and lb != a.build:  # BF-4: the boot line is not the build that was run
