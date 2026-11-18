@@ -15,6 +15,7 @@
 #include "variables.h"
 #include "nd_psochk.h"
 #include "nd_int.h"
+#include "nd_ds.h" /* NST2D: nd_ds_rpl */
 #include "nd_op.h"
 #include "nd_api.h"
 #include "nd_gtab.h"
@@ -689,7 +690,9 @@ void nd_range_run(const uint32_t* a) {
     gp_prev_op = -1;
     sc_ok = 0; sr_ok = 0;
     pm_walk_side++;
+    nd_ds_rpl++; /* NST2D */
     nd_stream_run(a);
+    nd_ds_rpl--;
     ex_depth = d;
     pm_walk_side--;
     if (__builtin_expect(pm_walk_dbg, 0)) walk_dbg_end(pm_walk_dbg);
