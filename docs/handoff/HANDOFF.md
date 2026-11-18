@@ -51,7 +51,7 @@ push with `-Profile prof -GameDebug "warp=mac_01:0 pos=0:0:200"`, the bottom scr
 
 ## Agents at handoff (ListAgents is the truth)
 Finished, waiting for a merge: BOTSCR (branch BOTSCR, bb7520d044, merge AFTER the push, then rebuild main) and NST2A (branch NST2A, 86b4a06909, gate PASS: fbad lower in both dschk scenes; merge after the user's console check of 0f39de90cb).
-No agent runs now. The NST2B coder was started after the user said the session was done, then stopped at once (worktree build3ds/wt/NST2B and branch NST2B exist from the NST2A branch, no work in them). Start the NST2B coder again (oracle NSTO a4979ad6150eacb9f) when the new session begins. Chain: NST2C from the NST2B branch, NST2D from NST2C, and so on (pages on main).
+No agent runs. The NST2B coder (af8f5a89574007435) was started after the user ended the session and stopped at once (the user said both: done, and do not stop work; a resume was denied by the auto-mode classifier). Its worktree build3ds/wt/NST2B and branch NST2B are a copy of branch NST2A with no work of their own. Start it again in the new session (oracle NSTO a4979ad6150eacb9f) and merge nothing of the NST chain before the user's console check. Chain: NST2C from the NST2B branch, NST2D from NST2C, and so on (pages on main).
 Oracles (all idle, resume by SendMessage): NEXT3 a26f678cb67ee83db (237K), NSTO a4979ad6150eacb9f (380K), PHASEE2 a2895cb81ea2b910a (360K), DIAG1 a19976ad4fb0c998a (205K).
 Pages on main: ws_NST2B to ws_NST2F. NDR0 is deferred until the NST2F data exists (oracle advice). docs/handoff/oracle_handoff.md holds the oracle facts (60 lines or less).
 
