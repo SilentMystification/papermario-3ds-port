@@ -1,5 +1,6 @@
 /* nd_snap_in.c: the combine inputs of an NdDs (NDR0A, snapchk). Pure, no globals: host-built (3ds/tools/nd_snap_test.c). The fields are the
  * ones comb_in_walker (nd_comb.c) reads from nd_ws and the setter globals; box_folded is 0 here (the core 0 fold state is not in NdDs). */
+#include <stddef.h>
 #include <string.h>
 #include <stdint.h>
 #include "nd.h"
@@ -54,6 +55,16 @@ void nd_snap_bind(const NdTd* td, const NdTst* t, int n, NdSnapBind* o) {
     memcpy(o->wrap, t->tile_wrap[n], sizeof o->wrap);
     memcpy(o->sz, t->tile_sz[n], sizeof o->sz);
     o->shift[0] = t->tile_shift[n][0]; o->shift[1] = t->tile_shift[n][1];
+}
+
+/* NDR0G2: the difference of two bind pairs: bit 1 << 2n for the td of tile n, 2 << 2n for its wrap, sz and shift words. */
+unsigned nd_snap_bdiff(const NdSnapBind* a, const NdSnapBind* b) {
+    unsigned m = 0u;
+    for (int n = 0; n < 2; n++) {
+        if (memcmp(&a[n].td, &b[n].td, sizeof a[n].td)) m |= 1u << (2 * n);
+        if (memcmp(a[n].wrap, b[n].wrap, sizeof a[n] - offsetof(NdSnapBind, wrap))) m |= 2u << (2 * n);
+    }
+    return m;
 }
 
 /* NDR0F1: the mix of sync_render (nd_set.c) on the arguments. Returns 1 with col = the colour mix of nd_mix1 (nd_set.c), 2 with col = the

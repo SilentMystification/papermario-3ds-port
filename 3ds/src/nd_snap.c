@@ -70,11 +70,51 @@ static NdSnapChk sc_cur;
 static unsigned sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_nlog, sc_bucket;
 static int sc_nb;
 static const char* sc_nm[8];
+static NdSnapBind sc_eb[2];
+static unsigned sc_wst, sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */
+unsigned pm_frame_count(void);
+int pm_drec_now(void);
 extern unsigned char nd_cmd_last; /* nd_rec.c:181 */
 
 static void sc_add(const char* s) {
     if (sc_nb < 8) sc_nm[sc_nb] = s;
     sc_nb++;
+}
+
+/* NDR0G2: the walker tile blocks when e is NULL, else e. */
+static const NdSnapBind* sc_wb(const NdSnapBind* e, NdSnapBind* w) {
+    if (e) return e;
+    for (int n = 0; n < 2; n++) nd_snap_bind(&nd_ws.td[n], &nd_ws.tst1, n, &w[n]);
+    return w;
+}
+
+/* NDR0G2: the count of a bad triangle (the first 8 with names), tag = the compare that found it. */
+static void sc_count(const char* tag) {
+    char names[192];
+    if (sc_nb) {
+        sc_bad++;
+        sc_fbad += (unsigned)sc_nb;
+        if (sc_nlog < 8) {
+            unsigned k = 0;
+            names[0] = 0;
+            for (int i = 0; i < sc_nb && i < 8; i++) k += (unsigned)snprintf(names + k, sizeof names - k, " %s", sc_nm[i]);
+            sc_nlog++;
+            pm_log_evt("snapchk bad f%u %s%s", pm_frame_n, tag, names);
+        }
+    }
+}
+
+/* NDR0G2: 1 when the armed snapshot tile words differ from the blocks e (NULL = the walker tiles). */
+int nd_snap_bnew(const NdSnapBind* e) {
+    NdSnapBind w[2];
+    return nd_snap_bdiff(sc_wb(e, w), sc_cur.b) != 0u;
+}
+
+/* NDR0G2: the blocks of the open epoch; the drec run logs the first epoch frame that binds other tile words. */
+const NdSnapBind* nd_snap_eb(void) {
+    memcpy(sc_eb, sc_cur.b, sizeof sc_eb);
+    if (pm_drec_now() && pm_frame_count() != sc_bfr && nd_snap_bnew(NULL)) { sc_bfr = pm_frame_count(); pm_log_d("bindsnap f%u", sc_bfr); }
+    return sc_eb;
 }
 
 void nd_snapchk_run(const uint32_t* rec) {
@@ -116,7 +156,7 @@ static void sc_compare(void) {
         if (o->cc_on && pm_gpu_const_now() != o->cc) sc_add("gconst");
         if (o->env_on && pm_gpu_env_now() != sc_cur.in.env) sc_add("genv");
     }
-    { NdSnapBind w; for (int n = 0; n < 2; n++) { nd_snap_bind(&nd_ws.td[n], &nd_ws.tst1, n, &w); if (memcmp(&sc_cur.b[n].td, &w.td, sizeof w.td)) sc_add(n ? "b1td" : "b0td"); if (memcmp(sc_cur.b[n].wrap, w.wrap, sizeof w - offsetof(NdSnapBind, wrap))) sc_add(n ? "b1tile" : "b0tile"); } } /* NDR0G1 */
+    if (nd_snap_bnew(NULL)) sc_wst++; /* NDR0G2: stale walker tiles (data, not bad) */
     if (sc_cur.key < 0) sc_miss++;
     if (sc_nb) {
         sc_bad++;
@@ -131,7 +171,6 @@ static void sc_compare(void) {
     }
 }
 void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch (nd_geom.c gv_epoch_enter) */
-    char names[192];
     nd_snap_rpend = 0;
     if (!PMDL("snapchk")) return; /* NDR0F1B: draw_tri sets the flag in every run */
     sc_nb = 0;
@@ -140,18 +179,22 @@ void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch
     nd_render_state(nd_ws.omode_h, nd_ws.omode_l, nd_img_role(0) == ROLE_DEPTH, &w);
     if (memcmp(&sc_cur.rs, &w, sizeof w)) sc_add("rs");
     if (sc_cur.mixk != wk || sc_cur.mixc != wc) sc_add("mix");
-    if (sc_nb) {
-        sc_bad++;
-        sc_fbad += (unsigned)sc_nb;
-        if (sc_nlog < 8) {
-            unsigned k = 0;
-            names[0] = 0;
-            for (int i = 0; i < sc_nb && i < 8; i++) k += (unsigned)snprintf(names + k, sizeof names - k, " %s", sc_nm[i]);
-            sc_nlog++;
-            pm_log_evt("snapchk bad f%u rnd%s", pm_frame_n, names);
-        }
-    }
+    sc_count("rnd");
 }
+
+/* NDR0G2: the bind compare of the armed snapshot at the triangle epoch: the bits of nd_snap_bdiff against the walker tile blocks of the open epoch. */
+void nd_snapchk_bind(void) {
+    NdSnapBind w[2];
+    if (!PMDL("snapchk")) return; /* NDR0G2: the switch off returns */
+    const unsigned m = nd_snap_bdiff(sc_wb(nd_ep_bs, w), sc_cur.b);
+    sc_nb = 0;
+    if (m & 1u) sc_add("b0td");
+    if (m & 2u) sc_add("b0tile");
+    if (m & 4u) sc_add("b1td");
+    if (m & 8u) sc_add("b1tile");
+    sc_count("bind");
+}
+
 void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed snapshot, at the triangle epoch (nd_geom.c gv_epoch_enter) */
     const unsigned sg = sc_cur.oml ^ (sc_cur.in.omode_h * 2654435761u) ^ sc_cur.geom ^ (unsigned)sc_cur.role;
     nd_snapchk_rnd();
@@ -170,6 +213,6 @@ void nd_snapchk_tick(void) {
     if (!PMDL("snapchk")) return;
     if (pm_frame_n / 100 != sc_bucket) {
         sc_bucket = pm_frame_n / 100;
-        pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss);
+        pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
     }
 }

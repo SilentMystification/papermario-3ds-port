@@ -22,6 +22,22 @@ typedef struct NdSnapChk {
     NdSnapBind b[2]; /* NDR0G1: tiles 0 and 1 */
 } NdSnapChk;
 _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
+/* NDR0G2: the tile words the bind and uv code read: NULL = the walker tiles */
+extern const NdSnapBind* nd_bsrc;
+/* NDR0G2: the blocks of the open epoch, NULL = walker */
+extern const NdSnapBind* nd_ep_bs;
+#define ND_BTD(n) (nd_bsrc ? &nd_bsrc[n].td : &nd_ws.td[n])
+#define ND_BWR(n) (nd_bsrc ? nd_bsrc[n].wrap : nd_ws.tst1.tile_wrap[n])
+#define ND_BSZ(n) (nd_bsrc ? nd_bsrc[n].sz : nd_ws.tst1.tile_sz[n])
+#define ND_BSH(n) (nd_bsrc ? nd_bsrc[n].shift : nd_ws.tst1.tile_shift[n])
+/* NDR0G2, nd_snap_in.c: bit 1 << 2n when the td of tile n differs, 2 << 2n when its wrap, sz or shift words differ. */
+unsigned nd_snap_bdiff(const NdSnapBind* a, const NdSnapBind* b);
+/* NDR0G2, nd_snap.c, core 0: 1 when the armed snapshot tile words differ from the blocks e (NULL = the walker tiles). */
+int nd_snap_bnew(const NdSnapBind* e);
+/* NDR0G2, nd_snap.c, core 0: the blocks of the armed snapshot for the open epoch (a copy kept until the next epoch). */
+const NdSnapBind* nd_snap_eb(void);
+/* NDR0G2, nd_snap.c, core 0: the bind compare of the armed snapshot at the triangle epoch (nd_geom.c gv_epoch_enter). */
+void nd_snapchk_bind(void);
 
 /* nd_snap_in.c: the combine inputs of an NdDs (leg and pat are the walker's leg and box_pat of the snapshot). */
 void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in);

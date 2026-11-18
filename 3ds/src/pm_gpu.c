@@ -592,6 +592,7 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
 #include "nd_drec.h"
 static int drec_win = -2; static unsigned drec_first, drec_count, drec_step = 1u;
 static int drec_on;
+int pm_drec_now(void) { return drec_on; } /* NDR0G2 */
 static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
 static NdDrecSpan drec_span[1 + OFF_N + SMALL_N]; static uint32_t drec_nspan; /* DRECTEX */
 #define DREC_REGS 640u
@@ -602,6 +603,7 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     }
     const unsigned fr = pm_frame_count();
     drec_on = drec_win > 0 && fr >= drec_first && fr <= drec_first + (drec_count - 1u) * drec_step && (fr - drec_first) % drec_step == 0u;
+    if (drec_on) pm_log_d("drec frame %u seq %u", fr, drec_seq); /* NDR0G2 */
     if (drec_on && drec_f && drec_step > 1u) fprintf(drec_f, "frame %u\n", fr);
     if (!drec_on || drec_f) return;
     mkdir("sdmc:/3ds/PaperMario/shots", 0777);

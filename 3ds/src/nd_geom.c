@@ -15,6 +15,7 @@ __attribute__((weak)) void nd_snapchk_tri(void) {} /* NDR0A: strong in nd_snap.c
 __attribute__((weak)) unsigned char nd_snap_rpend; /* NDR0F1: strong in nd_snap.c */
 __attribute__((weak)) void nd_snapchk_rnd(void) {} /* NDR0F1: strong in nd_snap.c */
 __attribute__((weak)) void nd_snap_render(void) { sync_render(); } /* NDR0F2: strong in nd_snap.c */
+const NdSnapBind* nd_ep_bs; /* NDR0G2: the blocks of the open epoch (nd_snap_eb), NULL = walker */
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -95,7 +96,7 @@ float cull_cross(const float* p1, const float* p2, const float* p3) {
 }
 
 int nd_spr_walk; /* WALLSHADE: 1 while nd_walk_spr runs the walker words of a sprite (the shaded sprite fallback) */
-void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); if (dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */
+void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); nd_bsrc = NULL; if (dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */
 
 /* S3N-3c: the draw parameters at geometry geo (the lighting, texgen and fog bits of the batch), the rest as the walker state */
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
@@ -112,7 +113,7 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
     in.primz = (nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) != 0; in.prim_z = nd_ws.prim_z;
     in.envc = nd_ws.envc; in.plan_vtx = cur_plan.vtx;
     in.tw = tw; in.th = th;
-    in.shs = nd_ws.tst1.tile_shift[st][0]; in.sht = nd_ws.tst1.tile_shift[st][1];
+    in.shs = ND_BSH(st)[0]; in.sht = ND_BSH(st)[1];
     in.tex_on = nd_ws.tex_on;
     in.vp[0] = vp_sx; in.vp[1] = vp_sy; in.vp[2] = vp_tx; in.vp[3] = vp_ty;
     in.tile_x0 = nd_ws.tile_x0; in.tile_y0 = nd_ws.tile_y0; in.tile_fx = nd_ws.tile_fx; in.tile_fy = nd_ws.tile_fy;
@@ -209,13 +210,15 @@ void gv_epoch_enter(void) {
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;
+    nd_ep_bs = nd_snap_rpend ? nd_snap_eb() : NULL; /* NDR0G2 */
     if (ep_why < 0 && !ep_cullboth) {
         ep_fl = tri_flags();
+        nd_bsrc = nd_ep_bs; /* NDR0G2 */
         if (!nd_dq_on) { /* S5CHUDA: a direct quad has bound tile 0 itself (nd_direct_quad) */
             ensure_tile(nd_ws.use_t1 ? 1 : 0);
             dual_bind();
         }
-        if (nd_snap_rpend) nd_snap_render(); /* NDR0F2: the snap of this triangle */
+        if (nd_snap_rpend) { nd_snapchk_bind(); nd_snap_render(); } /* NDR0F2: the snap of this triangle */
         else sync_render();
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
          * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.
@@ -225,9 +228,10 @@ void gv_epoch_enter(void) {
         if (nd_img_role(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f); }
         /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
         if (plan_active && cur_plan.uses_tex1) {
-            if (!nd_ws.td[0].valid || !nd_ws.td[1].valid) ep_why = GVR_TEX1;
+            if (!ND_BTD(0)->valid || !ND_BTD(1)->valid) ep_why = GVR_TEX1;
             else if (pm_tex_aux_off_idx() >= 0) ep_t1f = 1;
         }
+        nd_bsrc = NULL; /* NDR0G2 */
     }
     ep_epoch = gv_epoch;
     ep_pepoch = 0;
@@ -343,8 +347,9 @@ void draw_tri(unsigned w) {
     idx[1] = i1;
     idx[2] = i2;
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */
     nd_snap_rpend = nd_snap_arm; /* NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
-    if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) nd_snapchk_rnd(); } /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
+    if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } } /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         const int done = vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx);
         nd_snap_rpend = 0; /* NDR0F1B */
