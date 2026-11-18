@@ -37,17 +37,17 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1) {
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 
-static void snap_take(int zc) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle; the compare stays behind PMDL("snapchk") */
+static void snap_take(const NdDs* s, int zc) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle; the compare stays behind PMDL("snapchk") */
     NdSnapChk r;
     NdCombOut o;
     memset(&r, 0, sizeof r);
     memset(&o, 0, sizeof o);
-    nd_snap_in(&nd_ds, sn_leg, sn_pat, &r.in);
-    nd_snap_rnd(&nd_ds, &r);
-    r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, nd_ds.w.omode_l, nd_ds.w.omode_h, zc);
-    r.mixk = nd_snap_mix(nd_ds.w.omode_l, nd_ds.fogc, nd_ds.blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
-    nd_render_state(nd_ds.w.omode_h, nd_ds.w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
-    nd_snap_bind(&nd_ds.w.td[0], &nd_ds.w.tst1, 0, &r.b[0]); nd_snap_bind(&nd_ds.w.td[1], &nd_ds.w.tst1, 1, &r.b[1]); /* NDR0G1 */
+    nd_snap_in(s, sn_leg, sn_pat, &r.in);
+    nd_snap_rnd(s, &r);
+    r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, s->w.omode_l, s->w.omode_h, zc);
+    r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
+    nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
+    nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
     if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, 0u, &o);
     r.plan_on = -1;
@@ -62,8 +62,17 @@ static void snap_take(int zc) { /* NDR0E2: the snap is taken at every mesh trian
     nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */
     sn_cmds = nd_rec_cmds();
 }
-void nd_snap_mesh(void) { snap_take(0); }
-void nd_snap_rect(void) { snap_take(sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL))); } /* NDR1C: zcol of nd_rect.c:236 */
+static NdDs sn_tmp; /* NDR2A, core 1: nd_ds with the pso words of a direct draw */
+void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { /* NDR2A: the state words of nd_direct_bind, in its order */
+    sn_tmp = nd_ds;
+    sn_tmp.w.omode_h = (sn_tmp.w.omode_h & ~p->omh_m) | (p->omh & p->omh_m); sn_tmp.w.om_kh |= p->omh_m;
+    sn_tmp.w.omode_l = (sn_tmp.w.omode_l & 7u) | (p->oml & ~7u); sn_tmp.w.om_kl |= ~7u;
+    if (sn_tmp.w.comb_w0 != p->cw0 || sn_tmp.w.comb_w1 != p->cw1 || !sn_tmp.comb_set) nd_ds_apply(&sn_tmp, ND_FS_W0(ND_FS_COMB, p->cw0), p->cw1);
+    sn_tmp.dual_on = 0; sn_tmp.w.prim = prim; sn_tmp.w.prim_lod = 0u; sn_tmp.w.envc = env;
+    snap_take(&sn_tmp, 0);
+}
+void nd_snap_mesh(void) { snap_take(&nd_ds, 0); }
+void nd_snap_rect(void) { snap_take(&nd_ds, sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL))); } /* NDR1C: zcol of nd_rect.c:236 */
 
 /* ---- core 0 ---- */
 unsigned char nd_snap_arm;
@@ -226,12 +235,29 @@ void nd_snap_rlog(void) {
     }
 }
 void nd_snapchk_rect(void) { nd_snap_arm = 0; if (PMDL("snapchk")) sc_compare(); }   /* NDR0E2: a texture rectangle: compare only */
+static unsigned sc_dir; /* NDR2A: direct draws compared (the pso snap of a fill record against nd_direct_bind) */
+void nd_snapchk_dir(const NdCombOut* w) { /* NDR2A, core 0: the armed pso snap against the decision nd_direct_bind made */
+    if (!PMDL("snapchk")) return;
+    const NdCombOut* o = &sc_cur.o;
+    sc_dir++;
+    sc_nb = 0;
+    if (o->leg != w->leg || o->mode5 != w->mode5 || o->pat != w->pat || o->plan_on != w->plan_on) sc_add("dleg");
+    if (o->use != w->use || o->cyc != w->cyc || o->dual != w->dual) sc_add("dls");
+    if (o->cc_on != w->cc_on || o->env_on != w->env_on) sc_add("dcc");
+    if (o->plan_on && w->plan_on) {
+        PmPlan x = o->plan, y = w->plan;
+        pm_comb_colours(&x, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
+        pm_comb_colours(&y, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
+        if (memcmp(&x, &y, sizeof x)) sc_add("dplan");
+    }
+    sc_count("dir");
+}
 
 /* NDR0A: the 100-frame counter line, once per frame stream end (nd_rec.c stream_run NDC_END); behind PMDL. */
 void nd_snapchk_tick(void) {
     if (!PMDL("snapchk")) return;
     if (pm_frame_n / 100 != sc_bucket) {
         sc_bucket = pm_frame_n / 100;
-        pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
+        pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u dir %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst, sc_dir);
     }
 }

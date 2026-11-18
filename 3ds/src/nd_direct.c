@@ -95,6 +95,7 @@ uint32_t nd_direct_prim(void) { return nd_ws.prim; }
 uint32_t nd_direct_env(void) { return nd_ws.envc; }
 
 int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
+    const unsigned char sn = nd_snap_arm; nd_snap_arm = 0; /* NDR2A: the snap of a converted direct record */
     const NdPsoN64* p = nd_pso_get(id);
     const uint32_t mh = (nd_ws.omode_h & ~p->omh_m) | (p->omh & p->omh_m);
     const uint32_t ml = (nd_ws.omode_l & 7u) | (p->oml & ~7u);
@@ -117,6 +118,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
     nd_ws.envc = env;
     d = nd_pso_decide(id);
     if (!d) return 0; /* the stream path sets the same words again: nothing it reads is changed */
+    if (sn) nd_snapchk_dir(&d->out); /* NDR2A */
     {   /* what sync_combine does with the decision (scm_replay) */
         const NdCombOut* o = &d->out;
         unsigned cc = 0;
@@ -270,6 +272,7 @@ static void nd_fill_emit(const NdFillRec* f, unsigned k, uint32_t** o) {
 }
 
 static void nd_fill_walk(const NdFillRec* f, unsigned k) {
+    nd_dir_drop(); /* NDR2A */
     static uint32_t buf[8];
     uint32_t* nrp = buf;
     static unsigned nfb;
@@ -287,6 +290,15 @@ void nd_fill_feed(const uint32_t* u) {
     nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
 }
 
+/* NDR2A: the primitive colour, combine and render mode words of a fill kind (nd_fill_run, nd_fill_rec). */
+static void fill_pso(unsigned k, NdPsoN64* d) {
+    d->cw0 = kFillKind[k].cc.w0;
+    d->cw1 = kFillKind[k].cc.w1;
+    d->oml = kFillKind[k].rm0 | kFillKind[k].rm1;
+    d->omh = G_CYC_1CYCLE;
+    d->omh_m = 3u << G_MDSFT_CYCLETYPE;
+}
+
 /* core 0: the 1-cycle fill of a rectangle, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
 void nd_fill_run(const uint32_t* u) {
     const NdFillRec* f = (const NdFillRec*)u;
@@ -297,11 +309,7 @@ void nd_fill_run(const uint32_t* u) {
         nd_fill_walk(f, k);
         return;
     }
-    d.cw0 = kFillKind[k].cc.w0;
-    d.cw1 = kFillKind[k].cc.w1;
-    d.oml = kFillKind[k].rm0 | kFillKind[k].rm1;
-    d.omh = G_CYC_1CYCLE;
-    d.omh_m = 3u << G_MDSFT_CYCLETYPE;
+    fill_pso(k, &d);
     nd_direct_bind(nd_pso_n64(&d), f->rgba, nd_direct_env());
     if (x1 >= f->x0 && y1 >= f->y0) {
         pm_gpu_set_replace(0);
@@ -309,6 +317,15 @@ void nd_fill_run(const uint32_t* u) {
     }
     nd_direct_end();
 }
+
+/* NDR2A, core 1: one direct record with its pso snap (nd_snap_pso), then the record (nd_rec_napi_s: the runner takes the snap). */
+void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_napi_s(run, rec, units); }
+/* NDR2A, core 1: a fill record: its pso snap and record, then the feed of nd_ds. */
+void nd_fill_rec(const NdFillRec* f) { NdPsoN64 d; fill_pso(f->kind & 3u, &d); nd_dir_rec(nd_fill_run, f, 3u, &d, f->rgba); nd_fill_feed((const uint32_t*)f); }
+/* NDR2A, core 1: nd_direct_prim at record time (game files do not include nd_ds.h). */
+uint32_t nd_dir_prim1(void) { return nd_ds.w.prim; }
+/* NDR2A, core 0: a fallback walk never takes the pso snap (its tiles predate the record feed). */
+void nd_dir_drop(void) { nd_snap_arm = 0; nd_snap_live = 0; }
 
 /* S5TRECT: the NDC_NAPI runner of one NdTRect (nd_api.h): a texture window and one texture rectangle. Direct when the window is valid and the walker
  * state lets a direct rectangle draw (nd_direct_ready == 1); else the same load and rectangle ops into a local list, walked with nd_walk_state. */

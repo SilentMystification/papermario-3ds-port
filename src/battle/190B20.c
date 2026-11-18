@@ -3014,8 +3014,7 @@ void btl_appendGfx_prim_quad(u8 r, u8 g, u8 b, u8 a, u16 left, u16 top, u16 righ
     /* NATIVEAPI E5b (S5PQUAD): the quad is one fill record (nd_api.h NdFillRec): kind 2 opaque (PM_CC_PRIM_FULL_ALPHA), 3 translucent. */
     {
         NdFillRec q = { left, top, right, bottom, ((u32)r << 24) | ((u32)g << 16) | ((u32)b << 8) | (u32)a, a == 255 ? 2u : 3u };
-        nd_rec_napi(nd_fill_run, &q, 3u);
-        nd_fill_feed((const uint32_t*)&q);
+        nd_fill_rec(&q); /* NDR2A */
     }
 
     nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2);
