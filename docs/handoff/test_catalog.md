@@ -33,7 +33,7 @@ B. Before and after a change
 4. An older commit: `bench.py build-at <commit> <bench> --row R` builds it in build3ds/at_<short>/ and runs an Azahar bench on it. The main folder is not changed. The run records dirty false. A byte reference of main is not a build-at: use `base` (A6).
    Console: `bench.py build-at <commit> <console bench> --row R [--dry-run]` builds it as lane at_<short>, pushes that 3dsx to the O3DS 192.168.1.170 and ingests the live log (dirty false). --dry-run prints the 3 commands only.
 
-C. Console run (the orchestrator pushes, the user opens netloader first)
+C. Console run (the orchestrator pushes, the user opens netloader first) (commands and failure table: docs/handoff/push_runbook.md)
 1. `bench.py show <bench>` prints the push command (the recipe). Run it with PM_ROW=PUSH sh 3ds/push_3ds.sh ... as in docs/handoff/orchestrator_rules.md.
 2. After the push, run the `bench.py ingest build3ds/hw_live_log_170.txt --bench <bench> --host o3ds --build <N> --speed normal --row <row> --label "<text>"` line that push_3ds.sh prints.
 3. A walking route is not comparable between runs. Use a padscript route or a standing bench.

@@ -28,7 +28,7 @@ Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_dschk.c, 3ds/src/nd_
 5. The 100-frame line and the end line get ` adopt <a> adiff <d>` at their end.
 6. nd_ds_test.c: TIMG 4b, TILE 1 (CI, 4b, pal 1), LOADTILE, TILESIZE 1, TILE 0 (CI, 4b, pal 0), COMB with comb_a 1 and comb_c 2,
    TILESIZE 0: dual_on 1 and m1v 0. Print `nst2f shaded bad <b>`. Fault: TILE 0 with pal 1 (dual_on stays 0).
-## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 6 Azahar starts)
+## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 6 Azahar starts; the 4 dschk scenes of azt.d/NST3.json)
 1. Edits 1-6. Host PASS with `nst2f shaded bad 0` and the fault seen. Commit `NST2F 1: dschk adopt after direct draws, box fold, shaded dual_on`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2F --bench the same 2: LOOP PASS, byte-equal.
 3. bench.py run the 4 dschk scenes; grep their dschk lines > build3ds/out/nst2f_dschk.txt. Pass: bad 0 and epbad 0 in the last line of each

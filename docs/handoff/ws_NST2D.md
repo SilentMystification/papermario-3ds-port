@@ -1,4 +1,4 @@
-# ws_NST2D (Haiku): stream ranges feed nd_ds (unit log, sub save and restore, model R11 ranges) (stage S3; counter: dschk bad lower)
+# ws_NST2D (Haiku): stream ranges feed nd_ds (unit log, sub save and restore, model R11 ranges) (stage S3; counter: dschk fbad lower)
 Designer: oracle NSTO. WAIT: branch from main after the NST2C merge. Worktree build3ds/wt/NST2D, branch NST2D. PM_ROW=NST2D PM_LANE=NST2D.
 Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_rec.c, 3ds/src/nd_walk.c (2 lines), 3ds/src/nd_dschk.c, src/model.c (2 lines),
 3ds/tools/nd_ds_test.c, 3ds/tests/host.d/nst1.sh, 3ds/tools/fxrest.d/dschk_base.txt.
@@ -32,9 +32,9 @@ Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_rec.c, 3ds/src/nd_wa
    add `nd_ds_lg_close();`. Declare both there (`/* nd_ds.c */`).
 5. nd_dschk.c: `unsigned nd_ds_rpl;`. First line of nd_dschk_run: `if (nd_ds_rpl) return;` (core 1 took that copy inside the range). nd_dschk_end adds a line `dschk lg hw <nd_ds_lg_hw> over <nd_ds_lg_over>`.
 6. nd_ds_test.c (on &nd_ds): reset; mark A; open; PRIM X; mark B; close; PRIM Y; nd_ds_range(A, B): prim X. save; ENV E; restore: env back. Print `nst2d cases 2 bad <b>`. Fault: nd_ds_range(B, A).
-## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 6 Azahar starts)
+## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 4 Azahar starts)
 1. Edits 1-6. Host PASS with `nst2d cases 2 bad 0` and the fault seen. Commit `NST2D 1: ranges feed nd_ds`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2D --bench the same 2: LOOP PASS, byte-equal.
-3. bench.py run the 4 dschk scenes; grep their dschk lines > build3ds/out/nst2d_dschk.txt. Pass: each last bad not higher than dschk_base.txt,
+3. bench.py run the 2 dschk scenes spot_mac01_dschk and fxchk_a_dschk; grep their dschk lines > build3ds/out/nst2d_dschk.txt. Pass: each last fbad not higher than dschk_base.txt,
    the sum lower (GUESS), `over 0` in each `dschk lg` line. Write the grep into dschk_base.txt.
-## Fix rights: the listed files; compile errors. A higher bad, over above 0, a crash, a DIFF: stop, send the output path to oracle NSTO. Wait. Stop: last commit `NST2D 2: gate. 2 benches byte-equal; dschk bad <4> (base <4>); lg hw <4>` deletes this page. One SubagentHandback.
+## Fix rights: the listed files; compile errors. A higher fbad, over above 0, a crash, a DIFF: stop, send the output path to oracle NSTO. Wait. Stop: last commit `NST2D 2: gate. 2 benches byte-equal; dschk fbad <2> (base <2>); lg hw <2>` deletes this page. One SubagentHandback.

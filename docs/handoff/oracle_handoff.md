@@ -8,6 +8,9 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - D1 A, D2 A. UD1 option 1 (user): core 1 keeps the N64 field model; listcen reports a class core1 outside the end proof.
   UD2 option 1: core 0 keeps a native transform stack. UD3 option 1: prof push at the NST1 gate. Sonnet yes: NST1, NDR0, NCONV1, NREC1.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
+- Console build 6449 (user, FACT): white and black rectangles everywhere. Cause: PSOFB pso_fallback (nd_comb.c:257-264) draws vertex
+  colour only on a miss. ws_HWFIX1 (05cc4cae3a, DIAG1) puts nd_comb_core back on a miss (nd_decide.c back to 3ds/src). Its gate is
+  switch psooff, which makes every key miss: drec must equal the table run. ws_TATTLEAR merged: wide CAM_TATTLE 3D x = (x + 40) * 4 / 5.
 ## Pages on main and their waits (chain: NST1 -> NST3 -> NST2A -> NST2B -> NST2C -> NST2D -> NST2E -> NST2F -> NDR0)
 - ws_PSOFB (Haiku, running): model -2. ws_NST1 (Sonnet, running; worktree build3ds/wt/NST1 has nd_ds.c, NdDs holds lt[], lk, vp_*, tm).
 - ws_NST3: dschk switch, 4 dschk scenes, dschk_base.txt. ws_NST2A: static lists (fixed by NSTO: nd_ds_list after nd_rec_napi).
@@ -16,7 +19,7 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
   dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
   unfold values, shaded sprite dual_on on core 1; S3 end gate bad 0 epbad 0. Every NST2 row replaces fxrest.d/dschk_base.txt.
 ## Open work (in order)
-1. Answer coder questions (PSOFB, NST1, NST3, NST2A-F). epbad is OPEN: no data; NST2F expects a diagnose round.
+1. Answer coder questions (HWFIX1 first, NST1, NST3, NST2A-F). epbad is OPEN: no data; NST2F expects a diagnose round.
 2. PSOFB psomiss (from PHASEE2): each gate bench (spot_mac01_drec, wscmb_pause_drec) has 1 psomiss entry whose combine inputs hold a
    one-bit flag above 1 or below 0. The 4 builders (nd_comb.c:199, nd_model.c:209, pm_gpu.c:3925, nd_scomp.c:226) and the flag writers
    write 0 or 1 (code read). After the PSOFB merge: read the 8 flag values in the PSOFB 2 commit text, find the writer, write a Haiku page.
@@ -42,10 +45,19 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - lkey_cen.py:71-72 fails a listed file whose reader count drops: a page that removes `.words.w*` reads edits allow.txt.
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file and the orchestrator commits stray files: read `git log -- <file>` and the file before a write.
-- Coders often hand back before the oracle reply arrives. Tell the orchestrator to resume them with the reply.
 - Core 0 leaves state that core 1 cannot follow: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits;
   a direct draw (nd_direct.c:103-116) writes pso state and binds without tile ops. dschk adopts core 1 values there (NST2B, NST2F) and counts adiff.
 - dschk copies nd_ds at rec_take of a command: every core 1 apply of a record goes after its nd_rec_* call.
+## Console reports 2026-11-17 (build 6449 = main 60182a2edd, FACT, rule 1: code read only)
+- 60 FPS row: paged ws_FPS60MENU (9ef4f1fd8d): git revert of FSKIP2 1e7ddd7ea1 (row renamed to "Frame skip", pm_options.c:421 :675).
+- OPEN, page ws_OPTIONS not written: (1) bottom screen blank sometimes; (2) some Select menu option rows change nothing.
+  Facts read so far: bottom console init pm_gpu.c:1902 (consoleInit GFX_BOTTOM, window LOG_TOP), only after C3D_Init; C3D_Init failure path :1799.
+  Bottom draw: pm_gpu_hud_flush (pm_gpu_ui.c:155-195) returns while menu_on or !consoleInitialised. Menu draw pm_gpu_ui.c:54-74 (consoleClear at close).
+  Only gfxFlushBuffers call: pm_gpu.c:1925 (menu_grey_top path). The top swaps at pm_gpu.c:1973 and pm_main.c:90; no bottom swap call (grep).
+  Log levels: pm_log.c:353-383 (livelevel, disklevel, conlevel; conlevel off = no log text on the bottom, GUESS). Options defaults pm_options.c:14-18.
+  Rows: tab_ids pm_options.c:418-445, labels :639-690, values :692+, flips pm_options_flip :298-335 and the act switch near :784 and :886.
+  To do: list each row id, its pm_opt field and every reader of that field (grep), git log -S on the field names over 002498da73..main.
 ## What to do first
+0. Write ws_OPTIONS from the OPEN block above (coordinator brief: switches prof and log profiles, GPOS1, NST hooks, TATTLEAR).
 1. Read design_nstate.md, plan_walker_delete.md and the ws_NST2* pages. Answer coder questions.
 2. Open work 2, then 3.
