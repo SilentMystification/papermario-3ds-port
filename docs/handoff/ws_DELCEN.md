@@ -1,0 +1,28 @@
+# ws_DELCEN (Haiku): the phase census of the walker goes (op, producer, model, mr0, ms0, sp0 census; user D2 A). Counters: C8 reader 419 -> about 386 (GUESS: nd_cen.c 42 -> 10, nd_tex_set.c -1), C7 gfxtype 124 -> about 116 (GUESS: nd_cen.c 7 -> 0, nd_walk.c -1).
+Designer: oracle DEL (coach). Start commit main 6abfb4136f (NREC4 merged). No WAIT: NCONV2C edits nd_walk.c op_ctl and nd_parts_run only; this row edits nd_walk.c 113-180, 273, 296, 424-433. Worktree build3ds/wt/DELCEN, branch DELCEN. PM_ROW=DELCEN PM_LANE=DELCEN.
+Edit only (Edit tool, keep CRLF): 3ds/src/nd_cen.c, 3ds/include/nd_int.h, 3ds/src/nd_walk.c, 3ds/src/nd_tex_set.c, 3ds/src/nd_recs.c, 3ds/src/nd_mtx_set.c, 3ds/src/nd_ent.c (line 541), 3ds/src/pm_gpu.c, 3ds/src/pm_interp.c, 3ds/src/pm_phase.c, src/model.c, src/cam_main.c, src/main_loop.c.
+## Facts (code read, main 6abfb4136f; line numbers of that commit)
+- FACT the census runs only under pm_ph_cen or pm_ph_on (pm_phase.c:826, :853: pm_ph_cen = pm_ph_on). No bench, scenario or tool reads its lines (opsplit, modsplit, prod, pre, wcen4, mdlsum, mr0, ms0, sp0x, sp0c, pos: grep of azt_scenarios.json, bench_defs.json, 3ds/tools).
+- FACT sp0_kind (nd_cen.c:225) has no caller: sp0_cur stays 0, sp0_T stays 0, pm_gbi_sp0_dlc (nd_cen.c:234) returns 0. So pf_take (pm_phase.c:718-720) adds 0 to pf_dlc_t, and f_on (nd_tex_set.c:79) is 0.
+- FACT pm5tex1_log (pm_gpu.c:1419-1427) names the producer with pm_gbi_cur_prod_name. Outside phase pmx_cur is 0 and the name is the same on every call.
+- Keep in nd_cen.c: lines 1-37, 67-73 (ndref), 485-601 (frame end, flush class, streak timers, gp3) except lines 494 and 544.
+## Edits (delete the named lines; "->" gives the new text)
+1. nd_cen.c: delete 39-66 (os_ and pk_ tables, pk_slot), 74-83 (pm_gbi_draw_note, pm_gbi_prod_mark), 85-484 (os_*, mdc_*, sp0_*, mr0_*, ms0_*, os_report, pm_gbi_win_reset), 494 (`if (pm_ph_cen) { if (os_fr == 0) ...`), 544 (`os_off = ...`).
+2. nd_int.h: delete 46 (PkMark), 80, 81, 83, 84, 111, 145, 146, 148, 201, 202, 221, 248, 275-290. Line 225 -> `extern unsigned gm_last, gm_n;`. Line 293: delete `rec_n, ` only.
+3. nd_walk.c: 129 -> `    (void)at; (void)sp; (void)w0; (void)w1; /* DELCEN: the op and model census are deleted */`. Delete 136, 140, 142, 143. 150: delete the line. 180: delete ` if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat();`. 273 -> `        if (dh) return;`. 296-297 -> `    nd_op_apply(u);`. ops_cen_begin (424-430) -> body `if (nd_c2_on > 0) nd_c2_task(l);` only. 432 -> `    if (pm_ph_cen) walk_dbg_end(pm_walk_dbg);`.
+4. nd_tex_set.c: 79-81 -> `        pm_gpu_flush();`. Delete nd_tex_timed (543-551, with its comment line). 563-564 (`} else if (__builtin_expect(pm_ph_cen, 0)) nd_tex_timed(u);` and `else nd_op_apply(u);`) -> `} else nd_op_apply(u);`.
+5. nd_recs.c: delete 16 (rec_n), 55, and the 3 lines `rec_n++;` (76, 242, 331: delete only that statement when the line holds more). nd_mtx_set.c: delete 31 and `gm_steps++;` (89). nd_ent.c:541 -> `        if (ent_draw(rec)) return 1;`.
+6. pm_gpu.c: delete 782 and 1327 (`pm_gbi_draw_note(1);`). 1419 (decl) delete. 1423 `char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);` -> `const char* const prod = "-"; /* DELCEN: no producer census */`. 4677: delete `{ extern void pm_gbi_census_close(void); pm_gbi_census_close(); } ` only.
+7. pm_interp.c: delete 59 and 61. pm_phase.c: delete 72; 74: delete ` pm_gbi_win_reset();`; delete 301 and 718-720 (the `d` lines in pf_take).
+8. src/model.c: delete the blocks 871-875 (MDL1 mark) and 939-947 (MR0 and MS0), 4081, 4087-4097 (census_task_mark and CENSUS_TASK), the 2 lines `CENSUS_TASK(appendGfx);` (4269, 4284), 4292. src/cam_main.c: delete 112-113 and the 3 `T1_MARK(..);` lines. src/main_loop.c: delete 190-191 and the 11 `T1_MARK(..);` lines.
+9. `grep -rnwE "os_op_hook|os_close|os_dlc_hit|os_nest|pk_slot|pk_rec|pk_nat|pmx_cur|pmk|pre_w0|mdc_op|mr0_walk_end|mr0_dlc_hit|pm_gbi_(cur_prod_name|draw_note|prod_mark|task_id|census_close|mdl_mark|sp0_dlc|mr0_plain|ms0_mark|win_reset)|nd_tex_timed|tx_t|gm_steps|rec_n|T1_MARK|CENSUS_TASK" 3ds/src 3ds/include src include --include=*.c --include=*.h > build3ds/out/delcen_grep.txt`: only pm_tex.c lines (its own local rec_n).
+## Steps (one command per step, output to build3ds/out/, read the last 20 lines; Bash `timeout: 600000`; 1 build, at most 3 Azahar starts of 8)
+1. Edits 1-9. `sh 3ds/tools/nd_host_test.sh > build3ds/out/delcen_host.txt 2>&1`: PASS. Commit `DELCEN 1: phase census of the walker deleted`.
+2. `python 3ds/tools/bench.py base spot_mac01_drec --commit $(git merge-base HEAD main)`. `sh 3ds/tools/rowloop.sh --row DELCEN --bench spot_mac01_drec --no-host --why "DELCEN census delete"` (it builds).
+3. `PM_ROW=DELCEN PM_LANE=DELCEN python 3ds/tools/bench.py run phase_mac01_det --row DELCEN --why "DELCEN phase mode runs"`: the run reaches `fsplit f`. `python 3ds/tools/listcen.py > build3ds/out/delcen_listcen.txt`.
+## Gate (exact)
+Host PASS. Build rc 0. LOOP PASS (byte-equal). phase_mac01_det reaches its until line. listcen reader and gfxtype lower than 419 and 124; every other total equal.
+## Fix rights
+The listed files. A warning or error for a name that this page deletes: delete that use too and name it in the commit. A variable that is unused after the edits: delete its declaration. A DIFF, a crash, a total that rises: stop. Commit the outputs (`git add -f`), send the paths to the oracle of the launch prompt with SendMessage, wait.
+## Hand-back
+Last commit `DELCEN 2: gate. spot_mac01 drec equal; reader 419 -> <n>, gfxtype 124 -> <n>` deletes this page. One SubagentHandback: commit hash, listcen totals.
