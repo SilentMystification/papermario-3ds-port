@@ -62,6 +62,8 @@ static unsigned n_lists, n_parts, n_defs, n_ops, n_bad;
 #define GS_MAXSYM 8192u
 #define GS_MAXED 16384u
 static unsigned char g_parts[GS_MAXSYM];
+static unsigned short g_nvtx[GS_MAXSYM]; /* DEL5B1: the v1 nvtx per symbol */
+static unsigned parts_fl(const GSym* g) { if (g < gconv_sym || g >= gconv_sym + gconv_nsym || !g_parts[g - gconv_sym]) return 0u; return NDN_FL_PARTS | (unsigned)g_nvtx[g - gconv_sym] << 16; } /* DEL5B1 */
 static unsigned g_ed_from[GS_MAXED], g_ed_to[GS_MAXED], g_n_ed;
 
 static void conv(const GSym* g) {
@@ -145,6 +147,7 @@ static void conv(const GSym* g) {
         } else parts = 0;
     }
     g_parts[ci] = (unsigned char)(parts != 0);
+    g_nvtx[ci] = (unsigned short)nvtx; /* DEL5B1 */
     /* output (GSET: a moved list's v1 table is host only, ND_HOST_GFX; main wraps it) */
     for (unsigned i = 0; i < no; i++) {
         const Op* o = &ops[i];
@@ -893,9 +896,9 @@ static void v2_convert_all(const char* descs_path, const char* inh_path, const c
         if (v2_dup[i]) continue;
         const char* nm = v2_tab[i]->name;
         if (v2_tab[i]->moved) /* GSET: the key is the entry itself; the units are the table's ndnu (the first table of the list) */
-            printf("const NdNDev ndd_%s __attribute__((aligned(8))) = { (const void*)&ndd_%s, %uu, ndnu_%s, %uu, %uu };\n", nm, nm, v2_state_only((const uint32_t*)v2_tab[i]->addr), v2_nm[i], v2_nk[i], v2_ntri[i]);
+            printf("const NdNDev ndd_%s __attribute__((aligned(8))) = { (const void*)&ndd_%s, %uu, ndnu_%s, %uu, %uu };\n", nm, nm, v2_state_only((const uint32_t*)v2_tab[i]->addr) | parts_fl(v2_tab[i]), v2_nm[i], v2_nk[i], v2_ntri[i]);
         else
-            printf("const NdNDev ndd_%s = { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu };\n", nm, nm, v2_state_only((const uint32_t*)v2_tab[i]->addr), nm, v2_nk[i], v2_ntri[i]);
+            printf("const NdNDev ndd_%s = { (const void*)%s, %uu, (const uint32_t*)%s, %uu, %uu };\n", nm, nm, v2_state_only((const uint32_t*)v2_tab[i]->addr) | parts_fl(v2_tab[i]), nm, v2_nk[i], v2_ntri[i]);
         for (unsigned q = 0; q < sd_n; q++) if (!strcmp(sd_name[q], nm)) { /* MODELRM */
             if (v2_nk[i] > 32u || !v2_tab[i]->moved) { fprintf(stderr, "gconv: sdef %s: %u units (most 32) or not moved\n", nm, v2_nk[i]); exit(1); }
             printf("NdSDef ndsd_%s = { (const void*)ndnu_%s, %uu };\n", nm, v2_nm[i], v2_nk[i]);

@@ -11,6 +11,9 @@
 #include <string.h>
 #include "nd.h"
 #include "nd_ops.h"
+#include "gbi_custom.h"
+#include "nd_op.h"
+#include "nd_fs.h"
 
 #define SHAPE_BASE 0x80210000u
 static uint8_t* raw;
@@ -18,6 +21,7 @@ static size_t rawlen;
 static uint32_t be32(const uint8_t* p) { return (uint32_t)p[0] << 24 | (uint32_t)p[1] << 16 | (uint32_t)p[2] << 8 | p[3]; }
 
 static uint8_t vcopy[64 * 16];
+static void ty(uint32_t (*L)[2], uint32_t (*T)[2], unsigned n) { for (unsigned i = 0; i < n; i++) { const uint32_t a = L[i][0], b = L[i][1]; T[i][0] = ND_X0(a, b); T[i][1] = ND_X1(a, b); } } /* DEL1C: raw words to units (nd_shape_conv form) */
 static const void* env_vtx(uint32_t w1, unsigned n) {
     if (w1 < SHAPE_BASE || (size_t)(w1 - SHAPE_BASE) + 16u * n > rawlen) return NULL;
     const uint8_t* s = raw + (w1 - SHAPE_BASE);
@@ -68,9 +72,9 @@ static void check_obj(const NdObj* o, uint32_t addr, const uint32_t* l) {
         unsigned nt = 0;
         for (uint32_t j = g->op0; j < g->op1; j++) {
             uint32_t w0 = l[2 * j], w1 = l[2 * j + 1];
-            if ((w0 >> 24) == OP_VTX) { unsigned n = (w0 >> 12) & 0xFF, e = (w0 >> 1) & 0x7F, v0 = e >= n ? e - n : 0; for (unsigned t = 0; t < n && v0 + t < 64; t++) live[v0 + t] = 1; }
-            else if ((w0 >> 24) == OP_TRI1 || (w0 >> 24) == OP_TRI2)
-                for (int t = 0; t < ((w0 >> 24) == OP_TRI2 ? 2 : 1); t++) {
+            if ((w0 >> 24) == ND_FS_VTX) { unsigned n = (w0 >> 12) & 0xFF, e = (w0 >> 1) & 0x7F, v0 = e >= n ? e - n : 0; for (unsigned t = 0; t < n && v0 + t < 64; t++) live[v0 + t] = 1; }
+            else if ((w0 >> 24) == ND_FS_TRI1 || (w0 >> 24) == ND_FS_TRI2)
+                for (int t = 0; t < ((w0 >> 24) == ND_FS_TRI2 ? 2 : 1); t++) {
                     uint32_t w = t ? w1 : w0;
                     unsigned a = ((w >> 16) & 0xFF) / 2, b = ((w >> 8) & 0xFF) / 2, c = (w & 0xFF) / 2;
                     if (a < 64 && b < 64 && c < 64 && live[a] && live[b] && live[c]) nt++;
@@ -86,6 +90,7 @@ static void check_obj(const NdObj* o, uint32_t addr, const uint32_t* l) {
 /* S6-2c-1: nd_ent_segments on hand-made lists (host order word pairs). */
 static void ent_seg_test(void) {
     uint32_t L[8][2];
+    uint32_t T[8][2];
     NdEntSeg seg[8];
     unsigned ns = 0;
     uint32_t bad = 0;
@@ -96,7 +101,8 @@ static void ent_seg_test(void) {
     L[2][0] = (OP_SETCOMBINE << 24) | 0x123456u; L[2][1] = 0xABCDEF01u;
     L[3][0] = (OP_TRI1 << 24) | (0u << 16) | (2u << 8) | 4u;
     L[4][0] = OP_ENDDL << 24;
-    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    ty(L, T, 8);
+    rc = nd_ent_segments(&T[0][0], seg, 8, &ns, &bad);
     CHECK(rc == NDR_OK && ns == 2, "ent: two segments for one SETCOMBINE between (rc %d, nseg %u)", rc, ns);
     if (ns == 2) {
         CHECK(seg[0].op0 == 0 && seg[0].op1 == 2 && seg[0].sop0 == 0 && seg[0].ntri == 1 && seg[0].tri0 == 0, "ent: segment 0 range");
@@ -107,29 +113,35 @@ static void ent_seg_test(void) {
     /* GEOMETRYMODE and SETOTHERMODE_L in the delta: composed as nd_mode_compile does */
     L[2][0] = (OP_GEOMETRYMODE << 24) | 0x00FFFFFEu; L[2][1] = 0x4u;
     L[3][0] = (OP_TRI1 << 24) | (0u << 16) | (2u << 8) | 4u;
-    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    ty(L, T, 8);
+    rc = nd_ent_segments(&T[0][0], seg, 8, &ns, &bad);
     CHECK(rc == NDR_OK && ns == 2 && seg[1].d.has_geom && seg[1].d.gand == 0x00FFFFFEu && seg[1].d.gor == 0x4u, "ent: geometry delta");
     L[2][0] = (OP_SETOTHERMODE_L << 24) | (8u << 8) | 7u; L[2][1] = 0x00400000u; /* len 8 at sft 16 */
-    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    ty(L, T, 8);
+    rc = nd_ent_segments(&T[0][0], seg, 8, &ns, &bad);
     CHECK(rc == NDR_OK && seg[1].d.has_mode && seg[1].d.wl == 0x00FF0000u && seg[1].d.vl == 0x00400000u, "ent: other mode delta mask and value");
     /* a sync op is neutral: one segment */
     L[2][0] = (OP_PIPESYNC << 24); L[2][1] = 0;
-    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    ty(L, T, 8);
+    rc = nd_ent_segments(&T[0][0], seg, 8, &ns, &bad);
     CHECK(rc == NDR_OK && ns == 1 && seg[0].op1 == 4 && seg[0].ntri == 2, "ent: sync op does not cut");
     /* a DL op (not in the known set) refuses the list with its code */
     L[2][0] = (OP_DL << 24); L[2][1] = 0x80210000u;
-    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
-    CHECK(rc == NDR_OP && bad == OP_DL, "ent: unknown op refused with its code (rc %d bad %x)", rc, bad);
+    ty(L, T, 8);
+    rc = nd_ent_segments(&T[0][0], seg, 8, &ns, &bad);
+    CHECK(rc == NDR_OP && bad == ND_FS_CALL, "ent: unknown op refused with its code (rc %d bad %x)", rc, bad);
     /* a triangle on a slot the list did not load refuses */
     L[2][0] = (OP_SETCOMBINE << 24); L[2][1] = 1;
     L[3][0] = (OP_TRI1 << 24) | (10u << 16) | (2u << 8) | 4u; /* slot 5 is dead */
-    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    ty(L, T, 8);
+    rc = nd_ent_segments(&T[0][0], seg, 8, &ns, &bad);
     CHECK(rc == NDR_SLOT, "ent: triangle on a dead slot is NDR_SLOT");
     /* state ops after the last triangle: an empty tail segment keeps the exit state */
     L[3][0] = (OP_TRI1 << 24) | (0u << 16) | (2u << 8) | 4u;
     L[4][0] = (OP_SETENVCOLOR << 24); L[4][1] = 0xFF00FF00u;
     L[5][0] = OP_ENDDL << 24;
-    rc = nd_ent_segments(&L[0][0], seg, 8, &ns, &bad);
+    ty(L, T, 8);
+    rc = nd_ent_segments(&T[0][0], seg, 8, &ns, &bad);
     CHECK(rc == NDR_OK && ns == 3 && seg[2].ntri == 0 && seg[2].d.has_env && seg[2].d.env == 0xFF00FF00u, "ent: tail segment with the env colour");
     printf("nd_dlc ent: %s\n", fails ? "FAIL" : "PASS");
 }
@@ -163,6 +175,7 @@ int main(int argc, char** argv) {
                 if ((lw[2 * i] >> 24) == OP_ENDDL) break;
             }
             if (i >= ND_DLC_MAXOPS || off + 8 * (i + 1) > rawlen) { n_ref[NDR_LONG]++; continue; }
+            for (unsigned q = 0; q <= i; q++) { const uint32_t a = lw[2 * q], b = lw[2 * q + 1]; lw[2 * q] = ND_X0(a, b); lw[2 * q + 1] = ND_X1(a, b); } /* DEL1C */
             NdObj o;
             int rc = nd_dlc_compile(&o, lw, &env);
             if (rc == NDR_OK) {

@@ -1,7 +1,5 @@
 /* nd_scomp.c: the state compiler (NATIVEAPI S6T, nd_scomp.h; design note: git show b16f91c46:docs/handoff/row_S6T.md). A def (a producer's
- * range of typed state units, static data) is analysed once on core 1 into its folded writes; on core 0 each run applies them to the live
- * walker words, binds the combine decision of the range under the inherited inputs (made once per key, cold: nd_comb_decide, the walker's own
- * decision) and runs the value units. The old per-op path (skip tests, setters, a combine sync per op) does not run for the static units.
+ * range of typed state units, static data) is analysed once on core 1 into its folded writes; on core 0 a record runs its units as ops in def order, then the cut of the old run (DEL3B).
  * Host test: nd_scomp_test.c builds the pure part (ND_SCOMP_HOST). */
 #include <stdint.h>
 #include <string.h>
@@ -124,17 +122,7 @@ unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW
 #include "pm_gpu.h"
 #include "pm_port.h"
 
-#ifndef pm_gpu_flush
-#define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
-#endif
-void comb_in_walker(NdCombIn* in);                     /* nd_comb.c */
-void pm_tex_set_filter(int linear);                    /* pm_tex.c */
 void nd_rec_nr(uint32_t w0, uint32_t w1);           /* nd_rec.c: one typed unit into the open state run */
-extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;  /* nd_comb.c */
-extern int sl_const, sl_env;
-extern unsigned sl_cc;
-extern int pm_comb_vprim;                              /* pm_comb.c */
-extern unsigned* const tst_f[16];                      /* nd_comb.c */
 
 /* ---- core 1: the record ---- */
 static __attribute__((cold, noinline)) void rec_ops(const NdSDef* d, const uint32_t* v, unsigned nv) {
@@ -160,190 +148,23 @@ void nd_scomp_rec(NdSDef* d, const void* vv, unsigned nv) {
     p[1] = nv;
     memcpy(p + 2, v, nv * 8u);
     nd_rec_napi(nd_scomp_run, p, 1u + nv);
-#ifndef ND_SCOMP_HOST /* NST2C: the host builds link this file without nd_ds.c */
-    nd_ds_scomp(&nd_ds, (const uint32_t*)d->u, d->n, d->vmask, v, nv, nd_ds_unit);
-#endif
+    { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("scomp rec f%u", pm_frame_count()); } } /* DSDUP: a compiled record was taken */
     nd_ds_scomp(&nd_ds, (const uint32_t*)d->u, d->n, d->vmask, v, nv, nd_ds_unit); /* NST2C */
 }
 
 /* ---- core 0: the run ---- */
-static NdSTab* sc_tab;       /* the keys (the entry ids) */
-static NdCombOut* sc_out;    /* the decision of each entry */
-static unsigned sc_made;     /* entries made (cold decisions) */
-
-static __attribute__((cold, noinline)) int sc_alloc(void) {
-    sc_tab = (NdSTab*)calloc(1, sizeof *sc_tab);
-    sc_out = (NdCombOut*)calloc(ND_SC_N, sizeof *sc_out);
-    if (!sc_tab || !sc_out) pm_fatal_stop("scomp: no memory for the compiled ranges");
-    return 1;
-}
-static __attribute__((cold, noinline)) void sc_make(NdCombOut* o, const NdCombIn* in) {
-    nd_comb_decide(in, o);
-    sc_made++;
-}
-
-/* The othermode H write as set_om does it, without the combine sync. */
-static void sc_omh(uint32_t m, uint32_t v) {
-    const unsigned old_tf = nd_ws.omode_h & (3u << 12);
-    nd_ws.omode_h = (nd_ws.omode_h & ~m) | (v & m);
-    nd_ws.om_kh |= m;
-    if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, as set_om */
-        pm_gpu_flush();
-        pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
-    }
-}
-
-/* The folded writes of a def with no sync unit on the live walker words, as the def's setters leave them. */
-static void sc_block(const NdSDef* d) {
-    if (d->omh_m) sc_omh(d->omh_m, d->omh_v);
-    if (d->oml_m) { nd_ws.omode_l = (nd_ws.omode_l & ~d->oml_m) | d->oml_v; nd_ws.om_kl |= d->oml_m; }
-    if (d->has_geom) set_geom(d->geom_c, d->geom_s);
-    if (d->has_tex) nd_set_texture(d->tex_a, d->tex_b);
-    /* the ND_FS_COMB skip test without its sync part: equal words, set, not folded, no fold since the last combine */
-    if (d->has_comb && (nd_ws.comb_w0 != d->cw0 || nd_ws.comb_w1 != d->cw1 || !comb_set || box_folded || cmb_gen_seen != comb_gen)) op_setcombine(d->cw0, d->cw1);
-}
-
-/* The decision of the entry into the walker and the GPU (scm_replay form, with the sync_legacy marks). */
-static void sc_replay(const NdCombOut* o) {
-    leg_mode = o->leg; comb_mode5 = o->mode5; box_pat = o->pat;
-    ls_use = o->use; ls_why = o->why; ls_cyc = o->cyc; ls_dual = o->dual; ls_frame = rm_frame;
-    sl_const = o->cc_on; sl_env = o->env_on; sl_cc = o->cc;
-    plan_active = o->plan_on;
-    if (o->cc_on) pm_gpu_set_const(o->cc);
-    if (o->env_on) pm_gpu_set_env(nd_ws.envc);
-    if (o->plan_on) {
-        cur_plan = o->plan;
-        pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, o->cyc, nd_ws.use_t1);
-        pm_gpu_set_plan(&cur_plan);
-    } else {
-        pm_gpu_set_combine(leg_mode);
-    }
-}
-
-static const NdSDef sc_nul; /* no writes: the key of the live state (nd_scomp_key takes every field from the walker) */
-
-/* S6SYNC: sync_combine of the op path at a sync unit: the DIP2 skip, else the decision of the live state (key of the walker's inputs read now). */
-static void sc_decide(const NdSDef* d, unsigned k) {
-    NdCombIn in;
-    uint32_t key[ND_SC_KEYW];
-    int miss;
-    if (sc_ok && sc_sig_now() == sc_sig) return;
-    if (__builtin_expect(!sc_tab, 0)) sc_alloc();
-    comb_in_walker(&in);
-    nd_scomp_key(&sc_nul, &in, (uint32_t)pm_comb_vprim, key);
-    key[0] = (uint32_t)(uintptr_t)d + k; /* the def and the sync unit */
-    key[26] = nd_ws.omode_h; key[27] = nd_ws.omode_l; key[28] = nd_ws.tst1.tile_fmt[0] * 4u + nd_ws.tst1.tile_siz[0]; key[29] = nd_ws.geom;
-    const unsigned i = nd_scomp_find(sc_tab, d->id, key, &miss);
-    if (__builtin_expect(miss, 0)) sc_make(&sc_out[i], &in);
-    sc_replay(&sc_out[i]);
-    sc_ok = 1;
-    sc_sig = sc_sig_now();
-}
-
-/* S6SYNC: the static units in stream order as the op path runs them: nd_op_same skips the unit, else its write; a sync unit then decides. */
-static void sc_units(const NdSDef* d) {
-    const uint32_t* u = (const uint32_t*)d->u;
-    for (unsigned k = 0; k < d->n; k++) {
-        const uint32_t* p = u + 2u * k;
-        const unsigned id = p[0] >> 24;
-        if (d->vmask >> k & 1u) continue;
-        if (id != ND_FS_OMH && id != ND_FS_OML && id != ND_FS_GEOM && id != ND_FS_TEXTURE && id != ND_FS_COMB) continue; /* no-ops */
-        if (nd_op_same(p)) continue;
-        if (!unit_sync(p[0])) { nd_op_apply(p); continue; }
-        if (id == ND_FS_OMH) { const uint32_t m = nd_op_om_mask(p[0] & 0xffffffu); sc_omh(m, p[1]); }
-        else if (id == ND_FS_TEXTURE) nd_set_texture(p[0] & 0xffffffu, p[1]);
-        else op_setcombine(ND_FS_COMB_W0(p[0] & 0xffffffu), p[1]);
-        sc_decide(d, k);
-    }
-}
-
-static void sc_exec(const NdSDef* d, const uint32_t* v) {
+/* DEL3B: a compiled record in the order of the old sc_exec: the pre value units, the static and no-op units of d in def order (nd_walk_state
+ * skips a no-op), the cut and the render resync, the post value units. The static units take the walker decision (sync_combine), as a list def (NREC5). */
+static __attribute__((cold, noinline)) void sr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("scomp run f%u", pm_frame_count()); } } /* DEL3B: the path ran */
+void nd_scomp_run(const uint32_t* rec) {
+    const NdSDef* d = (const NdSDef*)(uintptr_t)rec[0];
+    const uint32_t* v = rec + 2, * t = (const uint32_t*)d->u;
+    sr_note();
     if (d->pre) nd_nr_exec(v, d->pre);
-    if (d->nsync) sc_units(d); else sc_block(d);
-    sr_ok = 0; /* the next draw makes the render state again (as after a range sync that worked) */
-    gv_epoch++; /* GV1b */
-    pm_gbi_cur_op = d->last_op;
+    for (unsigned k = 0; k < d->n; k++) if (!(d->vmask >> k & 1u)) nd_nr_exec(t + 2u * k, 1u);
+    sr_ok = 0; gv_epoch++; pm_gbi_cur_op = d->last_op; /* the cut of the old compiled run */
     if (d->nv > d->pre) nd_nr_exec(v + 2u * d->pre, d->nv - d->pre);
 }
-
-/* ---- s6chk (debug switch): both paths on each record, the state fields compared ---- */
-#define S6_FIELDS(X) \
-    X(omode_h, nd_ws.omode_h) X(omode_l, nd_ws.omode_l) X(om_kh, nd_ws.om_kh) X(om_kl, nd_ws.om_kl) X(geom, nd_ws.geom) \
-    X(tex_on, nd_ws.tex_on) X(tex_ss, nd_ws.tex_ss) X(tex_ts, nd_ws.tex_ts) X(comb_w0, nd_ws.comb_w0) X(comb_w1, nd_ws.comb_w1) \
-    X(comb_set, comb_set) X(tst0, *tst_f[0]) X(tst1, *tst_f[1]) X(tst2, *tst_f[2]) X(tst3, *tst_f[3]) X(tst4, *tst_f[4]) \
-    X(tst5, *tst_f[5]) X(tst6, *tst_f[6]) X(tst7, *tst_f[7]) X(tst8, *tst_f[8]) X(tst9, *tst_f[9]) X(tst10, *tst_f[10]) \
-    X(tst11, *tst_f[11]) X(tst12, *tst_f[12]) X(tst13, *tst_f[13]) X(tst14, *tst_f[14]) X(tst15, *tst_f[15]) X(use_t1, nd_ws.use_t1) \
-    X(box_prod, box_prod) X(box_folded, box_folded) X(box_pat, box_pat) X(comb_alpha_shade, comb_alpha_shade) X(cmb_gen_seen, cmb_gen_seen) \
-    X(leg_mode, leg_mode) X(comb_mode5, comb_mode5) X(plan_active, plan_active) X(ls_use, ls_use) X(ls_why, ls_why) X(ls_cyc, ls_cyc) \
-    X(ls_dual, ls_dual) X(prim, nd_ws.prim) X(envc, nd_ws.envc) X(prim_lod, nd_ws.prim_lod) X(keyc, keyc) X(keys, keys) \
-    X(conv_k4, conv_k4) X(dual_on, dual_on) \
-    X(fogc, fogc) X(blendc, blendc) X(fog_fm, fog_fm) X(fog_fo, fog_fo) X(prim_z, nd_ws.prim_z) X(fill, nd_ws.fill) \
-    X(sci_x0, sci_x0) X(sci_y0, sci_y0) X(sci_x1, sci_x1) X(sci_y1, sci_y1) X(lt_n, lt_n) \
-    X(sc_ok, sc_ok)
-#define S6_N1(nm, lv) S6F_##nm,
-enum { S6_FIELDS(S6_N1) S6F_plan, S6F_lt, S6F_N };
-#define S6_NM(nm, lv) #nm,
-static const char* const s6_name[S6F_N] = { S6_FIELDS(S6_NM) "cur_plan", "lights" };
-typedef struct {
-    uint32_t f[S6F_N];
-    uint32_t sig, srok, slc, sle, slcc, lsf; /* restored, not compared */
-    PmPlan plan;
-    NdLight lt[9];
-} S6Snap;
-static void s6_take(S6Snap* s) {
-    unsigned i = 0;
-#define S6_TK(nm, lv) s->f[i++] = (uint32_t)(lv);
-    S6_FIELDS(S6_TK)
-    s->sig = sc_sig; s->srok = (uint32_t)sr_ok; s->slc = (uint32_t)sl_const; s->sle = (uint32_t)sl_env; s->slcc = sl_cc; s->lsf = (uint32_t)ls_frame;
-    s->plan = cur_plan;
-    memcpy(s->lt, lt, sizeof s->lt);
-}
-static void s6_put(const S6Snap* s) {
-    unsigned i = 0;
-#define S6_PT(nm, lv) lv = (__typeof__(lv))s->f[i++];
-    S6_FIELDS(S6_PT)
-    sc_sig = s->sig; sr_ok = (int)s->srok; sl_const = (int)s->slc; sl_env = (int)s->sle; sl_cc = s->slcc; ls_frame = (int)s->lsf;
-    cur_plan = s->plan;
-    memcpy(lt, s->lt, sizeof lt);
-}
-static unsigned s6_ranges, s6_bad, s6_next = 100u, s6_fbad[S6F_N];
-static __attribute__((cold, noinline)) void s6_run(const NdSDef* d, const uint32_t* v) {
-    static S6Snap s0, a, b;
-    static uint32_t u[2u * 32u];
-    const uint32_t* t = (const uint32_t*)d->u;
-    unsigned j = 0, bad = 0;
-    s6_take(&s0);
-    sc_exec(d, v);
-    s6_take(&a);
-    s6_put(&s0);
-    for (unsigned k = 0; k < d->n; k++) { /* the op path: the def units with the value units in place (as the old record) */
-        if (d->vmask >> k & 1u) { u[2u * k] = v[2u * j]; u[2u * k + 1u] = v[2u * j + 1u]; j++; }
-        else { u[2u * k] = t[2u * k]; u[2u * k + 1u] = t[2u * k + 1u]; }
-    }
-    nd_nr_exec(u, d->n);
-    s6_take(&b);
-    for (unsigned i = 0; i < S6F_plan; i++) if (a.f[i] != b.f[i]) { s6_fbad[i]++; bad = 1; }
-    if (a.f[S6F_plan_active] && b.f[S6F_plan_active] && memcmp(&a.plan, &b.plan, sizeof a.plan)) { s6_fbad[S6F_plan]++; bad = 1; }
-    if (memcmp(a.lt, b.lt, sizeof a.lt)) { s6_fbad[S6F_lt]++; bad = 1; }
-    s6_ranges++;
-    if (bad) {
-        s6_bad++;
-        if (s6_bad <= 8u) pm_log_w("s6chk bad f%u def %p", pm_frame_count(), (const void*)d);
-    }
-    const unsigned f = pm_frame_count();
-    if (f >= s6_next) {
-        s6_next = (f / 100u + 1u) * 100u;
-        for (unsigned i = 0; i < S6F_N; i++) if (s6_fbad[i]) pm_log_evt("s6chk field %s n %u", s6_name[i], s6_fbad[i]);
-        pm_log_evt("s6chk f%u ranges %u bad %u made %u", f, s6_ranges, s6_bad, sc_made);
-    }
-}
-
-static int sc_chk = -1;
-static void sc_go(const NdSDef* d, const uint32_t* v) {
-    if (__builtin_expect(sc_chk < 0, 0)) sc_chk = pm_debug_has("s6chk") ? 1 : 0;
-    if (__builtin_expect(sc_chk, 0)) s6_run(d, v); else sc_exec(d, v);
-}
-void nd_scomp_run(const uint32_t* rec) { sc_go((const NdSDef*)(uintptr_t)rec[0], rec + 2); }
 /* NREC5, core 0: 1 when the compiler takes d (st 1). The callers run the units of d and keep the cut and the render resync of the old compiled run (sc_exec). */
 int nd_scomp_ok(NdSDef* d) {
     if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;

@@ -1,0 +1,496 @@
+bench            kind             cap  runs dflt purpose
+wd_escape        azahar_stream     25     1 yes  ESCAPE: START+SELECT escape on the watchdog thread while the game thread hangs (wdhang=300 wdesc). Gate: the escape line with stuck 0.
+wd_escape_run    azahar_stream     25     2 yes  ESCAPE2: START+SELECT exit through the clean path (escat=300, esc_mode 0 Homebrew Menu). Gate: the escape line with stuck 0, escape taken, exit audio job done.
+logbench         azahar_stream     45    20 yes  LOG1 logbench: producer cycles per kept plain line, kept four-argument line, kept two-%s line, and per dropped line (boot switch logbench).
+spot_mac01_pic   azahar_pic        60   165 yes  Toad Town mac_01, Mario at pos 0 0 200. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.
+spot_mac01_ndmcheck azahar_pic        25    43 yes  spot_mac01_pic ndmcheck (S3N-3): native draw record vs walker draw. Gate: diff 0 and eq above 0. A person reads the shot.
+spot_mac01_prof  console_prof      60    26 yes  Toad Town mac_01, Mario at pos 0 0 200. Console prof mode (O3DS 192.168.1.170): frame cost at the spot.
+spot_mac00_pic   azahar_pic        60    24 yes  mac_00 (preset toad), Mario at pos -135 0 85. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.
+spot_mac00_ndmcheck azahar_pic        25    25 yes  spot_mac00_pic ndmcheck (S3N-3): native draw record vs walker draw. Gate: diff 0 and eq above 0. A person reads the shot.
+spot_mac00_prof  console_prof      60     2 yes  mac_00 (preset toad), Mario at pos -135 0 85. Console prof mode (O3DS 192.168.1.170): frame cost at the spot.
+spot_sbk56_pic   azahar_pic        60    20 yes  sbk_56, Mario at pos 20 0 440. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.
+spot_sbk56_ndmcheck azahar_pic        25    15 yes  spot_sbk56_pic ndmcheck (S3N-3): native draw record vs walker draw. Gate: diff 0 and eq above 0. A person reads the shot.
+spot_sbk56_prof  console_prof      60     0 yes  sbk_56, Mario at pos 20 0 440. Console prof mode (O3DS 192.168.1.170): frame cost at the spot.
+boot_ms          azahar_stream     45    13 yes  BOOT: cold boot timing. The boot ms line (main, log, opt, rom open to stream start, stream MB/s, gfx, audio, first drawn frame, title, rdone = whole ROM in RAM; ms after main; waits and wms = reads that blocked on a missing chunk) at the first title frame. rdone > 0: the stream ended before the title, so no wait after it.
+boot_mem         azahar_stream     30    21 yes  Boot with no warp: boot options line and the memory line (linear and heap KB).
+mem_boot         azahar_stream     20     2 yes  MEMGATE: the boot memory line (commit, image, static, heap, cap, margin KB) before the ROM fit check. Azahar commit is larger than the O3DS one; the console margin comes from a console boot or from 3ds/tools/memcheck.py.
+toad_walk        console_prof      60     0 yes  Toad Town street, fixed walk by padscript, prof mode: cost while Mario moves.
+battle_console   console_prof      60     0 yes  Battle scene (one Goomba on kmr_03), prof mode: frame cost in battle.
+menu_console     console_prof      60     0 yes  Pause status menu open, phase windows: cpu ms per frame and closes per frame.
+seam_pic         azahar_pic        90    12 yes  Toad Town street picture with the CPU path triangle route counts (opsplit line). A person reads the shot.
+ndplan           azahar_stream     90     0 yes  Toad Town street walk, native plan layout check against the old path (ndplan line).
+ndunit           azahar_stream     90     0 yes  Toad Town street walk, texture unit 0 register check against the native unit words (ndunit line).
+nd_host          host_test        600   361 yes  Native draw host tests in docker pm3ds-host:1 (gate G1). Needs the docker daemon.
+ndt_host         host_test        120     0 yes  NDT2 host tests: combiner, matrix, fp24 dp4, record. Replaces nat_host_test.sh (not in the tree).
+spot_mac01_r13off_pic azahar_pic        60     4 yes  Toad Town mac_01, Mario at pos 0 0 200. Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot.
+bombette_mim11   azahar_stream     30     3 no   BOMBLIT census: the shade path counters per frame from the C-down press on, scenario bombette_mim11 (lane BOMBLIT). Log only.
+hotset_size      host_test        120    49 no   HC0 hot code size (tool, no Azahar): M1 bytes per class and union, M2 linker hot group bytes and stale names, from the lane map and ELF (plan_hotcode section 3). Run after the lane build: PM_LANE=<L>.
+listcen          host_test        300     4 no   NATIVEAPI end-state census: list builders, list data, list readers and walker model functions left (row_ORACLE_NEXT.md chain section); every class 0 is the S9GATE pass.
+tidal_pic        azahar_pic        30     5 no   TIDAL step 2 picture: mac_01 cold det start, fxtest=87 (underwater mesh) at frame 402, shots 1 and 2 at frames 412 and 432 inside the wave. Run on the base build (before) and on the TIDAL build (after); cmp against the base store. A person reads the shots.
+tidal_census_base azahar_stream     45     2 no   TIDAL step 1 census base: mac_01 pos 0 0 200, no effect. Window f410 (frames 410 to 467) per-frame draw count avg and max (closes proxy: C_DRAW per batch submit, pm_gpu.c:1097), no Sushie wave. Compare with tidal_census (fxtest=87 underwater).
+tidal_census     azahar_stream     45     4 no   TIDAL step 1 census: mac_01 pos 0 0 200, fxtest=87 (fx_underwater, the Tidal Wave draw) spawned at frame 402 and removed at frame 440. Window f410 (frames 410 to 467) per-frame draw count avg and max (closes proxy: C_DRAW per batch submit, pm_gpu.c:1097). Compare with tidal_census_base.
+fncov_mac01_det  azahar_stream     35    13 no   HC0 census, mac_01 spot: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+hud_fncov_pause  azahar_stream     45     5 no   NAPI2B census, pause menu open: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_base     azahar_stream     45    14 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_base and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_63       azahar_stream     45     3 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_63 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_89       azahar_stream     45     3 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_89 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_51       azahar_stream     45     1 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_51 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_81       azahar_stream     45     1 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_81 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_124      azahar_stream     45     3 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_124 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_105      azahar_stream     45     2 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_105 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_50       azahar_stream     45     3 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_50 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_55       azahar_stream     45     2 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_55 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fxfncov_84       azahar_stream     45     2 no   FXFNCOV census: draw functions run in walker frame of scenario fxfncov_50 and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fncov_kmr10_det  azahar_stream     35     9 no   HC0 census, kmr_10 spot: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fncov_mac00_det  azahar_stream     35     5 no   HC0 census, mac_00 spot: the draw functions run in walker frame 200 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+cheatsave_save   azahar_pic        30     7 no   CHEATSAVE save: Cheats tab, Moon jump on, the cyan footer shot, X writes cheats_slot0.ini. A person reads the footer shot.
+cheatsave_key_save azahar_pic        30     3 no   CHEATSAVE2 save: Cheats tab, Key items folder, the first key item on, the footer shot, X writes its key line to cheats_slot0.ini.
+cheatsave_key_load azahar_pic        30     3 no   CHEATSAVE2 load after a reboot: the key item of the slot file is owned at the world entry (Key items row On).
+cheatsave_load_on azahar_pic        30     4 no   CHEATSAVE load after a reboot: slot 0 file applied, Moon jump On in the Cheats tab.
+cheatsave_load_off azahar_pic        30     4 no   CHEATSAVE per slot: slot 1 has no cheats file, Moon jump Off in the Cheats tab.
+cheatsave_copy   azahar_pic        25     4 no   CHEATSAVE2: file select Copy File slot 0 to slot 3 copies cheats_slot0.ini to cheats_slot3.ini.
+dmg_jump         azahar_pic        45     2 no   BTLUI bug 2 step 1: action command prompt of the first jump (kmr_20 battle); shots 180 to 240 every 4 frames; the button icon.
+dmg_jump_ac      azahar_pic        25     7 no   RIGHTON: jump action command prompt with the Perfect action commands cheat; the A button only, no Right On! art (kmr_20 battle, autoa).
+dmg_star         azahar_pic        45     1 no   BTLUI bug 1: battle damage star behind the damage number. Shots 40 to 320 every 20 frames (kmr_20 battle, autoa); the star shows after the first jump hit.
+coinstar_hos01_pic azahar_pic        30     3 no   COINSTAR: hos_01 item icon (Star Piece) tile 1 window in a shaded map, shots 200 and 201. The t1win line gives the window origin and source offset; the Star Piece shot must be clean.
+sprshade_hos01_pic azahar_pic        40    19 no   SPR4 step 3 gate: hos_01 shaded sprites, native, cold det, shots 200 to 205. Byte-equal to the walker reference (nosprnat, removed in SPR4-4).
+wall_hos01_pic   azahar_pic        40     9 no   WALLT1 gate: hos_01 walls o178/o179 at pos -110 250 -170, det, shots 200 to 236 every 4th frame. Byte-equal to base except the wall.
+kmr_10_band      azahar_pic        45     4 no   WALLT1 gate: kmr_10 wall band at -142 136 221, shots 200 to 205. A person reads the shot: the strata stripe on the low cliff next to the ? block is continuous, no garbage rows (compare with o1329).
+kmr10_walk_pic   azahar_pic        40     9 no   KMR10M gate: kmr_10 late walk (wait400 then padscript) at -142 136 221, shots 500 to 579 every 2nd frame. A person reads the shots: cliff strata continuous, no stretched vertical lines. Log: ensstale count.
+sprshade_hos01_log azahar_pic        30     5 no   SPR4 step 3: hos_01 (shaded profile) sprnat why 3 count at frame 300 (log only).
+battle_spr5_pic  azahar_pic        45     5 no   MDL-3a: battle (kmr_03 one Goomba, mdlw_battle_spr5 scenario) sprite class 5 refusals by flag (spr5 line, every 300 frames) with the sprnat totals. Log only: the picture is the battle the scenario already checks.
+pause_spr5_pic   azahar_pic        45     1 no   MDL-3a: pause menu open on mac_01 (grab bound): sprite class 5 refusals by flag (spr5 line at frame 300). Log only.
+btrans_walk_fs1  azahar_stream     45     0 no   BTRANS oracle: walk-in with FS1 forced skips (fs1force=2, O3DS-like slow frames). caplog capture path. Gate: cpu-after-split 0.
+btrans_walk_noint azahar_stream     45     6 no   BTRANS: walk-in into a Goomba, interp off (nointerp). caplog: capture path per call. Gate: cpu-after-split 0.
+btrans_stand_enc azahar_stream     45     4 no   BTRANS: standing encounter (encwarp 120, kmr_09), interp on. caplog wipe state and capture path. Gate: cpu-after-split 0.
+btrans_stand_noint azahar_stream     45    19 no   BTRANS: standing encounter, interp off (nointerp). caplog capture path. Gate: cpu-after-split 0.
+btrans_walk_enc  azahar_stream     45     4 no   BTRANS: battle entry while Mario walks (kmr_09 Goomba). caplog lines: capture path per call and KICK1 split state.
+stale2_walk_mac01 azahar_pic        27     4 no   STALE2 measurement: texsrc per bind path (walk, model, hit, spr) and texstale counts over a 300-frame walk on mac_01, shots 150 to 169.
+stale2_walk_mac02 azahar_pic        27     4 no   STALE2 measurement: texsrc per bind path (walk, model, hit, spr) and texstale counts over a 300-frame walk on mac_02, shots 150 to 169.
+texstale_prof_line azahar_pic        25     0 no   FX1 row 3: the texstale summary line prints in prof mode (prof=4 texstale on dro_01). Log check only.
+merlee_spell_pic azahar_pic        45     3 no   FX1 row 1: Merlee upgrade spell in dro_02 (live warp, 50 coins, pad file pad_merlee.txt). Shows the card shuffle and reaches the ritual end (state D). Picture check by eye.
+merlee_stereoat_pic azahar_pic        30     2 no   STEREOFX repro: Merlee talk with the 3D slider moved 0 to 1 at frame 500; replay log lines; the darken with seven shots (f596 to f632). FX1 row 1: Merlee upgrade spell in dro_02 (live warp, 50 coins, pad file pad_merlee.txt). Picture check by eye.
+merlee_spell_prof azahar_stream     45     4 no   MERLEE lag: Merlee spell in dro_02 with prof=30 (no shots). The merlee darken/undarken lines give frames, ms and model cache misses and clears of the two fades (cast start, star end). Azahar direction only.
+log_sinks_mixed  azahar_stream     30     6 no   LOG3 sinks: disk debug, live off, console warn. Gate: live count 0, disk count above 0 (the console count is read from the beat line: it is below the disk count).
+log_sinks_info   azahar_stream     30     7 no   LOG3 sinks: all three at info. Gate: live and console counts above 0; the three counts in the last beat line are equal.
+pause_shift      azahar_pic        45    10 no   PSHIFT-1: pause background offset. mac_01 pos 0 0 200, START opens the pause; shots at frames 92 to 135 (shotwin 92:44): live 92 and 95, pause from 96, menu open from about 105. Offset of the grab against the live frame is computed from the shot files (dx, dy). A person reads the shot.
+pause_thr_pic    azahar_pic        45     5 no   PAUSEC: threaded pause (logic thread on). mac_01 pos 0 0 200, START opens and closes the pause three times; shots at frames 360 to 375 (third open). Gate: no CRASH line, the shot shows the pause menu over the filtered field. A person reads the shot.
+pause_tab_thr_pic azahar_pic        40     3 no   PAUSEFLK: threaded pause (logic thread on, wide), mac_01, Party then Star Spirits tab; shots every frame 140 to 249. Gate: no frame-to-frame flicker of sprites, portraits or windows. A person reads the shots.
+pause_tab_det_pic azahar_pic        40    17 no   PAUSEFLK: det twin of pause_tab_thr_pic (serial step). Same route and shots.
+pause_tab_c2haz  azahar_stream     30     2 no   PAUSEFLK: c2haz census on the pause Party and Star Spirits panels (det). The c2haz new lines name the memory a threaded walk reads while the logic rewrites it.
+pause_tab_c2haz_thr azahar_stream     30     1 no   PAUSEFLK: c2haz census with the logic thread on (no det) on the pause Party and Star Spirits panels: writes of the logic of frame N+1 to memory the walk of frame N reads.
+pause_thr_prof   azahar_stream     30     0 no   PAUSEDR: threaded pause with prof=4 (mac_01, 3 opens, log only). Measures the core2 drain line: drains per logic step, drains on a non-empty queue, waits on a full queue.
+spot_mac01_fps60_pic azahar_pic        60     4 no   CORE-2c interp-on replay: Toad Town mac_01 with fps60 (pm_interp_on), shots 200 to 205, byte-equal to the base build of the same bench. A person reads the shot.
+icmp_mac01       azahar            40     7 no   INTERP2M: how the t = 0.5 and key walks differ in GPU command words, Toad Town mac_01 with fps60 and icmp.
+icmp_mac01_stereo azahar            45     2 no   INTERPB3: the patched copy of the L frame against the key walk in forced stereo, Toad Town mac_01 with fps60 and icmp.
+icmp_btl         azahar            40     7 no   INTERP2M: how the t = 0.5 and key walks differ in GPU command words, battle with fps60 and icmp.
+kcopy_btl        azahar            45     5 no   INTERPB3: the interp census line (kcopy, kwalk, refusal causes) of a battle with fps60, no det.
+spot_mac01_fps60_stereo_det azahar_pic        60     8 no   INTERPB3 byte gate: mac_01 with fps60, det and forced stereo, left target shots 200 to 205, byte-equal to the base build of the same bench.
+spot_mac01_fps60_stereo_det_r azahar_pic        60     5 no   INTERPB3 byte gate: the same, right target shots (shoteye).
+spot_mac01_fps60_det azahar_pic        60    31 no   SYNC60 byte gate: Toad Town mac_01 with fps60 (pm_interp_on) and det, shots 200 to 205, byte-equal to the base build of the same bench.
+spot_mac01_fps60_iskip azahar            45     3 no   FPS60SPD gate 2: Toad Town mac_01 with fps60 and iskipall (every step without key frame), pace line steps/s. No shots.
+yard_hud_pic     azahar_pic        45    11 no   HUD1: yard at 4:3 (nowide), uishow=bar opens the status bar at the warp frame; shots 272 to 300 (scenario yard_hud). A person reads the shot: the 4:3 status bar at its old positions.
+yard_hud_max_pic azahar_pic        45     0 no   HUDTRAIL: yard at 4:3 (nowide), star power 7 and 999 coins, uishow=bar opens the status bar (scenario yard_hud_max). A person reads the shot: the 4:3 bar with 7 star power and coins 999.
+yard_wide_hud_pic azahar_pic        45     5 no   HUD1: yard with wide on, uishow=bar opens the status bar at the warp frame; shots 272 to 301 (scenario yard_wide_hud). A person reads the shot: the wide status bar (1.25x) on screen.
+yard_wide_hud_max_pic azahar_pic        45     0 no   HUDTRAIL: yard with wide on, star power 7 and 999 coins, uishow=bar opens the status bar (scenario yard_wide_hud_max). A person reads the shot: 7 full star power bars, no dots left of the bar, coins exactly 999.
+yard_stereo_l_pic azahar_pic        40     4 no   CORE-2c yard: yard with wide and forced stereo, left eye shots 200 to 205 (yard_stereo_l). A person reads the shot.
+yard_stereo_r_pic azahar_pic        40     3 no   CORE-2c yard: yard with wide and forced stereo, right eye shots 200 to 205 (yard_stereo_r). A person reads the shot.
+tour_full        azahar_stream   2600     0 no   Full map tour (every map of gAreas, one session, fixed seed per warp, prof window per map, tourtime 4 s). Perf DB: one run record per map (tour_idx), bench.py tour-report <run> ranks the maps. Soak, about 45 min.
+tour_full_prof   console_prof    2600     0 no   Full map tour on the O3DS console (192.168.1.170): prof mode, one window per map, the same tour as tour_full. Ingest the live log after the push. Soak, about 45 min.
+tour_curated     azahar_stream    260    48 no   Curated map tour (tourlist=curated, 3ds/tours/curated.txt): one window per map, one session, fixed seed per warp. Gate: tour: done items n, n = the list length. Perf DB: one run record per map (tour_idx), bench.py tour-report <run> ranks them.
+tour_curated_prof console_prof      90     0 no   Curated map tour on the O3DS console (192.168.1.170): prof mode, one window per map, the same tour as tour_curated. Ingest the live log after the push.
+spot_mac01_stereo_prof console_prof      60     0 no   STEREO: spot_mac01_prof with forced stereo (3D slider 1). Console prof mode (O3DS 192.168.1.170): stereo frame cost at the spot; eye2 = ms of the right eye pass per sampled frame. Compare with spot_mac01_prof.
+c1probe_o3ds     console_prof      60     0 no   CORE2C C1P probe (switch c1probe): can a game thread on core 1 carry the logic? Toad Town mac_01 at 0 0 200, prof mode. After the first prof window, a core-1 thread at game priority + 2 spins 2 s (s1 = its rate against core 0), then records the wake latency of a per-frame LightEvent (150 frames) and the pauses over 0.5 ms. One line `prof c1probe`. Pass: s1 >= 0.5, wake p95 < 1000 us. Deleted with the probe.
+bg_flicker_mac00 azahar_pic        45     8 no   mac_00 sky (BG1): Mario walks left then right at -57 0 76. Azahar shots frames 100 to 159, one per frame. A person reads the shot: the flicker chunk of the sky.
+bg_edge_mac00    azahar_pic        45     1 no   mac_00 sky (BG1) edge measurement: bgedge line per F07-7 texrect extension beside a shot every frame, frames 115 to 155. A person reads the shot: the strip columns against the logged rects.
+bg_edge_early    azahar_pic        45     4 no   mac_00 sky (BG1) early window: shots every frame 100 to 113 beside the bgedge lines of frames 100 to 112 (F07-7 left edge). A person reads the shot: the columns 0 to 39.
+bg_clamp_mac00   azahar_pic        45     2 no   mac_00 sky (BG1) clamp gate: bgclamp lines of frames 100 to 113 (no sky end past texel 296 or row 200) and one shot.
+wide_fade_mac    azahar_pic        25     9 no   Toad Town (preset toad) with wide on, shots at frames 30 to 41: the fade-in quad on the game edge (WIDE1-2) reaches the screen edge. A person reads the shot.
+pond_mac00_pic   azahar_pic        60     2 no   mac_00 (preset toad), Mario at pos -178 0 88 (the pond). Azahar picture, prof=4 scene line and shots at frames 200 to 205. A person reads the shot: the water must draw.
+pond_mac00_wsurf azahar_pic        60     1 no   POND check: pond_mac00_wlog with wsurfalways (surface batch without depth test). Water over the bed = depth, water elsewhere = matrix or vertex data. Azahar picture, waterlog lines in frames 200 and 201.
+pond_mac00_view  azahar_pic        60     2 no   POND plan 4: pond_mac00_view, camera on the whole water plane (mac_00, Mario at 0 20 262). A person reads the top shot: blue-green water over the pond outline.
+pond_mac00_wlog  azahar_pic        60    12 no   mac_00 (preset toad), Mario at pos -178 0 88 (the pond), waterlog switch: one wdraw line per batch in frames 200 and 201 and one wrec line per copy record. Azahar picture. A person reads the top shot: the pond water must show.
+boot_romorder    azahar_stream     45     4 no   BOOT step 0: ROM chunks (128 KB) touched before the first drawn frame and before the title, with the touch order in the log (romorder lines).
+boot_logo_pic    azahar_pic        30     3 no   BOOT: picture of the no-warp boot at logo frame 200 with the ROM streamed; the stream done line before it.
+warpq_door_pic   azahar_pic        25     2 no   WARPQ: a Select menu warp while the game is in map change mode 5 (door or loading zone). Azahar shots 200 to 205 after the destination. A person reads the shot: kmr_04 on screen, no menu.
+randwarp_pic     azahar_pic        45     2 no   RANDWARP: warp=random:7, the spot the seed picks, Azahar shots 200 to 205. A person reads the shot: Mario on the map of the seed line.
+toad_standing    console_prof      60     8 no   Toad Town street, Mario standing at pos -264 20 -326, prof mode: the baseline of frame_budget.md. Not a default spot (use spot_*).
+console_log      console_prof      60    12 no   BENCHFIX: a console prof log ingested by hand (no run here): any scenes of the log, one record per scene. Holds the PMU and core2 values per window (pmu_i, pmu_d, pmu_cyc, lgms, ic1, dc1, cyc1). Use trend or compare with a metric name.
+sbk56_orbdbg_det azahar_pic        45     1 no   FX1 plan 5: sbk_56 super block cold det run with the orbdbg tags. Glow frames by tag (orbdbg enter, orbdbg draw) and the register shadow at the first glow frame (orbreg 524). A person reads the shots 520 to 531.
+sbk56_superblock_pic azahar_pic        45     9 no   SIZE-1 gate: sbk_56 super block upgrade (effect graphics from the ROM copy). Shots every 30 frames to the effects end; byte compare with the reference build.
+ndref_splash_pic azahar_pic        20     4 no   SIZE-1 gate: fxtest splash block (ndref_splash) runs to frame 412 with no fault; the walker reads the effect graphics of the ROM copy.
+lowmem_hint_pic  azahar_stream     25     1 no   SIZE-4 gate: memforce boot shows the low-memory fatal screen with the applet hint (app id line). A person reads the bottom screen in the Azahar window capture.
+spot_iwa10_pic   azahar_pic        60    23 no   iwa_10, Mario at -586 1 530 (floor, entry 1). Azahar picture and prof scene line. A person reads the shot.
+spot_iwa10_ndmcheck azahar_pic        25     5 no   iwa_10 ndmcheck: native draw record vs walker draw. Gate diff 0, eq above 0.
+entcheck_mac01   azahar_pic        25    16 no   Toad Town mac_01 entcheck (S6-1): entity record (G_PM_ENT) vs the walker words of the draw. Gate eq above 0, diff 0.
+entcheck_kmr03   azahar_pic        25     3 no   Koopa Village kmr_03 entcheck (S6-1): entity record vs walker words on the coin block scene. Gate eq above 0, diff 0.
+ent_kmr03_pic    azahar_pic        25     9 no   Koopa Village kmr_03 picture of the native entity draw (S6-2c-3): entity lists from the static pools. A person reads the shot. Gate native above 0.
+ent_kmr03_det    azahar_pic        25    18 no   S6E2: entity setupGfx state ranges on kmr_03, cold start with det. Two cold runs of one build give byte-equal shots 200 to 205 (bench compare gate).
+ent_item_pic     azahar_pic        30     1 no   mac_01 with a debug coin item entity (testitem=c) drawn natively (S6-3): item quad lists from the static pools. A person reads the shot. Gate native above 0.
+ent_anim_pic     azahar_pic        30     1 no   sam_11 animated props drawn natively (S6-4): static node lists from the static pools. A person reads the shot. Gate native above 0.
+ui1_choice_pic   azahar_pic        30     6 no   UI1: save choice menu (MSG_Choice_000A, yard, uishow=choice) picture. dbgui1 line per frame: text and glove draw counts. A person reads the shot.
+wcen_mac01       azahar_pic        45    30 no   WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, Toad Town mac_01 at pos 0 0 200. A person reads the shot.
+wcen_pause       azahar_pic        45    73 no   CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, pause menu open from frame 96. A person reads the shot.
+wcen_text        azahar_pic        45     3 no   CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, pause text dialog. A person reads the shot.
+wcen_golden      azahar_pic        45     1 no   CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, the golden tour from kmr_20. A person reads the shot.
+wcen_nok11       azahar_pic        45     2 no   CEN-1a why census (phase mode): walker draws per producer by why code, window 0 to 300, nok_11 water splash. A person reads the shot.
+wcen_mac00       azahar_pic        45     2 no   WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, mac_00 at pos -135 0 85. A person reads the shot.
+wcen_sbk56       azahar_pic        45     6 no   WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, sbk_56 at pos 20 0 440. A person reads the shot.
+wcen_iwa10       azahar_pic        45    10 no   WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, iwa_10 at -586 1 530. A person reads the shot.
+wcen_battle      azahar_pic        45    11 no   WCEN producer census (phase mode): walker ops and sampled us per producer, window 0 to 300, battle on kmr_03 (battle from scene frame 100). A person reads the shot.
+menu_frameadv_pic azahar_pic        40     4 no   FADV: frame advance hold and single-step (Cheats tab row 22). Log: fa: on, fa: step frame N per press, menu: game resumed.
+menu_frameadv_off_pic azahar_pic        40     2 no   FADV off: Cheats row 22 On, three steps, row 22 Off, three R presses with no step. Log: fa: off, menu: game resumed, no fa: step after fa: off.
+menu_moon_hold_log azahar_pic        40     1 no   MOON diagnosis: moon jump held 240 scans; log shows the rise, the snap-back and the step count.
+menu_moon_on_log azahar_pic        40    11 no   MOON fix gate: moon jump on, A on the ground then three A presses in the air. Log: three moon jump restart lines, peak y, no snap-back.
+menu_moon_off_log azahar_pic        40     2 no   MOON check: moon jump off, the same A presses: a normal jump, no restart line.
+log_storm        azahar_stream     45     3 no   LOG4 storm: pond at mac_00 with debug lines, texstale and waterlog. Reads the logstat frame work (ms) and the dropped count.
+keep_fail        azahar_stream     15     1 no   AZT3-2 keep on fail: an until line that is never printed. The run ends at its cap and its Azahar stays open (the next start on the slot is warm).
+log_storm_zero   azahar_stream     45     5 no   LOG4 gate B baseline: pond at mac_00, logging on, no storm lines. Same binary as log_storm.
+log_storm_prof   azahar_stream     45     6 no   LOG4 gate A: prof=4 with 200 storm lines per drawn frame (logging off). Reads the prof window frame time (ft ms).
+log_storm_prof_zero azahar_stream     45     4 no   LOG4 gate A baseline: prof=4 with no storm lines. Reads the prof window frame time (ft ms).
+rect_post_mac01  azahar_pic        45    17 no   RECT-1b plan 3: native textured rects, rpD lines of the 16 draws after the last rect of frame 200 (picture: white or right).
+super_text_pic   azahar_pic        90     4 no   RECT-2 text box gate: super_text scenario (kmr_03 battle, A presses open the text box), picture by eye: the box and its glyphs drawn by textured rects.
+log5_menu        azahar_pic        45     4 no   LOG5 menu gate: Logging page On shot, then Off with the grey rows (menu shots bot_m).
+log5_ini         azahar_stream     25     1 no   LOG5 ini gate: version 1 migrates to version 2 with the same levels (options: levels run line).
+log5_switch      azahar_stream     25     1 no   LOG5 switch gate: loglevel=3 conlevel=4 over the options.ini levels (options: levels run line, con=-1).
+log5_bot_log     azahar_pic        40     1 no   LOG5 U3 Logging state: bottom header Console: Warn, Live log: waiting (shot 236).
+log5_bot_prof    azahar_pic        30     3 no   LOG5 U3 Profiling state: bottom header Console: Profiling (shot 240). Until cannot match on Azahar (U2, prof lines not on disk).
+log5_bot_off     azahar_pic        25     1 no   LOG5 U3 both off: bottom header Console: Off, Live log: Off (shot 30). Logging off prints no line: picture only.
+log5_u1_prof     azahar_stream     45     5 no   LOG5 U1 check: logging off, profiling on: writer beats in two prof windows about 10 s apart.
+fb_mac01_det_pic azahar_pic        25    13 no   FB-1 gate 3: Toad Town mac_01 cold det run, shots 200 to 205. Byte-equal between the native grab build and the pre-row build (nds1 9ddd6a818).
+spot_sbk56_det   azahar_pic        35     2 no   MOVE4 gate: sbk_56 spot (sun scene), cold start with the det switch. Two cold runs of one build must give byte-equal shots 200 to 205.
+mim01_ring_det   azahar_pic        30    11 no   EYECW: Forever Forest mim_01 (entry 1, x -530), det, mono: Mario runs to (-375, -375), then to (-375, 375) around the ring (radius 530, the four entries), so the camera yaw passes 90. 12 shots, frames 60 to 280. A person reads the shot.
+mim01_ring_wide_ffog azahar_pic        30     2 no   FFOG: Forever Forest mim_01 ring turn in Widescreen with the ffog diagnostic line (hit, empty, IGNORE share, combined vs fresh MVP). 12 shots, frames 60 to 280. A person reads the shot.
+mim01_ring_stereo_det_l azahar_pic        30     2 no   EYECW: mim_01 ring run as mim01_ring_det with forced stereo, left eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.
+mim01_ring_stereo_det_r azahar_pic        30     2 no   EYECW: mim_01 ring run as mim01_ring_det with forced stereo, right eye shots. The eyecw line every 10 frames: p23 (the old convergence factor, near 0 at yaw 90) and cw (conv x nd_proj_wn). A person reads the shot.
+texkey_arn02     azahar_pic        30     2 no   TEXKEY2: arn_02 at frame 120 (wall barrier rocks), build-time palette fix. A person reads the rock edges.
+kmr11_cut        azahar_pic        30     6 no   EYECW: Goomba's fortress exterior (kmr_11, entry 0) at story -120: the cutscene EVS_Scene_MeetGoombaKing rotates the camera. Mono, det, shots every 20 frames 41 to 261 (from the GKCAM scenario of 61d04a541, fewer shots). A person reads the shot.
+kmr11_cut_stereo_det_l azahar_pic        30     2 no   EYECW: kmr11_cut with forced stereo, left eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.
+kmr11_cut_stereo_det_r azahar_pic        30     1 no   EYECW: kmr11_cut with forced stereo, right eye shots at frames 41 to 261 step 20; eyecw lines every 10 frames. A person reads the shot.
+pause_spin_grab_det_w300_stereo_l azahar_pic        45     2 no   STEREO S2 gate: pause_spin_grab_det_w300 with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.
+pause_spin_grab_det_w300_stereo_r azahar_pic        45     2 no   STEREO S2 gate: pause_spin_grab_det_w300 with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.
+nok11_det_stereo_l azahar_pic        45     2 no   STEREO S2 gate: nok11_det with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.
+nok11_det_stereo_r azahar_pic        45     2 no   STEREO S2 gate: nok11_det with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.
+gameover_fps60_stereo_l azahar_pic        30     2 no   STEREO S2 gate: gameover_fps60 with forced stereo, left eye. Byte-equal to the S1/EYECW build. A person reads the shot.
+gameover_fps60_stereo_r azahar_pic        30     2 no   STEREO S2 gate: gameover_fps60 with forced stereo, right eye. Byte-equal to the S1/EYECW build. A person reads the shot.
+spot_mac01_eyecw azahar_pic        30     1 no   EYECW: mac_01 spot (pos 0 0 200) with forced stereo, det, log on: the eyecw lines (p23, cw, conv, nd_proj_wn, old conv x |p23|) every 10 frames; one shot at frame 200.
+spot_mac01_stereo_det_l azahar_pic        35     6 no   STEREO gate: spot_mac01_det with forced stereo, left eye shots 200 to 205. Two runs of one build byte-equal; S2 byte-equal to the S1 build. A person reads the shot.
+spot_mac01_stereo_det_r azahar_pic        35     6 no   STEREO gate: spot_mac01_det with forced stereo, right eye shots 200 to 205. Two runs of one build byte-equal; S2 byte-equal to the S1 build. A person reads the shot.
+spot_mac01_det   azahar_pic        35   650 no   MOVE gate: mac_01 spot, cold start with the det switch. Two cold runs of one build must give byte-equal shots 200 to 205.
+sten_enter_det   azahar_pic        30    18 no   S1TSTEN byte gate: the Mario stencil fade-in of the world entry, cold det start, 12 shots at frames 37 to 48.
+fxpic_63         azahar_pic        40    17 no   S4 byte gate: snowfall (effect 63) on the particle run, cold det start. Two runs of one build give byte-equal shots 412 to 415; base against head for the S4 gate.
+fxpic_16         azahar_pic        40    11 no   S7 group 2 byte gate: dust (effect 16) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_124        azahar_pic        40    18 no   S4 byte gate: pink_sparkles (effect 124) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_36         azahar_pic        40     7 no   S7EFX6 byte gate: sleep_bubble (effect 36) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_55         azahar_pic        40     4 no   S4 byte gate: effect_3D (effect 55) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_0          azahar_pic        40     9 no   S7EFX1 byte gate: big_smoke_puff (effect 0) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_50         azahar_pic        40    14 no   S4 byte gate: shimmer_burst (effect 50) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_10         azahar_pic        40     7 no   S7EFX7 byte gate: star (effect 10) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_81         azahar_pic        40    11 no   S4 byte gate: snaking_static (effect 81) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_20         azahar_pic        40     8 no   S7EFX3 byte gate: explosion (effect 20) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_105        azahar_pic        40    15 no   S4 byte gate: embers (effect 105) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_89         azahar_pic        40     9 no   S7EFX8 byte gate: water_splash (effect 89) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_33         azahar_pic        40     6 no   S7EFX5 byte gate: music_note (effect 33) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+fxpic_84         azahar_pic        40    20 no   S4 byte gate: water_block (effect 84) on the particle run, cold det start. Shots 404 to 407 byte-equal base against head.
+fxpic_21         azahar_pic        40    10 no   S7EFX4 byte gate: lens_flare (effect 21) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+spot_mac01_selfchk_prof azahar_stream     35     2 no   PROF2-6 self-check, prof side: mac_01 spot, det, prof=30, first window wk, oh, amort, csvc, ssvc. Pair with spot_mac01_selfchk_off (wk against pacewk). Direction only.
+spot_mac01_selfchk_off azahar_stream     35     2 no   PROF2-6 self-check, prof-off side: mac_01 spot, det, pacestat, pacewk wk (mean work ms of a drawn frame) at frame 400 or later. Pair with spot_mac01_selfchk_prof. Direction only.
+moon_tap_pic     azahar_pic        25     1 no   MOON3: moon jump hold rises at MOON_RISE per step, and each A tap in the fall (JUMPING or FALLING) raises Mario again. Log y per step, one shot in the hover.
+wcen_mac01_det   azahar_pic        45     4 no   MOVE gate (c): mac_01 census with opsplit (the mod column), cold start with det.
+phase_mac01_det  azahar_pic        45     5 no   MOVE gate (d): mac_01 gbi phase ms (fsplit) cold with det, base and head.
+phase_iwa10_det  azahar_pic        45     4 no   MOVE gate (d): iwa_10 gbi phase ms (fsplit) cold with det, base and head.
+lava_piranha_det azahar_pic        30     5 no   DIRECT D6c gate: Lava Piranha battle (vines as stream vertex data), det, shots 400, 420, 440.
+ndref_mac00_det  azahar_pic        30    10 no   DIRECT: mac_00 field frame 90 draw stream (ndref.bin) for a base and head compare.
+ndref_fx65_det   azahar_pic        40     5 no   DIRECT: nok_11 effect_65 (after 14 effects) frame 1048 draw stream (ndref.bin) for a base and head compare.
+effcen_mac01     azahar_stream     25     1 no   EFFCEN: fxtest fx_underwater (87) on mac_01, effcen word. The effcen census line (top 5 render tasks by us, ops = gfx words per frame). Log only.
+i8aux_mac01      azahar_stream     25     2 no   I8AUX step 1: fxtest huff_puff_breath (103) on mac_01, cold. The i8aux line (pm_tex_i8(1) and the unit 1 slot fmt, siz, GPU format). Log only.
+fx_direct_det    azahar_pic        45    10 no   DIRECT D6c gate: 18 effects (inline vertex data and lists for later) spawned by fxtest in nok_11, det. Shots byte-equal to the list-word build.
+nok11_det        azahar_pic        45   147 no   DET gate: cold nok_11 splash run with the det switch. Two cold runs must give byte-equal shots.
+nok11_detlog     azahar_pic        45     2 no   DET-1: cold nok_11 splash run with detlog (one det step line per game step). Two cold runs; diff the det step lines to name the first differing field.
+btldim_star      azahar_stream     25     0 no   BTLDIM: Shooting Star in battle. Premise: texture misses per shroud fade step (btldim lines, before the fix about 19).
+btldim_star_sprmix azahar            30     3 no   SHROUD step 1: the sprite mix (sprmix line) during Shooting Star.
+btldim_star_pic  azahar_pic        30     2 no   BTLDIM picture gate: the sky and stage darken step by step during Shooting Star, no seams.
+btldim_star_prof console_prof      60     0 no   BTLDIM console: frame cost of the Shooting Star shroud fades (prof=30, O3DS XL).
+battle_start_f182_cold azahar_pic        60   234 no   DET gate: battle_start_f182 as a cold start (-NoWarm). Two cold runs must give byte-equal shots.
+battle_start_f182 azahar_pic        60    25 no   LOGFIX fault 2: battle picture at frame 182 (top-left corner, Goomba label). Compare per build with bench.py build-at.
+btlui_cen        azahar_stream     40     2 no   BTLUICEN census: battle menu frames rect, rectwhy, tridrop, nrawwhy at f300 and f400. Compare head with build-at 9eeb74b1a. Log only.
+btlui_menu_det   azahar_stream     40     1 no   BTLUI2: battle menu cplxhud log (cplx mode, flags, opacity, pos, scale) and btlmenu state lines after frame 300, census, det. Log only.
+btlui_trace      azahar_stream     40     1 no   BTLUI3: battle menu cplxtrace lines (ctrv quad loads, ctrt per triangle, ctrb batch close) from frame 220, census, det. Log only.
+btlui_menu_thr   azahar_stream     40     1 no   BTLUI2: the battle menu on the threaded path (no det), cplxhud log and btlmenu state lines, c2haz hazard census. Log only.
+roomtex_hud_pic  azahar_pic        30     1 no   ROOMTEX: bottom screen HUD rows (MEM, VRAM, ROOM) at frames 150 to 229, the map scene then the battle start at frame 154. A person reads the shots.
+battle_start_pic azahar_pic        20    21 no   PM5 picture by eye: battle start on kmr_03, shot mode frames 182 on.
+pause_spin_grab_w300 azahar_pic        45     4 no   OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.
+intro_native_w600 azahar_pic        45     3 no   OFF-3 census: intro (native aspect, wide) run to frame 600; nrawwhy line gives the cumulative unit 0 (8) and noise (7) refusals. A person reads the intro shots.
+nok11_splash_pic azahar_pic        35     9 no   LS-4 splash gate: water splash (fxtest 89) at nok_11. Counts grab lines (the splash_on grab, nd_target.c grab_cur) and the splash shot picture.
+nok11_splash_w600 azahar_pic        45     3 no   OFF-3 census: nok_11 water splash run to frame 600; nrawwhy line gives the cumulative unit 0 (8) and noise (7) refusals. A person reads the splash shot.
+mdlw_battle_pic  azahar_pic        60    31 no   MDL-0b count at battle start (mdlw lines, mdl2 prints).
+battle_start_r13off_pic azahar_pic        20     7 no   PM5 picture by eye: battle start on kmr_03, shot mode frames 182 on.
+mdl_iwa10_modebad_pic azahar_pic        25    12 no   iwa_10 ndmcheck: native draw record vs walker draw. Gate diff 0, eq above 0.
+mdl_iwa10_r13off_pic azahar_pic        25     8 no   iwa_10 ndmcheck: native draw record vs walker draw. Gate diff 0, eq above 0.
+text_menu_pic    azahar_pic        90     5 no   TX-3 text gate: pause status menu text (text_menu scenario), picture by eye: periods and spacing of the menu glyphs drawn by the texture path (tb_* and load_shaded_sprite moved to nd_tex.c).
+fb_sky_mac00_pic azahar_pic        45     4 no   FB-1 baseline: mac_00 textured rect picture (shots 200 to 205). Reference for sc and ring.
+fb_sky_mac00_det_pic azahar_pic        45     5 no   FB-1 ring gate: mac_00 sky, cold det run, shots 200 to 205. Byte-equal between the ring build and nds1 (the default ring).
+fb_pause_spin_grab_pic azahar_pic        45     6 no   FB-1 grab: pause spin frames 140 to 179 (grab quad native). Reference and gate.
+mem_reenter      azahar_stream     45     2 no   MEM-A item 2 gate: map re-entry restore (hos_01, tour to mac_00 and back). Gate: restored data bytes above 0 on re-entry and dprobe after bytes 0.
+fb_sky_mac00_zmf_pic azahar_pic        45     3 no   FB-1 ZM gate: mac_00 sky with zmforce (zmark rects), shots 200 to 205. rr_why 4 0; byte-equal to the pre-row build with the same switch.
+fb_mac01_plain_pic azahar_pic        45     4 no   FB-1 ZM gate: mac_01 plain picture, byte-equal to the pre-row build.
+pause_spin_grab_det_w300 azahar_pic        45    64 no   SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.
+pause_gut_dbg_w300 azahar_pic        45    10 no   SPR4 det gate, cold start (-NoWarm), det switch: OFF-2 census: pause spin with grab (pause_spin_grab) run to frame 300. The nrawwhy line gives the cumulative raw refusals (grab, off, unit 0). A person reads the spin shots.
+pause_pre_det    azahar_pic        25     5 no   DIRECT: mac_00 det, shots of every second frame 86 to 140 (the frame the pause picture is read from, then the pause picture), caplog, grablog and texlog lines.
+fb_nok11_nat_pic azahar_pic        30     2 no   FB-1 GRAB: nok_11 splash with the native grab quad, fixedseed. Shots equal fb_nok11_cpu_pic; grabw nat words equal grabw cpu.
+fb_sky_mac00_nomerge_pic azahar_pic        45     1 no   FB-1 RSIG control: mac_00 sky, rectnomerge (one rect per batch). Picture equal to fb_sky_mac00_rsig means merging changes no pixel.
+fb_sky_mac00_rsig_pic azahar_pic        45     2 no   FB-1 RSIG: mac_00 sky with rectsig. rsig lines per merge and close name the render field the batch closes with, not the one it was queued with.
+fb_nok11_splash_pic azahar_pic        30     3 no   FB-1 GRAB scene: nok_11 water splash (grablog, grab_cur -> pm_gpu_grab). Shots of the splash window; the grab quad is the copy source.
+battle_wide_pic  azahar_pic        45     1 no   WIDE3 gate 2: battle wheel with wide on, base (14, 183): the wheel in the bottom-left corner, the reel and swap icons with it. A person reads the shot.
+battle_strats_wide_pic azahar_pic        45     2 no   WIDE3 gate 2b: Strategies list opened from the corner wheel with wide on (StratsMenuPosX = pm_wide_left(20)). A person reads the shot.
+battle_wheel_wide_left_pic azahar_pic        45     3 no   BATUI facts 2: wide battle wheel at the left end (Strategies), no gap at the left edge, the light on the selected option. A person reads the shot.
+battle_wheel5_wide_pic azahar_pic        45     6 no   WIDE4 gate: 5-option wheel (spmax=1) at the right end with wide on: spots, reel and beam drawn in the left corner past the 4:3 field, the leftmost options in place. A person reads the shot.
+battle_wheel5_nowide_pic azahar_pic        45     0 no   WIDE4 reference: the same 5-option wheel at the right end at 4:3 (nowide). A person reads the shot.
+battle_wheel_nowide_det azahar_pic        45    36 no   WIDE4 byte gate: 4:3 (nowide, det) wheel open burst on kmr_03; shots byte equal to the base build (bench.py build-at).
+chapter_native_pic azahar_pic        25     2 no   WIDE3 gate 3: kmr_22 chapter screen with wide on, 4:3 letterboxed like the intro, log chapter: native aspect on. A person reads the shot.
+shop_wide_pic    azahar_pic        45     4 no   WIDE3 shop gate: Toad Town item shop with wide on, prices under the items. A person reads the shot.
+shop_nowide_pic  azahar_pic        45     1 no   WIDE3 shop byte gate: the same shop 4:3 (wide off). Byte equal to the base build.
+newgame_handover azahar_pic        25     5 no   INTROSNAP gate: new game with wide and fps60 (det), route through the title: the stage zoom, ENTER_WORLD and the first drawn frames after the kmr load. No frame wider than its neighbours. A person reads the shot.
+title_det        azahar_pic        30     6 no   S5TTL byte gate: title screen hold state, det, shots 200 to 203.
+newgame_handover_thr azahar_pic        25     2 no   INTROSNAP: new game with wide and fps60, no det (logic thread), route through the title: the stage zoom, ENTER_WORLD and the first drawn frames after the kmr load. No frame wider than its neighbours. A person reads the shot.
+intro_native_pic azahar_pic        25     0 no   FB-2 step 2 gate (aux off-screen unit 1): intro_native shots 330 to 350 (native, native aspect, wide). Shots must equal nds1 reference.
+spot_mac00_det_pic azahar_pic        25    41 no   VERIFY check 1: mac_00 cold det run, shots 200 to 205. Byte-equal between HEAD and the det base 9ddd6a818.
+battle_start_r13off_det_pic azahar_pic        60     3 no   VERIFY check 2: battle kmr_03 cold det run with r13off, shot 182 (walker R13).
+spot_iwa10_det_pic azahar_pic        45    11 no   VERIFY check 2: iwa_10 cold det run, shots 200 to 205, native draws.
+spot_iwa10_det_r13off_pic azahar_pic        45     1 no   VERIFY check 2: iwa_10 cold det run, shots 200 to 205, r13off (walker R13).
+rect_post_det_pic azahar_pic        45     1 no   VERIFY check 2: mac_01 cold det run, native textured rects, shots 200 to 205.
+mdl5_iwa10_det   azahar_pic        60   316 no   MDL-5 census and picture: iwa_10 cold det, mdlfb and mdlsub lines, shots 200 to 205.
+mdl5_iwa10_ref   azahar_pic        60     4 no   MDL-5 byte reference: iwa_10 cold det with nomodelnat, shots 200 to 205.
+mdl5_sbk56_det   azahar_pic        60     7 no   MDL-5 census and picture: sbk_56 cold det, mdlfb and mdlsub lines, shots 200 to 205.
+sbkw_dlchash_sbk56 azahar_pic        60     3 no   SBKW-M measurement: sbk_56 cold det with dlchash, dlch lines per frame 200 to 211 (live Vtx hash against the static copy hash).
+mdl5_sbk56_ref   azahar_pic        60     5 no   MDL-5 byte reference: sbk_56 cold det with nomodelnat, shots 200 to 205.
+water_sbk56_det12 azahar_pic        45     5 no   WATER: sbk_56 cold det native, shots 200 to 211. Gate: water box x120..153 y87..314 byte-equal to water_sbk56_ref12 in 12/12 shots.
+water_sbk56_ref12 azahar_pic        45     4 no   WATER: sbk_56 cold det with nomodelnat, shots 200 to 211 (byte reference of water_sbk56_det12).
+mdl5_mac01_ref   azahar_pic        35     3 no   MDL-5 byte reference: mac_01 cold det with nomodelnat, shots 200 to 205.
+mdl5_battle_det  azahar_pic        60     4 no   MDL-5 census and picture: battle kmr_03 cold det, mdlfb and mdlsub lines, shot 182.
+mdl5_battle_ref  azahar_pic        60     2 no   MDL-5 byte reference: battle kmr_03 cold det with nomodelnat, shot 182.
+golden_multi_det azahar_pic        90     0 no   MDL-5e census: golden tour (6 maps) cold det, ndm fb per 300 frames.
+tour10_det       azahar_pic        90   431 no   TOUR1 gate and MDL-5e census: tour10 (10 maps) cold det, one prof window per map, y snap on 2 maps, ndm fb per 300 frames.
+tour10_det_ref   azahar_pic        90     0 no   MDL-5f byte reference: tour10 (10 maps) cold det with nomodelnat, shots 0 to 10 byte-equal to tour10_det.
+battle_fb_det    azahar_pic        45     0 no   MDL-5e census: battle kmr_03 cold det to frame 300, ndm fb of the window.
+battle_start_sprcheck azahar_pic        40     7 no   Battle scene sprcheck (S4-2): sprite record native build vs walker batch. Gate eq above 0, diff 0.
+spot_mac01_sprcheck azahar_pic        25     7 no   Toad Town mac_01 sprcheck (S4-1): sprite record key vs walker key. Gate eq above 0, diff 0.
+spot_mac01_nosprnat_pic azahar_pic        60     1 no   Toad Town mac_01 at pos 0 0 200, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.
+spot_iwa10_nosprnat_pic azahar_pic        60     1 no   iwa_10 at entry 1, walker reference (nosprnat). Shots at frames 200 to 205 for the SPR4 byte compare.
+pause_spin_nosprnat_w300 azahar_pic        45     2 no   Pause spin with grab (frames 140 to 179), walker reference (nosprnat). Shots as pause_spin_grab for the SPR4 byte compare.
+battle_start_t1cold_pic azahar_pic        60     5 no   FB-3 part 1: battle start cold det, pm4 unlit and pm5 tex1 lit; t1draw lines. Reference of battle_start_t1cold_pm5all_pic.
+tour10_t1cold_pic azahar_pic        90     2 no   FB-3 tex1 subject search: tour10 cold det with t1log, the t1draw lines per map (use5 1 = lit tex1 draws in program 5).
+spot_sbk56_t1det_pic azahar_pic        25     1 no   FB-3 part 1 tex1 subject: sbk_56 cold det, native tex1 draws, t1log use5 lines and shots 200 to 205.
+menu_seltap_det  azahar_pic        20     0 no   GREY (MN2): quick Select open/close/open at mac_01; menu: game paused count, qpend per pause, top_after shots grey.
+menu_open_det    azahar_pic        25    19 no   B1 repro and gate (row MENUB): the bottom screen after Select opens the menu, the frozen shot bot_fz0012 and the late console write count.
+c2haz_mac01      azahar_pic        35     4 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), det, census switch c2haz. 240 checked frames.
+c2haz_mac01_thr  azahar_pic        35     5 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), no det (logic thread, CORE2C-3), census switch c2haz. 240 checked frames.
+c2haz_battle     azahar_pic        45     0 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Battle, one Goomba on kmr_03 (battle switch), det, census switch c2haz, to the first census sum after the battle start.
+c2haz_battle_thr azahar_pic        45     3 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Battle, one Goomba on kmr_03 (battle switch), no det (logic thread, CORE2C-3), census switch c2haz, to the first census sum after the battle start.
+c2haz_nok11      azahar_pic        45     0 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. nok_11 water splash effect (fxtest 89 at frame 400), det, census switch c2haz, to the census sum after the effect.
+c2haz_pause      azahar_pic        40     0 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town preset, START opens the pause menu at frame 80 and moves the tabs (padscript), det, census switch c2haz.
+c2own_probe      azahar_pic        30     0 no   CORE2-3a positive control of the c2own ownership check: the probe call must print the c2own line.
+tour_spots3      azahar_pic        40     3 no   POS1 picture gate: Mario at the tour spots of mac_01, kmr_20 and sbk_02, on the ground, outdoors, busy part on screen.
+dark_kgr01       azahar_pic        30     5 no   DARK: kgr_01 world darkness overlay, wide. Shot shows the screen dark except a lit circle around Mario.
+dark_kgr01_watt  azahar_pic        35     4 no   DARK: kgr_01 darkness with Watt's ability (alpha 255 to 90), wide. Shot after the alpha 90 line shows a larger lit circle, the rest dark.
+tour_battle3     azahar_pic        30     9 no   BT1 premise and picture: battle tour of 3 bosses (0, 16, 32) in one start, one prof window and one shot per battle.
+tour_battle      azahar_stream    100    66 no   BT1: battle tour of all 33 bosses in one start (cheats=action,hp autoa), one prof window per battle, FAIL lines named; the Mario cheat line.
+tour_battle_prof console_prof     600     0 no   BT1: battle tour of all 33 bosses on the O3DS in prof mode: one prof window per battle (frame cost of every boss battle).
+tour_battle_cheat azahar_stream     25     1 no   BT1 cheat proof: Goomba King with a 20 s window, cheats=action,hp autoa; Mario command, partner command and guard lines.
+msgbox_talk_pic  azahar_pic        30     5 no   MSGBOX: MSGBOX faults 1 and 4: the star sits inside the lower right corner of the box (its y follows the box), and the tattle bubble shows all its text from the left curve on (the text clip follows the wide edges).
+msgbox_talk_nowide_pic azahar_pic        30    42 no   MSGBOX: MSGBOX wide-off gate: the same scene byte-equal to the base build (the fixes of faults 1 and 4 add 0 in 4:3).
+msgbox_choice_pic azahar_pic        30     6 no   MSGBOX: MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 298.
+msgbox_choice_nowide_pic azahar_pic        30    11 no   MSGBOX: MSGBOX faults 2 and 3: the selected option has one coloured copy and a grey shadow at +2,+2 (no second coloured copy); the cen summary line gives the draws (batches) of frame 298.
+aud_mac01        azahar_pic        45     3 no   AUDV census: mac_01 music and sound effects, audio voices line window 2 (starts, no channel, cut). Gate: no channel 0, cut 0. A person reads the shot.
+toad_nap_aud     azahar_stream     45     3 no   AUDNAP repro: the Toad House nap in mac_01 (bed jingle SONG_TAKING_REST 136). Census windows: every port reason and catch-up blocks, last window line. Gate: port reasons 0 and catchup 0. Log only.
+aud_talk         azahar_pic        45     0 no   AUDDROP census: the speech scene, audio drops line window 2 (cut reasons, render catch-up, pace). Gate: every port reason 0. A person reads the shot.
+aud_talk_lag     azahar_pic        45     0 no   AUDDROP before and after pace: aud_talk with aulag=30 (a 30 ms step sleep, O3DS-like step length). Gate: every port reason 0.
+aud_mac01_lag    azahar_pic        45     1 no   AUDDROP before and after pace: mac_01 music and sound effects with aulag=30. Gate: every port reason 0.
+aud_battle       azahar_pic        45     3 no   AUDV census: kmr_03 battle, audio voices line window 2 (starts, no channel, cut). Gate: no channel 0, cut 0. A person reads the shot.
+aud_intro        azahar_pic        45     2 no   AUDV census: intro story music (busiest census scene), audio voices line window 2. Gate: no channel 0, cut 0. A person reads the shot.
+gameover_fps60   azahar_pic        30    26 no   GAMEOVER: game over map gv_01 with 60 fps mode on, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.
+gameover_30      azahar_pic        30     2 no   GAMEOVER: game over map gv_01 with 60 fps mode off, shots frames 70 to 89 (every drawn frame), draw census at frame 80. A person reads the shot: consecutive shots consistent (no alternating blur), GAME OVER letters.
+xfer_door_kmr20  azahar_stream     45    20 no   DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice), det, xferdiag; xfer, xfer2, xfer3 and xferk lines of each door. last = the second exit, first = the first entry.
+xfer_door_kmr20_prof console_prof      60     0 no   DOORHITCH: Mario's house door on kmr_20 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, xfer3 smp 0 at the max step.
+xfer_door_kmr20_shots azahar_pic        40    12 no   DOORHITCH byte gate: kmr_20 first room entry after a map change, det, shots 290 to 305 over the shroud ramp (the sky black at full shroud). Byte-equal to the base build.
+xfer_door_kmr20_ndm azahar_stream     90     5 no   DOORHITCH gate: kmr_20 doors with ndmcheck (native draw vs walker, cached vs fresh). Gate: ndmcheck diff 0 and ndmcache diff 0 at f300 (the first door).
+nok11_det_ref    azahar_pic        45     4 no   Walker reference (nomodelnat) of nok11_det: the shots a model cache change must equal.
+xfer_door_mac01  azahar_stream     45    21 no   MAPX: Merlon's house door on mac_01 (enter and exit, twice), det; xfer door lines (steps, longest step, o34, model cache miss and clears).
+merlon_in_pic    azahar_pic        30    19 no   MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.
+merlon_in_nowide_pic azahar_pic        30     1 no   MERLON: Merlon's house enter and exit on mac_01 (ch1_start), det, 4:3 (nowide), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.
+merlon_in_live_pic azahar_pic        30     2 no   MERLON: Merlon's house enter and exit on mac_01 (ch1_start), no det (logic thread on), shots every 25 frames 100 to 300: interior lit, crystal ball round, no square through the wall. A person reads the shot.
+merlon_in_late_pic azahar_pic        25     4 no   INTERIOR: Merlon's house enter after wait240 (nd_tex full before the door), no det, shots 310 to 350 inside the room. A person reads the shot: interior lit, Merlon visible. Log: ndtex flush, no ndtex full.
+merlon_in_late_census azahar_stream     25     2 no   INTERIOR diagnostic: merlon_in_late_pic route with census to frame 600. Log only: ndm f300 and ndm f600 count the native model fallbacks by code (why 13 = nd_tex_get refused the model) over the door window.
+toad_house_late_pic azahar_pic        25     3 no   INTERIOR: Toad House (mac_01) enter after wait240, no det, shots 300 to 480 inside. A person reads the shot: the room and the bed drawn.
+kmr20_in_late_pic azahar_pic        45     2 no   INTERIOR: kmr_20 Mario's house enter after wait600, det, shots 980 to 1040 inside. A person reads the shot: the house beds drawn.
+spot_mac00_det   azahar_pic        25    29 no   INTERIOR byte gate: mac_00 (preset toad) at pos -135 0 85, det, shots 200 to 205. Byte-equal to the base build (the flush changes no draw while the table is not full).
+msgbox_talk_nowide azahar_pic        30     9 no   INTERIOR byte gate: yard 4:3 (nowide) talk message box, shot 330 (no det in the scenario). Compared with the base shot.
+msgbox_talk_det  azahar_pic        30    21 no   NAPI3B byte gate: yard 4:3 (nowide) talk message box with det, shot 330. Compared with the base shot.
+msgbox_choice_det azahar_pic        30     3 no   S5TIMG byte gate: yard 4:3 (nowide) choice message box with det, shot 300. Compared with the base shot.
+glyph_fncov_talk azahar_stream     45     1 no   NAPI3B census, talk scene: the draw functions run in walker frame 330 and their call counts (census lane <L>_fncov, build.sh PM_FNCOV=1). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+dpcen_xfer       azahar_stream     45     2 no   DPCEN2 census: the dpres line (resident bytes per pool, sprite and static list load counts) on the mac_01 -> mac_02 loading zone walk, det. Azahar counts only.
+xfer_map_mac01   azahar_stream     35     9 no   MAPX: mac_01 -> mac_02 loading zone walk, det; the xfer map line (load stages, first drawn frame).
+xfer_door_prof   console_prof      60     0 no   MAPX: Merlon's house door on mac_01 (enter and exit, twice) on the O3DS in prof mode. Pass: max under 50 ms, o34 0.
+xfer_map_prof    console_prof      60     0 no   MAPX: mac_01 -> mac_02 loading zone on the O3DS in prof mode. Pass: max under 50 ms, o34 0 outside the load step.
+xfer_map_shots   azahar_pic        35    21 no   MAPX-3: mac_01 -> mac_02, det, shots 196 to 211 (covered frames black, first uncovered frame equal to base). A person reads the shots.
+xfer_battle_enc  azahar_stream     30    10 no   BTLWIPE: standing encounter on kmr_09 (encwarp 120), cold boot; the xfer battle lines (star wipe steps, song load, bank loads, decodes, walk drains, capture path).
+xfer_battle_prof console_prof      60     0 no   BTLWIPE: standing encounter on kmr_09 (encwarp 120) on the O3DS in prof mode. Pass: wipe steps over 34 ms 0, longest wipe step under 34 ms.
+xfer_battle_walk_prof console_prof      60     0 no   BTLWIPE: walk-in encounter on kmr_09 (stick right into the Goomba) on the O3DS in prof mode. Pass: wipe steps over 34 ms 0, longest wipe step under 34 ms.
+magi_hit_pic     azahar_pic        20     7 no   MAGI: Magikoopa Magic Blast hit on Mario (HOS formation 03). fspk lines: per-frame draws, binds, misses around the hit; 6 shots after the hit. Azahar counts valid, ms direction only.
+magi_hit_prof    console_prof      45     0 no   MAGI: Magikoopa Flying battle (HOS formation 03) on the O3DS console, prof mode, autoa; the fspk lines give the step ms of each frame around the Magic Blast hit. Ingest the live log after the push.
+magi_hit_stream  azahar_stream     20     7 no   MAGI: Magikoopa Magic Blast hit (HOS formation 03), fspk per-frame lines with no shots. Azahar counts valid, ms direction only.
+starfx_hos01     azahar_stream     35     9 no   STARFX lag: hos_01 star spirit pop-in with prof=30 (no shots). The starfx pre, popin start and popin steady lines give frames, ms and model cache misses and clears before and after the pop-in. Counts are valid on Azahar; time is direction only.
+starfx_hos01_pic azahar_pic        35     5 no   STARFX picture: hos_01 star spirit pop-in, shots from frame 200 to about 228 (every 4 frames, the shot cost; pop-in at frame 190). A person reads the shot: the spirits and their glowing stars.
+starfx_hos01_prof console_prof      45     0 no   STARFX console: hos_01 star spirit pop-in on the O3DS (prof=30), the same route as starfx_hos01. The starfx pre, popin start and popin steady lines give frames, ms and model cache misses and clears; the prof windows give the frame time. Ingest the live log after the push.
+tik19_water_walk azahar_pic        35     4 no   TIK19: tik_19 water flicker walk (wide), mfr model census per frame and shots every 2 frames.
+tik19_wall_walk  azahar_pic        35    10 no   TIK19: tik_19 wall flicker walk near the super block (wide), mfr model census per frame and shots every 2 frames.
+tik19_water_ndmcheck azahar_stream     30     1 no   TIK19: tik_19 water walk with ndmcheck: cached model draws against fresh builds (ndmcache diff).
+tik19_wall_ndmcheck azahar_stream     30     1 no   TIK19: tik_19 wall walk with ndmcheck: cached model draws against fresh builds (ndmcache diff lines name the field).
+c2haz_mac01_thr60 azahar_pic        35     1 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Toad Town mac_01, Mario at 0 0 200 walking right then left (padscript), fps60, no det (logic thread, CORE2I), census switch c2haz. 240 checked frames.
+c2haz_battle_thr60 azahar_pic        45     1 no   CORE2-2 census (switch c2haz): walker-read game memory the game rewrites before the next walk. Battle, one Goomba on kmr_03 (battle switch), fps60, no det (logic thread, CORE2I), census switch c2haz, to the first census sum after the battle start.
+dro01_fps60_prof_n3ds console_prof      60     0 no   CORE2I: dro_01 on the N3DS, fps60, console prof mode. The logic thread builds step N+1 while the walker draws the lerp and key frame of N. Pass: ser about 10 (the sample frames), n about 290, kf about 300, fps 60.0 (presents), iv mostly 2, o34 below about 80.
+storymenu_pic    azahar_pic        45     3 no   STORYMENU: Warp area list in story order (extras last) and the Story progress folder (chapter list, current point, A sets a point). Log: menu rows, story: set. Pictures: the bottom shots.
+direct_pra13_det azahar_pic        35    19 no   DIRECT D1 gate: pra_13 floor reflection, cold det shots 200 to 205; base and head builds give byte-equal shots.
+menu_part2       azahar_pic        45     7 no   MENUGEN parts 1 and 2: General tab order and Resolution Mode, Debug tab order, Logging page without Back, B and Select log lines, Disable Fog, Disable Light, Texture Filtering set in the menu; field shots 200 to 205 (mac_01 0 0 200). Pair with spot_mac01_det (same det config, flags off).
+menu_part3       azahar_pic        60     1 no   MENUGEN part 3: Fullscreen field, Debug rows Fixed Seed and Start a Battle, fog, light and texture filter each on and off on the field (mac_01 0 0 200), one run.
+menu_texf        azahar_pic        45     5 no   TEXF: Debug > Render > Texture filtering, Filter Bilinear all set by the menu, field shots 200 to 205 (mac_01 0 0 200). Pair with spot_mac01_det (Game filter, same frames). The General tab Frame skip row is in the shots.
+menu_close       azahar_stream     45     2 no   ESCAPE3: Select menu Close game, two A presses: the close path line, the chainload clear (aptClearChainloader), then the process end line. Log only.
+menu_texc        azahar_pic        45     1 no   TEXC: Debug > Render > Texture filtering, Filter Bilinear all and Texel centre On set by the menu, field shots 200 to 205 (mac_01 0 0 200). Compare with menu_texf.
+profile_pic      azahar_pic        45     1 no   PROFILE: Cheats tab folders. Top level order, Equipment (Boots Ultra, Action commands On) and the pause menu after. Log: profile lines. Pictures: the bottom shots.
+profile_btl_on   azahar_pic        45     1 no   PROFILE battle check, Action commands On: the first jump shows the action command prompt (shots 180 to 240). Pair: dmg_jump (Off, no prompt).
+profile_pause_pic azahar_pic        45     2 no   PROFILE: the pause Stats page after the Equipment edit (Ultra Boots, no hammer). Picture: the shot at frame 130.
+flash_selftest_save azahar_stream     40     1 no   SAVESAFE: fresh save.flash with the flashselftest pattern and saveerr (two failed writes, retry). Gate: the RAM hash line and the atomic write line.
+savecrash_save   azahar_stream     60     1 no   SAVESAFE: a save, then the crash exit 10 ms after the last write. Gate: the exit flush line and the RAM hash; the file hash is checked after the run.
+savetitle_ret    azahar_stream     45     2 no   SAVETITLE: one save at the world (save_0), Return to Title within about 2 s, title, file select. Log only: slot hashes of the RAM image and of the file at save, flush, title and fetch.
+warpfix_boot_save azahar_stream     45     1 no   SAVESAFE gate 4: boot warp, padscript save_0; the save is blocked and no flash write runs (the new write path is not reached). Save scenario of the row.
+savefile_check   azahar_stream     60     1 no   SAVESAFE gate 4: a savetool file loaded by savefile= (checksum, RAM values, save block). Save scenario of the row.
+seam_mac01_east  azahar_pic        25     3 no   SEAMFIX picture gate: Toad Town mac_01 east floor (lists 115 and 180 of the oracle: floor gaps along the T-point edges), det, shots at frames 200 to 205.
+seam_mac01_merlon azahar_pic        25     3 no   SEAMFIX picture gate: Toad Town mac_01 outdoors in front of Merlon's house (PT43 seams), det, shots at frames 200 to 205.
+menuwarp_btl     azahar_pic        45     8 no   MENUWARP step 1: a warp from the Select menu in a battle closes the menu. Shots 262 to 301, 16 shots (kmr_03 battle, battle switch); the log gives menu close before bypass before warp live. A person reads the destination shot.
+menuwarp_list    azahar_pic        25     6 no   MENUWARP steps 3 and 4: Warp area level 1 rows (Toad Town Tunnels after Toad Town) and the left or right skip of 6 rows on a row with no value (menu: skip 6 log line).
+mac05_water_census azahar_stream     30     1 no   WATERPAN census: mac_05 at -75 -10 500, ndm and ndmrw window at frame 300 (model cache misses by record word 18 to 21).
+negpan_mim05     azahar_pic        25     7 no   NEGPAN step 1: mim_05 warp, log of the first negative tile start clamped in tex_win_s25 (uls/ult raw and out).
+kzn04_shadestat  azahar_stream     30     5 no   KZN04 diag: shaded sprite load count, miss count and time per 300 frames in kzn_04 (pm_tex_load_shaded, shadestat switch). Azahar counts only.
+napicen_mac01    azahar_stream     45     9 no   NAPI0 census: typed ops per recording caller (switch napicen), frames 600 to 799. Read with napicen.py.
+napicen_talk     azahar_stream     45     4 no   NAPI0 census: typed ops per recording caller (switch napicen), frames 600 to 799. Read with napicen.py.
+napicen_btl      azahar_stream     45     7 no   NAPI0 census: typed ops per recording caller (switch napicen), frames 600 to 799. Read with napicen.py.
+dpcen_mac01      azahar_stream     45     2 no   DPCEN1 census: bytes per frame (upload, hash, flush) with the call counts, mac_01 spot, frames 600 to 799. Azahar counts only.
+dpcen_kzn08      azahar_stream     45     1 no   DPCEN1 census: bytes per frame (upload, hash, flush) with the call counts, kzn_08, frames 600 to 799. Azahar counts only.
+mdl5_iwa10_cen   azahar_stream     45     5 no   R13NOP step 2: iwa_10 cold det, the ndm f300 window line with the why list (census switch), base against head.
+mim11_cen        azahar_stream     30     2 no   MIM11CEN census: mim_11 cold det, the ndm f300 window line with the why list (census switch). Which path drops the floor.
+hitst_mac01      azahar_stream     25     1 no   HC6 step 1 census: model cache hits per walker field that the old hit rule left stale, per 300 frames on mac_01 (switch hitst).
+mkchk_mac01      azahar_stream     25     1 no   HC6 step 2 check: model cache key A + key B against the old full key on every record, per 300 frames on mac_01 (switch mkchk). Gate: diff 0.
+blkchk_mac01     azahar_stream     25     3 no   HC6 step 4 check: model hit command block against the old emit per draw, per 300 frames on mac_01 (switch blkchk). Gate: diff 0.
+keymiss_mac01    azahar_stream     45     1 no   KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.
+keymiss_sbk56    azahar_stream     30     1 no   KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.
+keymiss_kzn08    azahar_stream     30     1 no   KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.
+keymiss_hos01    azahar_stream     35     1 no   KEYMISS census: per key word model cache misses, frames 600-799 (keymiss switch). Azahar counts only.
+fxcen_c0         azahar_stream     45     2 no   FXCEN1 census chunk 0: fxtest effects 0 to 15, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_c1         azahar_stream     45     1 no   FXCEN1 census chunk 1: fxtest effects 16 to 31, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_c2         azahar_stream     45     1 no   FXCEN1 census chunk 2: fxtest effects 32 to 47, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_c3         azahar_stream     45     5 no   FXCEN1 census chunk 3: fxtest effects 48 to 63, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_c4         azahar_stream     45     1 no   FXCEN1 census chunk 4: fxtest effects 64 to 79, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_c5         azahar_stream     45     4 no   FXCEN1 census chunk 5: fxtest effects 80 to 95, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_c6         azahar_stream     45     4 no   FXCEN1 census chunk 6: fxtest effects 96 to 111, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_c7         azahar_stream     45     2 no   FXCEN1 census chunk 7: fxtest effects 112 to 127, per-effect fxcena and fxcenb lines. Azahar counts only; the us column is a proxy.
+fxcen_all_prof   console_prof     240     0 no   FXCEN1 console census: all 128 fxtest effects on mac_01 in prof mode, one fxcena and fxcenb pair per effect. The us column is the console frame time; the console decides.
+pmu_rot_az       azahar_stream     45     5 no   PMUROT: the rotating prof counter sets (profrot) on mac_01 spot, Azahar lines only.
+pmu_rot_prof     console_prof     240     0 no   PMUROT: counter sets rotate per 300-frame window on the O3DS console (profrot), both cores. Read the pmx and pmx1 lines per set.
+fsel_fncov_idle  azahar_stream     45     1 no   FSELCEN census: draw functions run in walker frame of scenario fsel_fncov_idle and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+pause_fncov_flip azahar_stream     45     2 no   FSELCEN census: draw functions run in walker frame of scenario pause_fncov_flip and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+pause_fncov_idle azahar_stream     45     2 no   FSELCEN census: draw functions run in walker frame of scenario pause_fncov_idle and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fsel_fncov_pick  azahar_stream     45     9 no   FSELCEN census: draw functions run in walker frame of scenario fsel_fncov_pick and their call counts (census lane <L>_fncov). M3: python 3ds/tools/hotset.py --fncov <log>. Log only.
+fsel_det_pic     azahar_pic        30    11 no   S5MENU byte gate: the file select picture, det.
+amb_title_arn02  azahar            45     4 no   AMBTITLE: return to the title from Gusty Gulch leaves the ambient MSEQ player silent (ambchk title line).
+amb_warp_arn02_mac01 azahar            45     7 no   AMBWARP: a warp from Gusty Gulch arn_02 to Toad Town mac_01 stops the MSEQ ambient of arn_02 (ambchk line stopped 1).
+axns_kzn2_drec   azahar_pic        30     9 no   AXNS: draw records of the Lava Piranha battle, frames 400, 420, 440, det. A head equals the base.
+axns_sam2_drec   azahar_pic        30    20 no   AXNS: draw records of the Monstar battle, frames 400, 420, 440, det. A head equals the base.
+fxpic_89_bs      azahar_pic        40     7 no   S7EFX8 byte gate: water_splash (effect 89) on the particle run, cold det start. Shots 412 to 415 byte-equal base against head.
+capchk           azahar_stream     25     6 no   CAPTOOL capture check: capture_check.py runs it with PM_DEBUG_ADD (the push words) and PM_OPT_WORST (options.ini log_on=0, profmode=prof). Log only.
+kkj14_cgfx_drec  azahar_pic        40     4 no   CGFX: draw records of kkj_14 entry 0 frames 200 and 201, cold det start. A head equals the base.
+isk01_cgfx_drec  azahar_pic        40     4 no   CGFX: draw records of isk_01 entry 0 frames 200 and 201, cold det start. A head equals the base.
+fxpic_50_drec    azahar_pic        40     4 no   CODEMODFX10 drec gate: draw records (drec.txt) of shimmer_burst (effect 50) frames 412 and 413, cold det start. Base and head byte-equal.
+fxpic_81_drec    azahar_pic        40     4 no   CODEMODFX11 drec gate: snaking_static (effect 81) draw records of frames 412 and 413, cold det start. Base against head byte-equal.
+fxpic_0_drec     azahar_pic        40     5 no   CODEMODFX7 drec gate: big_smoke_puff (effect 0) draw records of frames 412 and 413, cold det start. Base against head byte-equal.
+spot_mac00w_det  azahar_pic        40    20 no   CODEMODW1: mac_00 water spot, cold start with the det switch, shots 200 to 203. Two cold runs of one build must give byte-equal shots (byte gate of the water builder codemod).
+fxpic_89_drec    azahar_pic        40    16 no   CONV2D2: draw records (drec.txt) of the water_splash frames 412 and 413 (fxtest=89), cold det start. Two runs of one build byte-equal; the head equals the base. The ntabrun line shows the native table run.
+fxfncov_89_33    azahar_stream     45     2 no   COVMAP2: fncov window census of scenario fxfncov_89_33 (frames 412-487, water_splash and music_note). Log only; covsites.py on the log.
+curt_title_drec  azahar_pic        40    28 no   CURT: draw records of the title after titleret=240, frames 360 to 540 step 60 (cold det start). A head equals the base.
+dls2_fx_drec     azahar_pic        30     3 no   DLSITE2: draw records of fxtest 12, 56, 61, 106 on mac_01, frames 412 to 544 step 44 (cold det start). A head equals the base.
+drecstep_89_33   azahar_pic        40     9 no   DRECSTEP: draw records of frames 412 and 456 (drec=412:2:44, fxtest effects 89 and 33). drec.txt has one frame line per recorded frame. A head build with the step switch equals the base at step 1 (spot_mac01_drec).
+entcapd_kgr01_cap azahar_stream     30     1 no   ENTCAPD: entcap lines of the list sites (log only).
+entcapd_kgr01_drec azahar_pic        30     5 no   ENTCAPD: drec.txt of frames 150 and 151 (cold det start). A head equals the base.
+entcape_cap      azahar_stream     45     3 no   ENTCAPE: entcap lines of the entity list sites over a 5 spot tour (log only).
+entcape_kmr03_drec azahar_pic        25    60 no   ENTCAPE: drec.txt of kmr_03 at the heart block, frames 200 and 201 (cold det start). A head equals the base.
+fxpic_20_psochk  azahar_pic        40    10 no   ENTRY1: psochk compare of the entry-form explosion draw (fxtest=20, cold det start). The psochk lines count draws and bad compares.
+fxpic_20_entcap  azahar_pic        40     3 no   ENTRYCAP: entcap log lines of the explosion run (fxtest=20), cold det start. entcap.py names the static lists without a v2 table with their call sites.
+fxent_a          azahar_stream     45     2 no   ENTRYFX entcap a: fxtest effects 0 to 42, entcap lines (cold det start). Log only.
+fxent_b          azahar_stream     45     2 no   ENTRYFX entcap b: fxtest effects 43 to 85, entcap lines (cold det start). Log only.
+fxent_c          azahar_stream     45     2 no   ENTRYFX entcap c: fxtest effects 86 to 127, entcap lines (cold det start). Log only.
+fxchk_a          azahar_stream     45     4 no   ENTRYFX psochk a: fxtest effects 0 to 42, psochk lines (cold det start). Log only.
+fxchk_b          azahar_stream     45     4 no   ENTRYFX psochk b: fxtest effects 43 to 85, psochk lines (cold det start). Log only.
+fxchk_c          azahar_stream     45     4 no   ENTRYFX psochk c: fxtest effects 86 to 127, psochk lines (cold det start). Log only.
+entself_fx_drec  azahar_pic        25     8 no   ENTSELF: drec.txt of flower_splash, flower_trail and bombette_breaking, frames 412 to 500 step 44 (cold det start). A head equals the base.
+evar_iwa01_drec  azahar_pic        40     6 no   EVAR: draw records (drec.txt) of iwa_01 entry 0 frames 200 and 201, cold det start. A head equals the base.
+flamedl_cap      azahar_stream     25     1 no   FLAMEDL: entcap lines of flame.c:188 and :211 (log only). Source of fxrest.d/cap6.txt.
+flamedl_drec     azahar_pic        25     3 no   FLAMEDL: draw records (drec.txt) of frames 412 and 432 for fxtest 27, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.
+fliplog_fsel     azahar_pic        25     1 no   FLIPLOG: capture check, flipfps rows in the live log with prof=30 flipfps (no compare)
+kccen_mac01      azahar            45     2 no   FPS60W2: the kcen census (copies shown, key walks, copies refused by cause) of Toad Town mac_01 with fps60 and det.
+spot_mac01_hash  azahar_hash       35     5 no   FRAMEHASH3: per-frame command word hash (fhash.txt) of mac_01 frames 200 to 205, cold det start. Two runs of one build equal; a row with no draw change keeps the base.
+fsel_pick_det_pic azahar_pic        45     6 no   FSELLAG1: the file select pick flip, det, shots 200 to 239 (byte gate of the ROTSCALE target switch).
+fxcull_drec      azahar_pic        45     6 no   FXCULL: draw records (drec.txt) of the impact and shockwave parts (fxtest 32, 44, 98, 143), frame 544, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.
+fxdig_drec       azahar_pic        40     8 no   FXDIG: draw records (drec.txt) of damage_indicator_12 (fxtest=129, two-digit path), frame 432, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.
+fxr_cap          azahar_stream     45     3 no   FXENT3 capture: entcap and psochk lines of the rest effects and the 12 variants (cold det start). Log only.
+fxr_chk          azahar_stream     45     3 no   FXENT3 check: psochk lines of the same effects (cold det start). Log only.
+fxr_drec         azahar_pic        40   113 no   FXENT3 draw records: drec.txt of the rest effects, frames 412 to 1732 step 44 (cold det start). Two runs of one build byte-equal.
+fxlt_drec        azahar_pic        40     6 no   FXLT: draw records of shape_spell, quizmo_stage, fright_jar, spirit_card, something_rotating (frames 412-588 step 44, cold det start). Two runs of one build byte-equal.
+fxops_drec       azahar_pic        30    50 no   FXOPS: draw records of fxtest 27, 45, 87, 105, 123 on mac_01, frames 412 to 588 step 44 (cold det start). A head equals the base.
+fxslot_cap       azahar_stream     40     1 no   FXSLOT: entcap lines of the 5 unseen sites (log only). Source of fxrest.d/cap3.txt.
+fxslot_drec      azahar_pic        40     4 no   FXSLOT: draw records (drec.txt) of frame 722 with fxslot=110, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.
+gmerlee_drec     azahar_pic        45     7 no   GMERLEE: draw records of the Merlee card ritual in dro_02, frames 660 to 835 step 25, det. A head equals the base.
+gm_fncov_89      azahar_stream     45     2 no   GMHARN: fncov census of scenario fxfncov_89 for gold.py (log only; gold.py sums the logs with covsites.py).
+fncov_sbk14_det  azahar_stream     45     1 no   GOLDENT1: FXFNCOV census of sbk_14 entry 3 for covsites.py (Tweester site coverage). Census lane GOLDENT1_fncov. Log only.
+sbk14_drec       azahar_pic        40   143 no   GOLDENT1: draw records (drec.txt) of sbk_14 entry 3 frames 200 and 201, cold det start. Two runs of one build byte-equal; a conversion row's head equals the base.
+fxfncov_91       azahar_stream     45     1 no   GOLDFX1: FXFNCOV census of fright_jar (fxtest=91) in walker frame 420 (census lane <L>_fncov). Log only; covsites.py reads the log.
+fxpic_91_drec    azahar_pic        40    32 no   GOLDFX1: draw records (drec.txt) of fright_jar frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_fx2_fncov   azahar_stream     45     1 no   GOLDFX2: FXFNCOV census of water_splash, music_note and star (fxtest=89,33,10) in frames 412-531 (census lane GOLDFX2_fncov). Log only; gold.py reads the log.
+gold_89_drec     azahar_pic        40     2 no   GOLDFX2: golden draw records (drec.txt) of frames 412-413 with fxtest=89, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_33_drec     azahar_pic        40     5 no   GOLDFX2: golden draw records (drec.txt) of frames 412-413 with fxtest=33, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_10_drec     azahar_pic        40     2 no   GOLDFX2: golden draw records (drec.txt) of frames 412-413 with fxtest=10, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_fx3_fncov   azahar_stream     45     1 no   GOLDFX3: FXFNCOV census of sparkles, effect_3D and snowfall (fxtest=12,55,63) in walker frame 412 (census lane <L>_fncov). Log only; covsites.py reads the log.
+gold_12_drec     azahar_pic        40    51 no   GOLDFX3: draw records (drec.txt) of sparkles frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_55_drec     azahar_pic        40     5 no   GOLDFX3: draw records (drec.txt) of effect_3D frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_63_drec     azahar_pic        40     8 no   GOLDFX3: draw records (drec.txt) of snowfall frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_fx4_fncov   azahar_stream     45     1 no   GOLDFX4: FXFNCOV census of snaking_static, water_block and embers (fxtest=81,84,105) in walker frame 412 (census lane <L>_fncov). Log only; covsites.py reads the log.
+gold_81_drec     azahar_pic        40     2 no   GOLDFX4: draw records (drec.txt) of snaking_static frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_84_drec     azahar_pic        40     2 no   GOLDFX4: draw records (drec.txt) of water_block frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+gold_105_drec    azahar_pic        40     2 no   GOLDFX4: draw records (drec.txt) of embers frames 412 and 413, cold det start. Two runs of one build byte-equal; the golden base of the conversion rows.
+spot_mac01_drec  azahar_pic        35   521 no   HOSTCORE2: draw records (drec.txt) of mac_01 frames 200 and 201, cold det start. Two runs of one build byte-equal; a conversion row's head equals the base.
+hwfix1_psooff    azahar_pic        40     1 no   HWFIX1: draw records (drec.txt) of frame 722 with psooff (every pso key misses). Compare with fxslot_drec: byte-equal.
+imgovl_cap       azahar_pic        30     1 no   IMGOVL: capture of the Monstar overlay strip entry (cap5.txt).
+imgovl_drec      azahar_pic        30     3 no   IMGOVL: draw records of the Monstar battle, frames 400, 420, 440, det, psochk. A head equals the base.
+iseed_cap        azahar_stream     45     1 no   ISEED capture: entcap lines of 10 effects. Log only.
+iseed_chk        azahar_stream     45     5 no   ISEED check: psochk lines of the same effects. Log only.
+jan09_mesh_drec  azahar_pic        40    19 no   MESH1: draw records of jan_09 entry 0 frames 200 and 201, cold det start. A head equals the base.
+miscp_drec       azahar_pic        40     7 no   MISCP: draw records (drec.txt) of misc_particles (fxtest=107,148-152), frame 632, cold det start. Two runs of one build byte-equal; the head equals the base. The psochk line shows the bad count.
+fxops_snapchk    azahar_stream     30    23 no   NCONV1D1: lsnap line counters of the FXOPS effects (det cold start).
+entcape_kmr03_snapchk azahar_stream     25     8 no   NCONV1D1: lsnap line counters of the entcape kmr_03 list path (det).
+wscmb_pause_snapchk azahar_stream     30    21 no   NDR0A: snapchk lines of the run (cold det start). bad and fbad are the NDR0A counter.
+nimgm_strip_snapchk azahar_pic        30    24 no   NDR0A: snapchk lines of the Monstar overlay strip, frames 100 to 400 (det). bad and fbad are the NDR0A counter.
+nimgm_strip_drec azahar_pic        30    48 no   NIMGM: draw records of the Monstar overlay strip, frames 400 and 420, det. A head equals the base.
+nimgm_anim_drec  azahar_pic        35    28 no   NIMGM: draw records of the Merlee card shuffle (imgfx anim) in dro_02, frames 660 and 685, det. A head equals the base.
+fxp_snapchk      azahar_stream     30     7 no   NREC4: lsnap and snapchk line counters of the nd_parts_add effects (det cold start).
+fxparts_drec     azahar_pic        25     6 no   NREC4: drec.txt of the nd_parts_add effects, frames 412 to 676 step 44 (cold det start). Two runs of one build byte-equal.
+spot_mac01_dschk azahar_stream     30    21 no   NST3: dschk lines of mac_01 frames 0 to 200 (cold det start). bad and epbad are the S3 counter base.
+wscmb_pause_dschk azahar_stream     30    13 no   NST3: dschk lines of the pause menu run (cold det start). bad and epbad are the S3 counter base.
+axns_sam2_dschk  azahar_stream     30    10 no   NST3: dschk lines of the Monstar battle, frames 100 to 400 (det). bad and epbad are the S3 counter base.
+fxchk_a_dschk    azahar_stream     45    19 no   NST3: dschk lines of fxtest effects 0 to 42 (cold det start). bad and epbad are the S3 counter base.
+pbuf_fx_drec     azahar_pic        25     9 no   PBUF: drec.txt of the 7 part buffer effects, frames 412 to 676 step 44 (cold det start). A head equals the base.
+fxp_drec         azahar_pic        25    40 no   PMOVE particle effects: drec.txt of the 7 parts effects, frames 412 to 676 step 44 (cold det start). Two runs of one build byte-equal.
+pra31_drec       azahar_pic        40     3 no   PRA31: draw records of pra_31 entry 0 frames 200 and 201, cold det start. A head equals the base.
+tst13_cap        azahar_pic        25     1 no   TST13: capture run of the tst_13 shockwave nd_rec_dl site (entcap, entcapt).
+tst13_drec       azahar_pic        25     3 no   TST13: draw records of frames 200 and 201 of tst_13 with the captured shockwave entry, det. A head equals the base.
+vcfix_hos01_drec azahar_pic        30     5 no   VCFIX: draw records of the Ember battle (hos_01 vertex copy), frames 400, 420, 440, det. A head equals the base.
+wscmb_pause_drec azahar_pic        30   123 no   WSCMB: draw records of the pause menu windows (gPauseWS custom styles, src/pause/pause_styles.c), cold det start. Two runs of one build byte-equal.
+wscmb_fsel_drec  azahar_pic        30    27 no   WSCMB: draw records of the file select windows (filemenu_windowStyles, src/filemenu/filemenu_styles.c), cold det start. Two runs of one build byte-equal.
+494 bench(es)

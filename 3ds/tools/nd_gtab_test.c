@@ -564,7 +564,8 @@ static void v2_dev(const NdNTab* t, const char* name, int fault, unsigned n) {
     if (!mv) { if (dv->u != (const uint32_t*)t->list) { v2_dev_bad++; v2_fail("device index units", name, 0); } }
     else if (first == n && dv->u != (const uint32_t*)t->ops[0].p) { v2_dev_bad++; v2_fail("device index units (moved)", name, 0); }
     if (dv->nu != ks + (fault ? 1u : 0u)) { v2_dev_bad++; v2_fail("device index units", name, 0); }
-    if (dv->fl != nd_gt_state_only(L) + (fault ? 1u : 0u)) { v2_fl_bad++; v2_fail("device index state-only flag", name, 0); }
+    const NdGTab* g1 = g ? nd_gtab_find(g->addr) : NULL; const uint32_t pf = g1 && (g1->flags & NDG_F_PARTS) ? NDN_FL_PARTS | (uint32_t)g1->nvtx << 16 : 0u; /* DEL5B1 */
+    if (dv->fl != nd_gt_state_only(L) + pf + (fault ? 1u : 0u)) { v2_fl_bad++; v2_fail("device index state-only flag", name, 0); }
     unsigned ntri = 0;
     for (unsigned k = 0; t->ops[k].op != NDN_END; k++) if (t->ops[k].op == NDN_DRAW) ntri += t->ops[k].b;
     if (dv->ntri != ntri / 3u) { v2_dev_bad++; v2_fail("device index triangles", name, 0); }
