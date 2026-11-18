@@ -290,20 +290,6 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
     }
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
-/* HC4b t4chk (debug switch, plan_hotcode 5.2): the recorder writes each op its shadow dropped after NDO_DROP. The walker runs the old skip
- * test on it: a drop it would skip counts as good; else it is bad and runs (so the picture is the one without the dedupe). One log line per
- * 100 frames: "t4chk f<n> drops <d> bad <b>". Gate: bad 0. */
-static unsigned t4_drops, t4_bad, t4_next = 100u;
-static __attribute__((cold, noinline)) void t4_check(unsigned dbg, const uint32_t* u) {
-    t4_drops++;
-    if (!nd_op_same(u)) {
-        t4_bad++;
-        if (t4_bad <= 8u) pm_log_w("t4chk bad f%u op %08x %08x", pm_frame_count(), (unsigned)u[0], (unsigned)u[1]);
-        op_typed(dbg, u, u);
-    }
-    const unsigned f = pm_frame_count();
-    if (f >= t4_next) { t4_next = (f / 100u + 1u) * 100u; pm_log_evt("t4chk f%u drops %u bad %u", f, t4_drops, t4_bad); }
-}
 /* HC4d2: one control op (nd_op_ctl) with the walker's prologue (pm_gbi_cur_op; gv_epoch but not for a list call or G_MODIFYVTX; the debug
  * op hook), then its handler. u: the typed unit, at: its place in the run (a texture rectangle reads the b of the two units after it).
  * Returns the units it took after u (2 for a texture rectangle), or ~0u when a branch ends the run. */
@@ -368,7 +354,7 @@ void nd_walk_state(const uint32_t* q, unsigned n) {
             const unsigned r = op_ctl(dbg, u, q, e);
             if (r == ~0u) q = e - 2;
             else q += 2u * r;
-        } else if (__builtin_expect(id == NDO_DROP, 0)) { q += 2; if (q < e) t4_check(dbg, q); } /* HC4b t4chk: an op the recorder dropped */
+        }
         else if (id == NDO_END) break;
         else op_typed(dbg, u, q);
     }
@@ -385,7 +371,7 @@ static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of
         if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_set_texture(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { if (!nd_op_same(q)) nd_op_apply(q); }
         else if (__builtin_expect(!nd_op_typed(id), 0)) op_unknown(dbg, q); else if (nd_op_geo(id)) op_geo(dbg, q, q);
         else if (nd_op_ctl(id)) { const unsigned r = op_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
-        else if (__builtin_expect(id == ND_FS_DROP, 0)) { q += 2; if (q < e) t4_check(dbg, q); } else if (id == ND_FS_END) break; else op_typed(dbg, q, q);
+        else if (id == ND_FS_END) break; else op_typed(dbg, q, q);
     } }
 
 /* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words
