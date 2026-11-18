@@ -560,7 +560,7 @@ void nd_ds_parts(NdDs* s, const uint32_t* u, NdDsUnitFn unit) {
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m)
         for (unsigned j = 0; j < m; j++) {
-            if (j == pre) { if (nd_lsc_on) { unsigned t = 0; for (const NdGOp* o = ((const NdGTab*)(uintptr_t)p[2u * j + 1u])->op; o->k != NDG_END; o++) t += o->k == NDG_TRI; nd_lsc_tris(t); } continue; } /* NREC4: the list triangles of the instance */
+            if (j == pre) { if (nd_lsc_on) { unsigned t = 0; const NdNDev* e = (const NdNDev*)(const void*)((const NdGTab*)(uintptr_t)p[2u * j + 1u])->list; for (unsigned q = 0; q < e->nu; q++) { const unsigned id = e->u[2u * q] >> 24; t += id == ND_FS_TRI1 ? 1u : id == ND_FS_TRI2 ? 2u : 0u; } /* DEL5B1 */ nd_lsc_tris(t); } continue; } /* NREC4: the list triangles of the instance */
             unit(s, p[2u * j], p[2u * j + 1u]);
             if (nd_lsc_on) nd_lsc_unit(p[2u * j]); /* NREC4 */
         }

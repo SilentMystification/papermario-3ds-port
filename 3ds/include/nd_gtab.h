@@ -117,6 +117,7 @@ typedef struct NdNTab {
  * list address at the first nd_ntab_find. nd_ntab_find: the table of a list, or NULL. nd_ntab_run: a table as its NDN_UNIT copy in nd_walk.c. */
 /* CONV2D2, core 0 only. n = the word pairs of the list from unit 0 to the stop (NOPs counted): nd_walk_state(list, n) runs the unit copy. */
 typedef struct NdNDev { const void* list; uint32_t fl; const uint32_t* u; uint32_t nu; uint32_t ntri; } NdNDev; /* GKEY1: fl = nd_gt_state_only of the list (converter) */
+#define NDN_FL_PARTS 4u /* DEL5B1: fl bit 2, a flat particle list (NDG_F_PARTS); fl >> 16 = the vertices of all its loads (v1 nvtx) */
 void nd_rec_ndev(const NdNDev* e); /* MESHST: record a built NdNDev (nd_mesh.h): it runs as nd_ntab_rec, no list key, no cache */
 /* NTABFIND: the record of nd_rec_ndev holds a copy of the entry, not its address. Core 0 runs the record after core 1 goes on, and the owner
  * changes the entry first: imgfx.c imgfx_cache_instance_data and imgfx_load_anim set gfxDev[i].list to NULL (then gt_run gave ent_gdl(NULL) and

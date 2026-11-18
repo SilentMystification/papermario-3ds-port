@@ -369,8 +369,8 @@ void draw_tri(unsigned w) {
  * the GPU either. Lit and refused loads return 0 before any triangle: the caller runs the list. S7CONV: the list comes as its native table
  * (nd_gtab.h, NDG_F_PARTS: every load source mapped and inside 64 slots, every index inside the loads), read as sequential 8-byte ops; no
  * list word is read. */
-int nd_part_draw(const NdGTab* t) {
-    const unsigned tot = t->nvtx; /* S4MULTI: the room for every load of the list, checked before the first draw */
+int nd_part_draw(const NdNDev* t) {
+    const unsigned tot = t->fl >> 16; /* S4MULTI: the room for every load of the list, checked before the first draw */
     memset(vert_live, 0, sizeof vert_live);
     if (!pm_gpu_gv_room(tot + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(tot + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING, as nd_geom_vtx */
     if (!pm_gpu_gv_room(tot)) return 0; /* S4MULTI: every load of the list fits, so no later load fails after a draw */
@@ -379,18 +379,22 @@ int nd_part_draw(const NdGTab* t) {
     if (gmi == GV_NONE) return 0;
     unsigned short rs[64];
     const unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
-    for (const NdGOp* o = t->op;; o++) {
-        if (o->k == NDG_VTX) { /* slots v0 .. v0 + n - 1 of the ring copy (the first load: slot 0) */
-            const unsigned n2 = o->a, v0 = o->b;
-            const int r2 = pm_gpu_gvtx_load((const Vtx*)o->p, n2);
+    for (unsigned q = 0; q < t->nu; q++) { /* DEL5B1: the entry units of the list */
+        const uint32_t w0 = t->u[2u * q], w1 = t->u[2u * q + 1u];
+        const unsigned id = w0 >> 24;
+        if (w0 == ND_NOP_A) continue; /* a sync or a no-op: no op */
+        if (id == ND_FS_VTX) { /* slots v0 .. v0 + n - 1 of the ring copy (the first load: slot 0) */
+            const unsigned n2 = (w0 >> 12) & 0xffu, v0 = ((w0 >> 1) & 0x7fu) - n2;
+            const int r2 = pm_gpu_gvtx_load((const Vtx*)(uintptr_t)w1, n2);
             if (r2 < 0) return 0;
             PH_ADD(C_VTXLOAD, n2); PH_ADD(C_GVLOAD, n2); gv_load_n += n2;
             for (unsigned i = 0; i < n2; i++) rs[v0 + i] = (unsigned short)(r2 + (int)i);
             continue;
         }
-        if (o->k != NDG_TRI) break; /* NDG_END */
-        {
-            const unsigned i0 = o->a, i1 = o->b, i2 = o->c;
+        if (id != ND_FS_TRI1 && id != ND_FS_TRI2) break; /* NDG_END */
+        for (unsigned h = 0; h < (id == ND_FS_TRI2 ? 2u : 1u); h++) { /* DEL5B1: a TRI2 unit is 2 triangles; a continue below goes to the next triangle */
+            const uint32_t w = h ? w1 : w0;
+            const unsigned i0 = ((w >> 16) & 0xffu) / 2u, i1 = ((w >> 8) & 0xffu) / 2u, i2 = (w & 0xffu) / 2u;
             GP_START();
             gp_ntri++;
             n_cmd++;
