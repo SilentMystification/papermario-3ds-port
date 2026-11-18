@@ -1,6 +1,6 @@
 /* nd_snap.c: the snapchk switch (NDR0A, design_nstate.md section 6, stage S4). Core 1 (nd_snap_mesh, from nd_mesh_tri1/2 in nd_geo.c) takes the
  * combine inputs of nd_ds and the table decision of nd_pso_find_i, and records them as an NDC_NAPI run. Core 0 (nd_snapchk_run) copies the
- * record and arms nd_snap_arm; the next triangle draw (nd_snapchk_tri, from draw_tri in nd_geom.c) compares it with the walker inputs.
+ * record and arms nd_snap_arm; the next triangle draw (nd_snapchk_tri, from draw_tri in nd_geom.c) compares it with the walker inputs (behind PMDL("snapchk")), and applies its combine (NDR0E2).
  * Logs: `snapchk bad f<n> <names>` (the first 8 bad triangles), `snapchk f<n> recs <r> cmp <c> bad <b> fbad <s> miss <m>` every 100 frames. */
 #include <stdio.h>
 #include <stdint.h>
@@ -35,8 +35,7 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1) {
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 
-void nd_snap_mesh(void) {
-    if (!PMDL("snapchk")) return;
+void nd_snap_mesh(void) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle; the compare stays behind PMDL("snapchk") */
     NdSnapChk r;
     NdCombOut o;
     memset(&r, 0, sizeof r);
@@ -55,7 +54,7 @@ void nd_snap_mesh(void) {
     r.plan_on = o.plan_on;
     r.leg = sn_leg; r.mode5 = sn_mode5; r.pat = sn_pat;
     sn_last = r;
-    nd_rec_napi(nd_snapchk_run, &r, sizeof r / 8u);
+    nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */
     sn_cmds = nd_rec_cmds();
 }
 
@@ -79,10 +78,9 @@ void nd_snapchk_run(const uint32_t* rec) {
 
 #define SC_CMP(f, name) do { if (sc_cur.in.f != mine.f) sc_add(name); } while (0)
 
-void nd_snapchk_tri(void) {
+static void sc_compare(void) {
     NdCombIn mine;
     char names[192];
-    nd_snap_arm = 0;
     comb_in_walker(&mine);
     sc_cmp++;
     sc_nb = 0;
@@ -124,6 +122,12 @@ void nd_snapchk_tri(void) {
         }
     }
 }
+void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
+    nd_snap_arm = 0;
+    if (PMDL("snapchk")) sc_compare();
+    nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env);
+}
+void nd_snapchk_rect(void) { nd_snap_arm = 0; if (PMDL("snapchk")) sc_compare(); }   /* NDR0E2: a texture rectangle: compare only */
 
 /* NDR0A: the 100-frame counter line, once per frame stream end (nd_rec.c stream_run NDC_END); behind PMDL. */
 void nd_snapchk_tick(void) {

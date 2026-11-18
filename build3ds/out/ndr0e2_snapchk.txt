@@ -1,0 +1,18 @@
+== nimgm_strip_snapchk (log build3ds/lane-NDR0E2/slot2/last_log.txt)
+#10 switches bootid=7a4430882f warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det snapchk turb
+#271 snapchk f100 recs 492 cmp 492 bad 0 fbad 0 miss 248
+#293 snapchk bad f157 use_t1 box_folded tst leg mode5 pat plan_on ls
+#296 snapchk bad f157 use_t1 box_folded tst leg mode5 pat plan_on ls
+#310 snapchk bad f158 use_t1 box_folded tst leg mode5 pat plan_on ls
+#311 snapchk bad f158 use_t1 box_folded tst leg mode5 pat plan_on ls
+#316 snapchk bad f159 use_t1 box_folded tst leg mode5 pat plan_on ls
+#317 snapchk bad f159 use_t1 box_folded tst leg mode5 pat plan_on ls
+#318 snapchk bad f160 use_t1 box_folded tst leg mode5 pat plan_on ls
+#319 snapchk bad f160 use_t1 box_folded tst leg mode5 pat plan_on ls
+#341 snapchk f200 recs 1599 cmp 1599 bad 86 fbad 774 miss 1098
+#380 snapchk f300 recs 3199 cmp 3199 bad 286 fbad 2574 miss 2598
+#393 snapchk f400 recs 4799 cmp 4799 bad 486 fbad 4374 miss 4098
+== wscmb_pause_snapchk (log build3ds/lane-NDR0E2/slot1/last_log.txt)
+#10 switches bootid=0f59fa1971 preset=toad padscript=wait80,START*3,wait100 loglevel=debug det snapchk
+#246 snapchk f100 recs 243 cmp 243 bad 0 fbad 0 miss 243
+#431 snapchk f200 recs 3789 cmp 3789 bad 0 fbad 0 miss 3789
