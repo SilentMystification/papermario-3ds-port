@@ -12,6 +12,7 @@ ND_PSO_DESC(pe_screen_render_util_181, 0xfcffb7ff, 0xff6f9fcf, 0x00080c00, 0x005
 #include "nd_tx.h"
 extern u8 gPmStencilId;                      /* screen_overlays.c, NATIVEAPI B2a */
 extern void pm_tsten_run(const uint32_t* u); /* screen_overlays.c, NATIVEAPI B2a */
+extern void pm_tsten_pso(const uint32_t* u, NdPsoN64* pd); /* screen_overlays.c, NDR2C */
 extern void pm_tsten_feed(const uint32_t* u); /* screen_overlays.c, NST2E */
 
 NDN_DECL(D_8014ED90);
@@ -283,7 +284,7 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
             ((u32)(u8)primR << 24) | ((u32)(u8)primG << 16) | ((u32)(u8)primB << 8) | (u32)(u8)primA,
             (u32)(progress == 255.0f) | ((u32)gPmStencilId << 1),
         };
-        nd_rec_napi(pm_tsten_run, rec, 3u);
+        { NdPsoN64 pd; pm_tsten_pso(rec, &pd); nd_dir_rec(pm_tsten_run, rec, 3u, &pd, rec[4]); } /* NDR2C */
         pm_tsten_feed((const uint32_t*)rec);
     }
 }

@@ -468,7 +468,7 @@ static void hud_rect_emit(const NdHudRec* hudElement, uint32_t** o, s32 anchor) 
 #define HUD_CW_(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) \
     { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
 #define HUD_CW(a, b) HUD_CW_(a, b) /* a and b are combiner macros of 8 terms: the argument pass expands them before HUD_CW_ counts its 16 */
-static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old path runs: 1 shape, 2 window, 3 walker state, 4 pso, 5 no piece */
+static int hud_rect_direct(const NdHudRec* r, NdPsoN64* snap_pd, u32* snap_prim) { /* NDR2C: snap_pd NULL: core 0 draws; else core 1 takes the pso and returns 0 at the snap. 0 drawn, else why the old path runs: 1 shape, 2 window, 3 walker state, 4 pso, 5 no piece */
     static const u32 cw_decal[2] = HUD_CW(G_CC_DECALRGBA, G_CC_DECALRGBA), cw_01_02[2] = HUD_CW(PM_CC_01, PM_CC_02), cw_2f_32[2] = HUD_CW(PM_CC_2F, PM_CC_32),
                      cw_07[2] = HUD_CW(PM_CC_07, PM_CC_07), cw_47[2] = HUD_CW(PM_CC_47, PM_CC_47);
     NdBindDesc ds[ND_HUD_PC];
@@ -489,7 +489,7 @@ static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old pat
         case 0:
             pd.oml = G_RM_XLU_SURF | G_RM_XLU_SURF2; pd.omh = G_TT_NONE;
             cw = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) ? cw_01_02 : cw_decal;
-            prim = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) ? (u32)r->opacity : nd_direct_prim();
+            prim = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) ? (u32)r->opacity : (snap_pd ? nd_dir_prim1() : nd_direct_prim());
             tfmt = G_IM_FMT_RGBA; tsiz = G_IM_SIZ_32b; sh = 2; stride = r->texSizeX;
             wrap[0] = wrap[1] = flip ? 1u : 0u;
             break;
@@ -516,15 +516,16 @@ static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old pat
             break;
     }
     wrap[2] = (unsigned)r->masks; wrap[3] = (unsigned)r->maskt;
+    pd.cw0 = cw[0]; pd.cw1 = cw[1];
+    pd.omh |= filt ? G_TF_AVERAGE : G_TF_POINT;
+    pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+    if (snap_pd) { *snap_pd = pd; *snap_prim = prim; return 0; } /* NDR2C: core 1 stops here */
     for (k = 0; k < r->npc; k++) { /* every window first: a window the walker would leave invalid sends the record to the old path before any state is written */
         const NdHudPiece* pc = &r->pc[k];
         const s32 lu = pc->uls << sh, ll = pc->lrs << sh;
         if (!nd_tex_win_desc(&ds[k], r->imageAddr, stride, tfmt, tsiz, wrap, lu >> 2, pc->ult, ((ll - lu) >> 2) + 1, pc->lrt - pc->ult + 1,
                              pc->uls << 2, pc->ult << 2, pc->lrs << 2, pc->lrt << 2, pal, pal_n)) return 2;
     }
-    pd.cw0 = cw[0]; pd.cw1 = cw[1];
-    pd.omh |= filt ? G_TF_AVERAGE : G_TF_POINT;
-    pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
     { const int rd = nd_direct_ready(); if (rd < 1) return 30 - rd; } /* 31 to 34: which test of nd_direct_ready */
     id = nd_pso_n64(&pd);
     if (!nd_direct_bind(id, prim, nd_direct_env())) return 4;
@@ -551,7 +552,8 @@ static int hud_rect_direct(const NdHudRec* r) { /* 0 drawn, else why the old pat
 static void hud_rect_run(const uint32_t* u) {
     static uint32_t buf[1024];
     uint32_t* nrp = buf;
-    { const int why = hud_rect_direct((const NdHudRec*)u); if (!why) return; if (why != 5) nd_direct_fallback((unsigned)why); }
+    { const int why = hud_rect_direct((const NdHudRec*)u, NULL, NULL); if (!why) return; if (why != 5) nd_direct_fallback((unsigned)why); }
+    nd_dir_drop(); /* NDR2C */
     hud_rect_emit((const NdHudRec*)u, &nrp, 0);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
@@ -596,20 +598,25 @@ static void cplx_quad_feed(const uint32_t* u) {
     nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
 }
 
-__attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
+/* NDR2C: the pso of one complex HUD quad record. cplx_quad_run and the record site (core 1 snap) both take it from here. */
+static void cplx_quad_pso(const NdCHudRec* r, NdPsoN64* pd) {
     static const u32 cw_47[2] = HUD_CW(PM_CC_47, PM_CC_47);
-    static const unsigned wrap[4] = { G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK };
-    const NdCHudRec* r = (const NdCHudRec*)u;
     const int filt = (r->flags & HUD_ELEMENT_FLAG_FILTER_TEX) != 0, aa = (r->flags & HUD_ELEMENT_FLAG_ANTIALIASING) != 0;
     const int xlu = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) != 0;
+    pd->cw0 = cw_47[0]; pd->cw1 = cw_47[1];
+    if (!xlu) pd->oml = aa ? (G_RM_AA_TEX_EDGE | G_RM_AA_TEX_EDGE2) : (G_RM_TEX_EDGE | G_RM_TEX_EDGE2);
+    else pd->oml = aa ? ((AA_EN | G_RM_CLD_SURF) | (AA_EN | G_RM_CLD_SURF2)) : (G_RM_CLD_SURF | G_RM_CLD_SURF2);
+    pd->omh = G_TT_NONE | (filt ? G_TF_AVERAGE : G_TF_POINT);
+    pd->omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+}
+
+__attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
+    static const unsigned wrap[4] = { G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK };
+    const NdCHudRec* r = (const NdCHudRec*)u;
     NdBindDesc d;
     NdPsoN64 pd;
     int rd = 0;
-    pd.cw0 = cw_47[0]; pd.cw1 = cw_47[1];
-    if (!xlu) pd.oml = aa ? (G_RM_AA_TEX_EDGE | G_RM_AA_TEX_EDGE2) : (G_RM_TEX_EDGE | G_RM_TEX_EDGE2);
-    else pd.oml = aa ? ((AA_EN | G_RM_CLD_SURF) | (AA_EN | G_RM_CLD_SURF2)) : (G_RM_CLD_SURF | G_RM_CLD_SURF2);
-    pd.omh = G_TT_NONE | (filt ? G_TF_AVERAGE : G_TF_POINT);
-    pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+    cplx_quad_pso(r, &pd);
     /* S5CHUDB census: why 41 tex block, 44/45/47 nd_direct_ready -1/-2/-4 (off-screen target), 43 bind refused; each failure runs the old ops below.
      * ready -3 (m1.valid from a shaded sprite) is not a refusal: the direct bind clears it (nd_direct_m1_clear). */
     if (!nd_tex_blk_desc(&d, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, wrap, NULL, 0)) {
@@ -625,6 +632,7 @@ __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
         nd_direct_end();
         return;
     }
+    nd_dir_drop(); /* NDR2C */
     {
         static uint32_t buf[64];
         uint32_t* nrp = buf;
@@ -872,7 +880,7 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
     if (pm_anchor_is_open()) {
         hud_rect_emit(&rec, nullptr, 1);
     } else {
-        nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc);
+        { NdPsoN64 pd; u32 prim; if (!hud_rect_direct(&rec, &pd, &prim)) nd_dir_rec(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc, &pd, prim); else nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc); } /* NDR2C */
         hud_rect_feed((const uint32_t*)&rec);
     }
 
@@ -1914,7 +1922,7 @@ void render_complex_hud_element(HudElement* hudElement) {
                 rec.pad = 0;
                 rec.prim = ((u32)hudElement->tint.r << 24) | ((u32)hudElement->tint.g << 16) | ((u32)hudElement->tint.b << 8) |
                            (u32)hudElement->opacity;
-                nd_rec_napi(cplx_quad_run, &rec, sizeof rec / 8u);
+                { NdPsoN64 pd; cplx_quad_pso(&rec, &pd); nd_dir_rec(cplx_quad_run, &rec, sizeof rec / 8u, &pd, rec.prim); } /* NDR2C */
                 cplx_quad_feed((const uint32_t*)&rec);
             } else
             {
