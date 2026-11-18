@@ -414,7 +414,9 @@ def cmd_post():
 def cmd_src_now():
     lines = read_lines(OUT + "/in_now.txt")
     gens = E["GEN_FILES"].split() + ["3ds/include/pm_build.h"]
-    s = in_pick(lines, E["CODE_DIRS"].split(), set(gens)) + gen_ids(gens)
+    # nogen (a cold build): the generator outputs are not synced now (they come in phase 2); pm_build.h is
+    ids = gen_ids(["3ds/include/pm_build.h"] if sys.argv[2:] == ["nogen"] else gens)
+    s = in_pick(lines, E["CODE_DIRS"].split(), set(gens)) + ids
     write_lines(OUT + "/src_now.txt", csort(s))
     return 0
 

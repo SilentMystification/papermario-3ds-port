@@ -1305,8 +1305,14 @@ def scratch_build(commit, gitdir, scratch, lane, row):
     scratch.mkdir(parents=True, exist_ok=True)
     # VOLMAN: wt_gc.sh and build.sh keep this folder and its lane volumes while the marker is young (12 h).
     (scratch / ".build_at_in_use").write_text(str(os.getpid()))
-    arc = subprocess.run(["git", "archive", commit], cwd=REPO, capture_output=True, check=True).stdout
-    tarfile.open(fileobj=io.BytesIO(arc)).extractall(scratch)
+    # BUILDO: git checkout-index from a private index (FACT: 2.3 s against 13.5 s for git archive + tarfile on 7728 files;
+    # the same bytes, diff -r of both trees empty). The repo index and the worktrees are not touched.
+    idx = scratch / ".git_scratch_index"
+    genv = dict(os.environ, GIT_INDEX_FILE=str(idx))
+    subprocess.run(["git", "read-tree", commit], cwd=REPO, env=genv, capture_output=True, check=True)
+    subprocess.run(["git", "-c", "checkout.workers=8", "checkout-index", "-a", "-f", "--prefix=%s/" % scratch.as_posix()], cwd=REPO, env=genv,
+                   capture_output=True, check=True)
+    idx.unlink()
     # BASEBIN: no asset copy. assets/us, ver/us/build and the ROM are untracked (git ls-files: 0 files), so the archive has no
     # assets/us and build.sh reads all three from the main folder (build.sh ASSET_BASE: the parent of the git common dir = GIT_DIR).
     # build.sh writes its sync lists under build3ds/lane-<lane> of the scratch folder; create it first.

@@ -6,7 +6,7 @@
 # 1 key (no docker run, no slot): content ids of the code (in_manifest), the assets (stat-cached ids), the generator outputs
 #   (gencache hits) and the shape key. Equal to the lane's build_key.txt and the 3dsx hash checks: "build up to date", exit.
 # 2 generators that miss run in parallel (texkey | shapes | gfx_tab then pso_tab), under a build slot.
-# 3 one container in the build workspace of the slot (pm3ds-src-ws<k>, pm3ds-build-ws<k>): asset check, romfs from the shape
+# 3 one container in the build workspace of the slot (pm3ds-wssrc-ws<k>, pm3ds-wsbuild-ws<k>): asset check, romfs from the shape
 #   volume, sync of the changed code files (content ids against the slot manifest), configure when needed, ninja, copy-out.
 #   The workspace is shared by every lane, so a new lane is incremental. /src and /work stay the paths (bytes stay equal).
 # PM_CACHE=off is the cold gate: no cache read or write, no skip, no ccache, new workspace, asset and shape volumes.
@@ -201,26 +201,57 @@ SHVOL=pm3ds-shape
 [ "$CACHE" = off ] && SHVOL=pm3ds-shape-cold$$
 stage key-inputs
 
+# BUILDO: the cold asset volume. A copy of the shared asset volume of the same content, kept only when every file has the git
+# blob id that the cold run computed from the host files (asset_now.txt, no stat cache) and no file is extra or missing; else
+# the tar of the host files (asset_vol_make). So the cold volume never trusts a cache entry.
+asset_vol_cold() {
+    acv=0; MSYS_NO_PATHCONV=1 docker run --rm -i -v "pm3ds-assets-$(printf '%s' "$AHASH" | cut -c1-16):/s:ro" -v $AVOL:/a -e K="$AHASH" pm3ds-host:1 sh -c '
+        set -e; [ -d /s/c/assets ] && [ -d /s/c/ver ] || exit 3
+        rm -rf /a/t /a/c; mkdir -p /a/t; cp -a /s/c/assets /s/c/ver /a/t/
+        python3 -c "
+import hashlib, os, sys
+want = dict(l.rstrip(chr(10)).split(chr(9)) for l in sys.stdin if l.strip())
+have = []
+for d in (\"assets\", \"ver\"):
+    for r, _, fs in os.walk(\"/a/t/\" + d):
+        have += [os.path.join(r, f)[len(\"/a/t/\"):] for f in fs]
+if set(have) != set(want): sys.exit(4)
+for p in have:
+    b = open(\"/a/t/\" + p, \"rb\").read()
+    if hashlib.sha1(b\"blob %d\0\" % len(b) + b).hexdigest() != want[p]: sys.exit(4)
+"
+        (cd /a/t && find assets ver -type f | LC_ALL=C sort | xargs -d "\n" sha1sum) > /a/t/out.sha1
+        printf %s "$K" > /a/t/key.txt; mv -T /a/t /a/c' < $OUT/asset_now.txt || acv=$?
+    if [ "$acv" = 0 ]; then echo "asset volume $AVOL made (verified copy)" >&2; else echo "asset volume $AVOL: no verified copy (exit $acv), tar of the host files" >&2; docker volume rm $AVOL >/dev/null 2>&1 || true; asset_vol_make; fi
+}
+[ "$CACHE" = off ] && [ -z "$PM_KEY_ONLY" ] && asset_vol_cold
 # The generator phase. build_key.py did the cache lookups; the misses run at the same time under one build slot:
 # texkey (host python) | shapes (host image) | gfx_tab then pso_tab (host image). Each job writes its log and its exit code.
-if [ "$TK_MISS$SH_MISS$GT_MISS$PT_MISS" != 0000 ]; then
-    slot_need
-    [ "$TK_MISS" = 1 ] && { ( tk_run ) > $OUT/gen_tk.log 2>&1; echo $? > $OUT/gen_tk.rc; } &
-    [ "$SH_MISS" = 1 ] && { ( sh_run ) > $OUT/gen_sh.log 2>&1; echo $? > $OUT/gen_sh.rc; } &
-    ( set -e
-      if [ "$GT_MISS" = 1 ]; then gt_run; bk post pso; . $OUT/key_env.sh; fi
-      if [ "$PT_MISS" = 1 ]; then pt_run; fi ) > $OUT/gen_gp.log 2>&1 || { cat $OUT/gen_gp.log >&2; wait; echo "gen_gfx_tab/gen_pso_tab failed" >&2; exit 1; }
-    cat $OUT/gen_gp.log >&2
-    wait
-    for j in tk sh; do
+# gens_wait: waits for the jobs, prints their logs, fails on a failed job, then the build key (build_key.py post).
+gens_wait() {
+    for gp in $GEN_PIDS; do wait $gp || true; done # only the generator jobs (the cold path has the workspace job running)
+    for j in gp tk sh; do
         [ -f $OUT/gen_$j.rc ] || continue
         cat $OUT/gen_$j.log >&2; r=$(cat $OUT/gen_$j.rc); rm -f $OUT/gen_$j.rc
-        [ "$r" = 5 ] && { GC_FAIL=1; continue; }
-        [ "$r" = 0 ] || { echo "generator $j failed (exit $r, log $OUT/gen_$j.log)" >&2; exit 1; }
+        [ "$r" = 5 ] && [ "$j" = sh ] && { GC_FAIL=1; continue; }
+        [ "$r" = 0 ] || { echo "generator $j failed (exit $r, log $OUT/gen_$j.log)" >&2; return 1; }
     done
     # cachecheck of texkey, gfx_tab and pso_tab: gc_put printed its line; a FAIL line in the logs marks the run
     if [ "$CACHE" = check ] && grep -q '^CACHECHECK FAIL' $OUT/gen_gp.log $OUT/gen_tk.log 2>/dev/null; then GC_FAIL=1; fi
-    bk post; . $OUT/key_env.sh
+    bk post && . $OUT/key_env.sh
+}
+# COLDOV: a cold build (PM_CACHE=off, not key-only) does not wait here: its compile starts at the same time (ws_run phase 1).
+COLDOV=0; [ "$CACHE" = off ] && [ -z "$PM_KEY_ONLY" ] && COLDOV=1
+rm -f $OUT/gen_tk.rc $OUT/gen_sh.rc $OUT/gen_gp.rc $OUT/gens_ready $OUT/gens.tar
+if [ "$TK_MISS$SH_MISS$GT_MISS$PT_MISS" != 0000 ]; then
+    slot_need
+    GEN_PIDS=
+    if [ "$TK_MISS" = 1 ]; then { ( tk_run ) > $OUT/gen_tk.log 2>&1; echo $? > $OUT/gen_tk.rc; } & GEN_PIDS="$GEN_PIDS $!"; fi
+    if [ "$SH_MISS" = 1 ]; then { ( sh_run ) > $OUT/gen_sh.log 2>&1; echo $? > $OUT/gen_sh.rc; } & GEN_PIDS="$GEN_PIDS $!"; fi
+    { ( set -e
+      if [ "$GT_MISS" = 1 ]; then gt_run; bk post pso; . $OUT/key_env.sh; fi
+      if [ "$PT_MISS" = 1 ]; then pt_run; fi ) > $OUT/gen_gp.log 2>&1; echo $? > $OUT/gen_gp.rc; } & GEN_PIDS="$GEN_PIDS $!"
+    if [ "$COLDOV" = 0 ]; then gens_wait || exit 1; fi
 fi
 stage gen
 if [ "$CACHE" = check ]; then
@@ -269,11 +300,13 @@ slot_need
 # The workspace of the slot (cold: its own new volumes). The slot manifest (path, content id) and its id live in the main
 # folder; the source volume holds the id of its last finished sync in /src/.pm_manifest_id ("dirty" during a sync).
 if [ "$CACHE" = off ]; then WS=cold$$; else WS=ws$BUILD_SLOT; fi
-SRCVOL=pm3ds-src-$WS; VOL=pm3ds-build-$WS; NAME=pm3ds-$WS
+# The names do not start with pm3ds-src- or pm3ds-build-: the lane volume cap of older build.sh copies (other branches)
+# removes every pm3ds-build-<x> that is not a worktree name (FACT: it removed a workspace volume; the id check caught it).
+SRCVOL=pm3ds-wssrc-$WS; VOL=pm3ds-wsbuild-$WS; NAME=pm3ds-$WS
 WSM=$MAIN_ROOT/build3ds/wsmeta; mkdir -p $WSM
-bk src_now
+if [ "$COLDOV" = 1 ]; then bk src_now nogen; else bk src_now; fi
 JOBS=${PM_BUILD_JOBS:-16}; MEM=${PM_BUILD_MEM:-6g}
-[ "$CACHE" = off ] && { JOBS=${PM_BUILD_JOBS:-28}; MEM=${PM_BUILD_MEM:-10g}; }
+[ "$CACHE" = off ] && { JOBS=${PM_BUILD_JOBS:-20}; MEM=${PM_BUILD_MEM:-8g}; }
 WD=${PM_BUILD_CAP:-600}
 ( sleep "$WD" >/dev/null 2>&1 & s=$!; trap 'kill $s 2>/dev/null' TERM; wait $s
   if [ -n "$(docker ps -q -f "name=^$NAME\$")" ]; then
@@ -298,6 +331,7 @@ ws_run() {
     tar -cf - -T $OUT/src_changed.txt | MSYS_NO_PATHCONV=1 docker run --rm -i --memory "$MEM" --name "$NAME" -v $SRCVOL:/src -v $AVOL:/a:ro -v $SHVOL:/sh:ro \
         -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-4G}" -e PM_BUILD_NUM="$BN" -e PM_FNCOV_V="$FNV" -e AHASH="$AHASH" \
         -e IMGID="$IMGID" -e PM_CACHE_V="$CACHE" -e SHAPE_E="$SHAPE_E" -e OLDID="$OLDID" -e NEWID="$NEWID" -e RECONF="$RECONF" -e JOBS="$JOBS" \
+        -e COLDOV="$COLDOV" -e GENF="$GEN_FILES" \
         -v "$(pwd)/$OUT:/out" -v $VOL:/work -v pm3ds-ccache-$(printf '%s' "$IMGID" | cut -c1-12):/ccache \
         $IMG sh -c '
     set -e -f
@@ -308,6 +342,7 @@ ws_run() {
     if [ "$(cat /work/.img 2>/dev/null)" != "$IMGID" ] || [ "$PM_CACHE_V" = off ]; then rm -rf /work/build; printf %s "$IMGID" > /work/.img; fi
     if [ "$PM_CACHE_V" = off ]; then export CCACHE_DISABLE=1; fi
     if [ "$(cat /work/.shape 2>/dev/null)" != "$SHAPE_E" ]; then rm -f /work/build/pm_3ds.3dsx; printf %s "$SHAPE_E" > /work/.shape; fi
+    romfs_step() {
     # LINKFAST: the romfs in the build volume. Key: the shape content key. Every build checks the files (romfs.sha1); a new key,
     # a failed check or PM_CACHE=off copies the shape entry again (temp folder, check against the entry, one mv), removes the 3dsx.
     if [ "$PM_CACHE_V" = off ] || [ "$(cat /work/.romfs_key 2>/dev/null)" != "$SHAPE_E" ] || ! (cd /work/romfs/shape 2>/dev/null && sha1sum -c --status /work/romfs.sha1 2>/dev/null); then
@@ -320,11 +355,15 @@ ws_run() {
         mv -T /work/romfs.tmp /work/romfs; printf %s "$SHAPE_E" > /work/.romfs_key
     fi
     stage romfs
+    }
+    [ "$COLDOV" = 1 ] || romfs_step
     [ "$(cat /src/.pm_manifest_id 2>/dev/null)" = "$OLDID" ] || { echo "SOURCE VOLUME ID MISMATCH (want \"$OLDID\")" >&2; exit 9; }
     printf dirty > /src/.pm_manifest_id
     tar -xmf - -C /src
     if [ -s /out/src_deleted.txt ]; then while IFS= read -r f; do rm -f "/src/$f"; done < /out/src_deleted.txt; fi
     for p in assets/us ver/us/build; do [ -L /src/$p ] || rm -rf /src/$p; mkdir -p /src/${p%/*}; ln -sfn /a/c/$p /src/$p; done
+    # COLDOV: configure needs the romfs folder (ctr_create_3dsx); phase 2 replaces it (romfs_step)
+    if [ "$COLDOV" = 1 ]; then for f in $GENF; do [ -e "/src/$f" ] || { : > "/src/$f"; touch -d @1 "/src/$f"; }; done; mkdir -p /work/romfs; fi
     printf %s "$NEWID" > /src/.pm_manifest_id; printf %s "$NEWID" > /out/sync_done.txt
     stage sync
     # Configure when the build dir is missing, has other flags, another build number (the smdh text) or a path was added or removed.
@@ -335,6 +374,17 @@ ws_run() {
         cmake -G Ninja -S /src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DPM_BUILD_NUM=$PM_BUILD_NUM -DPM_FNCOV=$PM_FNCOV_V
     fi
     stage configure
+    if [ "$COLDOV" = 1 ]; then
+        # COLDOV phase 1: the generator outputs are empty placeholders with an old mtime (the CMake glob sees the same files);
+        # ninja -k 0 builds every other object. Phase 2: the real outputs (newer than every object) and the romfs, then ninja.
+        ninja -C /work/build -k 0 -j "$JOBS" > /work/phase1.log 2>&1 || true
+        stage compile-phase1
+        n=0; while [ ! -s /out/gens_ready ]; do sleep 1; n=$((n + 1)); [ "$n" -lt 1200 ] || { echo "COLD: the generators did not finish in 1200 s" >&2; exit 1; }; done
+        [ "$(cat /out/gens_ready)" = ok ] || { echo "COLD: a generator failed" >&2; exit 1; }
+        tar -xmf /out/gens.tar -C /src
+        stage wait-gens
+        romfs_step
+    fi
     status=0
     cmake --build /work/build --parallel "$JOBS" -- -k 0 '"$*"' || status=$?
     stage compile-link
@@ -344,7 +394,16 @@ ws_run() {
 ' || return $?
 }
 rc=0; done7=0; done8=0; done9=0
-while :; do
+if [ "$COLDOV" = 1 ]; then
+    # COLDOV: the workspace container runs phase 1 while the generators finish; then their outputs go to it (gens.tar).
+    ws_run "$@" & wsp=$!
+    if gens_wait && tar -cf $OUT/gens.tar $GEN_FILES; then echo ok > $OUT/gens_ready.tmp; else echo fail > $OUT/gens_ready.tmp; fi
+    mv -f $OUT/gens_ready.tmp $OUT/gens_ready
+    stage gen-wait-host
+    wait $wsp || rc=$?
+    [ "$(cat $OUT/gens_ready)" = ok ] || rc=1
+fi
+while [ "$COLDOV" = 0 ]; do
     rc=0; ws_run "$@" || rc=$?
     if [ "$(cat $OUT/sync_done.txt 2>/dev/null)" = "$NEWID" ]; then
         cp -f $OUT/src_now.txt $WSM/$WS.manifest.new && mv -f $WSM/$WS.manifest.new $WSM/$WS.manifest && printf '%s\n' "$NEWID" > $WSM/$WS.id
