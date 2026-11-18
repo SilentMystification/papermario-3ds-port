@@ -538,8 +538,8 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
         if (tr_n == 2 && IS_NOP(w0)) { tr_n = 0; nd_rec_texrect(tr_w[0], tr_w[1], tr_w[2], w1); return; } /* RDPHALF_2: dsdx, dtdy */
         tr_bad(w0);
     }
-    if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { /* the words nd_texrect_run reads: G_TEXRECT with the a field, w1 without the flag */
-        tr_w[0] = ((uint32_t)G_TEXRECT << 24) | (w0 & 0xffffffu); tr_w[1] = w1 & ~ND_FS_RECT_TEX; tr_n = 1; return;
+    if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { /* the rectangle unit w0 and w1 without the flag (DEL1A) */
+        tr_w[0] = w0; tr_w[1] = w1 & ~ND_FS_RECT_TEX; tr_n = 1; return;
     }
     if (IS_NOP(w0)) return; /* the syncs are dropped (the walker skips them) */
     if (op == ND_FS_CALL && rec_inline(w1)) return;
@@ -603,37 +603,23 @@ void nd_rec_end(void) {
 /* D10a: the ops of a static list (a custom gfx list that a map script set, SetCustomGfx) recorded as commands, as the walker would run the
  * list: the syncs dropped, a texture rectangle as NDC_TEXRECT, a branch followed, a push G_DL kept as a state op (walk_call at replay), the
  * list ends at its G_ENDDL. A producer record in a static list is an error (logged, the list ends). */
-static __attribute__((cold, noinline)) void list_bad(const Gfx* g, unsigned n) {
+static __attribute__((cold, noinline)) void list_bad(const uint32_t* g, unsigned n) {
     static int k;
-    if (k++ < 4) pm_log_e("ndc: static list op %08x at %p after %u words not recorded", (unsigned)g->words.w0, (const void*)g, n);
+    if (k++ < 4) pm_log_e("ndc: static list op %08x at %p after %u words not recorded", (unsigned)g[0], (const void*)g, n);
 }
-void nd_rec_list(const void* l) {
+void nd_rec_list(const void* l) { /* DEL1A: the typed units of the list, no G_ translation */
     uint32_t kb[2u * 64u];
     const NdNDev* ke = nd_ntab_find(l);
-    const Gfx* g = (const Gfx*)(ke == (const NdNDev*)l ? (const void*)nd_lkey_end(l, ke, kb, 64u) : l); /* CGFX: a moved key (NDN) */
-    for (unsigned n = 0; n < 1024u; n++, g++) {
-        const u32 u0 = g->words.w0, u1 = g->words.w1;
-        u32 w0 = u0, w1 = u1;
-        unsigned op = w0 >> 24;
+    const uint32_t* g = (const uint32_t*)(ke == (const NdNDev*)l ? (const void*)nd_lkey_end(l, ke, kb, 64u) : l); /* CGFX: a moved key (NDN) */
+    for (unsigned n = 0; n < 1024u; n++, g += 2) {
+        const uint32_t w0 = g[0], w1 = g[1]; const unsigned op = w0 >> 24;
         if (!nd_op_typed(op)) { list_bad(g, n); return; } /* HC4e4: a static list is typed at compile time */
-        if (op == ND_FS_END) op = G_ENDDL; /* the raw op the cases below know */
-        else if (IS_NOP(w0)) op = G_SPNOOP;
-        else if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { w0 = ((u32)G_TEXRECT << 24) | (w0 & 0xffffffu); w1 &= ~ND_FS_RECT_TEX; op = G_TEXRECT; }
-        else if (op == ND_FS_CALL) { w0 = ((u32)G_DL << 24) | ((w0 & 1u) ? (u32)G_DL_NOPUSH << 16 : 0u); op = G_DL; }
-        switch (op) {
-        case G_ENDDL: return;
-        case G_RDPPIPESYNC: case G_RDPTILESYNC: case G_RDPLOADSYNC: case G_RDPFULLSYNC: case G_SPNOOP: break;
-        case G_TEXRECT: case G_TEXRECTFLIP: nd_rec_texrect(w0, w1, g[1].words.w1, g[2].words.w1); g += 2; n += 2; break;
-        case G_DL:
-            if (((w0 >> 16) & 0xffu) == G_DL_NOPUSH) { /* a branch: host addresses only (a segment base is walker state) */
-                if (!is_host(w1)) { list_bad(g, n); return; }
-                g = (const Gfx*)(uintptr_t)w1 - 1;
-                break;
-            }
-            if (!rec_inline(w1)) nd_rec_nr(u0, u1);
-            break;
-        default: nd_rec_nr(u0, u1); break;
-        }
+        if (op == ND_FS_END) return;
+        if (IS_NOP(w0)) continue; /* a sync or a no-op */
+        if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { nd_rec_texrect(w0, w1 & ~ND_FS_RECT_TEX, g[3], g[5]); g += 4; n += 2; continue; }
+        if (op == ND_FS_CALL && (w0 & 1u)) { if (!is_host(w1)) { list_bad(g, n); return; } g = (const uint32_t*)(uintptr_t)w1 - 2; continue; } /* a branch */
+        if (op == ND_FS_CALL && rec_inline(w1)) continue;
+        nd_rec_nr(w0, w1);
     }
     list_bad(g, 1024u);
 }
