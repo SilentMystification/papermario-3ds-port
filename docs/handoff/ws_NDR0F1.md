@@ -15,26 +15,26 @@ Edit only: 3ds/include/nd_snap.h, 3ds/src/nd_snap.c, 3ds/src/nd_snap_in.c, 3ds/t
    `nd_render_state(nd_ds.w.omode_h, nd_ds.w.omode_l, r.role == ROLE_DEPTH, &r.rs);` (`extern int pm_nofog;`, a read-only option). Add rs, mixk, mixc to the skip memcmp.
 4. nd_set.c: globals `NdRender nd_sr_rs; int nd_sr_mixk; unsigned nd_sr_mixc; /* NDR0F1: the last sync_render work (snapchk) */`. In sync_render set nd_sr_mixk and
    nd_sr_mixc in each mix branch (1, 2, 0 with colour 0), and `nd_sr_rs = rs;` after nd_render_state (:239). No other change.
-5. nd_snap.c core 0: global `unsigned char nd_snap_rpend;`. In sc_compare (NDR0E2) last line: `nd_snap_rpend = 1;`. New:
+5. nd_snap.c core 0: global `unsigned char nd_snap_rpend;` (set by draw_tri, edit 6; a texture rectangle never sets it); nd_snap.h declares it and
+   nd_snapchk_rnd. New:
    ```
    void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch (nd_geom.c gv_epoch_enter) */
        extern NdRender nd_sr_rs; extern int nd_sr_mixk; extern unsigned nd_sr_mixc;
        nd_snap_rpend = 0;
+       if (!PMDL("snapchk")) return;
        sc_nb = 0;
        if (memcmp(&sc_cur.rs, &nd_sr_rs, sizeof nd_sr_rs)) sc_add("rs");
        if (sc_cur.mixk != nd_sr_mixk || sc_cur.mixc != nd_sr_mixc) sc_add("mix");
        /* then a copy of the `if (sc_nb) { ... }` count and log block of sc_compare, log text "snapchk bad f%u rnd%s" */
    }
    ```
-   nd_snap.h: declare nd_snapchk_rnd and `extern unsigned char nd_snap_rpend;`.
 6. nd_geom.c: weak `unsigned char nd_snap_rpend __attribute__((weak));` and `__attribute__((weak)) void nd_snapchk_rnd(void) {}` next to the weak nd_snapchk_tri (:14).
-   In gv_epoch_enter after `sync_render();` (:215): `if (nd_snap_rpend) nd_snapchk_rnd(); /* NDR0F1 */`.
+   draw_tri (:342): `if (nd_snap_arm) { nd_snapchk_tri(); nd_snap_rpend = 1; } /* NDR0F1 */`. In gv_epoch_enter after `sync_render();` (:215): `if (nd_snap_rpend) nd_snapchk_rnd(); /* NDR0F1 */`.
 7. nd_snap_test.c: nd_snap_mix with fogc 0x11223344, blendc 0x55667788. Cases (ol, nofog -> kind, col): (0x84000000, 0 -> 1, 0x55667744),
    (0xC4000000, 0 -> 1, 0x11223344), (0xC4000000, 1 -> 0), (0xC8000000, 0 -> 2, 0x112233ff), (0xC8000000, 1 -> 0), (0x00552078, 0 -> 0). Print `ndr0f mix bad <b>`.
    `--fault` expects kind 1 for (0xC4000000, 1).
 ## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 4 Azahar starts)
 1. Edits 1-7. `sh 3ds/tools/nd_host_test.sh` PASS with `ndr0f mix bad 0` and the seed seen. Commit `NDR0F1 1: snap render block and mix, snapchk at the epoch`.
 2. bench.py base nimgm_strip_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NDR0F1 --bench the same 2: LOOP PASS, byte-equal.
-3. bench.py run nimgm_strip_snapchk and wscmb_pause_snapchk; grep -a the snapchk lines > build3ds/out/ndr0f1_snapchk.txt. Pass: recs above 0, no `snapchk bad` line
-   with `rnd` (GUESS: none). Else: commit the grep, send the output path to the oracle, wait.
+3. bench.py run nimgm_strip_snapchk and wscmb_pause_snapchk; grep -a the snapchk lines > build3ds/out/ndr0f1_snapchk.txt. Pass: recs above 0, no `snapchk bad` line with `rnd` (GUESS: none). Else: commit the grep, send the output path to the oracle, wait.
 Fix rights: the listed files; compile errors. A DIFF, a crash: stop, send the output path to the oracle. Wait. Stop: last commit `NDR0F1 2: gate. 2 benches byte-equal; snapchk bad <2>; rnd names <list>` deletes this page. One SubagentHandback.
