@@ -13,10 +13,9 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
 - NDR2A after NDR1C: fill pso snap; nd_dir_rec, nd_dir_drop, nd_dir_prim1 serve NDR2B and NDR2C. Then NDR2B || NDR2C || NDR4 (disjoint files). Then NDR2D (deletes nd_pso_decide).
 ## Open work (in order)
 1. Answer coder questions of the chain. Expected-diff rule: a DIFF passes only when the frame of its first DIFF draw has a bindsnap (NDR0G2) or rectsnap (NDR1C) line.
-2. NCONV1D (Sonnet, standing yes): static list draws take no snap. Facts: nd_rec_dl (nd_gtab.c:110-136) records one NAPI per list (nd_ntab_rec v2, nd_gtab_run v1)
-   and applies all its units to nd_ds (nd_ds_list, nd_ds.c:417-443). Core 0 gt_run (nd_walk.c:639-678): state-only lists walk units; else ent_gdl (nd_ent.c:437) or
-   dlc_try (nd_shape.c:872, dlc_seg uses the open epoch) draw natively, else gt_body walks the units (nd_ntab_run :630) and draw_tri runs unarmed (walker state).
-   Design need: a snap per draw epoch inside a list record that the DLC and entity native paths also read, with no change of their batch cuts. Then NCONV2, NREC1A-5, DEL rows.
+2. NCONV1D: pages ws_NCONV1D1 (core 1 list snaps in the list record, rec[4] table, core 0 ordinal and compare, scenes fxops_snapchk and entcape_kmr03_snapchk) and ws_NCONV1D2 (consume in P1 dlc_seg and P2 draw_tri). Haiku, Sonnet standing yes if Haiku fails twice.
+   Order: after NDR0G2, NDR1C, NDR2A, NDR4 (all edit nd_snap.c), parallel with NDR2B, NDR2C, NDR2D. NCONV1D2 starts only when NCONV1D1 shows lsnap bad 0, tmis 0, over 0, p1 above 0, wst 0. A wst above 0: ask the user for an expected-diff gate (default no). Then NCONV2, NREC1A-5, DEL rows.
+   Design: a list snap range starts at the first triangle after a state unit; core 0 finds it by triangle ordinal (nd_snap_lsr). Open risk: P1 compares may name box_folded (dlc_seg runs no box_fold_sync).
 3. NDR4 sprsnap: a DIFF there is a stale walker; only the user can allow an expected-diff gate for NDR4.
 4. Stream size: NdSnapChk about 640 bytes (GUESS), 16 x 32 KB per context (FACT nd_rec.c:30-31). Rectangles and sprites add snaps; the compact NdSnap (design section 7) is a later row.
 5. DEL1D: dead declarations nd_walk_state at nd_api.h:16 and nd_direct.c:254 (no caller outside nd_walk.c; host stubs define it).
@@ -37,8 +36,9 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file: read `git log -- <file>` and the file before a write.
 - Core 0 stale state: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits; a direct draw writes pso state and binds without tile ops.
+- wst (NDR0G2) is the NDR0G1 b-name bad on the current compare population: its cap is a base run of the same scene, never a fixed number. Later pages say: report wst, not judged, when a row adds compares.
 ## Roles (dispatcher.md)
 A COACH oracle runs the coders of one chain under a quota (oracle.md rule 7). A design oracle writes pages and starts no agent. Both report to the dispatcher.
 ## What to do first
 1. Read plan_finish.md, design_nstate.md and the ws_* pages on main. Answer coder questions (SendMessage, 10 lines).
-2. Design NCONV1D (open work 2), then write NCONV2, NREC and DEL pages. Check `git log -5 -- docs/handoff` first.
+2. NCONV1D pages are written (open work 2). Write NCONV2 after the NCONV1D2 data, then NREC and DEL pages. Check `git log -5 -- docs/handoff` first.
