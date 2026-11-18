@@ -330,6 +330,7 @@ void draw_tri(unsigned w) {
     int i1 = (int)((w >> 8) & 0xff) / 2;
     int i2 = (int)(w & 0xff) / 2;
     int idx[3];
+    if (nd_ls_on) nd_ls_ord++;
     GP_START();
     gp_ntri++;
     n_cmd++;
@@ -347,6 +348,7 @@ void draw_tri(unsigned w) {
     idx[1] = i1;
     idx[2] = i2;
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    if (nd_ls_on) nd_lsr_tri(nd_ls_ord - 1u);
     if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */
     nd_snap_rpend = nd_snap_arm; /* NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
     if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } } /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */

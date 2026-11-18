@@ -87,4 +87,9 @@ unsigned nd_rec_cmds(void);
 /* nd_rec.c clears it at each command but the snapshot run; nd_snap.c sets it. */
 extern unsigned char nd_snap_arm;
 int nd_snap_spr(uint32_t o[9]); /* NDR4, nd_snap.c, core 0: the snap words of a sprite record (pm_gpu_spr_build); 0 when no snap */
+/* NCONV1D1, nd_snap.c and nd_snap_in.c: the snap table of a list (rec[4] of a drawing list, nd_rec_dl). */
+#define ND_LS_HDR(n) ((8u + 4u * (n) + 7u) & ~7u)
+extern unsigned char nd_ls_on, nd_lsc_on; extern unsigned nd_ls_ord;
+void nd_lsr_begin(const uint32_t* b); void nd_lsr_end(void); void nd_lsr_tri(unsigned ord); void nd_lsr_seg(unsigned ord); void nd_lsc_unit(uint32_t w0);
+unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #endif

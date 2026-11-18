@@ -327,6 +327,7 @@ static __attribute__((cold, noinline)) void napi_bad(unsigned units) {
     pm_log_e("ndc: native draw record of %u units (1 to 255)", units);
     pm_fatal_stop("ndc: bad native draw record");
 }
+static uint32_t* napi_last; /* NCONV1D1: the data of the last nd_rec_napi record (nd_rec_last_pay) */
 void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
     if (units == 0u || units > 255u) napi_bad(units);
     rec_open();
@@ -335,6 +336,7 @@ void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
     p[0] = NDC_HDR(NDC_NAPI, units, 0);
     p[1] = (uint32_t)(uintptr_t)run;
     memcpy(p + 2, rec, units * 8u);
+    napi_last = p + 2u;
 }
 static unsigned ndc_snapc; /* NDR3: the records of nd_rec_napi_s (not a command of the snap memo) */
 void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { /* NDR3: as nd_rec_napi; the runner takes the armed snap */
@@ -584,6 +586,8 @@ void* nd_rec_data(unsigned bytes) {
     p[1] = (uint32_t)(uintptr_t)(p + 2u + 2u * units);
     return p + 2;
 }
+uint32_t* nd_rec_last_pay(void) { return napi_last; } /* NCONV1D1 */
+void* nd_rec_data_st(unsigned bytes) { st_take = 1; void* p = nd_rec_data(bytes); st_take = 0; return p; } /* NCONV1D1: a state op (no dschk record, the shadow stays) */
 void nd_sub_open(NdSub* s) {
     rec_open();
     s->br = rec_take(2);

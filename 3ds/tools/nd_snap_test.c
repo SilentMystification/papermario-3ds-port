@@ -115,6 +115,14 @@ int main(int argc, char** argv) {
         bad += db;
         printf("ndr0g2 bdiff bad %d\n", db);
     }
+    { /* NCONV1D1: nd_snap_lsr, the range of each ordinal (b[0] ranges, b[1] triangles, b[2+k] first ordinal of range k) */
+        const uint32_t b[5] = { 3, 12, 0, 4, 9 };
+        const unsigned ord[6] = { 0, 3, 4, 8, 9, 100 };
+        const unsigned want[6] = { 0, 0, fault ? 0u : 1u, 1, 2, 2 };
+        int d = 0;
+        for (unsigned i = 0; i < 6; i++) if (nd_snap_lsr(b, ord[i]) != want[i]) d++;
+        printf("nconv1d1 lsr bad %d\n", d); bad += d;
+    }
     (void)nf;
     return bad ? 1 : 0;
 }

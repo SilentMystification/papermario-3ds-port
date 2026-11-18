@@ -12,6 +12,7 @@
 #include "nd_op.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_snap.h"
 #include "nd_scomp.h"
 #include "nd_gtab.h"
 #include "nd_lkey.h"
@@ -511,15 +512,18 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
     if (entchk_on()) { ent_c.nat++; return 0; }
     nd_ent_in = 1;
+    const unsigned lb = nd_ls_ord;
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
         const Gfx* fw = k->fw;
         if (e->op0 > e->a0) { if (e->pcn) nd_ent_sc += (unsigned)nd_ent_pieces(k->pc + e->pc0, e->pcn); else ent_gap(e->sd, fw + e->a0, e->op0 - e->a0); }
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
-        if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; continue; }
+        nd_ls_ord = lb + e->tri0;
+        if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; nd_ls_ord = lb + e->tri0 + e->ntri; continue; }
         ent_run_seg_interp(k, e);
+        nd_ls_ord = lb + e->tri0 + e->ntri;
     }
-    { const EntSeg* e = &k->seg[k->nseg - 1]; if (k->nops > e->op1) { if (k->tpcn) nd_ent_sc += (unsigned)nd_ent_pieces(k->pc + k->tpc0, k->tpcn); else ent_gap(k->tail, k->fw + e->op1, k->nops - e->op1); } }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { if (k->tpcn) nd_ent_sc += (unsigned)nd_ent_pieces(k->pc + k->tpc0, k->tpcn); else ent_gap(k->tail, k->fw + e->op1, k->nops - e->op1); } }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
     nd_ent_in = 0;
     ent_c.nat++;

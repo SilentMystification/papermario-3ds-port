@@ -82,3 +82,4 @@ int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned
     }
     return 0;
 }
+unsigned nd_snap_lsr(const uint32_t* b, unsigned ord) { unsigned r = 0; while (r + 1u < b[0] && b[2u + r + 1u] <= ord) r++; return r; } /* NCONV1D1: the range of a list snap table holding ord */

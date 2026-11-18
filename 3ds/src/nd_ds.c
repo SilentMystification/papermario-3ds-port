@@ -13,6 +13,7 @@
 #include "nd_dual.h"
 #include "macros.h"
 #include "nd_fs.h"
+unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */
 
 extern int pm_wide;  /* nd_set.c set_scissor: the wide sign rule */
 int is_host(u32 p);  /* nd_walk.c: the range test of ptr_res */
@@ -411,6 +412,7 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
             if (w0 & 1u) return;
         } else {
             nd_ds_apply(s, w0, w1);
+            if (nd_lsc_on) nd_lsc_unit(w0);
         }
     }
 }
@@ -434,7 +436,8 @@ static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth) {
             ds_gtab(s, (const NdGTab*)o->p, depth + 1u);
             if (o->a & 1u) return; /* a branch ends the list that holds it */
             break;
-        case NDG_VTX: case NDG_TRI: break; /* no state */
+        case NDG_VTX: break; /* no state */
+        case NDG_TRI: if (nd_lsc_on) nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); break;
         default: return; /* NDG_END */
         }
     }
