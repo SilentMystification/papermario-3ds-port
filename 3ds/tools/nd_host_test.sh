@@ -50,7 +50,7 @@ asset_manifest
 # HOSTSEL: the build outputs under HOST_IN stay out of the key and the tar. A parallel build (rowloop.sh) writes them while this
 # test lists its files, and pm_build.h changes on every lane build. No unit reads them (FACT: no hostsel reads.txt names one);
 # a unit that needs one fails on the missing file, it never passes on a stale one.
-HOST_GEN='^3ds/(src/(nd_gfx_tab|nd_ntab_descs|nd_pso_tab|map_restore_table)\.c|include/(pm_build|texkey_patch)\.h)	'
+HOST_GEN='^3ds/(src/(nd_gfx_tab|nd_ntab_descs|nd_pso_tab|nd_imgfx_tab|map_restore_table)\.c|include/(pm_build|texkey_patch)\.h)	'
 in_manifest $HOST_IN | grep -v -E "$HOST_GEN" > $OUT/host_in.txt
 [ -s $OUT/host_in.txt ] || { echo "FAIL host key: no files in HOST_IN"; exit 1; }
 # GENKEY (3ds/tools/readkey.sh): the gfx table key is K0 (image, this script, assets, trace tool, the path list of HOST_IN, the

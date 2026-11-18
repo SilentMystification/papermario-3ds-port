@@ -31,7 +31,7 @@ OUT = E.get("OUT", "build3ds")
 CACHE = E.get("PM_CACHE", "on") or "on"
 REV = E.get("PM_BUILD_REV", "")
 GC_ROOT = E.get("GENCACHE_DIR") or (E.get("MAIN_ROOT", ".") + "/build3ds/gencache")
-GC_EXCL = ["3ds/include/pm_build.h", "3ds/src/nd_pso_tab.c", "3ds/src/nd_gfx_tab.c", "3ds/src/nd_ntab_descs.c"]
+GC_EXCL = ["3ds/include/pm_build.h", "3ds/src/nd_pso_tab.c", "3ds/src/nd_imgfx_tab.c", "3ds/src/nd_gfx_tab.c", "3ds/src/nd_ntab_descs.c"]
 SKIP_RE = re.compile(r"(^|/)__pycache__/|\.pyc$|\.tmp\.")
 
 
@@ -239,7 +239,7 @@ def gt_k0(lines, himg, ahash):
 
 
 def pt_k0(lines, idm, himg, ahash):
-    paths = [p for p in rk_paths(lines, E["PT_IN"].split()) if p not in ("3ds/src/nd_pso_tab.c", "3ds/include/pm_build.h", "3ds/include/texkey_patch.h")]
+    paths = [p for p in rk_paths(lines, E["PT_IN"].split()) if p not in ("3ds/src/nd_pso_tab.c", "3ds/src/nd_imgfx_tab.c", "3ds/include/pm_build.h", "3ds/include/texkey_patch.h")]
     write_lines(OUT + "/rk_pso_tab_paths.txt", paths)
     r = subprocess.run(["git", "-c", "core.quotepath=off", "grep", "-a", "--untracked", "--no-exclude-standard", "-lF", "ND_PSO_DESC", "--", "src", "3ds/src"],
                        capture_output=True)
@@ -386,7 +386,7 @@ def cmd_pre():
 def pt_step(env, lines, idm):
     k0 = pt_k0(lines, idm, env["HIMGID"], env["AHASH"])
     Path(OUT + "/pt_k0.txt").write_bytes(k0.encode("utf-8", "surrogateescape"))
-    hit, env["PT_RKDIR"] = rk_get("pso_tab", k0, idm, [("nd_pso_tab.c", "3ds/src/nd_pso_tab.c")])
+    hit, env["PT_RKDIR"] = rk_get("pso_tab", k0, idm, [("nd_pso_tab.c", "3ds/src/nd_pso_tab.c"), ("nd_imgfx_tab.c", "3ds/src/nd_imgfx_tab.c")])
     env["PT_MISS"] = 0 if hit else 1
     if hit:
         print("gen_pso_tab: cache hit", file=sys.stderr)
