@@ -23,65 +23,11 @@
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
 #endif
 int nd_dq_on; /* S5CHUDA: a direct quad is drawing (nd_direct_quad .. nd_direct_end); read by gv_epoch_enter */
-void comb_in_walker(NdCombIn* in);                 /* nd_comb.c: the walker's combine inputs */
 void ens_clear(void);                              /* nd_tex_set.c */
 void nd_sr_forget(void);                           /* nd_set.c */
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame; /* nd_comb.c: the decision the last sync_combine made (diagnostics, the memo) */
 void pm_tex_set_filter(int linear);                  /* pm_tex.c */
 extern PmPlan cur_plan;                            /* nd_comb.c */
-extern int pm_comb_vprim;                         /* pm_comb.c */
-
-/* One decision: the inputs it was made under (key) and the outputs. Direct mapped by pso id; an entry of another id or other inputs is made again. */
-struct NdDec {
-    NdCombOut out;
-    uint32_t key[8];
-    NdPso id;
-    int ok;       /* 1: the direct path can state it (no tile 1 read, no noise, no box pattern) */
-    uint8_t used;
-};
-#define DEC_N 16u
-static NdDec dec_tab[DEC_N];
-
-static __attribute__((cold, noinline)) NdDec* dec_make(NdDec* e, NdPso id, const NdPsoN64* p, const uint32_t* key) {
-    NdCombIn in;
-    if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1 || !comb_set) op_setcombine(p->cw0, p->cw1); /* the tile fields of the pso words */
-    comb_in_walker(&in);
-    memset(e, 0, sizeof *e);
-    nd_comb_decide(&in, &e->out);
-    e->ok = !(e->out.plan_on && (e->out.plan.uses_tex1 || e->out.plan.uses_noise)) && !e->out.pat;
-    memcpy(e->key, key, sizeof e->key);
-    e->id = id;
-    e->used = 1;
-    return e;
-}
-
-/* The inputs of the decision that the pso id does not name: the other mode words it runs under, the walker flags and combiner constants the combine
- * work reads (nd_comb.c decide and sync_legacy). The primitive and environment colours are not inputs: they only colour the result (nd_direct_bind). */
-static void dec_key(uint32_t* k, const NdPsoN64* p, uint32_t mh, uint32_t ml) {
-    k[0] = mh; k[1] = ml;
-    k[2] = (uint32_t)(nd_ws.tex_on | nd_ws.use_t1 << 1 | nd_ws.td[1].valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 |
-                      comb_alpha_shade << 8);
-    k[3] = keyc; k[4] = keys; k[5] = conv_k4;
-    k[6] = (uint32_t)(uint8_t)nd_ws.prim_lod | (uint32_t)pm_comb_vprim << 8;
-    k[7] = p->cw0 ^ (p->cw1 * 2654435761u);
-}
-
-/* The decision of pso id under the current walker state (it sets the pso combine words in the walker state: the decision reads the tile fields they decode to). NULL: not statable. */
-const NdDec* nd_pso_decide(NdPso id) {
-    const NdPsoN64* p = nd_pso_get(id);
-    const uint32_t mh = (nd_ws.omode_h & ~p->omh_m) | (p->omh & p->omh_m);
-    const uint32_t ml = (nd_ws.omode_l & 7u) | (p->oml & ~7u);
-    uint32_t key[8];
-    NdDec* e = &dec_tab[id & (DEC_N - 1u)];
-    dec_key(key, p, mh, ml);
-    if (!e->used || e->id != id || memcmp(e->key, key, sizeof key)) {
-        uint32_t sh = nd_ws.omode_h;
-        nd_ws.omode_h = mh; /* the decision reads the cycle type of the pso's mode */
-        e = dec_make(e, id, p, key);
-        nd_ws.omode_h = sh;
-    }
-    return e->ok ? e : NULL;
-}
 
 int nd_direct_ready(void) {
     if (nd_img_role(0) != ROLE_MAIN || (nd_tgt.kind & NDK_ZERO)) return -1;  /* the main colour image: no off-screen target, no depth role, no z-buffer copy */
@@ -95,11 +41,10 @@ uint32_t nd_direct_prim(void) { return nd_ws.prim; }
 uint32_t nd_direct_env(void) { return nd_ws.envc; }
 
 int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
-    const unsigned char sn = nd_snap_arm; nd_snap_arm = 0; /* NDR2A: the snap of a converted direct record */
+    nd_snap_arm = 0; /* NDR2A: the arm of this record */
     const NdPsoN64* p = nd_pso_get(id);
     const uint32_t mh = (nd_ws.omode_h & ~p->omh_m) | (p->omh & p->omh_m);
     const uint32_t ml = (nd_ws.omode_l & 7u) | (p->oml & ~7u);
-    const NdDec* d;
     if (((mh >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* COPY and FILL rectangles have their own span rules */
     if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
     {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
@@ -116,11 +61,9 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
     pm_gpu_set_prim(prim, 0u);
     nd_ws.prim = prim; nd_ws.prim_lod = 0u;
     nd_ws.envc = env;
-    d = nd_pso_decide(id);
-    if (!d) return 0; /* the stream path sets the same words again: nothing it reads is changed */
-    if (sn) nd_snapchk_dir(&d->out); /* NDR2A */
+    const NdCombOut* o = nd_snap_dir_o(); /* NDR2D: the core 1 decision (nd_snap_pso) */
+    if (!o || (o->plan_on && (o->plan.uses_tex1 || o->plan.uses_noise)) || o->pat) return 0; /* the ok test of the former pso decision: nothing it reads is changed */
     {   /* what sync_combine does with the decision (scm_replay) */
-        const NdCombOut* o = &d->out;
         unsigned cc = 0;
         leg_mode = o->leg; comb_mode5 = o->mode5; box_pat = o->pat; plan_active = o->plan_on;
         ls_use = o->use; ls_why = o->why; ls_cyc = o->cyc; ls_dual = o->dual; ls_frame = rm_frame;
