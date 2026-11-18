@@ -32,6 +32,6 @@ Gate (exact). Pass: host PASS. snapchk bad 0 in both runs (the rnd compare now r
 Each drec bench byte-equal, or DIFF with a `rectsnap f<n>` or `bindsnap f<n>` line for the frame of its first DIFF draw.
 Stop: a crash, bad above 0, a DIFF frame with no rectsnap or bindsnap line, a stream overflow or fatal line, a tool fault. Commit the outputs, send the paths to the oracle with SendMessage, wait.
 Fix rights: the listed files, compile errors.
-Pitfalls: one host test at a time in a worktree (rowloop takes --no-host). PM_CACHE=off only as a prefix of one command, never exported. One bench per rowloop call. Each scene in its own call, no timeout option.
+Pitfalls: `bench.py run` does not build. Run `PM_LANE=NDR1C sh 3ds/build.sh` after each code change, before step 3 (FACT NDR0G2: STALE BUILD exit 5). One host test at a time in a worktree (rowloop takes --no-host). PM_CACHE=off only as a prefix of one command, never exported. One bench per rowloop call. Each scene in its own call, no timeout option.
 Keep each file's line endings (CRLF). A snap record is about 640 bytes (GUESS), the stream has 16 chunks of 32 KB per context (FACT nd_rec.c:30-31): the memo must stop a snap when the inputs stay the same.
 Hand-back: last commit `NDR1C 2: gate. <bench equal or DIFF draw d frame f> each; snapchk bad <2>, wst <2>` deletes this page. One SubagentHandback: commit hash, per bench equal or (first DIFF draw, frame, rectsnap and bindsnap frames, drecsum line), snapchk bad, wst and recs per run.
