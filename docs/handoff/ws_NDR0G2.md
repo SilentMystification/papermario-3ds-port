@@ -6,7 +6,8 @@ Edit only: 3ds/include/nd_snap.h, 3ds/src/nd_snap.c (new function at the end), 3
 - gv_epoch_enter (nd_geom.c:211-214) binds with `ensure_tile(nd_ws.use_t1 ? 1 : 0); dual_bind();` unless nd_dq_on.
 - The tile facts are read only in these functions: fb_prev_base (nd_tex_set.c:257-267), tile_bound (:291-293), fb_cand (:331-333), ensure_tile_slow (:335-385),
   ensure_tile (:441-449), glyph_atlas_bound (:565-572), dual_bind_load and dual_bind (nd_comb.c:397-435). tile_texel (:295-328) is not a bind: it stays.
-- NDR0G1: sc_cur.b[n] equals nd_ws.td[n] (zero when not valid) and tst1 tile_wrap, tile_sz, tile_shift of tile n at the triangle (snapchk b0 b1: bad 0).
+- NDR0G1 gate (FACT, a063785172): b0td b1td b0tile bad 143 (nimgm) and 2361 (wscmb). Core 0 keeps stale tiles after model hits and direct draws (dschk hides it by adopt,
+  nd_dschk.c:61-95). The snap blocks are the unit truth. So this row changes binds there: GUESS drec DIFF. BLOCKED: the orchestrator decides the gate (expected-diff gate or not).
 ## Edits
 1. nd_snap.h after NdSnapBind: `extern const NdSnapBind* nd_bsrc; /* NDR0G2: NULL = the walker tiles; else the 2 snap blocks (nd_snap_bind_run) */` and
    ```
