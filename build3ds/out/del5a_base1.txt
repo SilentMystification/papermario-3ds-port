@@ -1,0 +1,1 @@
+base spot_mac01_drec at 3c2469a28: stored, 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\3c2469a282ac6afc6c57367cec46f5ea4ea6e22c\spot_mac01_drec. No build, no run.

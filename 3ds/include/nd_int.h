@@ -55,7 +55,7 @@ int pm_gpu_spr_native(const uint32_t* rec);
 /* ---- W: globals and prototypes of the walker helpers that stayed in the former pm_gbi.c (moved with the group) ---- */
 const float (*pm_gbi_combined_ptr(void))[4];
 int clip_bits4(const float* p);
-int dlc_try(const Gfx* l);
+int dlc_try(const void* l);
 int ent_draw(const Gfx* rec);
 int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
 #define gp_on() (pm_ph_cen) /* PG0 and PERF-GBI counters: phase mode only (PROF2-2: not in a prof sample) */
@@ -97,7 +97,6 @@ extern unsigned s;
 
 /* ---- W: variables of the former pm_gbi.c that the walk group uses (global now) ---- */
 extern NdLight lt[9];
-extern const Gfx dlc_end[1];
 extern float combined[4][4];
 extern float vert_p[64][4];
 extern int comb_set;
@@ -348,7 +347,6 @@ extern DlcEnt* dlc_tab[DLC_TAB];
 extern EntKey* ent_tab[ENT_TAB];
 extern GdlCount gdl_c;
 extern EntCount ent_c;
-extern const Gfx dlc_end[1];
 void dlc_reset(void);
 unsigned dlc_gmi(void);
 int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi);
