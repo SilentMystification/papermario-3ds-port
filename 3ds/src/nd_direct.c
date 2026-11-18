@@ -340,7 +340,7 @@ void nd_trect_rec(const NdTRect* r) { NdPsoN64 pd; trect_pso(r, &pd); nd_dir_rec
  * the descriptor nd_direct_tex bound. The walker state a direct bind changed raises gv_epoch once, as the first state op of the stream would. */
 void nd_direct_quad(uint32_t mtx, const void* vtx4) {
     const u32 wm = ND_W0_D2(ND_FS_MTX, sizeof(Mtx), (G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW) ^ G_MTX_PUSH, 0) & 0xffffffu; /* gSPMatrix */
-    const u32 wv = ND_W0_VTX(4, 0) & 0xffffffu;                                                                       /* gSPVertex(v, 4, 0) */
+    const u32 wv = ND_NR_VTX(4, 0) & 0xffffffu;                                                                       /* gSPVertex(v, 4, 0) */
     const u32 t0 = __gsSP1Triangle_w1f(0, 1, 2, 0) & 0xffffffu;                            /* gSP1Triangle(0, 1, 2) */
     const u32 t1 = __gsSP1Triangle_w1f(0, 2, 3, 0) & 0xffffffu;                            /* gSP1Triangle(0, 2, 3) */
     nd_dq_on = 1;

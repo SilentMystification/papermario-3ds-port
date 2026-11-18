@@ -1,0 +1,6 @@
+LOOP DEL3C2 host rc 0, build rc 0, 3 s
+STAGE key-inputs 2 s STAGE gen 0 s --- build up to date (key 62f29569b026), skipping --- STAGE key 0 s 
+
+cmp spot_mac01_drec: 1/1 byte-equal 
+LOOP TIME host+build 3 s, run+cmp 18 s, total 21 s
+LOOP PASS

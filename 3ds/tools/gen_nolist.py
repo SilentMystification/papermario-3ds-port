@@ -20,6 +20,7 @@ HEADERS = [
     "3ds/tools/gbi_inc/PR/gbi.h",
     "include/PR/gs2dex.h",
     "3ds/include/nd_gbi.h",
+    "3ds/tools/gbi_inc/nd_gbi_host.h",
 ]
 
 EXTRA = ["Gfx", "gMainGfxPos"]
