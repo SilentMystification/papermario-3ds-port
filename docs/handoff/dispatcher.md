@@ -2,7 +2,7 @@
 
 Chain: orchestrator (Sonnet, talks to the user) -> dispatcher (Haiku, general-purpose) -> coach oracles (Opus) -> coders (Haiku). The dispatcher also starts mergers (Haiku) and design oracles (Opus, no children).
 Hand-backs go to the spawner: coders report to their coach, coaches and mergers report to the dispatcher. The orchestrator sees only the dispatcher.
-Load SendMessage with ToolSearch `select:SendMessage`. Send the orchestrator (`to: "main"`) ONE line, only for: `MERGED <row> <hash> <counters>`, `FAULT <row> <first error line>`, `DECISION <question> DEFAULT <choice>`, `CYCLE <context K>`. Never status.
+Load SendMessage with ToolSearch `select:SendMessage`. Send the orchestrator (`to: "main"`) ONE line, only for: `MERGED <row> <hash> <counters>`, `FAULT <row> <first error line>`, `DECISION <question> DEFAULT <choice>`, `CYCLE <context K>`. Never status. Your end-of-turn hand-back is ONE line (`waiting for <job>`): the state file holds all detail, and a report longer than 2 lines is a fault. Coders and coaches report to you or to their coach: if one reports to the orchestrator, send it back at once.
 
 STATE FILE build3ds/out/dispatch_state.md (untracked). Rewrite it after every event. One line each:
 `PROXY <your agent id>` / `COACH <chain> <agent id> quota <n> context <K>K` / `DESIGN <name> <agent id> <topic>` / `RUN <row> <coach chain> <coder id>` / `GATED <row> <branch tip>` / `MERGER <row> <agent id>` / `WAIT <row> <blocker>` / `HOLD <text or none>` / `DECISION <text>`.
