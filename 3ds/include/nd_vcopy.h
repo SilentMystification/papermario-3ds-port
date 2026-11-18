@@ -1,6 +1,6 @@
 /* VCOPY: the device entry of a local vertex copy list (src/model.c mdl_make_local_vertex_copy). The list is typed units (the copy of the
  * model node list, vertex loads moved to the copied vertices). nu = the units before ND_FS_END, ntri = the triangle count (not zero, so the
- * walker takes ent_gdl for the heap list as walk_call did; dlc_try refuses a heap list in both paths). */
+ * walker takes ent_gdl for the heap list as walk_call did; nd_sg_try refuses a heap list in both paths). */
 #ifndef ND_VCOPY_H
 #define ND_VCOPY_H
 #include <stdint.h>

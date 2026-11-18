@@ -248,7 +248,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 1u, 0);
     p[1] = 0;
     memcpy(p + 2, r, sizeof r);
-    nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0); nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at ent_run or walk_call) NREC2: the list snap table in header word 1 */
+    nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0); nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at nd_eg_run or walk_call) NREC2: the list snap table in header word 1 */
 }
 void nd_rec_ent(const void* rec) {
     rec_open();
@@ -414,7 +414,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
  * task and a custom gfx range). */
 /* DIRECT D11a: a push G_DL whose target is a static state list (in the program image, not a map shape list; to its G_ENDDL at most 64 ops,
  * each a state op of the executor: no list, vertex, triangle, rectangle, image or record op) is recorded in line: G_PM_LST and the list's
- * ops without the RDP syncs. The replay ran such a list on the op executor (walk_call: ent_gdl refuses a list without triangles, dlc_try a
+ * ops without the RDP syncs. The replay ran such a list on the op executor (walk_call: ent_gdl refuses a list without triangles, nd_sg_try a
  * list outside the map shapes; nd_ops_run with the sync state kept); G_PM_LST carries its list start (gv_epoch, ent_skipgen). The list is
  * read here on the recorder side, the replay reads no list. Any other target keeps its G_DL. */
 extern char __end__[];

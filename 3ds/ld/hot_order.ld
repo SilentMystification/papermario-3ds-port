@@ -166,12 +166,12 @@
 		*(.text.grange_flush_if_new)  /* 14.3 calls/frame, 332 B */
 		*(.text.grange_open_new)  /* 14.3 calls/frame, 488 B */
 		*(.text.ent_seg_native)  /* 14.0 calls/frame, 432 B */
-		*(.text.ent_run)  /* 12.7 calls/frame, 620 B */
+		*(.text.nd_eg_run)  /* 12.7 calls/frame, 620 B */
 		*(.text.entchk_on)  /* 12.3 calls/frame, 44 B */
 		*(.text.ent_hash)  /* 6.7 calls/frame, 68 B */
 		*(.text.dlc_set_geom)  /* 1.7 calls/frame, 68 B */
 		*(.text.dlc_static_group)  /* 0.7 calls/frame, 564 B */
-		*(.text.dlc_try)  /* 0.7 calls/frame, 1100 B */
+		*(.text.nd_sg_try)  /* 0.7 calls/frame, 1100 B */
 		/* class X: other, ran in the census */
 		*(.text.nd_gx_w)  /* 674.7 calls/frame, 540 B */
 		*(.text.nd_unit_same)  /* 654.7 calls/frame, 632 B */

@@ -267,7 +267,7 @@ bad:
  * The next walker entry is queued after these writes (nd_wq.c wq_put barrier). dlc_reset keeps the tables of the current pm_dlc_gen, so the
  * first drawn step reads them and does not load them. Same files, same bytes as the walker build: only the thread and the time change. */
 __attribute__((cold, noinline)) void pm_dlc_preload(void) {
-    if (!seam_get()) return; /* as dlc_build: no seam table, no .dlc read */
+    if (!seam_get()) return; /* as nd_sg_build: no seam table, no .dlc read */
     const unsigned t0 = pm_ticks();
     (void)dlcp_open();
     if (pm_xf.on) pm_xf.dlcp_t += pm_ticks() - t0; /* XFT */
@@ -383,7 +383,7 @@ __attribute__((cold, noinline)) void nd_dlcp_line(unsigned f) {
     nd_dlcp_pre = nd_dlcp_rt = nd_dlcp_full = 0;
 }
 extern int nd_mtx_static; /* SEAM2: the last model matrix load was a static matrix (nd_mtx_set.c) */
-__attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const void* l, int stat) {
+__attribute__((cold, noinline)) int nd_sg_build(DlcEnt* e, const void* l, int stat) {
     const NdSeamTab* st = seam_get();
     const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
     const int use_tp = sl && sl->cnt && (sl->cls < 2 || stat); /* SEAM2: a T point list under a moving matrix is split in object space: not used */
@@ -655,8 +655,8 @@ void pm_gbi_dlcc(unsigned* o) {
     o[0] = dlc_c.hit + dlc_c.compile; o[1] = dlc_c.grp; o[2] = dlc_c.skip; o[3] = dlc_c.srep; o[4] = dlc_c.i_ring; o[5] = dlc_c.i_mat; o[6] = dlc_c.i_lit; o[7] = dlc_c.sfail + dlc_c.replay;
     o[8] = dbg_dsg; o[9] = dbg_seg;
 }
-/* S3N-3c: the static ranges of a shape list for nd_model_draw. The groups that dlc_try replays statically (box test, no lit group, room in the pools), one range per batch as
- * dlc_static_group cuts them. No replay and no counters. Returns the count; -1 when dlc_try would not replay the list statically (the fallback); -2 when out is full. */
+/* S3N-3c: the static ranges of a shape list for nd_model_draw. The groups that nd_sg_try replays statically (box test, no lit group, room in the pools), one range per batch as
+ * dlc_static_group cuts them. No replay and no counters. Returns the count; -1 when nd_sg_try would not replay the list statically (the fallback); -2 when out is full. */
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S4-1 (diagnostic) */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx); /* S5-1 (b); WIDE1-1: idx = the indices of the range, tested for edge vertices in wide mode */
@@ -763,7 +763,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
         dlc_free(e);
         e->gen = pm_dlc_gen; e->refused = 0;
         unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-        int r = dlc_build(e, l, nd_mtx_static);
+        int r = nd_sg_build(e, l, nd_mtx_static);
         if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
         e->hash = dlc_hash(l);
         if (r) e->refused = (u8)r;
@@ -815,7 +815,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
 }
 
 /* DOORHITCH: build the compiled list of a model before its first draw (pm_xfer.c: the hidden models of a new map, under the covered frames of
- * the load). The same build as dlc_try's; 1 when it built. Cold: once per list and map. */
+ * the load). The same build as nd_sg_try's; 1 when it built. Cold: once per list and map. */
 __attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv, int stat) {
     const uint32_t* l = (const uint32_t*)lv; /* DEL5A */
     if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
@@ -825,7 +825,7 @@ __attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv, int stat) {
     dlc_free(e);
     e->gen = pm_dlc_gen; e->refused = 0;
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-    int r = dlc_build(e, l, stat);
+    int r = nd_sg_build(e, l, stat);
     if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
     e->hash = dlc_hash(l);
     dlc_c.compile++;
@@ -859,7 +859,7 @@ static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const uint32
     dlc_free(e);
     e->gen = pm_dlc_gen; e->refused = 0;
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
-    int r = dlc_build(e, l, nd_mtx_static);
+    int r = nd_sg_build(e, l, nd_mtx_static);
     if (pm_xf.on) { pm_xf.dlc_n++; pm_xf.dlc_t += pm_ticks() - xt0; } /* MAPX-1 */
     e->hash = dlc_hash(l);
     dlc_c.compile++;
@@ -871,7 +871,7 @@ static void __attribute__((noinline, cold)) dlc_group_slow(const uint32_t* l, co
     nd_nr_list(l + 2u * g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
     dlc_depth--;
 }
-int dlc_try(const void* lv) {
+int nd_sg_try(const void* lv) {
     const uint32_t* l = (const uint32_t*)lv; /* DEL5A: the unit pairs of the shape list */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }

@@ -380,9 +380,9 @@ typedef struct {
     unsigned yay_pre;             /* MAPX-4: decode_yay0 calls served by the core-1 prefetch */
     unsigned inv_n;               /* pm_tex_invalidate calls */
     unsigned au_t, load_t;        /* map load: pm_audio_drain ticks, whole load_map_by_IDs ticks */
-    unsigned dlc_n, dlc_t;        /* dlc_build calls, ticks */
+    unsigned dlc_n, dlc_t;        /* nd_sg_build calls, ticks */
     unsigned mdl_miss;            /* model cache misses (nd_recs.c rec_run) */
-    unsigned ent_n;               /* ent_compile calls */
+    unsigned ent_n;               /* nd_eg_build calls */
     unsigned seam_t, dlcp_t, ent_t; /* XFT: ticks of seam_get (nd_shape.c), dlcp_open (nd_shape.c), first compiles of entity keys (nd_ent.c) */
     unsigned tex_n, tex_b, tex_t; /* texture cache misses (decode and upload): count, bytes, ticks */
     int load_step;                /* the step in progress ran load_map_by_IDs */

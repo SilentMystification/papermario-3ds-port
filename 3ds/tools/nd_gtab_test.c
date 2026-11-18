@@ -570,8 +570,8 @@ static void v2_dev(const NdNTab* t, const char* name, int fault, unsigned n) {
     for (unsigned k = 0; t->ops[k].op != NDN_END; k++) if (t->ops[k].op == NDN_DRAW) ntri += t->ops[k].b;
     if (dv->ntri != ntri / 3u) { v2_dev_bad++; v2_fail("device index triangles", name, 0); }
 }
-/* EMIT4: the flat words of a v2 list. f_list copies ent_flat (nd_ent.c) from the static list (the reference, into ffa); nd_ntab_flat walks the
- * unit copy of the list (ndnu) with f_call for its calls (into ffb). A call target is a Gfx symbol (f_gfx), as is_host in ent_flat. */
+/* EMIT4: the flat words of a v2 list. f_list copies nd_eg_flat (nd_ent.c) from the static list (the reference, into ffa); nd_ntab_flat walks the
+ * unit copy of the list (ndnu) with f_call for its calls (into ffb). A call target is a Gfx symbol (f_gfx), as is_host in nd_eg_flat. */
 static uint32_t ffa[2u * ND_DLC_MAXOPS], ffb[2u * ND_DLC_MAXOPS];
 static unsigned f_words, f_v2, f_w, v2_flat_bad;
 static const GSym* f_sym(uint32_t w1) {

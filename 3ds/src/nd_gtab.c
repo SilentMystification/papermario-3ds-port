@@ -85,7 +85,7 @@ void nd_tab_init(void) { /* GKEY2 calls it before the logic thread starts; DEL5B
     if (!nt_sorted) nt_sort(); }
 #ifndef ND_SCOMP_HOST
 /* S7RUN: nd_rec_dl (nd_gtab.h). Core 1. A list that rec_inline (nd_rec.c) records in line (to its G_ENDDL fewer than 64 units, each a state op) is
- * flagged state-only: the runner then does what G_PM_LST and the state run did, with no ent_gdl or dlc_try call. Memo of the last 8 lookups. */
+ * flagged state-only: the runner then does what G_PM_LST and the state run did, with no ent_gdl or nd_sg_try call. Memo of the last 8 lookups. */
 #include "ultra64.h"
 #include "variables.h"
 #include "pm_port.h"

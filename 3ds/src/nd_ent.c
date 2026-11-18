@@ -1,5 +1,5 @@
-/* nd_ent.c: the entity path (plan_s10_path group E, LS-2): the entity draw lists compiled from the static pools (ent_compile,
- * ent_run, ent_gdl, ent_draw), their key table and the record case of G_PM_ENT (nd_ent_case, called by the walk). Cut from
+/* nd_ent.c: the entity path (plan_s10_path group E, LS-2): the entity draw lists compiled from the static pools (nd_eg_build,
+ * nd_eg_run, ent_gdl, ent_draw), their key table and the record case of G_PM_ENT (nd_ent_case, called by the walk). Cut from
  * the former pm_gbi.c and nd_shape.c without logic change (D12). */
 #include <stdio.h>
 #include <string.h>
@@ -136,7 +136,7 @@ u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
 }
 
 static int ent_flat_call(uint32_t w1, unsigned* n, int depth); /* LKEY: defined below */
-int ent_flat(const Gfx* l, unsigned* n, int depth) {
+int nd_eg_flat(const Gfx* l, unsigned* n, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
@@ -152,7 +152,7 @@ int ent_flat(const Gfx* l, unsigned* n, int depth) {
     }
     return 0;
 }
-/* EMIT4: a v2 list reads its flat words from the device entries (nd_ntab_flat); a callee without an entry is read from its Gfx list (ent_flat) */
+/* EMIT4: a v2 list reads its flat words from the device entries (nd_ntab_flat); a callee without an entry is read from its Gfx list (nd_eg_flat) */
 static unsigned ent_flat_w, ent_v2_log;
 static int ent_flat_call(uint32_t w1, unsigned* n, int depth) {
     const Gfx* t = (const Gfx*)ptr_of(w1);
@@ -160,7 +160,7 @@ static int ent_flat_call(uint32_t w1, unsigned* n, int depth) {
     const NdNDev* c = nd_ntab_find(t);
     if (c) return nd_ntab_flat(c, ent_flat_buf, n, ND_DLC_MAXOPS, depth + 1, ent_flat_call);
     ent_flat_w++;
-    return ent_flat(t, n, depth + 1);
+    return nd_eg_flat(t, n, depth + 1);
 }
 
 /* the pool copies against the list: every triangle corner is the vertex the slot holds at the triangle (bytes 0 to 5 and 8 to 15; the flag word is the palette index). Per segment. */
@@ -200,7 +200,7 @@ void ent_refcheck(const EntKey* k, const Gfx* l) {
 
 /* MERLEE: a list in a game heap (the general heap, or the battle heap, which is gFrameBuf2) was built at run time: the imgfx animated mesh lists
  * (imgfx.c imgfx_load_anim) point at vertex buffers that imgfx_mesh_anim_update rewrites every frame. Its vertex span goes into the per-frame hash
- * (ent_run), as for a keyed list; without it the first compiled pose was drawn for the whole animation. Static lists (entity, map, overlay data) keep the list-only hash. */
+ * (nd_eg_run), as for a keyed list; without it the first compiled pose was drawn for the whole animation. Static lists (entity, map, overlay data) keep the list-only hash. */
 static int ent_heap_list(const Gfx* l) {
     extern u8 heap_generalHead[]; extern u16 gFrameBuf2[];
     return (u32)l - (u32)heap_generalHead < (u32)GENERAL_HEAP_SIZE || (u32)l - (u32)gFrameBuf2 < (u32)BATTLE_HEAP_SIZE;
@@ -211,7 +211,7 @@ static NdSDef* ent_sdef(const Gfx* l, u32 a, u32 b) { /* the gap [a, b) of l as 
     if (d) { d->u = l + a; d->n = (uint8_t)(b - a); } return d; }
 static void ent_sdef_free(EntKey* k) { for (unsigned s = 0; s < k->nseg && k->seg; s++) free(k->seg[s].sd); free(k->tail); k->tail = NULL; }
 unsigned nd_ent_tab, nd_ent_notab, nd_ent_gapt, nd_ent_gaps, nd_ent_gapn; /* S7ENT census (entsync line): lists compiled with a table, without; gaps run as a chain of table pieces, gaps from ent_sdef in tabled lists, gaps of lists without a table */
-void ent_compile(EntKey* k, const Gfx* l0) {
+void nd_eg_build(EntKey* k, const Gfx* l0) {
     pm_xf.ent_n++; /* MAPX-1 */
     unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
@@ -223,7 +223,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
     ent_c.comp++;
     const NdNDev* nt = nd_ntab_find(l0); ent_flat_w = 0;
-    const int fl = nt ? nd_ntab_flat(nt, ent_flat_buf, &nops, ND_DLC_MAXOPS, 0, ent_flat_call) : ent_flat(l0, &nops, 0);
+    const int fl = nt ? nd_ntab_flat(nt, ent_flat_buf, &nops, ND_DLC_MAXOPS, 0, ent_flat_call) : nd_eg_flat(l0, &nops, 0);
     k->v2 = (u8)(nt && !ent_flat_w);
     if (!fl) { k->why = 5; return; }
     ent_flat_buf[nops].words.w0 = ND_FS_W0(ND_FS_END, 0); ent_flat_buf[nops].words.w1 = 0;
@@ -239,7 +239,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     nd_ent_strip(w, dlc_words);
     for (unsigned s = 0; s < ns; s++) ntri += ent_sbuf[s].ntri;
     /* BTLUI: a list whose vertex loads feed a later list (no triangle after its last G_VTX, e.g. the damage star corners of
-     * damage_indicator D_09002150..80) stays on the walker: ent_run skips loads without triangles and clears the walker slots. */
+     * damage_indicator D_09002150..80) stays on the walker: nd_eg_run skips loads without triangles and clears the walker slots. */
     { unsigned lastv = 0, lastt = 0;
       for (unsigned i = 0; i < nops; i++) { unsigned op = ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1);
           if (op == ND_FS_VTX) lastv = i + 1; else if (op == ND_FS_TRI1 || op == ND_FS_TRI2) lastt = i + 1; }
@@ -280,7 +280,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (entchk_on()) ent_refcheck(k, l);
 }
 
-static void ent_compile_t(EntKey* k, const Gfx* l) { const unsigned t0 = pm_ticks(); ent_compile(k, l); if (pm_xf.on) pm_xf.ent_t += pm_ticks() - t0; } /* XFT: a first compile, timed */
+static void ent_compile_t(EntKey* k, const Gfx* l) { const unsigned t0 = pm_ticks(); nd_eg_build(k, l); if (pm_xf.on) pm_xf.ent_t += pm_ticks() - t0; } /* XFT: a first compile, timed */
 
 void ent_reset(void) {
     for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { ent_sdef_free(ent_tab[i]); free(ent_tab[i]->seg); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
@@ -359,7 +359,7 @@ EntKey* ent_find(const Gfx* l, u32 vb) {
 u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h = (h ^ nd_ws.segbase[i]) * 16777619u; return h | 1u; }
 
 /* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts are dynamic by address: walker (DIRECT D10a:
- * the frame stream holds no list). 1: drawn, 0 not drawn, -1 ring path wanted (the caller skips dlc_try). */
+ * the frame stream holds no list). 1: drawn, 0 not drawn, -1 ring path wanted (the caller skips nd_sg_try). */
 int ent_gdl(const Gfx* l) {
     if (!dlc_on || ((u32)l & 7u) || (u32)l - (u32)D_80164000 < 2u * sizeof(DisplayContext)) { gdl_c.skip++; return 0; }
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
@@ -388,7 +388,7 @@ int ent_gdl(const Gfx* l) {
       if (k->pcalls >= 4u) return -1; } /* PBATCH1: a particle list (4+ calls last frame): the ring path batches 8 matrices per draw */
     if (k->st == ENT_DYN) { gdl_c.dyn++; return 0; }
     if (k->st == ENT_REF && k->why != 6) { gdl_c.ref++; return 0; }
-    int r = ent_run(l, k, 0);
+    int r = nd_eg_run(l, k, 0);
     if (r) gdl_c.nat++; else if (k->st == ENT_DYN) gdl_c.dyn++; else gdl_c.ref++;
     return r;
 }
@@ -401,7 +401,7 @@ int ent_draw(const Gfx* rec) {
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
     ent_c.draws++;
     EntKey* k = ent_lookup(l, rec[1].words.w1);
-    return ent_run(l, k, rec[1].words.w0 | (rec[2].words.w0 << 8));
+    return nd_eg_run(l, k, rec[1].words.w0 | (rec[2].words.w0 << 8));
 }
 
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
@@ -415,7 +415,7 @@ static void ent_gap(NdSDef* d, const Gfx* l, u32 n) { /* S6E: a gap as a compile
 /* HC8 step 7: the recompile of a changed entity (content hash), the interpreter run of one segment (the fallback loop) are cold: out of line. */
 static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const Gfx* l) {
     if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
-    else { u8 nr = k->nrec; ent_compile(k, l); k->nrec = nr; }
+    else { u8 nr = k->nrec; nd_eg_build(k, l); k->nrec = nr; }
 }
 static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const EntSeg* e) {
     const Gfx* fw = k->fw;
@@ -423,13 +423,13 @@ static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, 
     for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + i), 1u); } /* DEL1B */
     if (e->op1 > e->op0) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + e->op0), e->op1 - e->op0); } /* DEL1B */
 }
-int ent_run(const Gfx* l, EntKey* k, u32 segid) {
+int nd_eg_run(const Gfx* l, EntKey* k, u32 segid) {
     const unsigned f = pm_frame_count();
     if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
     if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
         k->fr = f;
         if (ent_hash(k->v2 ? NULL : l, k->vp, k->vlen) != k->hash) ent_run_recompile(k, l);
-    } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { ent_compile(k, l); }
+    } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { nd_eg_build(k, l); }
     k->ndraw++; k->segid = segid;
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
     if (entchk_on()) { ent_c.nat++; return 0; }
@@ -446,7 +446,7 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
         nd_ls_ord = lb + e->tri0 + e->ntri;
     }
     { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { ent_gap(k->tail, k->fw + e->op1, k->nops - e->op1); } }
-    tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
+    tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of nd_sg_try */
     nd_ent_in = 0;
     ent_c.nat++;
     return 1;

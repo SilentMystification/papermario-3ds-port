@@ -429,7 +429,7 @@ static u8* read_file(const char* path, u32* len) {
 _Static_assert(sizeof(NdSeamList) == 24 && sizeof(NdTp) == 10, "NdSeamList or NdTp layout changed");
 /* S7MAP: the compiled static lists of this shape, built here by nd_dlc_compile (the code the console ran at the first draw of each list)
  * with the seam table of write_seam: one result per (list, variant). Variant 1 compiles with the T points of the list, variant 0 without. A list
- * with no points has variant 0 only, a list with points of class 0 or 1 has variant 1 only (the run-time use_tp rule of nd_shape.c dlc_build),
+ * with no points has variant 0 only, a list with points of class 0 or 1 has variant 1 only (the run-time use_tp rule of nd_shape.c nd_sg_build),
  * a list of class 2 with points has both (stat 0 and stat 1). A list the compiler refuses has no section (the console compiles it as before).
  * Output <dir>/<name>.dlc, little endian (version 2: the vertices are runs into the shape data, the indices are 7 bit fields, the derived fields are left out):
  *   "NDDC", version u32 = 2, shape size u32 (the key against the .nds), nsec u32,
