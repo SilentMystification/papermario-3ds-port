@@ -12,10 +12,12 @@
 #include "nd_geo.h"
 
 extern unsigned short* nuGfxCfb_ptr;
+void nd_snap_tgt(uint32_t w0, uint32_t w1); /* NDR0C: prototype (fix: implicit-declaration warning in geounit); nd_snap.c strong, weak no-op below */
 /* the record: one unit, w0 = the G_SETCIMG fields of the walker (siz << 12 | width - 1), w1 = the physical address (the identity for host addresses) */
 void nd_target_beginw(uint32_t img, uint32_t siz, uint32_t width) {
     const uint32_t rec[2] = { (siz & 3u) << 12 | ((width - 1u) & 0xfffu), img };
     nd_rec_napi(nd_tgt_run, rec, 1u);
+    nd_snap_tgt(rec[0], rec[1]);
 }
 void nd_target_end(void) {
     nd_target_beginw((uint32_t)(uintptr_t)nuGfxCfb_ptr, G_IM_SIZ_16b, 320u);
@@ -31,6 +33,8 @@ void nd_mesh_vtxw(uint32_t v, unsigned n, unsigned v0) {
 }
 /* NDR0A: the snapchk take (nd_snap.c, strong). This weak no-op serves the host units that link nd_geo.c without nd_snap.c. */
 __attribute__((weak)) void nd_snap_mesh(void) {}
+/* NDR0C: the target record of the snapshot (nd_snap.c, strong). Weak no-op for the host units. */
+__attribute__((weak)) void nd_snap_tgt(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; }
 void nd_mesh_tri1(unsigned a, unsigned b, unsigned c, unsigned f) {
     nd_snap_mesh();
     NDGEO_TRI1(nd_nr, a, b, c, f);
