@@ -13,6 +13,7 @@
 #include "variables.h"
 #include "nd_int.h"
 #include "nd_op.h"
+#include "nd_fs.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdLight lt[9];
