@@ -119,6 +119,7 @@ unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW
 #ifndef ND_SCOMP_HOST
 #include "nd_int.h"
 #include "nd_api.h"
+#include "nd_ds.h" /* NST2C: the core 1 state of a compiled def */
 #include "pm_gpu.h"
 #include "pm_port.h"
 
@@ -158,6 +159,10 @@ void nd_scomp_rec(NdSDef* d, const void* vv, unsigned nv) {
     p[1] = nv;
     memcpy(p + 2, v, nv * 8u);
     nd_rec_napi(nd_scomp_run, p, 1u + nv);
+#ifndef ND_SCOMP_HOST /* NST2C: the host builds link this file without nd_ds.c */
+    nd_ds_scomp(&nd_ds, (const uint32_t*)d->u, d->n, d->vmask, v, nv, nd_ds_unit);
+#endif
+    nd_ds_scomp(&nd_ds, (const uint32_t*)d->u, d->n, d->vmask, v, nv, nd_ds_unit); /* NST2C */
 }
 
 /* ---- core 0: the run ---- */

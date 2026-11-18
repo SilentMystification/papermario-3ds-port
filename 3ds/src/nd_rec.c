@@ -243,7 +243,7 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
  * R13NOP: the R13 syncs (typed NDO_MISC_NOP units) are dropped here; the count q[26] is the kept units. */
 /* NST2b: one typed unit into the core 1 state (nd_ds_apply), its NDO_CALL list (depth 1) and the NST3 ep rule. The model record
  * (nd_rec_model) and the stream units (nd_rec_nr) both call it. */
-static void ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
+void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
     const unsigned ch = nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
     if ((w0 >> 24) == NDO_CALL) nd_ds_list(s, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
     { /* NST3 ep rule (design section 6), core 1 data only */
@@ -262,7 +262,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     memcpy(p + 2, rec, G_PM_REC_WORDS * 8u); uint32_t* q = p + 2; uint32_t* o = q + 2 * G_PM_REC_WORDS;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
-    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, ds_unit); } /* NST2b: the model record feeds the core 1 state */ ds_ep = 1; /* NST2B 1b: a model record is a state change for the ep bit */
+    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ ds_ep = 1; /* NST2B 1b: a model record is a state change for the ep bit */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
 void nd_rec_spr(const void* rec, const void* geo) {
@@ -287,6 +287,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 1u, 0);
     p[1] = 0;
     memcpy(p + 2, r, sizeof r);
+    nd_ds_list(&nd_ds, list, 0); /* NST2C: the entity's list state on core 1 (core 0 runs it at ent_run or walk_call) */
 }
 void nd_rec_ent(const void* rec) {
     rec_open();
@@ -323,6 +324,10 @@ void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
 }
 /* NATIVEAPI S4: a run of particle draws (nd_api.h NdParts). S7CONV: a list is a flat particle list when it has a native table with
  * NDG_F_PARTS (nd_gtab.h: the build-time form of the old parts_ok rule, proven equal by nd_gtab_test.c). Memo: the last 8 lists found. */
+/* NST2C: the units of a native record feed core 1 (nd_ds_unit; a sync is skipped) */
+void nd_ds_feed(const uint32_t* u, unsigned n) {
+    for (unsigned k = 0; k < n; k++) if (u[2u * k] != ND_NOP_A) nd_ds_unit(&nd_ds, u[2u * k], u[2u * k + 1u]);
+}
 void nd_rec_nr(uint32_t w0, uint32_t w1); /* the stream form of one typed unit (below) */
 static const NdGTab* parts_tab(const void* l) {
     static const void* memo_l[8];
@@ -366,6 +371,7 @@ void nd_parts_end(NdParts* b) {
             if (j == b->pre ? id != NDO_CALL : !(id == NDO_MTX || id == NDO_PRIM || id == NDO_ENV || id == NDO_TILESIZE || id == NDO_POPMTX)) { v = 0; break; }
         }
     nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
+    nd_ds_parts(&nd_ds, b->u, nd_ds_unit); /* NST2C: the instances' state on core 1 */
     b->n = 0;
 }
 /* D4b-3: a state op (HC4a: typed by the recorder) extends the open native record run when nothing was recorded after it (no span, no other command) and the chunk has room;
@@ -412,7 +418,7 @@ static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
-    ds_unit(&nd_ds, w0, w1);
+    nd_ds_unit(&nd_ds, w0, w1);
     rec_op_t(t);
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips

@@ -443,3 +443,24 @@ int nd_ds_cmp(const NdDs* a, const NdDs* b, const char** bad, int max) {
     }
     return n;
 }
+
+/* NST2C: a parts record (nd_parts_end layout). The list call at index pre (the table pointer) has no state; the MTX, PRIM, ENV, TILESIZE
+ * and POPMTX units of each instance run in record order (nd_parts_run order: pre units, list, post units). */
+void nd_ds_parts(NdDs* s, const uint32_t* u, NdDsUnitFn unit) {
+    const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
+    const uint32_t* p = u + 2;
+    for (unsigned k = 0; k < n; k++, p += 2u * m)
+        for (unsigned j = 0; j < m; j++) if (j != pre) unit(s, p[2u * j], p[2u * j + 1u]);
+}
+/* NST2C: a compiled def (nd_scomp.c rec_ops order): value unit j takes v[2j], v[2j+1]; a sync (ND_NOP_A) is skipped. */
+void nd_ds_scomp(NdDs* s, const uint32_t* du, unsigned n, uint32_t vmask, const uint32_t* v, unsigned nv, NdDsUnitFn unit) {
+    unsigned j = 0;
+    for (unsigned k = 0; k < n; k++) {
+        uint32_t w0 = du[2u * k], w1 = du[2u * k + 1u];
+        if (vmask >> k & 1u) {
+            if (j >= nv) continue;
+            w0 = v[2u * j]; w1 = v[2u * j + 1u]; j++;
+        }
+        if (w0 != ND_NOP_A) unit(s, w0, w1);
+    }
+}

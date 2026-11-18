@@ -126,6 +126,45 @@ int main(int argc, char** argv) {
         bad += (int)mb;
 #undef C2
     }
+    /* NST2C (a): a parts record of 2 instances, m 3: {PRIM, CALL (index pre 1), ENV}. Instance 1 PRIM 0x1111 ENV 0x2222, instance 2 PRIM 0x3333 ENV 0x4444.
+     * fault: the pre field is 2, so the ENV post unit is the skipped index and envc stays 0. */
+    {
+        static NdDs pz;
+        static uint32_t pu[2 + 2 * 6];
+        unsigned xf = 0, xb = 0;
+#define C3(name, got, want) do { xf++; if ((unsigned long)(got) != (unsigned long)(want)) { xb++; printf("nst2c BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
+        memset(pu, 0, sizeof pu);
+        pu[0] = 2u | (fault ? 2u : 1u) << 8 | 3u << 16;
+        pu[2] = NDO_W0(NDO_PRIM, 5); pu[3] = 0x1111u;
+        pu[4] = NDO_W0(NDO_CALL, 0); pu[5] = 0xDEADu;
+        pu[6] = NDO_W0(NDO_ENV, 0); pu[7] = 0x2222u;
+        pu[8] = NDO_W0(NDO_PRIM, 7); pu[9] = 0x3333u;
+        pu[10] = NDO_W0(NDO_CALL, 0); pu[11] = 0xBEEFu;
+        pu[12] = NDO_W0(NDO_ENV, 0); pu[13] = 0x4444u;
+        nd_ds_parts(&pz, pu, nd_model_unit);
+        C3("parts prim", pz.w.prim, 0x3333u); C3("parts prim_lod", pz.w.prim_lod, 7);
+        C3("parts envc", pz.w.envc, 0x4444u);
+        printf("nst2c parts fields %u bad %u\n", xf, xb);
+        bad += (int)xb; nf += (int)xf;
+#undef C3
+    }
+    /* NST2C (b): a compiled def {PRIM value slot, ENV}, vmask 1, one value PRIM (0x5, 0xABCD): prim from the value, envc from the static unit. */
+    {
+        static NdDs dz;
+        static uint32_t du[4], dv[2];
+        unsigned yf = 0, yb = 0;
+#define C4(name, got, want) do { yf++; if ((unsigned long)(got) != (unsigned long)(want)) { yb++; printf("nst2c BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
+        du[0] = NDO_W0(NDO_PRIM, 0); du[1] = 0;
+        du[2] = NDO_W0(NDO_ENV, 0); du[3] = 0x7777u;
+        dv[0] = NDO_W0(NDO_PRIM, 5); dv[1] = 0xABCDu;
+        nd_ds_scomp(&dz, du, 2, 1u, dv, 1, nd_model_unit);
+        C4("scomp prim", dz.w.prim, 0xABCDu); C4("scomp prim_lod", dz.w.prim_lod, 5);
+        C4("scomp envc", dz.w.envc, 0x7777u);
+        printf("nst2c def fields %u bad %u\n", yf, yb);
+        bad += (int)yb; nf += (int)yf;
+#undef C4
+    }
+    printf("nst2c fields %d bad %d\n", nf, bad);
     printf("nst1 fields %d bad %d\n", nf, bad);
     return bad ? 1 : 0;
 }
