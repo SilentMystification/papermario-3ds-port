@@ -80,6 +80,29 @@ int main(int argc, char** argv) {
         bad += mb;
         printf("ndr0f mix bad %d\n", mb);
     }
+    { /* NDR0G1: the bind block of tile 1 (nd_snap_bind): the td when valid, the tile words always */
+        static NdTd td; static NdTst t;
+        static const unsigned wr[4] = { 1, 2, 4, 5 };
+        static const int sz[4] = { 4, 8, 60, 124 };
+        NdSnapBind o;
+        int bb = 0;
+        memset(&td, 0, sizeof td); memset(&t, 0, sizeof t);
+        td.valid = 1; td.src = (const uint8_t*)0x1000; td.x0 = 3; td.w = 16;
+        memcpy(t.tile_wrap[1], wr, sizeof wr); memcpy(t.tile_sz[1], sz, sizeof sz);
+        t.tile_shift[1][0] = 1; t.tile_shift[1][1] = 0;
+        nd_snap_bind(&td, &t, 1, &o);
+        if (o.td.x0 != (fault ? 4 : 3)) bb++;
+        if (o.td.w != 16) bb++;
+        if (o.wrap[3] != 5u) bb++;
+        if (o.sz[2] != 60) bb++;
+        if (o.shift[0] != 1u) bb++;
+        td.valid = 0;
+        nd_snap_bind(&td, &t, 1, &o);
+        if (o.td.src != NULL) bb++;
+        if (o.wrap[3] != 5u) bb++;
+        bad += bb;
+        printf("ndr0g bind bad %d\n", bb);
+    }
     (void)nf;
     return bad ? 1 : 0;
 }

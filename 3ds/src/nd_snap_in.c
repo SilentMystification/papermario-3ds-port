@@ -47,6 +47,15 @@ void nd_snap_rnd(const NdDs* s, NdSnapChk* r) {
     r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc;
 }
 
+/* NDR0G1: the bind block of tile n as ensure_tile and dual_bind read it (td zero when not valid). */
+void nd_snap_bind(const NdTd* td, const NdTst* t, int n, NdSnapBind* o) {
+    memset(o, 0, sizeof *o);
+    if (td->valid) o->td = *td;
+    memcpy(o->wrap, t->tile_wrap[n], sizeof o->wrap);
+    memcpy(o->sz, t->tile_sz[n], sizeof o->sz);
+    o->shift[0] = t->tile_shift[n][0]; o->shift[1] = t->tile_shift[n][1];
+}
+
 /* NDR0F1: the mix of sync_render (nd_set.c) on the arguments. Returns 1 with col = the colour mix of nd_mix1 (nd_set.c), 2 with col = the
  * fog shade alpha mix (F08), 0 with col 0 (no mix). */
 int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned* col) {

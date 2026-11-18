@@ -7,6 +7,9 @@
 #include "nd.h"
 #include "nd_ds.h"
 
+typedef struct NdSnapBind {
+    NdTd td; unsigned wrap[4]; int sz[4]; unsigned shift[2]; /* NDR0G1: tile n as ensure_tile and dual_bind read it */
+} NdSnapBind;
 typedef struct NdSnapChk {
     NdCombIn in;
     int32_t key, leg, mode5, pat, plan_on;
@@ -16,6 +19,7 @@ typedef struct NdSnapChk {
     NdRender rs; /* NDR0F1: nd_render_state of the snapshot (core 1) */
     int32_t mixk; unsigned mixc; /* NDR0F1: nd_snap_mix of the snapshot (kind, colour) */
     uint32_t pad3; /* NDR0F1: size to a multiple of 8 (the rs and mix words) */
+    NdSnapBind b[2]; /* NDR0G1: tiles 0 and 1 */
 } NdSnapChk;
 _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
 
@@ -23,6 +27,8 @@ _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
 void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in);
 /* nd_snap_in.c: the render inputs of an NdDs (oml, geom, fogc, blendc) into the snapshot (role left 0). */
 void nd_snap_rnd(const NdDs* s, NdSnapChk* r);
+/* NDR0G1, nd_snap_in.c: the bind block of tile n (td zero when not valid, and the tile n words of t). */
+void nd_snap_bind(const NdTd* td, const NdTst* t, int n, NdSnapBind* o);
 /* nd_snap_in.c: 1 when every texel of the tile d is 1.0 (tile0_white of nd_comb.c on d). */
 int nd_td_white(const NdTd* d);
 /* nd_snap.c, core 1: the target record of set_cimg (w0 = siz << 12 | width - 1, w1 = the address; nd_target_beginw). */

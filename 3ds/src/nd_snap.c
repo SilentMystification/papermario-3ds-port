@@ -2,6 +2,7 @@
  * combine inputs of nd_ds and the table decision of nd_pso_find_i, and records them as an NDC_NAPI run. Core 0 (nd_snapchk_run) copies the
  * record and arms nd_snap_arm; the next triangle draw (nd_snapchk_tri, from draw_tri in nd_geom.c) compares it with the walker inputs (behind PMDL("snapchk")), and applies its combine (NDR0E2).
  * Logs: `snapchk bad f<n> <names>` (the first 8 bad triangles), `snapchk f<n> recs <r> cmp <c> bad <b> fbad <s> miss <m>` every 100 frames. */
+#include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -46,7 +47,8 @@ void nd_snap_mesh(void) { /* NDR0E2: the snap is taken at every mesh triangle an
     r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, nd_ds.w.omode_l, nd_ds.w.omode_h, 0);
     r.mixk = nd_snap_mix(nd_ds.w.omode_l, nd_ds.fogc, nd_ds.blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
     nd_render_state(nd_ds.w.omode_h, nd_ds.w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
-    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc) return; /* no new command, same inputs */
+    nd_snap_bind(&nd_ds.w.td[0], &nd_ds.w.tst1, 0, &r.b[0]); nd_snap_bind(&nd_ds.w.td[1], &nd_ds.w.tst1, 1, &r.b[1]); /* NDR0G1 */
+    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, 0u, &o);
     r.plan_on = -1;
     if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
@@ -68,6 +70,7 @@ static NdSnapChk sc_cur;
 static unsigned sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_nlog, sc_bucket;
 static int sc_nb;
 static const char* sc_nm[8];
+extern unsigned char nd_cmd_last; /* nd_rec.c:181 */
 
 static void sc_add(const char* s) {
     if (sc_nb < 8) sc_nm[sc_nb] = s;
@@ -113,6 +116,7 @@ static void sc_compare(void) {
         if (o->cc_on && pm_gpu_const_now() != o->cc) sc_add("gconst");
         if (o->env_on && pm_gpu_env_now() != sc_cur.in.env) sc_add("genv");
     }
+    { NdSnapBind w; for (int n = 0; n < 2; n++) { nd_snap_bind(&nd_ws.td[n], &nd_ws.tst1, n, &w); if (memcmp(&sc_cur.b[n].td, &w.td, sizeof w.td)) sc_add(n ? "b1td" : "b0td"); if (memcmp(sc_cur.b[n].wrap, w.wrap, sizeof w - offsetof(NdSnapBind, wrap))) sc_add(n ? "b1tile" : "b0tile"); } } /* NDR0G1 */
     if (sc_cur.key < 0) sc_miss++;
     if (sc_nb) {
         sc_bad++;
@@ -122,7 +126,7 @@ static void sc_compare(void) {
             names[0] = 0;
             for (int i = 0; i < sc_nb && i < 8; i++) k += (unsigned)snprintf(names + k, sizeof names - k, " %s", sc_nm[i]);
             sc_nlog++;
-            pm_log_evt("snapchk bad f%u%s", pm_frame_n, names);
+            pm_log_evt("snapchk bad f%u%s last %u", pm_frame_n, names, (unsigned)nd_cmd_last);
         }
     }
 }
