@@ -19,6 +19,9 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
 3. NDR4 merged byte-equal with 0 sprsnap lines (FACT 0cf4333a5e).
 4. Stream size: NdSnapChk about 640 bytes (GUESS), 16 x 32 KB per context (FACT nd_rec.c:30-31). Rectangles and sprites add snaps; the compact NdSnap (design section 7) is a later row. Risk (GUESS): the snap_take memo (nd_snap.c:51) counts no NDC_END, so a frame whose only draw repeats the last snap has no live snap at nd_direct_bind and walks.
 5. DEL1D: dead declarations nd_walk_state at nd_api.h:16 and nd_direct.c:254 (no caller outside nd_walk.c; host stubs define it).
+6. NREC (design oracle NREC). ws_NREC1A written: model snap after nd_ds_model in stream data after the record (header arg bit 0), core 0 compare in rec_miss before model_draw, line `msnap ... bad wst genv nos` (snapchk only, drec equal). It replaces the plan_finish text "payload as FS ops": the payload units carry ND_FS ids already (FACT nd_rec.c:246-248, nd_ds.c:466-468).
+   NREC1B (consume in model_draw) waits for the NREC1A data. More walker reads of model_draw stay OPEN for it: pm_gbi_bind_tile1 (core 0 plan decision, nd_tex_set.c:23-27), cconst, gs.r_mix, r_memblend, pm_tex_native_unit0 (pm_gpu.c:3906-3950).
+   No page yet, wait for the NCONV1D2 merge: NCONV2 (FACT core 0 has no NdNTab op runner: nd_ntab_run runs the NDN_UNIT words, nd_walk.c:631; a new design, GUESS not Haiku-sized), NREC2 (entity lists reuse the nd_lsr code that NCONV1D2 changes), NREC3 (nd_shape.c is a NCONV1D2 file), NREC4 (needs NREC2, NCONV2), NREC5 (the scomp combine bind goes only when every later draw consumes a snap).
 ## Facts that cost time
 - The Bash default timeout is 120 s. nd_host_test.sh runs longer and goes to the background: pages say `timeout: 600000` (FACT NDR2B, NDR2C). `bench.py run` does not build: a page says `PM_LANE=<id> sh 3ds/build.sh` first (FACT NDR0G2 STALE BUILD exit 5).
 - Git Bash `sed -i` writes LF and turns a CRLF file into a whole-file diff (FACT dry run 2026-11-18). Pages say `sed -b -i` or the Edit tool.
@@ -36,10 +39,11 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
 - bench.py run does not build: `sh 3ds/build.sh` before a capture run. A new debug switch of a gate scene must be on main before the gate row.
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file: read `git log -- <file>` and the file before a write.
+- Model key A hashes all 28 record words (pm_gpu.c:3836): a new record word breaks the model cache. Put model data in stream data (nd_rec_data_st) or the NDC_MODEL header arg.
 - Core 0 stale state: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits; a direct draw writes pso state and binds without tile ops.
 - wst (NDR0G2) is the NDR0G1 b-name bad on the current compare population: its cap is a base run of the same scene, never a fixed number. Later pages say: report wst, not judged, when a row adds compares.
 ## Roles (dispatcher.md)
 A COACH oracle runs the coders of one chain under a quota (oracle.md rule 7). A design oracle writes pages and starts no agent. Both report to the dispatcher.
 ## What to do first
 1. Read plan_finish.md, design_nstate.md and the ws_* pages on main. Answer coder questions (SendMessage, 10 lines).
-2. NCONV1D pages are written (open work 2). Write NCONV2 after the NCONV1D2 data, then NREC and DEL pages. Check `git log -5 -- docs/handoff` first.
+2. NCONV1D pages are written (open work 2). Write NCONV2, NREC2-5 after the NCONV1D2 merge, NREC1B after the NREC1A data (open work 6), then DEL pages. Check `git log -5 -- docs/handoff` first.
