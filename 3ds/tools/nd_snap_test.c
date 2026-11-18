@@ -27,13 +27,14 @@ int main(int argc, char** argv) {
         NdSnapChk r;
         int rb = 0;
         memset(&r, 0, sizeof r);
-        ds.w.omode_l = 0x1234u; ds.w.geom = 0x5678u; ds.fogc = 0x9abcu; ds.blendc = fault ? 0x9abcu : 0xdef0u;
+        ds.w.tex_ss = 2u; ds.w.tex_ts = 0x10003u; ds.w.omode_l = 0x1234u; ds.w.geom = 0x5678u; ds.fogc = 0x9abcu; ds.blendc = fault ? 0x9abcu : 0xdef0u;
         nd_snap_rnd(&ds, &r);
-        nf += 4;
+        nf += 5;
         if (r.oml != 0x1234u) rb++;
         if (r.geom != 0x5678u) rb++;
         if (r.fogc != 0x9abcu) rb++;
         if (r.blendc != 0xdef0u) rb++;
+        if (r.tss != 0x00020003u) rb++; /* NCONV2A */
         bad += rb;
         printf("ndr0c rnd bad %d\n", rb);
     }

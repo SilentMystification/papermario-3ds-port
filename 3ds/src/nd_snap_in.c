@@ -45,7 +45,7 @@ int nd_td_white(const NdTd* d) {
 
 /* NDR0C: the render inputs of the snapshot (the walker reads the same words: nd_ws.omode_l, nd_ws.geom, fogc, blendc). */
 void nd_snap_rnd(const NdDs* s, NdSnapChk* r) {
-    r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc;
+    r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc; r->tss = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); /* NCONV2A */
 }
 
 /* NDR0G1: the bind block of tile n as ensure_tile and dual_bind read it (td zero when not valid). */
