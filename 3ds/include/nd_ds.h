@@ -53,6 +53,4 @@ void nd_ds_sub_restore(void);
 void nd_ds_range(NdDs* s, const uint32_t* a, const uint32_t* b);
 extern unsigned nd_ds_lg_over, nd_ds_lg_hw; /* NST2D: units dropped (log full, bad bound), log high water */
 extern unsigned nd_ds_rpl;                  /* NST2D: range replay depth */
-/* NST3 dschk: the count of differing fields of two NdDs copies (draw-time fields zeroed first); the first max names into bad. */
-int nd_ds_cmp(const NdDs* a, const NdDs* b, const char** bad, int max);
 #endif
