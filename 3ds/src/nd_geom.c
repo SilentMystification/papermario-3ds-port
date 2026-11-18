@@ -396,7 +396,12 @@ int nd_part_draw(const NdGTab* t) {
             n_cmd++;
             tri_since_vtx = 1;
             if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; }
+            if (nd_ls_on) { nd_ls_ord++; nd_lsr_tri(nd_ls_ord - 1u); } /* NREC4: the instance snap */
+            const unsigned char sn = nd_ls_on && nd_snap_arm;
+            if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;
+            nd_snap_rpend = nd_ls_on; if (sn) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } }
             if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
+            nd_snap_rpend = 0; if (nd_ls_on) nd_lsr_bst(); /* NREC4 */
             if (ep_why >= 0) { gv_fb[ep_why]++; tri_drop[1]++; n_drop++; continue; }
             if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); continue; }
             if (ep_pepoch != gv_epoch || ep_ptss != tss) {

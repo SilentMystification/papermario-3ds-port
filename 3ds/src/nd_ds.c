@@ -13,7 +13,7 @@
 #include "nd_dual.h"
 #include "macros.h"
 #include "nd_fs.h"
-unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */
+unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */ __attribute__((weak)) void nd_lsc_tris(unsigned n) { (void)n; } /* NREC4 */
 
 extern int pm_wide;  /* nd_set.c set_scissor: the wide sign rule */
 int is_host(u32 p);  /* nd_walk.c: the range test of ptr_res */
@@ -551,7 +551,11 @@ void nd_ds_parts(NdDs* s, const uint32_t* u, NdDsUnitFn unit) {
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m)
-        for (unsigned j = 0; j < m; j++) if (j != pre) unit(s, p[2u * j], p[2u * j + 1u]);
+        for (unsigned j = 0; j < m; j++) {
+            if (j == pre) { if (nd_lsc_on) { unsigned t = 0; for (const NdGOp* o = ((const NdGTab*)(uintptr_t)p[2u * j + 1u])->op; o->k != NDG_END; o++) t += o->k == NDG_TRI; nd_lsc_tris(t); } continue; } /* NREC4: the list triangles of the instance */
+            unit(s, p[2u * j], p[2u * j + 1u]);
+            if (nd_lsc_on) nd_lsc_unit(p[2u * j]); /* NREC4 */
+        }
 }
 /* NST2C: a compiled def (nd_scomp.c rec_ops order): value unit j takes v[2j], v[2j+1]; a sync (ND_NOP_A) is skipped. */
 void nd_ds_scomp(NdDs* s, const uint32_t* du, unsigned n, uint32_t vmask, const uint32_t* v, unsigned nv, NdDsUnitFn unit) {

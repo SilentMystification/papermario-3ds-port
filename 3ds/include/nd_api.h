@@ -106,7 +106,7 @@ void nd_trect_feed(const uint32_t* u); /* nd_direct.c, core 1: the units of an N
 void nd_trect_rec(const NdTRect* r); /* nd_direct.c, core 1, NDR2B: pso snap, record (nd_rec_napi_s) and feed of one texture rectangle */
 void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c, core 1 (NST2E) */
 void nd_ds_feed_dir(const uint32_t* u, unsigned n); /* nd_rec.c, NST2J: nd_ds_feed for a direct draw (sc_lost 1) */
-void nd_lsc_begin(void); void nd_lsc_end(void); void nd_lsc_end_at(uint32_t* dst); /* NREC2 */ uint32_t* nd_rec_last_pay(void); void* nd_rec_data_st(unsigned bytes); /* NCONV1D1, nd_rec.c, nd_snap.c */
+void nd_lsc_begin(void); void nd_lsc_begin_v(unsigned vprim); /* NREC4 */ void nd_lsc_end(void); void nd_lsc_end_at(uint32_t* dst); /* NREC2 */ uint32_t* nd_rec_last_pay(void); void* nd_rec_data_st(unsigned bytes); /* NCONV1D1, nd_rec.c, nd_snap.c */
 
 #endif
 
