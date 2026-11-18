@@ -43,7 +43,7 @@ pull o: FTP (port 5000) into O3DS's SD card. Downloads the game log, crash.txt a
 pull n: same, N3DS.
 Without FTP: python 3ds/tools/pm_logrecv.py --ip <addr> --label o3ds (game running, live log on).
 
-No default IP. push o/n without -ip takes the console address from the netloader broadcast (push_3ds.sh).
+push o/n without -ip use 192.168.1.170 (o) and 192.168.1.224 (n): no broadcast probe runs (it fails on this PC). The O3DS XL needs -ip 192.168.1.131.
 pull o/n needs -ip. push on/ona is refused: two consoles give one broadcast answer, so push o and push n one
 at a time (each with -ip <addr> when more than one console is on the network).
 One attempt, short timeouts - this never waits indefinitely on a console (see the project's
@@ -96,6 +96,11 @@ if ($multi.ContainsKey($Target) -and ($multi[$Target] | Where-Object { $_ -ne 'a
     exit 1
 }
 if ($Target -eq 'a' -and $ip) { Write-Output "-ip is ignored for Azahar (push a)"; $ip = "" }
+
+# PUSHIP (user 2026-11-17): the netloader broadcast probe does not reach the console from this PC and its failure text blamed the console.
+# A push to o or n without -ip takes the known address, so no broadcast probe runs. The user's word that a console is ready is a fact.
+$knownIp = @{ 'o' = '192.168.1.170'; 'n' = '192.168.1.224' }
+if ($Verb -eq 'push' -and -not $ip -and $knownIp.ContainsKey($Target)) { $ip = $knownIp[$Target]; Write-Output "push ${Target}: no -ip given, using $ip (broadcast probe skipped)" }
 
 # PowerShell's own PATH reliably has the Windows "py" launcher; bash (MSYS) does not always.
 # Resolve it once here and hand it down, instead of letting push_3ds.sh guess.

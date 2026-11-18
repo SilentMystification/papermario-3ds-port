@@ -18,6 +18,8 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    CAPTURE: before the user spends console time, run the same launch line once in Azahar:
    `python 3ds/tools/capture_check.py --row <id> --proof "<lines>" <push game words>`. Push only after CAPTURE CHECK OK. State
    each link in the hand-back (switch, sink, tool, proof line). Read the real command in the code, never its echo line.
+   PUSH: `powershell -NoProfile -File 3ds/go.ps1 push <o|n> -NoBuild -Seconds 75` (adds -Profile prof and -GameDebug for a perf push). It uses the known console
+   address (no broadcast probe: it fails on this PC). The user's word that the console is ready is fact. A probe or send failure is not a console state: read the log.
 4. TOOL FAULTS STOP THE GATE: a base run that fails or hangs, an abnormal exit, a stale build, a shot copy failure, two runs
    that disagree. Hand back the exact output. Never skip a scene, change the base or reset the budget to pass. The orchestrator
    resets a task's budget once per designer correction (user 2026-11-12). Every compare is exact: one differing bit fails the

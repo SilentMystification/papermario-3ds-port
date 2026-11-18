@@ -331,9 +331,9 @@ for _ in range(8):
         pass
 EOF
 )
-    [ -n "$ip" ] || echo "probe: no answer"
+    [ -n "$ip" ] || echo "probe: no answer to the broadcast from this PC. This does NOT mean the console is not ready (the broadcast does not reach it from this PC). Push with -ip <addr>."
 fi
-if [ -z "$ip" ]; then end_push 1 failed "no 3DS netloader found (press Y in the Homebrew Launcher)"; fi
+if [ -z "$ip" ]; then end_push 1 failed "no answer to the netloader broadcast from this PC (not a console state): run go.ps1 push o|n, which passes the known -ip, or give -ip <addr>"; fi
 echo "3DS at $ip"
 # One ping for the log only: ICMP may be blocked, so no reply does not stop the push.
 if ping -n 1 -w 1000 "$ip" >/dev/null 2>&1; then echo "ping $ip: reply"; else echo "ping $ip: no reply (ICMP may be blocked, the push goes on)"; fi
