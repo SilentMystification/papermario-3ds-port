@@ -5,14 +5,31 @@
       "kind": "azahar_stream",
       "speed": "normal",
       "default": false,
-      "purpose": "NREC4: lsnap and snapchk line counters of the particle parts effects (det cold start).",
+      "purpose": "NREC4: lsnap and snapchk line counters of the nd_parts_add effects (det cold start).",
       "scenario": "fxp_snapchk",
       "cap": 30,
-      "until": "lsnap f600 ",
+      "until": "lsnap f800 ",
       "tags": [
         "azahar",
         "det",
         "snapchk"
+      ],
+      "gates": []
+    },
+    {
+      "name": "fxparts_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NREC4: drec.txt of the nd_parts_add effects, frames 412 to 676 step 44 (cold det start). Two runs of one build byte-equal.",
+      "scenario": "fxparts_drec",
+      "cap": 25,
+      "until": "drec f676 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
       ],
       "gates": []
     }
