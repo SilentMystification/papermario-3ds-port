@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main d323ade40d, 2026-11-18 (NCONV2A merged 73359b439a; NREC4, NREC2B running or paged). Counters FACT (listcen 642c83353f): build 306, data 191, gfxtype 230, reader 417, model 11, core1 442. Run listcen for fresh numbers.
+State: main cb63f94d28, 2026-11-18. Counters FACT (DEL5B2 hand-back, start e41cf8981f): build 0, data 0, gfxtype 91, reader 341, model 11; elfgate basebin 309a79ac9ab7e378: func 44 data 365 (182 ndg_, 182 ndgo_, gMainGfxPos). Run listcen and elfgate on the newest build3ds/basebin ELF for fresh numbers.
 ## The plan: plan_finish.md (waves, width and stop file per wave), design_nstate.md (S3-S6 design), build_pipeline.md (BUILDO tools). Read them first.
 - D1 A, D2 A. UD1 option 1: core 1 keeps the N64 field model; listcen class core1 is outside the end proof. UD2 option 1: core 0 keeps a native transform stack.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
@@ -8,8 +8,12 @@ State: main d323ade40d, 2026-11-18 (NCONV2A merged 73359b439a; NREC4, NREC2B run
 - User 2026-11-18 option A: NDR0G2 and NDR1C have an expected-diff gate (the correct bind from the snap, not the stale walker bind). Other rows stay byte-equal.
 ## Chain NCONV coach: coders afc7b34e8d19be862 (NCONV1D1), aeaed982632fdec55 (NCONV1D2), a5b6acc6b4c73a61b (NCONV2A), all done. NCONV2A GATED ce1e571699: fxops f500 tsnap cmp 8821 wtss 0 tris 10 vtss 0, snapchk bad 469 = base 4d10b0ebb5.
 ## NREC2 sl fault: fixed by NREC2B (merged 3ff209aac8). FACT cause: scm_replay (nd_comb.c:181) and nd_direct_bind wrote no sl_*. fxops f500 bad 469 to 0.
-## Merged on main: NST1, NST3, NST2A-K, FALLBK, NDR0A-F, NDR0G1-2, NDR1B-C, NDR2A-C, NDR3, NDR4, NDR5, NCONV1A, NCONV1D1, NCONV1D2, NREC1A, NDR2D, REN1-8, MREN, PSOFB, DEL4D34, BUILDO.
+## Merged on main: NST1, NST3, NST2A-K, FALLBK, NDR0A-F, NDR0G1-2, NDR1B-C, NDR2A-C, NDR3, NDR4, NDR5, NCONV1A, NCONV1D1, NCONV1D2, NREC1A, NDR2D, REN1-8, MREN, PSOFB, DEL4D34, BUILDO, NCONV2A-D, NREC1B-5, DEL4D12, NOLIST2, DELCEN, DELLC, DELT4, DELC2, DEL1B, DEL1C, DEL5A, DEL5B1, DEL3B.
 ## Chain NDR: done (coach a28bf24a1ad35b1c8). No NDR page is left. Snapchk data at the end (FACT NDR2D): nimgm f400 recs 14138 cmp 6286 wst 870; wscmb f200 recs 18047 cmp 13482 wst 12060.
+## Chain DEL (coach DEL; helper and design oracles write DEL1A, DEL1D1-2, DEL2A-F, DEL3A, DEL5B3)
+- GATED, merge open: DEL5B2 60ce720967 (C11 44 -> 41), DEL3A 97735ff4f6. Pages waiting: DEL1A (after DEL3A), DEL1D1 (after DEL1A, DEL5B2), DEL1D2 (after DEL1D1), DEL5B3 (after DEL5B2).
+- No page yet (elfgate func list): ent_run, ent_flat, ent_compile, dlc_try, dlc_build, off_screen_check, gv_tri. Their replacement runs the v2 units on core 0; drec byte-equal is not known: a measure row or a user decision on an expected-diff gate first.
+- DEL3C open: gMainGfxPos and the nd_gx_w top path have no device caller (game build 0); host tests (stunit, texunit, geounit, hunit, nmdl0, ns3unit) use them. Device users of nd_gbi.h: the word helpers ND_W0_CMB, ND_CMB_W, ND_W0_TR, ND_TR_H1/H2, ND_W0_D2, ND_W0_VTX, ND_W0_PMND (8 game files, nd_st.h, nd_at.h, nd_tx.h) and the fallback forms of nd_walk.c pm_gbi_fallback.
 ## Open work (in order)
 1. Expected-diff rule (NDR0G2, NDR1C only): a DIFF passes only when the frame of its first DIFF draw has a bindsnap (NDR0G2) or rectsnap (NDR1C) line.
 2. NCONV1D1 and NCONV1D2 merged (8e3e583bff). FACT: fxops lsnap lists 1118 cmp 1583 p1 1583 bst 0 tmis 0 over 0, drec equal. entcape_kmr03 lsnap lists 644 cmp 644 p1 644.
@@ -42,6 +46,9 @@ State: main d323ade40d, 2026-11-18 (NCONV2A merged 73359b439a; NREC4, NREC2B run
 - bench.py run does not build: `sh 3ds/build.sh` before a capture run. A new debug switch of a gate scene must be on main before the gate row.
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file: read `git log -- <file>` and the file before a write.
+- A row that deletes a reader line fails host.d/lcen.sh (`lkey census bad <file> <n> listed <m>`): the fix is the count in 3ds/tests/lkey/allow.txt. The 3 lines `CACHECHECK FAIL shots main_bench` do not fail the suite.
+- The gbi macros live in 3ds/tools/gbi_inc/PR/gbi.h (DEL4D12, host only, include_next). A new host compile line that uses a gDP/gSP name needs `-I 3ds/tools/gbi_inc` before `-I include`.
+- azt_scenarios.json and bench_defs.json do not round-trip through json.dump: delete an object by its line range (the `{` line to its `},` line), then json.load to check.
 - Model key A hashes all 28 record words (pm_gpu.c:3836): a new record word breaks the model cache. Put model data in stream data (nd_rec_data_st) or the NDC_MODEL header arg.
 - Core 0 stale state: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits; a direct draw writes pso state and binds without tile ops.
 - wst (NDR0G2) is the NDR0G1 b-name bad on the current compare population: its cap is a base run of the same scene, never a fixed number. Later pages say: report wst, not judged, when a row adds compares.

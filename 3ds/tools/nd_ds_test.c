@@ -170,17 +170,16 @@ int main(int argc, char** argv) {
     {
         static const uint32_t nrec4_u[4] = { ND_FS_W0(ND_FS_VTX, 3u << 12 | 3u << 1), 0u, ND_FS_W0(ND_FS_TRI2, 0u << 16 | 2u << 8 | 4u), 0u << 16 | 4u << 8 | 2u }; /* DEL5B1: VTX 3, TRI2 (0 1 2) (0 2 1) */
         static const NdNDev nrec4_dev = { &nrec4_dev, NDN_FL_PARTS | 3u << 16, nrec4_u, 2u, 2u };
-        static const NdGTab nrec4_tab = { (const uint32_t*)(const void*)&nrec4_dev, NULL, 0, NDG_F_PARTS | NDG_F_MOVED, 3, 2 };
         static NdDs nz;
         static uint32_t nu[2 + 2 * 6];
         unsigned xb = 0;
         memset(nu, 0, sizeof nu);
         nu[0] = 2u | 1u << 8 | 3u << 16;
         nu[2] = NDO_W0(NDO_PRIM, 5); nu[3] = 0x1111u;
-        nu[4] = NDO_W0(NDO_CALL, 0); nu[5] = (uint32_t)(uintptr_t)&nrec4_tab;
+        nu[4] = NDO_W0(NDO_CALL, 0); nu[5] = (uint32_t)(uintptr_t)&nrec4_dev;
         nu[6] = NDO_W0(NDO_ENV, 0); nu[7] = 0x2222u;
         nu[8] = NDO_W0(NDO_PRIM, 7); nu[9] = 0x3333u;
-        nu[10] = NDO_W0(NDO_CALL, 0); nu[11] = (uint32_t)(uintptr_t)&nrec4_tab;
+        nu[10] = NDO_W0(NDO_CALL, 0); nu[11] = (uint32_t)(uintptr_t)&nrec4_dev;
         nu[12] = NDO_W0(NDO_ENV, 0); nu[13] = 0x4444u;
         nrec4_tris = 0; nrec4_units = 0; nd_lsc_on = 1;
         nd_ds_parts(&nz, nu, nd_model_unit);

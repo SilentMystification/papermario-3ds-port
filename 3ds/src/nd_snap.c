@@ -1,7 +1,7 @@
-/* nd_snap.c: the snapchk switch (NDR0A, design_nstate.md section 6, stage S4). Core 1 (nd_snap_mesh, from nd_mesh_tri1/2 in nd_geo.c) takes the
+/* nd_snap.c: the snap record (NDR0A, design_nstate.md section 6, stage S4). Core 1 (nd_snap_mesh, from nd_mesh_tri1/2 in nd_geo.c) takes the
  * combine inputs of nd_ds and the table decision of nd_pso_find_i, and records them as an NDC_NAPI run. Core 0 (nd_snapchk_run) copies the
- * record and arms nd_snap_arm; the next triangle draw (nd_snapchk_tri, from draw_tri in nd_geom.c) compares it with the walker inputs (behind PMDL("snapchk")), and applies its combine (NDR0E2).
- * Logs: `snapchk bad f<n> <names>` (the first 8 bad triangles), `snapchk f<n> recs <r> cmp <c> bad <b> fbad <s> miss <m>` every 100 frames. */
+ * record and arms nd_snap_arm; the next triangle draw (nd_snapchk_tri, from draw_tri in nd_geom.c) applies its combine (NDR0E2).
+ * DEL3A: the compares and the snapchk log lines are deleted; the snap is applied only. */
 #include <stddef.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -18,9 +18,6 @@
 extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
 extern unsigned fogc, blendc; /* nd_set.c:41 */
 extern int pm_nofog; /* NDR0F1: the option (pm_options.c), read only */
-void comb_in_walker(NdCombIn* in); /* nd_comb.c: the walker inputs of the combine (core 0) */
-extern int sl_const, ls_use, ls_cyc, ls_dual; extern unsigned sl_cc; /* NDR0E1: nd_comb.c */
-int pm_gpu_comb_now(void); const PmPlan* pm_gpu_plan_now(void); unsigned pm_gpu_const_now(void); unsigned pm_gpu_env_now(void);
 
 /* ---- core 1 ---- */
 static int sn_leg, sn_mode5, sn_pat;
@@ -38,7 +35,7 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1) {
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 
-static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle; the compare stays behind PMDL("snapchk") */
+static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle */
     NdSnapChk r;
     NdCombOut o;
     memset(&r, 0, sizeof r);
@@ -65,12 +62,12 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
 }
 static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, zc, &r)) return; nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */ sn_cmds = nd_rec_cmds(); }
 #define LS_MAX 16u
-static NdSnapChk ls_s[LS_MAX]; static uint32_t ls_f[LS_MAX]; static unsigned ls_n, ls_ord, ls_over; static unsigned char ls_chg;
+static NdSnapChk ls_s[LS_MAX]; static uint32_t ls_f[LS_MAX]; static unsigned ls_n, ls_ord; static unsigned char ls_chg;
 static unsigned char ls_ovl; /* NREC2: this list has more ranges than LS_MAX */
-static unsigned char ls_ep; static unsigned ls_dup; void nd_lsc_ep(void) { ls_ep = 1; } /* NCONV2C */
+static unsigned char ls_ep; void nd_lsc_ep(void) { ls_ep = 1; } /* NCONV2C */
 void nd_lsc_begin(void) { ls_n = 0; ls_ord = 0; ls_chg = 1; ls_ovl = 0; ls_ep = 0; sn_cmds = ~0u; nd_lsc_on = 1; }
 void nd_lsc_begin_v(unsigned v) { nd_lsc_begin(); sn_vprim = v; } /* NREC4 */
-void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) { ls_over++; ls_ovl = 1; } else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord | (ls_ep ? ND_LS_EP : 0u); sn_cmds = nd_rec_cmds(); } else if (ls_ep && ls_n) { ls_s[ls_n] = ls_s[ls_n - 1u]; ls_f[ls_n++] = ls_ord | ND_LS_EP | ND_LS_DUP; ls_dup++; } ls_ep = 0; } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
+void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) ls_ovl = 1; else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord | (ls_ep ? ND_LS_EP : 0u); sn_cmds = nd_rec_cmds(); } else if (ls_ep && ls_n) { ls_s[ls_n] = ls_s[ls_n - 1u]; ls_f[ls_n++] = ls_ord | ND_LS_EP | ND_LS_DUP; } ls_ep = 0; } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
 void nd_lsc_tris(unsigned n) { if (!n) return; nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); ls_ord += n - 1u; } /* NREC4: n list triangles, one snap test */
 void nd_lsc_end_at(uint32_t* dst) { nd_lsc_on = 0; sn_cmds = ~0u; sn_vprim = 0; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
     const unsigned h = ND_LS_HDR(ls_n); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0] + ND_LS_DSB); b[0] = ls_n; b[1] = ls_ord; memcpy(b + 2, ls_f, 4u * ls_n); memcpy((char*)b + h, ls_s, ls_n * sizeof ls_s[0]); memcpy((char*)b + h + ls_n * sizeof ls_s[0], &nd_ds, sizeof nd_ds); /* NCONV2D: the end state */ *dst = (uint32_t)(uintptr_t)b; }
@@ -90,22 +87,13 @@ void nd_snap_rect(void) { snap_take(&nd_ds, sn_tgt.siz == 2 && (sn_tgt.kind & (N
 /* ---- core 0 ---- */
 unsigned char nd_snap_arm;
 unsigned char nd_snap_live; /* NDR1C: a snap is armed for this rectangle run; a command clears it */
-unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snapchk_rnd */
+unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snap_render */
 static NdSnapChk sc_cur;
-static unsigned sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_nlog, sc_bucket;
-static int sc_nb;
-static const char* sc_nm[8];
 static NdSnapBind sc_eb[2];
-static unsigned sc_wst, sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */
-static unsigned ts_cmp, ts_bad, ts_vn, ts_vb; /* NCONV2A: tsnap data */
+static unsigned sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */
 unsigned pm_frame_count(void);
 int pm_drec_now(void);
-extern unsigned char nd_cmd_last; /* nd_rec.c:181 */
 
-static void sc_add(const char* s) {
-    if (sc_nb < 8) sc_nm[sc_nb] = s;
-    sc_nb++;
-}
 
 /* NDR0G2: the walker tile blocks when e is NULL, else e. */
 static const NdSnapBind* sc_wb(const NdSnapBind* e, NdSnapBind* w) {
@@ -114,21 +102,6 @@ static const NdSnapBind* sc_wb(const NdSnapBind* e, NdSnapBind* w) {
     return w;
 }
 
-/* NDR0G2: the count of a bad triangle (the first 8 with names), tag = the compare that found it. */
-static void sc_count(const char* tag) {
-    char names[192];
-    if (sc_nb) {
-        sc_bad++;
-        sc_fbad += (unsigned)sc_nb;
-        if (sc_nlog < 8) {
-            unsigned k = 0;
-            names[0] = 0;
-            for (int i = 0; i < sc_nb && i < 8; i++) k += (unsigned)snprintf(names + k, sizeof names - k, " %s", sc_nm[i]);
-            sc_nlog++;
-            pm_log_evt("snapchk bad f%u %s%s", pm_frame_n, tag, names);
-        }
-    }
-}
 
 /* NDR0G2: 1 when the armed snapshot tile words differ from the blocks e (NULL = the walker tiles). */
 int nd_snap_bnew(const NdSnapBind* e) {
@@ -147,85 +120,12 @@ void nd_snapchk_run(const uint32_t* rec) {
     memcpy(&sc_cur, rec, sizeof sc_cur);
     nd_snap_arm = 1;
     nd_snap_live = 1; /* NDR1C */
-    sc_recs++;
 }
 
-#define SC_CMP(f, name) do { if (sc_cur.in.f != mine.f) sc_add(name); } while (0)
-
-static void sc_compare(void) {
-    NdCombIn mine;
-    char names[192];
-    comb_in_walker(&mine);
-    sc_cmp++;
-    sc_nb = 0;
-    SC_CMP(w0, "w0"); SC_CMP(w1, "w1"); SC_CMP(omode_h, "omh"); SC_CMP(prim, "prim"); SC_CMP(env, "env");
-    SC_CMP(prim_lo8, "plo8"); SC_CMP(key_c, "keyc"); SC_CMP(key_s, "keys"); SC_CMP(conv_k4, "cvk4");
-    SC_CMP(tex_on, "tex_on"); SC_CMP(use_t1, "use_t1"); SC_CMP(t1_valid, "t1_valid"); SC_CMP(dual_on, "dual_on");
-    SC_CMP(box_prod, "box_prod"); SC_CMP(box_folded, "box_folded"); SC_CMP(comb_set, "comb_set");
-    SC_CMP(comb_alpha_shade, "comb_alpha_shade");
-    if (sc_cur.role != nd_img_role(0)) sc_add("role");
-    if (sc_cur.oml != nd_ws.omode_l) sc_add("oml");
-    if (sc_cur.geom != nd_ws.geom) sc_add("geom");
-    if (sc_cur.fogc != fogc) sc_add("fogc");
-    if (sc_cur.blendc != blendc) sc_add("blendc");
-    ts_cmp++; if (sc_cur.tss != (((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu))) ts_bad++; /* NCONV2A: data, not a bad name */
-    if (memcmp(sc_cur.in.tst, mine.tst, sizeof mine.tst)) sc_add("tst");
-    if (sc_cur.leg != leg_mode) sc_add("leg");
-    if (sc_cur.mode5 != comb_mode5) sc_add("mode5");
-    if (sc_cur.pat != box_pat) sc_add("pat");
-    if (sc_cur.plan_on != plan_active) sc_add("plan_on");
-    {   /* NDR0E1: the core 0 combine state and the GPU state against the snap decision */
-        const NdCombOut* o = &sc_cur.o;
-        if (plan_active && o->plan_on && memcmp(&cur_plan, &o->plan, sizeof o->plan)) sc_add("cplan");
-        if (sl_const != o->cc_on || (o->cc_on && sl_cc != o->cc)) sc_add("sl");
-        if (ls_use != o->use || ls_cyc != o->cyc || ls_dual != o->dual) sc_add("ls");
-        if (pm_gpu_comb_now() != (o->plan_on ? 8 : o->leg)) sc_add("gcomb");
-        else if (o->plan_on && memcmp(pm_gpu_plan_now(), &o->plan, sizeof o->plan)) sc_add("gplan");
-        if (o->cc_on && pm_gpu_const_now() != o->cc) sc_add("gconst");
-        if (o->env_on && pm_gpu_env_now() != sc_cur.in.env) sc_add("genv");
-    }
-    if (nd_snap_bnew(NULL)) sc_wst++; /* NDR0G2: stale walker tiles (data, not bad) */
-    if (sc_cur.key < 0) sc_miss++;
-    if (sc_nb) {
-        sc_bad++;
-        sc_fbad += (unsigned)sc_nb;
-        if (sc_nlog < 8) {
-            unsigned k = 0;
-            names[0] = 0;
-            for (int i = 0; i < sc_nb && i < 8; i++) k += (unsigned)snprintf(names + k, sizeof names - k, " %s", sc_nm[i]);
-            sc_nlog++;
-            pm_log_evt("snapchk bad f%u%s last %u", pm_frame_n, names, (unsigned)nd_cmd_last);
-        }
-    }
-}
-void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch (nd_geom.c gv_epoch_enter) */
-    nd_snap_rpend = 0;
-    if (!PMDL("snapchk")) return; /* NDR0F1B: draw_tri sets the flag in every run */
-    sc_nb = 0;
-    NdRender w; unsigned wc; /* NDR0F2: the walker decision, as sync_render makes it */
-    const int wk = nd_snap_mix(nd_ws.omode_l, fogc, blendc, pm_nofog, &wc);
-    nd_render_state(nd_ws.omode_h, nd_ws.omode_l, nd_img_role(0) == ROLE_DEPTH, &w);
-    if (memcmp(&sc_cur.rs, &w, sizeof w)) sc_add("rs");
-    if (sc_cur.mixk != wk || sc_cur.mixc != wc) sc_add("mix");
-    sc_count("rnd");
-}
-
-/* NDR0G2: the bind compare of the armed snapshot at the triangle epoch: the bits of nd_snap_bdiff against the walker tile blocks of the open epoch. */
-void nd_snapchk_bind(void) {
-    NdSnapBind w[2];
-    if (!PMDL("snapchk")) return; /* NDR0G2: the switch off returns */
-    const unsigned m = nd_snap_bdiff(sc_wb(nd_ep_bs, w), sc_cur.b);
-    sc_nb = 0;
-    if (m & 1u) sc_add("b0td");
-    if (m & 2u) sc_add("b0tile");
-    if (m & 4u) sc_add("b1td");
-    if (m & 8u) sc_add("b1tile");
-    sc_count("bind");
-}
 
 void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed snapshot, at the triangle epoch (nd_geom.c gv_epoch_enter) */
     const unsigned sg = sc_cur.oml ^ (sc_cur.in.omode_h * 2654435761u) ^ sc_cur.geom ^ (unsigned)sc_cur.role;
-    nd_snapchk_rnd();
+    nd_snap_rpend = 0; /* DEL3A: the rnd compare is deleted */
     if (nd_sr_same(sg)) return;
     nd_render_apply(&sc_cur.rs, sc_cur.mixk, sc_cur.mixc, sc_cur.in.omode_h, sc_cur.oml, sg);
 }
@@ -250,7 +150,7 @@ static void ds_take(const NdDs* c) { /* NCONV2D: list end: the fields of the ski
     }
     fogc = c->fogc; blendc = c->blendc; keyc = c->keyc; keys = c->keys; conv_k4 = c->conv_k4; comb_set = c->comb_set; box_prod = c->box_prod; comb_alpha_shade = c->comb_alpha_shade; dual_on = c->dual_on; sc_ok = 0; }
 /* NCONV2B: the walker takes the combine and render inputs of the consumed snap (the 1:1 fields of comb_in_walker, nd_comb.c:200).
- * sc_compare names each of these fields when it differs, so with no bad name the writes change nothing. geom and tss stay core 0 state. */
+ * DEL3A: the compare that named each field is deleted. geom and tss stay core 0 state. */
 static void sc_adopt(void) {
     extern unsigned* const tst_f[16]; /* nd_comb.c:46 */
     extern unsigned keyc, keys, conv_k4; /* nd_comb.c:24-25 */
@@ -266,11 +166,9 @@ static void sc_adopt(void) {
 }
 void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
     nd_snap_arm = 0;
-    if (PMDL("snapchk")) sc_compare();
     nd_snap_comb();
     sc_adopt(); /* NCONV2B */
 }
-void nd_tsnap_vtx(unsigned vt) { if (!PMDL("snapchk")) return; ts_vn++; if (vt != sc_cur.tss) ts_vb++; } /* NCONV2A */
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
 void nd_snap_comb(void) { nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); }
 const NdSnapBind* nd_snap_cur_b(void) { return sc_cur.b; } /* NDR1C */
@@ -286,21 +184,12 @@ void nd_snap_rlog(void) {
         pm_log_d("rectsnap f%u", sc_rfr);
     }
 }
-void nd_snapchk_rect(void) { nd_snap_arm = 0; if (PMDL("snapchk")) sc_compare(); }   /* NDR0E2: a texture rectangle: compare only */
-static unsigned pr_cmp, pr_bad; /* NREC4: the particle compares (no combine apply) */
-void nd_snapchk_part(void) { nd_snap_arm = 0; if (!PMDL("snapchk")) return; const unsigned b0 = sc_bad; sc_compare(); pr_cmp++; pr_bad += sc_bad != b0; } /* NREC4 */
 /* NCONV1D1: core 0 compares each list range with the walker at its first triangle (nd_lsr_tri); the counters go to the lsnap line. */
-unsigned char nd_ls_on; unsigned nd_ls_ord; static const uint32_t* lr_b; static unsigned char lr_p1; static unsigned lr_cur, lr_nx, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_tmis, lr_bst;
-static unsigned lr_st, lr_epc, lr_epm, lr_epx; static unsigned char lr_noep; unsigned nd_lsr_rect; extern unsigned nd_st_epoch; /* NCONV2C: lscut data; nd_walk.c:287 */
-void nd_lsr_noep(void) { lr_noep = 1; }
-static void lsr_cut(unsigned ord) { /* NCONV2C: the walker cut before this triangle against the ep flag of its range start */
-    const uint32_t f = lr_b[2u + nd_snap_lsr(lr_b, ord)]; const unsigned flag = (f & ND_LS_EP) && ND_LS_ORD(f) == ord, cut = nd_st_epoch != lr_st;
-    lr_st = nd_st_epoch; if (lr_noep) return; lr_epc += flag; if (cut && !flag) lr_epm++; else if (flag && !cut) lr_epx++; }
-void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; lr_geo = 0; lr_st = nd_st_epoch; lr_noep = 0; if (b) { lr_lists++; lr_snaps += b[0]; } }
-void nd_lsr_end(void) { if (nd_ls_on && nd_ls_ord != lr_b[1]) lr_tmis++; if (nd_ls_on && lr_geo) ds_take((const NdDs*)(const void*)((const char*)lr_b + ND_LS_HDR(lr_b[0]) + lr_b[0] * sizeof sc_cur)); lr_geo = 0; nd_ls_on = 0; } /* NCONV2D */
-void nd_lsr_seg(unsigned ord) { lr_p1 = 1; nd_lsr_tri(ord); lr_p1 = 0; }
+unsigned char nd_ls_on; unsigned nd_ls_ord; static const uint32_t* lr_b; static unsigned lr_cur, lr_nx;
+void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; lr_geo = 0; }
+void nd_lsr_end(void) { if (nd_ls_on && lr_geo) ds_take((const NdDs*)(const void*)((const char*)lr_b + ND_LS_HDR(lr_b[0]) + lr_b[0] * sizeof sc_cur)); lr_geo = 0; nd_ls_on = 0; } /* NCONV2D */
+void nd_lsr_seg(unsigned ord) { nd_lsr_tri(ord); }
 void nd_lsr_tri(unsigned ord) {
-    if (PMDL("snapchk")) lsr_cut(ord); /* NCONV2C */
     if (ord < lr_nx) return;
     const unsigned r = nd_snap_lsr(lr_b, ord), n = lr_b[0];
     lr_nx = r + 1u < n ? ND_LS_ORD(lr_b[2u + r + 1u]) : ~0u;
@@ -309,23 +198,10 @@ void nd_lsr_tri(unsigned ord) {
     if (lr_geo && (lr_b[2u + r] & ND_LS_EP)) gv_epoch++; /* NCONV2D: the cut of the skipped units */
     if (lr_b[2u + r] & ND_LS_DUP) return; /* NCONV2C: an ep-only range: the armed snap stays */
     memcpy(&sc_cur, (const char*)lr_b + ND_LS_HDR(n) + r * sizeof sc_cur, sizeof sc_cur);
-    nd_snap_arm = 1; lr_cmp++; lr_c1 += lr_p1; /* NCONV1D2: the next draw step consumes the range snap (nd_snapchk_tri) */
+    nd_snap_arm = 1; /* NCONV1D2: the next draw step consumes the range snap (nd_snapchk_tri) */
 }
-void nd_lsr_bst(void) { if (PMDL("snapchk") && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) lr_bst++; } /* NCONV1D2: a list triangle whose epoch binds other tile words than its range snap */
 const NdCombOut* nd_snap_dir_o(void) { return nd_snap_live ? &sc_cur.o : NULL; } /* NDR2D: the decision of the live snap */
 
-/* NDR0A: the 100-frame counter line, once per frame stream end (nd_rec.c stream_run NDC_END); behind PMDL. */
-void nd_snapchk_tick(void) {
-    if (!PMDL("snapchk")) return;
-    if (pm_frame_n / 100 != sc_bucket) {
-        sc_bucket = pm_frame_n / 100;
-        pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
-        pm_log_evt("lsnap f%u lists %u snaps %u cmp %u p1 %u bst %u tmis %u over %u", pm_frame_n, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_bst, lr_tmis, ls_over);
-        pm_log_evt("lscut f%u epc %u epm %u epx %u dup %u rect %u", pm_frame_n, lr_epc, lr_epm, lr_epx, ls_dup, nd_lsr_rect); /* NCONV2C */
-        pm_log_evt("tsnap f%u cmp %u wtss %u tris %u vtss %u", pm_frame_n, ts_cmp, ts_bad, ts_vn, ts_vb); /* NCONV2A */
-        pm_log_evt("psnap f%u cmp %u bad %u", pm_frame_n, pr_cmp, pr_bad); /* NREC4 */
-    }
-}
 /* NDR4: the snap of a sprite record (pm_gpu_spr_build reads it). core 0. */
 static unsigned sc_sfr = ~0u;
 int nd_snap_spr(uint32_t o[9]) { /* NDR4: env prim omh oml geom cw0 cw1 mixk mixc of the live snap; 0 when none */

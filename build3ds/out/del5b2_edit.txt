@@ -1,0 +1,8 @@
+wrote 3ds/src/nd_rec.c
+wrote 3ds/src/nd_walk.c
+wrote 3ds/src/nd_ds.c
+wrote 3ds/src/nd_ent.c
+wrote 3ds/include/nd_int.h
+wrote 3ds/src/nd_gtab.c
+wrote 3ds/include/nd_gtab.h
+wrote 3ds/tools/nd_ds_test.c

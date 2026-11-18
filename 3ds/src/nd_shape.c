@@ -433,9 +433,9 @@ __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, un
     if (nd_ls_on) nd_lsr_seg(nd_ls_ord);
     const unsigned char sn = nd_ls_on && nd_snap_arm; /* NCONV1D2: the snap steps of draw_tri (nd_geom.c) */
     if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;
-    nd_snap_rpend = nd_ls_on; if (sn) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } }
+    nd_snap_rpend = nd_ls_on; if (sn) { nd_snapchk_tri(); if (ep_epoch == gv_epoch) nd_snap_rpend = 0; }
     if (ep_epoch != gv_epoch) gv_epoch_enter();
-    nd_snap_rpend = 0; if (nd_ls_on) nd_lsr_bst(); /* NCONV1D2 */
+    nd_snap_rpend = 0; /* NCONV1D2 */
     dbg_seg = 0;
     if (ep_why >= 0) { dbg_seg = 1 + (unsigned)ep_why; return 0; }
     if (ep_cullboth) { n_out += (int)nt; return 1; }

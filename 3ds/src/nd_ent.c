@@ -209,58 +209,7 @@ unsigned nd_ent_sc; /* S6E: gaps run as compiled ranges (entsync line) */
 static NdSDef* ent_sdef(const Gfx* l, u32 a, u32 b) { /* the gap [a, b) of l as an S6T def (1 to 32 units), else NULL */
     NdSDef* d = (b <= a || b - a > 32u) ? NULL : (NdSDef*)calloc(1, sizeof *d);
     if (d) { d->u = l + a; d->n = (uint8_t)(b - a); } return d; }
-static void ent_sdef_free(EntKey* k) { for (unsigned s = 0; s < k->nseg && k->seg; s++) free(k->seg[s].sd); free(k->tail); k->tail = NULL; free(k->pc); k->pc = NULL; k->tpc0 = k->tpcn = 0; }
-/* S7ENT: the pieces of the S7 table of a list (nd_gtab.h) in flat order (ent_flat): a def, a unit, a no-op unit. The walk follows the table's list as ent_flat
- * follows the words: a call is entered (its callee table is the call op's p), a branch-form call ends the walk. A piece that lies inside a gap [ga, gb) of the
- * list is recorded for it; a piece that crosses a gap edge marks the gap bad. A gap is covered when its pieces tile it (their units add up to its length). */
-typedef struct { u16 g; EntPiece pc; } EntTP;
-#define ENT_TPMAX 1024u
-static EntTP ent_tp[ENT_TPMAX];
-static unsigned ent_ntp, ent_ngap, ent_gc;
-static u32 ent_ga[ENT_SEGMAX + 1u], ent_gb[ENT_SEGMAX + 1u], ent_gn[ENT_SEGMAX + 1u];
-static u8 ent_gbad[ENT_SEGMAX + 1u];
-static void ent_tpiece(u32 at, u32 n, u8 kind, const void* p) {
-    for (unsigned g = ent_gc; g < ent_ngap; g++) {
-        if (ent_gb[g] <= at) { ent_gc = g + 1u; continue; }
-        if (ent_ga[g] >= at + n) break;
-        if (ent_ga[g] <= at && at + n <= ent_gb[g] && ent_ntp < ENT_TPMAX) {
-            ent_tp[ent_ntp].g = (u16)g; ent_tp[ent_ntp].pc.p = p; ent_tp[ent_ntp].pc.n = (u16)n; ent_tp[ent_ntp].pc.kind = kind; ent_ntp++;
-            ent_gn[g] += n;
-        } else ent_gbad[g] = 1;
-        if (at + n <= ent_gb[g]) break;
-    }
-}
-static int ent_tdwalk(const NdGTab* t, unsigned* flat, int depth) {
-    unsigned nL, k = 0;
-    const uint32_t* L = nd_lkey_tab(t, ND_DLC_MAXOPS, &nL); /* LKEY: a moved list's table (NDG_F_MOVED) walks its device units (no end unit) */
-    const NdGOp* o = t->op;
-    for (; k < nL; ) {
-        const uint32_t w0 = L[2u * k];
-        const unsigned id = w0 >> 24;
-        if (id == ND_FS_END) return 0;
-        if (w0 == ND_NOP_A) { ent_tpiece(*flat, 1u, ENP_SKIP, NULL); (*flat)++; k++; continue; }
-        if (o->k == NDG_END) return 0;
-        if (id == ND_FS_CALL) {
-            if (o->k != NDG_CALL || depth >= 5) return -1;
-            const int r = ent_tdwalk((const NdGTab*)o->p, flat, depth + 1);
-            if (r < 0) return r;
-            o++; k++;
-            if (w0 & 1u) return 1;
-            continue;
-        }
-        if (o->k == NDG_DEF) {
-            const NdGDef* g = (const NdGDef*)o->p;
-            if (g->k0 != k) return -1;
-            ent_tpiece(*flat, g->d.n, ENP_DEF, g);
-            *flat += g->d.n; k += g->d.n; o++;
-            continue;
-        }
-        ent_tpiece(*flat, 1u, ENP_UNIT, &L[2u * k]);
-        o += (id == ND_FS_TRI2) ? 2 : 1;
-        (*flat)++; k++;
-    }
-    return (k == nL && nL < ND_DLC_MAXOPS) ? 0 : -1; /* LKEY: the end of the device units is the end unit */
-}
+static void ent_sdef_free(EntKey* k) { for (unsigned s = 0; s < k->nseg && k->seg; s++) free(k->seg[s].sd); free(k->tail); k->tail = NULL; }
 unsigned nd_ent_tab, nd_ent_notab, nd_ent_gapt, nd_ent_gaps, nd_ent_gapn; /* S7ENT census (entsync line): lists compiled with a table, without; gaps run as a chain of table pieces, gaps from ent_sdef in tabled lists, gaps of lists without a table */
 void ent_compile(EntKey* k, const Gfx* l0) {
     pm_xf.ent_n++; /* MAPX-1 */
@@ -312,32 +261,12 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     if (o.nidx != 3u * ntri) { nd_dlc_free(&o); k->why = 7; return; }
     k->seg = (EntSeg*)malloc(ns * sizeof(EntSeg));
     if (!k->seg) { nd_dlc_free(&o); k->why = 5; return; }
-    const NdGTab* gt = k->v2 ? NULL : nd_gtab_find(l0);
-    for (unsigned s = 0; s < ns; s++) { ent_ga[s] = s ? ent_sbuf[s - 1].op1 : 0u; ent_gb[s] = ent_sbuf[s].op0; }
-    ent_ga[ns] = ent_sbuf[ns - 1].op1; ent_gb[ns] = nops;
-    ent_ngap = ns + 1u; ent_ntp = 0; ent_gc = 0;
-    memset(ent_gn, 0, ent_ngap * sizeof ent_gn[0]); memset(ent_gbad, 0, ent_ngap);
-    if (gt) { unsigned fl = 0; if (ent_tdwalk(gt, &fl, 0) < 0) memset(ent_gbad, 1, ent_ngap); nd_ent_tab++; } else { memset(ent_gbad, 1, ent_ngap); nd_ent_notab++; }
-    k->pc = NULL; k->tpc0 = k->tpcn = 0;
-    { unsigned tot = 0;
-      for (unsigned i = 0; i < ent_ntp; i++) { const unsigned g = ent_tp[i].g; if (!ent_gbad[g] && ent_gb[g] > ent_ga[g] && ent_gn[g] == ent_gb[g] - ent_ga[g]) tot++; }
-      if (tot) k->pc = (EntPiece*)malloc(tot * sizeof(EntPiece)); }
-    unsigned npc = 0;
-    for (unsigned g = 0; g < ent_ngap; g++) {
-        u16 pc0 = 0, pcn = 0;
-        if (ent_gb[g] > ent_ga[g]) {
-            if (!ent_gbad[g] && ent_gn[g] == ent_gb[g] - ent_ga[g] && k->pc) {
-                pc0 = (u16)npc;
-                for (unsigned i = 0; i < ent_ntp; i++) if (ent_tp[i].g == g) { k->pc[npc++] = ent_tp[i].pc; pcn++; }
-                nd_ent_gapt++;
-            } else if (gt) nd_ent_gaps++; else nd_ent_gapn++;
-        }
-        if (g < ns) {
-            k->seg[g].a0 = ent_ga[g]; k->seg[g].op0 = ent_gb[g]; k->seg[g].op1 = ent_sbuf[g].op1;
-            k->seg[g].tri0 = ent_sbuf[g].tri0; k->seg[g].ntri = ent_sbuf[g].ntri;
-            k->seg[g].pc0 = pc0; k->seg[g].pcn = pcn;
-            k->seg[g].sd = pcn ? NULL : ent_sdef(l, ent_ga[g], ent_gb[g]);
-        } else { k->tpc0 = pc0; k->tpcn = pcn; k->tail = pcn ? NULL : ent_sdef(l, ent_ga[g], ent_gb[g]); }
+    nd_ent_notab++; /* DEL5B2: no v1 table on the device (gt was NULL, every gap ran ent_gap) */
+    for (unsigned g = 0; g <= ns; g++) {
+        const u32 ga = g ? ent_sbuf[g - 1].op1 : 0u, gb = g < ns ? ent_sbuf[g].op0 : nops;
+        if (gb > ga) nd_ent_gapn++;
+        if (g < ns) { k->seg[g].a0 = ga; k->seg[g].op0 = gb; k->seg[g].op1 = ent_sbuf[g].op1; k->seg[g].tri0 = ent_sbuf[g].tri0; k->seg[g].ntri = ent_sbuf[g].ntri; k->seg[g].sd = ent_sdef(l, ga, gb); }
+        else k->tail = ent_sdef(l, ga, gb);
     }
     k->nseg = (u16)ns; k->nops = nops;
     k->idx = o.idx; k->vtx = o.vtx; k->vfirst = o.vfirst; k->nvtx = o.nvtx;
@@ -509,14 +438,14 @@ int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
         const Gfx* fw = k->fw;
-        if (e->op0 > e->a0) { if (e->pcn) nd_ent_sc += (unsigned)nd_ent_pieces(k->pc + e->pc0, e->pcn); else ent_gap(e->sd, fw + e->a0, e->op0 - e->a0); }
+        if (e->op0 > e->a0) ent_gap(e->sd, fw + e->a0, e->op0 - e->a0);
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         nd_ls_ord = lb + e->tri0;
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; nd_ls_ord = lb + e->tri0 + e->ntri; continue; }
         ent_run_seg_interp(k, e);
         nd_ls_ord = lb + e->tri0 + e->ntri;
     }
-    { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { if (k->tpcn) nd_ent_sc += (unsigned)nd_ent_pieces(k->pc + k->tpc0, k->tpcn); else ent_gap(k->tail, k->fw + e->op1, k->nops - e->op1); } }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { ent_gap(k->tail, k->fw + e->op1, k->nops - e->op1); } }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of dlc_try */
     nd_ent_in = 0;
     ent_c.nat++;

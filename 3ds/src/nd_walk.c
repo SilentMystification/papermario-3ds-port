@@ -138,15 +138,13 @@ static unsigned rec_case(unsigned dbg, const Gfx* q) {
     NDT_E(tr, NDT_REC);
     return n;
 }
-extern unsigned nd_st_epoch; /* NST3, defined below: raised by the model record prologue (NST2B) */
-extern unsigned nd_st_why; /* NST2H, defined below: the source of the first nd_st_epoch raise */
 /* DIRECT D1: NDC_MODEL of the frame stream (nd_rec.c), with the walker's op prologue of G_PM_REC (gv_epoch, the census op hook). D10a: the
  * only model record path (no list holds a record). */
 void nd_walk_rec_model(const Gfx* q) {
     const unsigned dbg = pm_walk_dbg;
     dlc_on = 1;
     pm_gbi_cur_op = G_PM_REC;
-    gv_epoch++; if (!nd_st_epoch) nd_st_why = 4u << 8; nd_st_epoch++; /* GV1b, as the walker's prologue of G_PM_REC; NST2B */
+    gv_epoch++; /* GV1b, as the walker's prologue of G_PM_REC; NST2B */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, q, 0, G_PM_REC, q->words.w0, q->words.w1);
     rec_case(dbg, q);
@@ -233,13 +231,11 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
-unsigned nd_st_epoch; /* NST3: the state epoch count (raised with gv_epoch by the state ops); dschk reads and resets it */
-unsigned nd_st_why; /* NST2H: site << 8 | unit id of the first nd_st_epoch raise since the last dschk record */
 static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     if (nd_op_same(u)) return;
     const unsigned id = u[0] >> 24, op = id == NDO_RARE ? 0u : nd_op_n64[id - NDO_BASE];
     pm_gbi_cur_op = op;
-    gv_epoch++; if (!nd_st_epoch) nd_st_why = 1u << 8 | id; nd_st_epoch++; /* GV1b; NST2H source */
+    gv_epoch++; /* GV1b; NST2H source */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     nd_op_apply(u);
@@ -252,7 +248,7 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
     const u32 a = u[0] & 0xffffffu, b = u[1];
     if (id == NDO_MOVEMEM) {
         if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
-        gv_epoch++; if (!nd_st_epoch) nd_st_why = 2u << 8 | id; nd_st_epoch++; /* GV1b; NST2H source */
+        gv_epoch++; /* GV1b; NST2H source */
     }
     pm_gbi_cur_op = op;
     int fp = 0;
@@ -294,7 +290,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
         op = misc_n64[sub < 5u ? sub : 0u];
     }
     pm_gbi_cur_op = op;
-    if (id != NDO_CALL && op != G_MODIFYVTX) { gv_epoch++; if (!nd_st_epoch) nd_st_why = 3u << 8 | id; nd_st_epoch++; } /* GV1b; NST2H source */
+    if (id != NDO_CALL && op != G_MODIFYVTX) { gv_epoch++; } /* GV1b; NST2H source */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     switch (id) {
@@ -303,7 +299,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
         if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
         break;
     case NDO_RECT:
-        if (nd_ls_on) nd_lsr_rect++; /* NCONV2C */
+        
         if (!(b & NDO_RECT_TEX)) nd_fillrect(a, b);
         else if (at + 4 < e) { nd_texrect(a, b & 0x07ffffffu, at[3], at[5]); r = 2; } /* D10b: the op and its two RDPHALF units */
         break;
@@ -371,7 +367,7 @@ static __attribute__((cold, noinline)) void ops_cen_end(void) {
     if (pm_ph_cen) walk_dbg_end(pm_walk_dbg);
 }
 void nd_list_run(const void* l) { nd_nr_list(l, ND_LIST_MAX, 0); }
-/* DEL1A: was nd_ops_run */
+/* DEL1A: was nd_nr_list */
 void nd_nr_list(const void* l, unsigned n, int keep) {
     PM_WALK_OWN(); /* CORE2-3a: a run is walker-side only */
     const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
@@ -416,7 +412,7 @@ void nd_parts_run(const uint32_t* u) {
     if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); nd_lsr_noep(); /* NREC4; NCONV2C: a parts run keeps its units */
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4; NCONV2C: a parts run keeps its units */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
@@ -424,7 +420,7 @@ void nd_parts_run(const uint32_t* u) {
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m) {
         nd_nr_exec(p, pre);
-        const NdNDev* t = (const NdNDev*)(const void*)((const NdGTab*)(uintptr_t)p[2u * pre + 1u])->list; /* DEL5B1: the entry of the list (every device v1 table is NDG_F_MOVED, list = &ndd_<name>) */
+        const NdNDev* t = (const NdNDev*)(uintptr_t)p[2u * pre + 1u]; /* DEL5B2: nd_parts_add put the v2 entry in the call unit */
         if (!nd_part_draw(t)) nd_ntab_run(t);
         nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u);
     }
@@ -466,7 +462,7 @@ void nd_parts_run_v(const uint32_t* u) {
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     const unsigned dbg = pm_walk_dbg;
     pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); nd_lsr_noep(); /* NREC4; NCONV2C: a parts run keeps its units */
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4; NCONV2C: a parts run keeps its units */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
@@ -474,7 +470,7 @@ void nd_parts_run_v(const uint32_t* u) {
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m) {
         if (__builtin_expect(dbg, 0)) nd_nr_exec(p, pre); else part_units(p, pre);
-        const NdNDev* t = (const NdNDev*)(const void*)((const NdGTab*)(uintptr_t)p[2u * pre + 1u])->list; /* DEL5B1: the entry of the list (every device v1 table is NDG_F_MOVED, list = &ndd_<name>) */
+        const NdNDev* t = (const NdNDev*)(uintptr_t)p[2u * pre + 1u]; /* DEL5B2: nd_parts_add put the v2 entry in the call unit */
         if (!nd_part_draw(t)) nd_ntab_run(t);
         if (__builtin_expect(dbg, 0)) nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
     }
@@ -518,93 +514,22 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
  * the walker so its census hooks see the list. Vertex and triangle ops are the walker's typed units (op_geo), so clip, cull, lit loads and the
  * ring stay the walker's. */
 unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
-static void gt_ops(const NdGTab* t);
-static void gt_call(const NdGTab* c) { /* a table call inside a list: the walker's G_DL arm at depth */
-    const Gfx* next = (const Gfx*)c->list;
-    pm_gbi_cur_op = nd_op_n64[NDO_CALL - NDO_BASE];
-    int ring = 0;
-    if (ent_skipgen) ent_skipgen = 0;
-    else if (dlc_on && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
-        const int eh = ent_gdl(next);
-        if (eh > 0) { nd_gtr_ent++; return; }
-        if (eh < 0) ring = 1;
-    }
-    if (dlc_on && !ring && dlc_try(next)) { nd_gtr_dlc++; return; }
-    if (ex_depth < ND_LIST_DEPTH) { ex_depth++; gt_ops(c); ex_depth--; }
-    else { unsigned nc; const uint32_t* cu = nd_lkey_tab(c, ND_LIST_MAX, &nc); nd_walk_state(cu, nc); } /* at the limit: the walker drops a deeper G_DL; its own check decides; LKEY: a moved list's units */
-}
-static void gt_ops(const NdGTab* t) {
-    for (const NdGOp* o = t->op;; o++) {
-        switch (o->k) {
-        case NDG_DEF: {
-            const NdGDef* g = (const NdGDef*)o->p;
-            nd_nr_exec((const uint32_t*)g->d.u, g->d.n);
-            if (g->d.nv == g->d.pre && nd_scomp_ok((NdSDef*)&g->d)) { gv_epoch++; sr_ok = 0; } /* NREC5: the cut and render resync of the old compiled run (sc_exec); st is 1: no write to the table */
-            break;
-        }
-        case NDG_UNIT: nd_nr_exec((const uint32_t*)o->p, 1u); break;
-        case NDG_VTX: {
-            const uint32_t u[2] = { NDO_W0(NDO_VTX, ((uint32_t)o->a << 12) | ((uint32_t)(o->a + o->b) << 1)), (uint32_t)(uintptr_t)o->p };
-            nd_nr_exec(u, 1u);
-            break;
-        }
-        case NDG_TRI: {
-            const uint32_t u[2] = { NDO_W0(NDO_TRI1, ((uint32_t)o->a << 17) | ((uint32_t)o->b << 9) | ((uint32_t)o->c << 1)), 0u };
-            nd_nr_exec(u, 1u);
-            break;
-        }
-        case NDG_CALL:
-            gt_call((const NdGTab*)o->p);
-            if (o->a & 1u) return; /* a branch ends the list that holds it */
-            break;
-        default: return; /* NDG_END */
-        }
-    }
-}
-/* S7ENT: a gap of an entity list as the chain of its table pieces (nd_ent.c ent_compile): the start rules of nd_nr_list (keep 1), then each piece in
- * flat order: a def with no late values runs compiled, any other def and each unit as ops (the S6E rule, as gt_ops). Returns the defs run compiled. */
-int nd_ent_pieces(const EntPiece* p, unsigned n) {
-    PM_WALK_OWN();
-    int sc = 0;
-    const int d = ex_depth;
-    gv_epoch++;
-    dlc_on = 1;
-    gp_prev_op = -1;
-    pm_walk_side++;
-    ex_depth = d + 1;
-    for (unsigned i = 0; i < n; i++) {
-        if (p[i].kind == ENP_DEF) {
-            const NdGDef* g = (const NdGDef*)p[i].p;
-            nd_nr_exec((const uint32_t*)g->d.u, g->d.n);
-            if (g->d.nv == g->d.pre && nd_scomp_ok((NdSDef*)&g->d)) { gv_epoch++; sr_ok = 0; } /* NREC5 */
-        } else if (p[i].kind == ENP_UNIT) nd_nr_exec((const uint32_t*)p[i].p, 1u);
-    }
-    ex_depth = d;
-    pm_walk_side--;
-    gv_streak_flush();
-    tex_streak_flush();
-    return sc;
-}
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
 void nd_ntab_run(const NdNDev* e) { if (nd_ls_on) { nd_lsr_geo(); ls_run(e->u, e->nu); } else nd_nr_exec(e->u, e->nu); } /* NCONV2D: a list with a snap table runs without its combine units */
-/* CONV2D2: a list's ops: its v2 device entry when it has one, else its v1 table ops (gt_ops). */
-static void gt_body(const NdGTab* t, const NdNDev* nt) {
-    if (nt) { nd_gtr_ntab++; nd_ntab_run(nt); }
-    else gt_ops(t);
-}
+static void gt_body(const NdNDev* nt) { nd_gtr_ntab++; nd_ntab_run(nt); } /* DEL5B2: every list runs its v2 entry */
 static __attribute__((cold, noinline)) void entcap_so(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
     const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap so l %08x s %08x", a, site); }
-static void gt_run0(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec);
-static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec) { nd_lsr_begin((rec[1] & 2u) ? (const uint32_t*)(uintptr_t)rec[4] : NULL); gt_run0(key, t, nt, rec); nd_lsr_end(); } /* NCONV1D1: the snap table of a drawing list (rec[1] bit 1) */
-static void gt_run0(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec) {
+static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec);
+static void gt_run(const void* key, const NdNDev* nt, const uint32_t* rec) { nd_lsr_begin((rec[1] & 2u) ? (const uint32_t*)(uintptr_t)rec[4] : NULL); gt_run0(key, nt, rec); nd_lsr_end(); } /* NCONV1D1: the snap table of a drawing list (rec[1] bit 1) */
+static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     PM_WALK_OWN();
     if (rec[1] & 1u) { /* state-only */
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
         nd_nr_exec(lst, 1u);
-        gt_body(t, nt);
+        gt_body(nt);
         pm_walk_side--;
         return;
     }
@@ -631,18 +556,16 @@ static void gt_run0(const void* key, const NdGTab* t, const NdNDev* nt, const ui
     gp_prev_op = -1;
     pm_walk_side++;
     ex_depth = d + 1;
-    gt_body(t, nt);
+    gt_body(nt);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();
     tex_streak_flush();
 }
-void nd_gtab_run(const uint32_t* rec) { const NdGTab* t = (const NdGTab*)(uintptr_t)rec[0]; gt_run(t->list, t, NULL, rec); }
 unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
-void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, NULL, nt, rec); }
+void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, nt, rec); }
 void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
-void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, NULL, &d, rec); } /* NTABFIND: the record-time copy (nd_gtab.h) */
-void nd_gtab_run_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_gtab_run(rec); }
+void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, &d, rec); } /* NTABFIND: the record-time copy (nd_gtab.h) */
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
 void nd_range_run(const uint32_t* a) {
@@ -756,5 +679,4 @@ void pm_gbi_fallback(void) {
         ready = 1;
     }
     nd_nr_list(dl, ND_LIST_MAX, 0);
-    { extern unsigned char nd_dschk_fb; nd_dschk_fb = 1; }
 }
