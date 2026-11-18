@@ -178,6 +178,7 @@ static void rec_ctx_check(void) {
 static uint8_t ds_ep, ds_in;
 static uint32_t ds_epw; /* NST2H: rule << 8 | unit id of the first ep rule since the last dschk record */
 unsigned char nd_cmd_last; /* NST2I: the op of the last command core 0 ran (not a state run, not the dschk record) */
+uint32_t nd_cmd_run; /* NST2K: the runner of the last NDC_NAPI command core 0 ran, else 0 */
 #define DS_EP(r, i) do { if (!ds_ep) ds_epw = (uint32_t)(r) << 8 | ((i) & 0xffu); ds_ep = 1; } while (0)
 extern unsigned nd_st_epoch; /* nd_walk.c, core 0 */
 void nd_dschk_run(const uint32_t* rec) __attribute__((weak)); /* nd_dschk.c, core 0. Weak (NST3 mechanical fix): the host units that link
@@ -670,7 +671,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         const uint32_t h = p[0];
         nd_stream_cur = p;
         { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && (op != NDC_NAPI || p[1] != (uint32_t)(uintptr_t)nd_nr_run)) nd_snap_arm = 0; } /* NDR0A: a command but the native runs disarms the snapchk */
-        { const unsigned op = h >> 24; if (op != NDC_JUMP && !(op == NDC_NAPI && (p[1] == (uint32_t)(uintptr_t)nd_nr_run || p[1] == (uint32_t)(uintptr_t)nd_dschk_run))) nd_cmd_last = (uint8_t)op; } /* NST2I */
+        { const unsigned op = h >> 24; if (op != NDC_JUMP && !(op == NDC_NAPI && (p[1] == (uint32_t)(uintptr_t)nd_nr_run || p[1] == (uint32_t)(uintptr_t)nd_dschk_run))) { nd_cmd_last = (uint8_t)op; nd_cmd_run = op == NDC_NAPI ? p[1] : 0u; } } /* NST2I, NST2K */
         switch (h >> 24) {
         case NDC_END: nd_snapchk_tick(); return; /* NDR0A: the snapchk frame line (nd_snap.c) */
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;

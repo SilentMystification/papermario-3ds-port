@@ -15,6 +15,7 @@ extern unsigned nd_st_epoch; /* nd_walk.c: the state epoch count, reset here at 
 extern unsigned nd_st_why; /* nd_walk.c: the source of the first epoch raise (NST2H) */
 extern unsigned gv_epoch; /* nd_geom.c: the batch cut count (NST2I) */
 extern unsigned char nd_cmd_last; /* nd_rec.c: the op of the last command core 0 ran (NST2I) */
+extern uint32_t nd_cmd_run; /* nd_rec.c: the runner of the last native command (NST2K) */
 static unsigned dk_gv = 1; /* NST2I: gv_epoch at the last compare */
 extern unsigned pm_frame_n;  /* pm_main.c: the logic step counter */
 extern unsigned conv_k4, keyc, keys; /* nd_comb.c, nd_set.c: the core 0 setter globals of NdDs */
@@ -100,7 +101,7 @@ static void adopt_count(const NdDs* c) {
     dk_adopt++;
 }
 static uint32_t ek_key[32], ek_n[32]; static unsigned ek_used, ek_other, ek_nlog;
-static void ep_note(uint32_t key) {   /* NST2H: one epbad command, key = side << 16 | site or rule << 8 | unit id */
+static void ep_note(uint32_t key) {   /* NST2H: one epbad command, key = side << 16 | site or rule << 8 | unit id; a key above 0x00100000 is the runner address of a quiet native command (NST2K) */
     if (ek_nlog < 16u) { ek_nlog++; pm_log_evt("dschk epbad f%u k %x", pm_frame_n, (unsigned)key); }
     for (unsigned i = 0; i < ek_used; i++) if (ek_key[i] == key) { ek_n[i]++; return; }
     if (ek_used < 32u) { ek_key[ek_used] = key; ek_n[ek_used++] = 1u; } else ek_other++;
@@ -143,7 +144,7 @@ void nd_dschk_run(const uint32_t* rec) {
         if (e0 != (ep != 0)) {
             dk_epbad++;
             if (e0) ep_note(0x10000u | (nd_st_epoch ? (nd_st_why & 0xffffu) : (0xff00u | nd_cmd_last)));   /* site ff: the command op that ran */
-            else ep_note(0x20000u | (((epw >> 16) & 0xffu) == 9u ? (0x900u | nd_cmd_last) : ((epw >> 8) & 0xffffu)));
+            else ep_note(((epw >> 16) & 0xffu) == 9u && nd_cmd_run ? nd_cmd_run : (0x20000u | (((epw >> 16) & 0xffu) == 9u ? (0x900u | nd_cmd_last) : ((epw >> 8) & 0xffffu)))); /* NST2K: a quiet native command keys by its runner address */
         }
     }
     nd_st_epoch = 0; nd_st_why = 0;
