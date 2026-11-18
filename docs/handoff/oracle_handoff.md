@@ -19,7 +19,7 @@ OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 
 2. Non-list walk (FACT, NST2D wscmb base variants): each frame the walker runs bss as units, past t_blk0 (pm_dspaud.c:52, a tick)
    and pm_f127 (pm_gpu.c:1725) (base ELF basebin/07b0785e17cf38b8). The tick top byte picks the unit: 0x39 MTX (variant a, stored base),
    0x2D COMB / RARE (variant b: key_s 0x100, sticky, all pso lookups miss). GUESS: psomiss tex_on 0x211321, 0x421862 = a tick with top byte 0x2A.
-   ws_WALKSRC (5ceee60b7f) logs the run start and return address. Next: symbolize them in its ELF, name the producer, write the fix page.
+   Producer FACT: pm_gbi_fallback dl (nd_walk.c:770, raw gbi words, no NDO_END; caller pm_main.c:464). Fix page ws_FALLBK (2ac5fcf03a).
 3. NDR0 (Sonnet, design section 7) after the NST2F gate data. Reads it needs: gv_epoch_enter nd_geom.c:203-228, sync_combine_work
    nd_comb.c:312-333 (leg_mode and comb_mode5 are decision inputs and outputs), sync_render nd_set.c:210, ensure_tile_slow nd_tex_set.c:335,
    box_fold_sync nd_comb.c:374, nd_mesh_* are VTX/TRI state-run units (nd_geo.c:29-37), not commands. Then NCONV1 (section 8), NREC1 (9).
