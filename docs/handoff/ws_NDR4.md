@@ -5,8 +5,7 @@ Worktree build3ds/wt/NDR4, branch NDR4. PM_ROW=NDR4 PM_LANE=NDR4. Edit only: 3ds
 - sprite.c records the sprite state (spr_state_run record and its feed, or the flat units) and then nd_rec_spr (nd_rec.c:277, sprite.c:467): at nd_rec_spr nd_ds holds the sprite draw state.
 - stream_run clears the arm at every command but JUMP, TEXRECT and the snap-taking NAPI records (nd_rec.c:685): NDC_SPR clears it before nd_walk_spr runs (:691).
 - nd_walk_spr (nd_walk.c:169-182) draws natively (pm_gpu_spr_native) or walks the 2 geometry words (draw_tri: the armed snap path of NDR0E2-NDR0G2 is right there too: the same nd_ds state).
-- pm_gpu_spr_build (pm_gpu.c:4575-4637) reads the walker: sticky geo and combine words (:4595, pm_gbi_sticky nd_comb.c:282), env and prim (:4609), omode_h and omode_l (:4611), the SHROUD mix of nd_ws.omode_l with fogc and blendc (:4612-4618).
-  nd_snap_mix (nd_snap_in.c:61) is that mix on the snap words (FACT: the NDR0F1 host case). prim_lod, om_kh, om_kl, tss and pm_gbi_gv_at stay walker reads (not in the snap).
+- pm_gpu_spr_build (pm_gpu.c:4575-4637) reads the walker: sticky geo and combine words (:4595, pm_gbi_sticky nd_comb.c:282), env and prim (:4609), omode_h and omode_l (:4611), the SHROUD mix of nd_ws.omode_l with fogc and blendc (:4612-4618). nd_snap_mix (nd_snap_in.c:61) is that mix on the snap words (FACT: the NDR0F1 host case). prim_lod, om_kh, om_kl, tss and pm_gbi_gv_at stay walker reads (not in the snap).
 ## Edits (keep CRLF: the Edit tool)
 1. nd_rec.c: above nd_rec_spr `void nd_snap_mesh(void); /* NDR4: strong in nd_snap.c */`; first line of nd_rec_spr `nd_snap_mesh(); /* NDR4: the snap of the sprite draw */`.
    stream_run: `op != NDC_JUMP && op != NDC_TEXRECT &&` (the arm line) becomes `op != NDC_JUMP && op != NDC_TEXRECT && op != NDC_SPR &&`.
@@ -35,8 +34,7 @@ Worktree build3ds/wt/NDR4, branch NDR4. PM_ROW=NDR4 PM_LANE=NDR4. Edit only: 3ds
    For a DIFF bench: `python 3ds/tools/drecsum.py <b> --row NDR4`, `grep -a "sprsnap\|drec frame" build3ds/azt/logs/<b>.txt`.
 3. One call each: `python 3ds/tools/bench.py run <s> --row NDR4 --why "NDR4 snapchk"` for s = nimgm_strip_snapchk, wscmb_pause_snapchk. `grep -a snapchk` of both logs > build3ds/out/ndr4_snapchk.txt.
 Gate (exact): host PASS; 3 benches byte-equal (GUESS: the snap words equal the walker words at a sprite); snapchk bad 0; wst not above the NDR2A hand-back.
-Stop: a DIFF (state its first DIFF draw, frame and the sprsnap frames), a crash, a bad line, a tool fault: commit the outputs, send the paths to the oracle with SendMessage, wait.
-A DIFF in a sprsnap frame is a stale walker: only the user can allow an expected-diff gate for this row. Fix rights: the listed files; compile errors.
+Stop: a DIFF (state its first DIFF draw, frame and the sprsnap frames), a crash, a bad line, a tool fault: commit the outputs, send the paths to the oracle with SendMessage, wait. A DIFF in a sprsnap frame is a stale walker: only the user can allow an expected-diff gate for this row. Fix rights: the listed files; compile errors.
 Pitfalls: one host test at a time in a worktree (rowloop takes --no-host). PM_CACHE=off only as a prefix of one command, never exported. One bench per rowloop call. Each scene in its own call, no timeout option.
 Keep each file's line endings (CRLF). A snap record is about 640 bytes (GUESS), the stream has 16 chunks of 32 KB per context (FACT nd_rec.c:30-31): the memo must stop a snap when the inputs stay the same.
 Hand-back: last commit `NDR4 2: gate. 3 benches byte-equal; snapchk bad <2>` deletes this page. One SubagentHandback: commit hash, gate values, sprsnap frames if any.
