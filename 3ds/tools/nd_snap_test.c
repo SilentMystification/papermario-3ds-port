@@ -103,6 +103,18 @@ int main(int argc, char** argv) {
         bad += bb;
         printf("ndr0g bind bad %d\n", bb);
     }
+    { /* NDR0G2: nd_snap_bdiff: equal pairs 0, a td src of tile 1 4 (8 with --fault), a shift word of tile 0 2 */
+        static NdSnapBind b[2], c[2];
+        int db = 0;
+        if (nd_snap_bdiff(b, c) != 0u) db++;
+        b[1].td.src = (const uint8_t*)0x2000;
+        if (nd_snap_bdiff(b, c) != (fault ? 8u : 4u)) db++;
+        b[1].td.src = NULL;
+        b[0].shift[1] = 1u;
+        if (nd_snap_bdiff(b, c) != 2u) db++;
+        bad += db;
+        printf("ndr0g2 bdiff bad %d\n", db);
+    }
     (void)nf;
     return bad ? 1 : 0;
 }

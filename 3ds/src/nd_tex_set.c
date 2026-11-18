@@ -11,6 +11,7 @@
 #include "variables.h"
 #include "nd_op.h"
 #include "nd_api.h"
+#include "nd_snap.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdTexM nd_tm; /* D4a: the load side of the texture model (nd_int.h) */
@@ -254,12 +255,14 @@ void pal_rgba(const void* base, unsigned i, float o[4]) {
     o[0] = r; o[1] = g; o[2] = b; o[3] = (c & 1u) ? 1.f : 0.f;
 }
 
+/* NDR0G2: the tile words the bind and uv code read (nd_snap.h ND_BTD and friends): NULL = the walker tiles */
+const NdSnapBind* nd_bsrc;
 const u8* fb_prev_base(int n) {
     const u8* base;
     unsigned i;
-    if (pm_wide || !nd_ws.td[n].valid || nd_ws.td[n].fmt != 0 || nd_ws.td[n].siz != 2 || nd_ws.td[n].stride != 320) return NULL;
-    if (nd_ws.tst1.tile_wrap[n][2] || nd_ws.tst1.tile_wrap[n][3]) return NULL;
-    base = (const u8*)nd_ws.td[n].src - ((size_t)nd_ws.td[n].y0 * 320u + (size_t)nd_ws.td[n].x0) * 2u;
+    if (pm_wide || !ND_BTD(n)->valid || ND_BTD(n)->fmt != 0 || ND_BTD(n)->siz != 2 || ND_BTD(n)->stride != 320) return NULL;
+    if (ND_BWR(n)[2] || ND_BWR(n)[3]) return NULL;
+    base = (const u8*)ND_BTD(n)->src - ((size_t)ND_BTD(n)->y0 * 320u + (size_t)ND_BTD(n)->x0) * 2u;
     for (i = 0; i < nuGfxCfbNum; i++)
         if ((const u8*)nuGfxCfb[i] == base) break;
     if (i == nuGfxCfbNum || pm_is_cur_cfb(base)) return NULL;
@@ -289,7 +292,7 @@ static inline __attribute__((always_inline)) int bound_cmp(int valid, const void
 }
 
 int tile_bound(int n) {
-    return bound_cmp(nd_ws.td[n].valid, nd_ws.td[n].src, nd_ws.td[n].pal, nd_ws.td[n].fmt, nd_ws.td[n].siz, nd_ws.tst1.tile_wrap[n], nd_ws.tst1.tile_sz[n], n);
+    return bound_cmp(ND_BTD(n)->valid, ND_BTD(n)->src, ND_BTD(n)->pal, ND_BTD(n)->fmt, ND_BTD(n)->siz, ND_BWR(n), ND_BSZ(n), n);
 }
 
 int tile_texel(int n, int s, int t, unsigned char o[4]) {
@@ -329,32 +332,32 @@ int tile_texel(int n, int s, int t, unsigned char o[4]) {
 
 /* HC7: the frame buffer candidate of fb_prev_base (a 16 bit RGBA 320 wide window): it takes the cold path, the bind is decided there */
 static inline int fb_cand(int n) {
-    return nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2; /* HC7: every 16 bit RGBA bind takes the slow path (frame buffer candidate, fbbind log) */
+    return ND_BTD(n)->fmt == 0 && ND_BTD(n)->siz == 2; /* HC7: every 16 bit RGBA bind takes the slow path (frame buffer candidate, fbbind log) */
 }
 
 static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
-    if (!nd_ws.td[n].valid) return;
-    nd_ws.tile_fx = (float)(nd_ws.tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
-    nd_ws.tile_fy = (float)(nd_ws.tst1.tile_sz[n][1] & 3) * 0.25f;
+    if (!ND_BTD(n)->valid) return;
+    nd_ws.tile_fx = (float)(ND_BSZ(n)[0] & 3) * 0.25f; /* PT38 */
+    nd_ws.tile_fy = (float)(ND_BSZ(n)[1] & 3) * 0.25f;
     { /* FB1 debug switch fbbind: one line per 16 bit RGBA bind (source, window, size); pm_tex.c load_impl adds hit or miss */
         static int fbon = -1;
         if (fbon < 0) fbon = pm_debug_has("fbbind");
-        if (fbon && nd_ws.td[n].fmt == 0 && nd_ws.td[n].siz == 2) pm_log_d("fbbind n%d src %p xy %d,%d wh %dx%d st %d", n, (const void*)nd_ws.td[n].src, nd_ws.td[n].x0, nd_ws.td[n].y0, nd_ws.td[n].w, nd_ws.td[n].h, nd_ws.td[n].stride);
+        if (fbon && ND_BTD(n)->fmt == 0 && ND_BTD(n)->siz == 2) pm_log_d("fbbind n%d src %p xy %d,%d wh %dx%d st %d", n, (const void*)ND_BTD(n)->src, ND_BTD(n)->x0, ND_BTD(n)->y0, ND_BTD(n)->w, ND_BTD(n)->h, ND_BTD(n)->stride);
     }
     {   /* FB1: a clamp window of the previous colour buffer (the transition strips, 6 rows each) samples one texture of the whole 320 x 240
          * buffer. The key is the buffer, so every strip after the first is a bind hit (no flush, no load). Texels are absolute: tile_x0 = tile_y0 = 0. */
         const u8* fb = fb_prev_base(n);
         if (fb) {
             static const int fb_sz[4] = { -1, -1, -1, -1 }; /* a window size no SetTileSize writes: tile_bound never matches it */
-            if (ens_src == fb && ens_pal == nd_ws.td[n].pal && ens_fmt == 0 && ens_siz == 2 && pm_tex_cur_idx() >= 0 &&
-                !memcmp(ens_sz, fb_sz, sizeof ens_sz) && !memcmp(nd_ws.tst1.tile_wrap[n], ens_wrap, sizeof ens_wrap)) {
+            if (ens_src == fb && ens_pal == ND_BTD(n)->pal && ens_fmt == 0 && ens_siz == 2 && pm_tex_cur_idx() >= 0 &&
+                !memcmp(ens_sz, fb_sz, sizeof ens_sz) && !memcmp(ND_BWR(n), ens_wrap, sizeof ens_wrap)) {
                 nd_ws.tile_x0 = nd_ws.tile_y0 = 0;
                 nd_ws.cur_tile = n;
                 return;
             }
             pm_gpu_flush();
-            pm_tex_set_wrap(nd_ws.tst1.tile_wrap[n][0], nd_ws.tst1.tile_wrap[n][1], nd_ws.tst1.tile_wrap[n][2], nd_ws.tst1.tile_wrap[n][3]);
-            pm_tex_load(fb, 0, 2, 320, 240, nd_ws.td[n].pal, nd_ws.td[n].pal_n, 320);
+            pm_tex_set_wrap(ND_BWR(n)[0], ND_BWR(n)[1], ND_BWR(n)[2], ND_BWR(n)[3]);
+            pm_tex_load(fb, 0, 2, 320, 240, ND_BTD(n)->pal, ND_BTD(n)->pal_n, 320);
             { /* FB1 debug switch fbbind: the bind as the texture layer gives it: size (pm_tex_size), source, slot (off) or CPU texture (cur) */
                 static int fbon = -1;
                 int tw1 = 0, th1 = 0;
@@ -362,8 +365,8 @@ static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
                 if (fbon) { pm_tex_size(&tw1, &th1); pm_log_d("fbbind bind n%d fb %p fmt RGBA16 size %dx%d off %d cur %d", n, (const void*)fb, tw1, th1, pm_tex_off_idx(), pm_tex_cur_idx()); }
             }
             nd_ws.tile_x0 = nd_ws.tile_y0 = 0;
-            ens_src = fb; ens_pal = nd_ws.td[n].pal; ens_fmt = 0; ens_siz = 2; ens_slot = -1;
-            memcpy(ens_wrap, nd_ws.tst1.tile_wrap[n], sizeof ens_wrap);
+            ens_src = fb; ens_pal = ND_BTD(n)->pal; ens_fmt = 0; ens_siz = 2; ens_slot = -1;
+            memcpy(ens_wrap, ND_BWR(n), sizeof ens_wrap);
             memcpy(ens_sz, fb_sz, sizeof ens_sz);
             ens_img[n] = fb;
             nd_ws.cur_tile = n;
@@ -376,10 +379,10 @@ static __attribute__((cold, noinline)) void ensure_tile_slow(int n) {
     }
     {
         NdBindDesc d;
-        d.src = nd_ws.td[n].src; d.pal = nd_ws.td[n].pal; d.pal_n = nd_ws.td[n].pal_n; d.fmt = nd_ws.td[n].fmt; d.siz = nd_ws.td[n].siz;
-        d.stride = nd_ws.td[n].stride; d.x0 = nd_ws.td[n].x0; d.y0 = nd_ws.td[n].y0; d.w = nd_ws.td[n].w; d.h = nd_ws.td[n].h;
-        memcpy(d.wrap, nd_ws.tst1.tile_wrap[n], sizeof d.wrap);
-        memcpy(d.sz, nd_ws.tst1.tile_sz[n], sizeof d.sz);
+        d.src = ND_BTD(n)->src; d.pal = ND_BTD(n)->pal; d.pal_n = ND_BTD(n)->pal_n; d.fmt = ND_BTD(n)->fmt; d.siz = ND_BTD(n)->siz;
+        d.stride = ND_BTD(n)->stride; d.x0 = ND_BTD(n)->x0; d.y0 = ND_BTD(n)->y0; d.w = ND_BTD(n)->w; d.h = ND_BTD(n)->h;
+        memcpy(d.wrap, ND_BWR(n), sizeof d.wrap);
+        memcpy(d.sz, ND_BSZ(n), sizeof d.sz);
         nd_tex_bind_desc(&d, n);
     }
 }
@@ -439,9 +442,9 @@ int nd_tex_bind_desc(const NdBindDesc* d, int n) {
 }
 
 void ensure_tile(int n) {
-    if (nd_ws.td[n].valid && tile_bound(n) && !fb_cand(n)) {
-        nd_ws.tile_fx = (float)(nd_ws.tst1.tile_sz[n][0] & 3) * 0.25f; /* PT38 */
-        nd_ws.tile_fy = (float)(nd_ws.tst1.tile_sz[n][1] & 3) * 0.25f;
+    if (ND_BTD(n)->valid && tile_bound(n) && !fb_cand(n)) {
+        nd_ws.tile_fx = (float)(ND_BSZ(n)[0] & 3) * 0.25f; /* PT38 */
+        nd_ws.tile_fy = (float)(ND_BSZ(n)[1] & 3) * 0.25f;
         nd_ws.cur_tile = n;
         return;
     }
@@ -564,10 +567,10 @@ __attribute__((noinline)) void nd_bind_run(const uint32_t* u) {
 
 int glyph_atlas_bound(void) {
     int gx, gy;
-    if (!nd_ws.td[0].valid || !nd_ws.td[0].src || nd_ws.td[0].fmt != 2 || nd_ws.td[0].siz != 0 || !ens_src) { return 0; }
+    if (!ND_BTD(0)->valid || !ND_BTD(0)->src || ND_BTD(0)->fmt != 2 || ND_BTD(0)->siz != 0 || !ens_src) { return 0; }
     if (ens_fmt != 2 || ens_siz != 0) { return 0; } /* MSGBOX 3: the palette may differ; the cell texture holds a cell per palette */
-    if (memcmp(nd_ws.tst1.tile_wrap[0], ens_wrap, sizeof ens_wrap) || memcmp(nd_ws.tst1.tile_sz[0], ens_sz, sizeof ens_sz)) { return 0; }
-    if (!pm_tex_glyph_same(nd_ws.td[0].src, nd_ws.td[0].fmt, nd_ws.td[0].siz, nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.td[0].pal, nd_ws.td[0].pal_n, &gx, &gy)) { return 0; }
+    if (memcmp(ND_BWR(0), ens_wrap, sizeof ens_wrap) || memcmp(ND_BSZ(0), ens_sz, sizeof ens_sz)) { return 0; }
+    if (!pm_tex_glyph_same(ND_BTD(0)->src, ND_BTD(0)->fmt, ND_BTD(0)->siz, ND_BTD(0)->w, ND_BTD(0)->h, ND_BTD(0)->pal, ND_BTD(0)->pal_n, &gx, &gy)) { return 0; }
     return 1;
 }
 
