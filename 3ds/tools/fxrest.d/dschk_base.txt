@@ -1,42 +1,28 @@
-134:#131 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-135:#132 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-142:#139 dschk bad f3 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-143:#140 dschk bad f3 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-144:#141 dschk bad f5 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-145:#142 dschk bad f5 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-146:#143 dschk bad f7 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-147:#144 dschk bad f7 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-266:#264 dschk f100 cmds 10554 bad 10554 epbad 2476 fbad 293901
-292:#289 dschk f200 cmds 27392 bad 27392 epbad 6445 fbad 756511
-135:#132 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-136:#133 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-143:#140 dschk bad f3 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
-144:#141 dschk bad f3 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
-145:#142 dschk bad f5 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
-146:#143 dschk bad f5 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
-147:#144 dschk bad f7 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
-148:#145 dschk bad f7 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
-225:#223 dschk f100 cmds 10554 bad 10554 epbad 2567 fbad 296209
-251:#248 dschk f200 cmds 27392 bad 27392 epbad 6536 fbad 758819
-278:#274 dschk f300 cmds 44128 bad 44128 epbad 10324 fbad 1219085
-297:#293 dschk f400 cmds 61628 bad 61628 epbad 12224 fbad 1700885
-338:#333 dschk f500 cmds 79674 bad 79674 epbad 14200 fbad 2190329
-382:#376 dschk f600 cmds 97390 bad 97390 epbad 16310 fbad 2675153
-414:#408 dschk f700 cmds 115219 bad 115219 epbad 18272 fbad 3161559
-456:#449 dschk f800 cmds 132807 bad 132807 epbad 20254 fbad 3644591
-498:#490 dschk f900 cmds 150539 bad 150539 epbad 22280 fbad 4129639
-529:#520 dschk f1000 cmds 168154 bad 168154 epbad 24237 fbad 4613049
-570:#561 dschk f1100 cmds 185946 bad 185946 epbad 26226 fbad 5098937
-617:#607 dschk f1200 cmds 203818 bad 203818 epbad 28182 fbad 5585465
-651:#640 dschk f1300 cmds 221997 bad 221997 epbad 30166 fbad 6077025
-688:#677 dschk f1400 cmds 240075 bad 240075 epbad 32156 fbad 6567166
-733:#721 dschk f1500 cmds 258261 bad 258261 epbad 34140 fbad 7058570
-792:#779 dschk f1600 cmds 277097 bad 277097 epbad 36874 fbad 7560023
-836:#823 dschk f1700 cmds 295102 bad 295102 epbad 39414 fbad 8051554
-992:#978 dschk f1800 cmds 313190 bad 313190 epbad 41386 fbad 8541586
-1037:#1022 dschk f1900 cmds 331068 bad 331068 epbad 43440 fbad 9029116
-1078:#1063 dschk f2000 cmds 348674 bad 348674 epbad 45444 fbad 9512400
-1120:#1104 dschk f2100 cmds 366518 bad 366518 epbad 47456 fbad 9999016
-1158:#1141 dschk f2200 cmds 384258 bad 384258 epbad 49408 fbad 10484176
-1197:#1180 dschk end f2292 cmds 400779 bad 400779 epbad 51186 fbad 10933325
-1200:#1182 dschk f2300 cmds 402180 bad 402180 epbad 51338 fbad 10971884
+# spot_mac01_dschk (NST2B 1b, commit 4d047a3eed)
+#223 dschk f100 cmds 10554 bad 10554 epbad 2312 fbad 85568
+#248 dschk f200 cmds 27392 bad 27392 epbad 6281 fbad 216216
+# fxchk_a_dschk (NST2B 1b, commit 4d047a3eed)
+#223 dschk f100 cmds 10554 bad 10554 epbad 2312 fbad 85934
+#248 dschk f200 cmds 27392 bad 27392 epbad 6281 fbad 216582
+#274 dschk f300 cmds 44128 bad 44128 epbad 10069 fbad 345024
+#293 dschk f400 cmds 61628 bad 61628 epbad 11969 fbad 484324
+#333 dschk f500 cmds 79674 bad 79674 epbad 13945 fbad 626354
+#376 dschk f600 cmds 97390 bad 97390 epbad 16055 fbad 766734
+#408 dschk f700 cmds 115219 bad 115219 epbad 18017 fbad 907679
+#449 dschk f800 cmds 132807 bad 132807 epbad 19999 fbad 1047419
+#490 dschk f900 cmds 150539 bad 150539 epbad 22025 fbad 1187879
+#520 dschk f1000 cmds 168154 bad 168154 epbad 23982 fbad 1327754
+#561 dschk f1100 cmds 185946 bad 185946 epbad 25971 fbad 1468514
+#607 dschk f1200 cmds 203818 bad 203818 epbad 27897 fbad 1605174
+#640 dschk f1300 cmds 221997 bad 221997 epbad 29881 fbad 1748141
+#677 dschk f1400 cmds 240075 bad 240075 epbad 31871 fbad 1890600
+#721 dschk f1500 cmds 258261 bad 258261 epbad 33855 fbad 2033330
+#779 dschk f1600 cmds 277097 bad 277097 epbad 36579 fbad 2179878
+#823 dschk f1700 cmds 295102 bad 295102 epbad 39091 fbad 2323263
+#978 dschk f1800 cmds 313190 bad 313190 epbad 41063 fbad 2465503
+#1022 dschk f1900 cmds 331068 bad 331068 epbad 43117 fbad 2607169
+#1063 dschk f2000 cmds 348674 bad 348674 epbad 45121 fbad 2746999
+#1104 dschk f2100 cmds 366518 bad 366518 epbad 47133 fbad 2888019
+#1141 dschk f2200 cmds 384258 bad 384258 epbad 49085 fbad 3028519
+#1180 dschk end f2292 cmds 400779 bad 400779 epbad 50863 fbad 3158779
+#1182 dschk f2300 cmds 402180 bad 402180 epbad 51015 fbad 3169929
