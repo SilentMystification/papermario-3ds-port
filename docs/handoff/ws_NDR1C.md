@@ -28,9 +28,9 @@ Worktree build3ds/wt/NDR1C, branch NDR1C. PM_ROW=NDR1C PM_LANE=NDR1C. Edit only:
 2. One call each: `python 3ds/tools/bench.py base <b>` and `sh 3ds/tools/rowloop.sh --row NDR1C --bench <b> --no-host` for b = nimgm_strip_drec, wscmb_pause_drec, wscmb_fsel_drec, spot_mac01_drec.
    For a DIFF bench: `python 3ds/tools/drecsum.py <b> --row NDR1C`, `grep -a "rectsnap\|bindsnap\|drec frame" build3ds/azt/logs/<b>.txt`. The frame of the first DIFF draw d: the last `drec frame <f> seq <s>` line with s <= d.
 3. One call each: `python 3ds/tools/bench.py run <s> --row NDR1C --why "NDR1C snapchk"` for s = nimgm_strip_snapchk, wscmb_pause_snapchk. `grep -a snapchk` of both logs > build3ds/out/ndr1c_snapchk.txt.
-Gate (exact). Pass: host PASS. snapchk bad 0 in both runs (the rnd compare now runs at live rectangles too). wst not above 143 (nimgm) and 2361 (wscmb).
+Gate (exact). Pass: host PASS. snapchk bad 0 in both runs (the rnd compare now runs at live rectangles too). wst is reported next to `python 3ds/tools/bench.py base <s>` at the merge-base (not judged: rectangle compares add stale walker events).
 Each drec bench byte-equal, or DIFF with a `rectsnap f<n>` or `bindsnap f<n>` line for the frame of its first DIFF draw.
-Stop: a crash, bad above 0, wst above the cap, a DIFF frame with no rectsnap or bindsnap line, a stream overflow or fatal line, a tool fault. Commit the outputs, send the paths to the oracle with SendMessage, wait.
+Stop: a crash, bad above 0, a DIFF frame with no rectsnap or bindsnap line, a stream overflow or fatal line, a tool fault. Commit the outputs, send the paths to the oracle with SendMessage, wait.
 Fix rights: the listed files, compile errors.
 Pitfalls: one host test at a time in a worktree (rowloop takes --no-host). PM_CACHE=off only as a prefix of one command, never exported. One bench per rowloop call. Each scene in its own call, no timeout option.
 Keep each file's line endings (CRLF). A snap record is about 640 bytes (GUESS), the stream has 16 chunks of 32 KB per context (FACT nd_rec.c:30-31): the memo must stop a snap when the inputs stay the same.
