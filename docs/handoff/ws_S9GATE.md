@@ -1,5 +1,5 @@
 # ws_S9GATE (Haiku): the end proof of the display list removal on main. No code edit. Counters: every listcen total 0 (C1-C10) and `elfgate func 0 data 0 gfxnames 0` (C11, C12). Gate: the numbers below and 4 drec compares against the start of the DEL chain.
-Designer: oracle DEL helper. WAIT: start from main after the merges of DEL1D2, DEL2, DEL2E, DEL3C1-3, DELGT, DEL5B3 and the imgfx converter row (its page is not written yet; without it reader stays 11, nd_op.h:79-120). Worktree build3ds/wt/S9GATE, branch S9GATE. PM_ROW=S9GATE PM_LANE=S9GATE.
+Designer: oracle DEL helper. WAIT: start from main after the merges of DEL1D2, DEL2, DEL2E, DEL3C1-3, DELGT, DEL5B3 and IMGFX and IMGFX2 (without IMGFX2 reader stays 11, nd_op.h:79-120). Worktree build3ds/wt/S9GATE, branch S9GATE. PM_ROW=S9GATE PM_LANE=S9GATE.
 Edit only: no source file. Outputs in build3ds/out/ (commit them with `git add -f`).
 ## Facts
 - FACT the end proof is listcen all 0 and elfgate 0 0 0 (plan_finish.md:2, :36). listcen core1 is outside it (UD1 option 1, oracle_handoff.md:5).
