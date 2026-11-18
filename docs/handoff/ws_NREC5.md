@@ -6,7 +6,7 @@ Edit only (Edit tool, keep CRLF): 3ds/src/nd_scomp.c (347-359), 3ds/include/nd_s
 - FACT the compiled run (sc_exec, nd_scomp.c:260-266) ends with `sr_ok = 0` and `gv_epoch++`. Its combine decision is a cache per key (sc_decide :226, sc_replay :207 writes sl_const and sl_cc).
 - FACT the units of such a def run in def order with every value unit first (nv == pre), so the op path gives the same state order. Each unit run takes the walker decision (sync_combine) as the op path does.
 - FACT ENT_GBI (nd_ent.c:485) is nd_ops_run(l, n, 1): gv_epoch++, dlc_on = 1, the units, the streak flushes (nd_walk.c:436-452). The old compiled branch of ent_gap did the same plus sc_exec.
-- FACT the next snap draw applies its own combine (nd_snap_comb, nd_snap.c:233), so the combine of the op path does not reach a list draw. GUESS: drec stays equal.
+- FACT the next snap draw applies its own combine (nd_snap_comb, nd_snap.c:235), so the combine of the op path does not reach a list draw. GUESS: drec stays equal.
 ## Edits
 1. nd_scomp.c. Replace `int nd_scomp_exec(...) {` to the end of `int nd_scomp_exec_own(...) { ... }` (lines 347-359, before `#endif`) with:
 ```c
