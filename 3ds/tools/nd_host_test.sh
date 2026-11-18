@@ -43,6 +43,7 @@ HOST_IN="3ds/tools 3ds/src 3ds/include 3ds/stub_include 3ds/tests 3ds/build.sh 3
 HOST_AV='mkdir -p /work/ver/us; tar -xf - -C /work; (cd /a/c && sha1sum -c --status out.sha1) || { echo "ASSET VOLUME CHECK FAILED" >&2; exit 7; }; ln -s /a/c/assets /work/assets; ln -s /a/c/ver/us/build /work/ver/us/build'
 OUT=build3ds/out/hostkey_$RUN; mkdir -p $OUT
 ASSET_BASE=$AR; ASSET_DIRS="assets/us ver/us/build"; IMG=pm3ds-host:1
+MAIN_ROOT=$(cd "$(git rev-parse --git-common-dir)/.." && pwd) # BUILDO: the asset stat cache (src_sync.sh asset_manifest)
 . 3ds/tools/src_sync.sh
 GC_EXCL=""; . 3ds/tools/readkey.sh # GENKEY: every id comes from host_in.txt (the host test writes no generator output)
 asset_manifest
@@ -76,7 +77,9 @@ if [ "${PM_CACHE:-on}" != off ] && [ "${PM_HOSTSEL:-on}" != all ] && [ -f $TC/rc
     cat $TC/out.txt; exit "$(cat $TC/rc.txt)"
 fi
 rm -rf $TC
-# Build slot: the docker runs below take one (3ds/tools/build_slot.sh, BUILDLOCK) and are limited to 4 GB each.
+# Host slot: the docker runs below take one (3ds/tools/build_slot.sh, BUILDLOCK) and are limited to 4 GB each. BUILDO: the host
+# tests have their own pool (build3ds/hostslots, PM_HOST_SLOTS, default 4), so a row loop does not hold 2 build slots.
+BUILDSLOT_DIR=${BUILDSLOT_DIR:-$MAIN_ROOT/build3ds/hostslots}; PM_BUILD_SLOTS=${PM_HOST_SLOTS:-4}
 . 3ds/tools/build_slot.sh
 build_slot_take
 # PM_CACHE=off: asset_manifest named a new cold volume; it goes at the end.

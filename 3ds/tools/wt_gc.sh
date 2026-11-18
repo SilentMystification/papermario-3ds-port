@@ -2,7 +2,7 @@
 # wt_gc.sh: remove the build3ds disk use of finished work.
 # Removes, for every worktree under build3ds/wt whose branch is merged into main (or whose HEAD is detached):
 #   the worktree (git worktree remove --force), its lane folder build3ds/lane-<name>, and its docker volumes
-#   pm3ds-src-<name> and pm3ds-build-<name>.
+#   pm3ds-src-<name> and pm3ds-build-<name> (BUILDO: builds no longer make lane volumes; VOLSWEEP below removes old ones).
 #   its pm_3ds_<name>.3dsx copies (the Azahar sdmc folder and build3ds/azslots/slot*/user/sdmc/3ds/PaperMario)
 #   and its shot folders build3ds/azt/shots/*/<name>.
 # Also removes build-at folders build3ds/at_* and lanes build3ds/lane-* that have no worktree, except a build-at folder
@@ -153,5 +153,26 @@ if [ -z "$ONLY" ]; then
     done
     sweep_after=$(du -sm build3ds 2>/dev/null | cut -f1)
     if [ $APPLY = 1 ]; then echo "sweep freed $((sweep_before - sweep_after)) MB (build3ds $sweep_before -> $sweep_after MB)"; else echo "sweep: build3ds $sweep_before MB; dry run frees nothing"; fi
+fi
+# VOLSWEEP (BUILDO): the build workspaces belong to the build slots (pm3ds-src-ws<k>, pm3ds-build-ws<k>, 3ds/build.sh). Lane
+# volumes of older builds (pm3ds-src-<lane>, pm3ds-build-<lane>, pm3ds-work-<lane>) and cold volumes over 2 h old (a cold build
+# removes its own at the end) go; asset volumes other than the newest 2 go. docker volume rm refuses a volume that a container
+# uses. The old shape store build3ds/gencache/shape (the shapes now live in the volume pm3ds-shape) goes. Skipped with --only.
+if [ -z "$ONLY" ] && command -v docker >/dev/null 2>&1; then
+    now=$(date +%s)
+    docker volume ls -q 2>/dev/null | grep -E '^pm3ds-(src|build|work|assets|shape)-' | while read -r v; do
+        case "$v" in pm3ds-src-ws[0-9]*|pm3ds-build-ws[0-9]*) continue ;; esac
+        case "$v" in
+            *-cold[0-9]*)
+                c=$(docker volume inspect -f '{{.CreatedAt}}' "$v" 2>/dev/null | cut -c1-19 | sed 's/T/ /')
+                ct=$(date -d "$c" +%s 2>/dev/null || echo "$now")
+                [ $((now - ct)) -gt 7200 ] || continue ;;
+            pm3ds-assets-*)
+                docker volume ls -q | grep -E '^pm3ds-assets-[0-9a-f]{16}$' | xargs -r docker volume inspect -f '{{.CreatedAt}} {{.Name}}' | sort -r | sed -n '1,2s/.* //p' | grep -qx "$v" && continue ;;
+        esac
+        echo "remove volume $v"; run docker volume rm "$v" >/dev/null 2>&1 || echo "volume $v in use, kept"
+    done
+    MAINW=$(cd "$(git rev-parse --git-common-dir)/.." && pwd)
+    if [ -d "$MAINW/build3ds/gencache/shape" ]; then echo "remove old shape store $MAINW/build3ds/gencache/shape"; run rm -rf -- "$MAINW/build3ds/gencache/shape"; fi
 fi
 [ $APPLY = 1 ] || echo "dry run: add --apply to remove"
