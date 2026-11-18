@@ -19,6 +19,7 @@
 #include "nd_api.h"
 #include "nd_gtab.h"
 #include "nd_lkey.h"
+#include "nd_gbi.h" /* FALLBK: pm_gbi_fallback's macros write typed units (nd_gx_w, nd_rec.c:487) */
 
 extern int nd_c2_on; /* CORE2-2 census (nd_c2haz.c, switch c2haz) */
 void nd_c2_rec(const Gfx* rec, unsigned words);
