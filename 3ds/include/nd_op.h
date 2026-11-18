@@ -1,6 +1,6 @@
 /* nd_op.h: the typed op (HC4, plan_hotcode section 5.1). One 8-byte unit as the frame stream unit: w0 = id << 24 | a (24 bits), w1 = b.
  * The ids are 0x20 + k (k < 32), free of the F3DEX2 ops (0x01-0x07, 0xd7-0xff) and the G_PM_* ids (0x0d-0x13). The recorder (core 1) writes
- * typed ops into the native record runs (nd_op_xlate); core 0 runs them by id (nd_set.c nd_op_same, nd_op_apply) and decodes no word for them.
+ * typed ops into the native record runs (nd_op_xlate); core 0 runs them by id (nd_set.c nd_unit_same, nd_unit_apply) and decodes no word for them.
  * HC4a: the scalar state ops. HC4b: the combine, the end of a typed table, the dropped-op mark of the t4chk check. HC4c: the texture image, tile
  * and load ops (a and b keep the F3DEX2 field layout: a = w0 low 24 bits, b = w1; core 0 reads the fields by id, nd_tex_set.c). Host-built (nd_cmd_test.c). */
 #ifndef ND_OP_H

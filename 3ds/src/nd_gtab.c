@@ -34,7 +34,7 @@ const NdGTab* nd_gtab_find(const void* list) {
 int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)) {
     for (unsigned i = 0; i < e->nu; i++) {
         const uint32_t* u = e->u + 2u * i;
-        if ((u[0] >> 24) == NDO_CALL) { if (!call(u[1], n, depth)) return 0; if (u[0] & 1u) return 1; continue; }
+        if ((u[0] >> 24) == ND_FS_CALL) { if (!call(u[1], n, depth)) return 0; if (u[0] & 1u) return 1; continue; }
         if (*n >= max) return 0;
         memcpy((char*)out + 8u * *n, u, 8u);
         (*n)++;
@@ -45,9 +45,9 @@ int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int dept
 static unsigned gt_kind(uint32_t w0) { /* as st_kind of nd_rec.c: 0 not a state op, 1 a state op, 2 a sync, 3 the list end */
     const unsigned op = w0 >> 24;
     if (!nd_op_typed(op)) return 0u;
-    if (op == NDO_END) return 3u;
-    if (op == NDO_MISC) return (w0 & 0xffffffu) == (NDO_MISC_NOP << 16) ? 2u : 0u;
-    return (op <= NDO_COMB || nd_op_tex(op) || (op >= NDO_MTX && op <= NDO_MOVEMEM)) ? 1u : 0u;
+    if (op == ND_FS_END) return 3u;
+    if (op == ND_FS_MISC) return (w0 & 0xffffffu) == (ND_FS_MISC_NOP << 16) ? 2u : 0u;
+    return (op <= ND_FS_COMB || nd_op_tex(op) || (op >= ND_FS_MTX && op <= ND_FS_MOVEMEM)) ? 1u : 0u;
 }
 unsigned nd_gt_state_only(const uint32_t* l) {
     for (unsigned n = 0; n < 64u; n++) {

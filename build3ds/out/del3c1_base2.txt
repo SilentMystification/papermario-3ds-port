@@ -1,0 +1,46 @@
+LIST: 2 scenarios, one kept slot, warm restart between them: kkj14_cgfx_drec, kkj14_cgfx_drec
+LIST: start kkj14_cgfx_drec at 18:01:12
+queue: position 1 of 1 waiting (lane 'base_a19088e52', speed normal, scenario kkj14_cgfx_drec, want slot any)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario kkj14_cgfx_drec, row BASECACHE, lane 'base_a19088e52', slot 1, cap 40 s, deadline 35 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 35 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 35 s)
+azslot: slot 1 pid 63064 warm
+run: rc 0: slot1: stopped after 3s: matched 'drec f201 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.2 s; end at 3.6 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+cap high: kkj14_cgfx_drec cap 40 until 3.2
+PASS  warp: #133 warp: kkj_14 entry 0 (area 4 map 8) story -128 flag 0
+PASS  drec: #262 drec f201 draws 84 bytes 136380
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL3C1\build3ds\azt\logs\kkj14_cgfx_drec.txt (copy of this run's log; slot 1)
+SUBJECT: kkj_14, Mario at entry 0, cold det start with the drec switch: draw records of frames 200 and 201 go to shots/drec.txt (candle lights, SetCustomGfx CUSTOM_GFX_0).
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL3C1\build3ds\azt\shots\kkj14_cgfx_drec\base_a19088e52\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL3C1\build3ds\lane-base_a19088e52\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1943474, build 7017, commit a19088e5258d20313f9507e722ea8e970ebff846
+  scene -                              windows   0 fps - ft -
+LIST: kkj14_cgfx_drec rc 0, wall 12.5 s
+LIST: start kkj14_cgfx_drec at 18:01:25
+queue: position 1 of 1 waiting (lane 'base_a19088e52', speed normal, scenario kkj14_cgfx_drec, want slot 1)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario kkj14_cgfx_drec, row BASECACHE, lane 'base_a19088e52', slot 1, cap 40 s, deadline 35 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 35 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 35 s)
+azslot: slot 1 pid 63064 warm
+run: rc 0: slot1: stopped after 3s: matched 'drec f201 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.2 s; end at 3.6 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+cap high: kkj14_cgfx_drec cap 40 until 3.2
+PASS  warp: #133 warp: kkj_14 entry 0 (area 4 map 8) story -128 flag 0
+PASS  drec: #262 drec f201 draws 84 bytes 136380
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL3C1\build3ds\azt\logs\kkj14_cgfx_drec.txt (copy of this run's log; slot 1)
+SUBJECT: kkj_14, Mario at entry 0, cold det start with the drec switch: draw records of frames 200 and 201 go to shots/drec.txt (candle lights, SetCustomGfx CUSTOM_GFX_0).
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL3C1\build3ds\azt\shots\kkj14_cgfx_drec\base_a19088e52\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL3C1\build3ds\lane-base_a19088e52\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1944301, build 7017, commit a19088e5258d20313f9507e722ea8e970ebff846
+  scene -                              windows   0 fps - ft -
+LIST: kkj14_cgfx_drec rc 0, wall 12.6 s
+LIST DONE: wall 25.2 s. kkj14_cgfx_drec rc 0 12.5 s; kkj14_cgfx_drec rc 0 12.6 s
+base kkj14_cgfx_drec at a19088e52: not stored. One base build of that commit (lane base_a19088e52), then the runs.
+base a19088e52: build from the basebin store (entry 64580448132001e3), no build
+list of 2 benches on one kept slot: kkj14_cgfx_drec, kkj14_cgfx_drec
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.
+base kkj14_cgfx_drec at a19088e52: two runs equal, stored 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\a19088e5258d20313f9507e722ea8e970ebff846\kkj14_cgfx_drec

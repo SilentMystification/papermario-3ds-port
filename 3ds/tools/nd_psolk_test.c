@@ -56,7 +56,7 @@ static void add_state(St s) {
     sts[nst++] = s;
 }
 
-/* the walker rules (op_setcombine) for one G_SETCOMBINE, as nd_decide_test.c has them */
+/* the walker rules (nd_comb_set) for one G_SETCOMBINE, as nd_decide_test.c has them */
 static void walker_comb(uint32_t w0, uint32_t w1, uint32_t t[16], int* use_t1, int* box_prod, int* ashade) {
     t[0] = (w0 >> 20) & 0xf;  t[2] = (w0 >> 15) & 0x1f; t[1] = (w1 >> 28) & 0xf; t[3] = (w1 >> 15) & 7;
     t[4] = (w0 >> 12) & 7;    t[6] = (w0 >> 9) & 7;     t[5] = (w1 >> 12) & 7;   t[7] = (w1 >> 9) & 7;

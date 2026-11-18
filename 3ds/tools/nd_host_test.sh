@@ -184,7 +184,7 @@ MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a
   printf "void pm_log_d(const char* fmt, ...) { (void)fmt; }\nvoid pm_log_w(const char* fmt, ...) { (void)fmt; }\nvoid pm_log_prof_line(const char* fmt, ...) { (void)fmt; }\nunsigned pm_frame_count(void) { return 0; }\nunsigned nd_r13_nohit;\nint pm_texf_centre; int pm_tex_filt_linear(void) { return 0; }\nstatic unsigned char gs_dummy[1024];\nvoid* gGameStatusPtr = gs_dummy;\n" > /tmp/ndlogs.c
   printf "#include <nd.h>
 #include <string.h>
-void nd_comb_decide(const NdCombIn* in, NdCombOut* out) { (void)in; memset(out, 0, sizeof *out); }
+void nd_comb_dec(const NdCombIn* in, NdCombOut* out) { (void)in; memset(out, 0, sizeof *out); }
 int pm_gpu_noise_ok(void) { return 0; }
 void pm_gpu_noise_draw(NdUnit* u, float* nzo) { (void)u; (void)nzo; }
 void* nd_ntab_find(const void* list) { (void)list; return 0; } /* GKEY2: rec_inline (nd_rec.c) links; the unit tests have no device entries (nd_gtab.c needs the generated tables) */

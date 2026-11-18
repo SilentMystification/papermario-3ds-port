@@ -1,8 +1,8 @@
 /* nd_decide_test.c: NPSO2 host compare. For every state record of the ndref captures (combine words, other mode H and L, depth image flag) and a fixed grid of
- * the walker flags and colours, the old path (the walker NdCombIn, the combine decision of nd_comb_decide, nd_render_state, nd_tev_build) is run, and the
+ * the walker flags and colours, the old path (the walker NdCombIn, the combine decision of nd_comb_dec, nd_render_state, nd_tev_build) is run, and the
  * NdPsoDesc made from the same state goes through nd_pso_build, nd_pso_cc and nd_pso_colour. Every output must be equal byte for byte.
- * The NdCombIn of the old path is made here by its own copy of the walker rules (op_setcombine decode and rename, box_fold_sync): not by nd_comb_tst.
- * nd_comb_decide itself is in nd_comb.c (walker globals, not host linked): old_path is its code (nd_comb_core with the walker's vprim, then the plan colours).
+ * The NdCombIn of the old path is made here by its own copy of the walker rules (nd_comb_set decode and rename, box_fold_sync): not by nd_comb_tst.
+ * nd_comb_dec itself is in nd_comb.c (walker globals, not host linked): old_path is its code (nd_comb_core with the walker's vprim, then the plan colours).
  * Usage: nd_decide_test [--fault] <ndref.bin> ...   --fault: the desc tex_on is not copied (the compare must then report bad above 0). */
 #include <assert.h>
 #include <stdint.h>
@@ -41,7 +41,7 @@ static void add_state(St s) {
     sts[nst++] = s;
 }
 
-/* the walker rules (op_setcombine) for one G_SETCOMBINE */
+/* the walker rules (nd_comb_set) for one G_SETCOMBINE */
 static void walker_comb(uint32_t w0, uint32_t w1, uint32_t t[16], int* use_t1, int* box_prod, int* ashade) {
     t[0] = (w0 >> 20) & 0xf;  t[2] = (w0 >> 15) & 0x1f; t[1] = (w1 >> 28) & 0xf; t[3] = (w1 >> 15) & 7;
     t[4] = (w0 >> 12) & 7;    t[6] = (w0 >> 9) & 7;     t[5] = (w1 >> 12) & 7;   t[7] = (w1 >> 9) & 7;
@@ -70,7 +70,7 @@ static void walker_comb(uint32_t w0, uint32_t w1, uint32_t t[16], int* use_t1, i
     *ashade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
 }
 
-/* the old path: nd_comb_decide of nd_comb.c (core with the walker vprim, then the plan colours of the inputs), then the model state recipe for the TEV */
+/* the old path: nd_comb_dec of nd_comb.c (core with the walker vprim, then the plan colours of the inputs), then the model state recipe for the TEV */
 static void old_path(const NdCombIn* in, const St* s, unsigned vprim, NdCombOut* co, NdRender* r, NdTevOut* to) {
     nd_comb_core(in, vprim, 0, co);
     if (co->plan_on) pm_comb_colours(&co->plan, in->prim, in->env, in->prim_lo8, in->key_c, in->key_s);

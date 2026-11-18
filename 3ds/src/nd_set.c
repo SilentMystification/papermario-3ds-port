@@ -15,6 +15,7 @@
 #include "variables.h"
 #include "nd_ops.h"
 #include "nd_op.h"
+#include "nd_fs.h"
 extern int pm_wide; /* WIDE4: set_scissor reads signed x edges with wide on */
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
@@ -76,7 +77,7 @@ void nd_set_prim(u32 a, u32 b) {
     pm_gpu_set_prim(b, a & 0xffffu); /* closes the open batch before the change (SPR4-prim) */
     nd_ws.prim = b;
     nd_ws.prim_lod = a & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
-    sync_combine();
+    nd_comb_sync();
 }
 
 /* HC4a: the othermode setter on the typed fields (h: the H word; mask from shift and length, nd_op.h). */
@@ -92,24 +93,24 @@ static void set_om(int h, unsigned sft, unsigned len, unsigned mask, u32 v) {
             }
             else { nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (v & mask); nd_ws.om_kl |= mask; }
             /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
-            if (h && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) sync_combine();
+            if (h && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) nd_comb_sync();
 }
 
 /* S3F-2b: G_SETENVCOLOR, one function for the walker and the record. */
-void gbi_setenv(u32 w1) {
+void nd_envc_set(u32 w1) {
     GP_SET(2, nd_ws.envc == w1);
     nd_ws.envc = w1;
     pm_gpu_set_env(nd_ws.envc);
-    sync_combine();
+    nd_comb_sync();
 }
 
 /* HC4a: G_MOVEWORD by its typed kind (nd_op.c decodes the index and offset). */
 static void set_mw(unsigned kind, unsigned arg, u32 w1) {
     switch (kind) {
-    case NDO_MW_NUMLIGHT: nd_light_count(w1); break; /* L01 */
-    case NDO_MW_LIGHTCOL: lt[arg].col[0] = w1 >> 24; lt[arg].col[1] = w1 >> 16; lt[arg].col[2] = w1 >> 8; break; /* L01 */
-    case NDO_MW_FOG: fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; /* F08 */
-    case NDO_MW_SEG:
+    case ND_FS_MW_NUMLIGHT: nd_light_count(w1); break; /* L01 */
+    case ND_FS_MW_LIGHTCOL: lt[arg].col[0] = w1 >> 24; lt[arg].col[1] = w1 >> 16; lt[arg].col[2] = w1 >> 8; break; /* L01 */
+    case ND_FS_MW_FOG: fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; /* F08 */
+    case ND_FS_MW_SEG:
         nd_ws.segbase[arg] = (u32)ptr_of(w1);
         if (!nd_ws.segbase[arg]) nd_ws.segbase[arg] = w1;
         break;
@@ -117,73 +118,73 @@ static void set_mw(unsigned kind, unsigned arg, u32 w1) {
     }
 }
 
-/* HC4a: the typed scalar ops (nd_op.h). nd_op_same: 1 when the walker skips the op (the old g2_same case; it runs the old g2_note part);
- * nd_op_apply: the handler of the op (the walker's arm). */
-int nd_op_same(const uint32_t* u) {
+/* HC4a: the typed scalar ops (nd_op.h). nd_unit_same: 1 when the walker skips the op (the old g2_same case; it runs the old g2_note part);
+ * nd_unit_apply: the handler of the op (the walker's arm). */
+int nd_unit_same(const uint32_t* u) {
     const u32 a = u[0] & 0xffffffu, b = u[1];
     switch (u[0] >> 24) {
-    case NDO_OMH: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_h & m) || !sc_ok) return 0; nd_ws.om_kh |= m; return 1; }
-    case NDO_OML: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_l & m)) return 0; nd_ws.om_kl |= m; return 1; }
-    case NDO_GEOM: {
+    case ND_FS_OMH: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_h & m) || !sc_ok) return 0; nd_ws.om_kh |= m; return 1; }
+    case ND_FS_OML: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_l & m)) return 0; nd_ws.om_kl |= m; return 1; }
+    case ND_FS_GEOM: {
         unsigned g = (nd_ws.geom & a) | b;
         return g == nd_ws.geom && pm_gpu_mode_is((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
     }
-    case NDO_PRIM:
+    case ND_FS_PRIM:
         if (nd_ws.prim != b || (u8)nd_ws.prim_lod != (u8)a || !sc_ok) return 0;
         pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; /* SPR4-prim: LOD change closes the open batch */
         return 1;
-    case NDO_ENV: return nd_ws.envc == b && sc_ok;
-    case NDO_FOG: return fogc == b;
-    case NDO_BLEND: return blendc == b;
-    case NDO_TEXTURE: return nd_ws.tex_on == (int)a && nd_ws.tex_ss == (b >> 16) && nd_ws.tex_ts == (b & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
-    case NDO_COMB: /* R2B: the handler's writes equal the state and sync_combine does nothing (sc_ok and the same input hash) */
-        return comb_set && nd_ws.comb_w0 == NDO_COMB_W0(a) && nd_ws.comb_w1 == b && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
+    case ND_FS_ENV: return nd_ws.envc == b && sc_ok;
+    case ND_FS_FOG: return fogc == b;
+    case ND_FS_BLEND: return blendc == b;
+    case ND_FS_TEXTURE: return nd_ws.tex_on == (int)a && nd_ws.tex_ss == (b >> 16) && nd_ws.tex_ts == (b & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
+    case ND_FS_COMB: /* R2B: the handler's writes equal the state and nd_comb_sync does nothing (sc_ok and the same input hash) */
+        return comb_set && nd_ws.comb_w0 == ND_FS_COMB_W0(a) && nd_ws.comb_w1 == b && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
                sc_sig_now() == sc_sig;
-    case NDO_MW: /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
-        return (a >> 16) == NDO_MW_LIGHTCOL && lt[a & 0xffffu].col[0] == (u8)(b >> 24) && lt[a & 0xffffu].col[1] == (u8)(b >> 16) &&
+    case ND_FS_MW: /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
+        return (a >> 16) == ND_FS_MW_LIGHTCOL && lt[a & 0xffffu].col[0] == (u8)(b >> 24) && lt[a & 0xffffu].col[1] == (u8)(b >> 16) &&
                lt[a & 0xffffu].col[2] == (u8)(b >> 8);
     default: return 0;
     }
 }
 static __attribute__((cold, noinline)) void set_rare(unsigned k, u32 w1) {
-    if (k == NDO_RARE_CONV) { conv_k4 = (w1 >> 9) & 0xffu; pm_comb_set_k4(conv_k4); }
-    else if (k == NDO_RARE_KEYR) {
+    if (k == ND_FS_RARE_CONV) { conv_k4 = (w1 >> 9) & 0xffu; pm_comb_set_k4(conv_k4); }
+    else if (k == ND_FS_RARE_KEYR) {
         keyc = (keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24);
         keys = (keys & 0x00ffffffu) | ((w1 & 0xffu) << 24);
     } else {
         keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
         keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
     }
-    sync_combine();
+    nd_comb_sync();
 }
-void nd_op_apply(const uint32_t* u) {
+void nd_unit_apply(const uint32_t* u) {
     const u32 a = u[0] & 0xffffffu, b = u[1];
     switch (u[0] >> 24) {
-    case NDO_OMH: set_om(1, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
-    case NDO_OML: set_om(0, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
-    case NDO_GEOM: set_geom(a, b); break;
-    case NDO_PRIM: nd_set_prim(a, b); break;
-    case NDO_ENV: gbi_setenv(b); break;
-    case NDO_FOG: set_fogcolor(b); break;
-    case NDO_BLEND: set_blendcolor(b); break;
-    case NDO_FILL: set_fillcolor(b); break;
-    case NDO_PRIMZ: set_primdepth(b); break;
-    case NDO_SCISSOR: set_scissor(a, b); break;
-    case NDO_TEXTURE: nd_set_texture(a, b); sync_combine(); break;
-    case NDO_MW: set_mw(a >> 16, a & 0xffffu, b); break;
-    case NDO_RARE: set_rare(a, b); break;
-    case NDO_COMB: op_setcombine(NDO_COMB_W0(a), b); sync_combine(); break;
-    case NDO_TIMG: nd_set_timg(a, b); break; /* HC4c: the texture image, tile and load ops (nd_tex_set.c) */
-    case NDO_TILE: nd_set_tile(a, b); break;
-    case NDO_TILESIZE: nd_set_tilesize(a, b); break;
-    case NDO_LOADBLOCK: nd_set_loadblock(b); break;
-    case NDO_LOADTILE: nd_set_loadtile(a, b); break;
-    case NDO_LOADTLUT: nd_set_loadtlut(b); break;
+    case ND_FS_OMH: set_om(1, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
+    case ND_FS_OML: set_om(0, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
+    case ND_FS_GEOM: set_geom(a, b); break;
+    case ND_FS_PRIM: nd_set_prim(a, b); break;
+    case ND_FS_ENV: nd_envc_set(b); break;
+    case ND_FS_FOG: set_fogcolor(b); break;
+    case ND_FS_BLEND: set_blendcolor(b); break;
+    case ND_FS_FILL: set_fillcolor(b); break;
+    case ND_FS_PRIMZ: set_primdepth(b); break;
+    case ND_FS_SCISSOR: set_scissor(a, b); break;
+    case ND_FS_TEXTURE: nd_tx_texon(a, b); nd_comb_sync(); break;
+    case ND_FS_MW: set_mw(a >> 16, a & 0xffffu, b); break;
+    case ND_FS_RARE: set_rare(a, b); break;
+    case ND_FS_COMB: nd_comb_set(ND_FS_COMB_W0(a), b); nd_comb_sync(); break;
+    case ND_FS_TIMG: nd_tx_timg(a, b); break; /* HC4c: the texture image, tile and load ops (nd_tex_set.c) */
+    case ND_FS_TILE: nd_tx_tile(a, b); break;
+    case ND_FS_TILESIZE: nd_tx_tsz(a, b); break;
+    case ND_FS_LOADBLOCK: nd_tx_ldblk(b); break;
+    case ND_FS_LOADTILE: nd_tx_ldtile(a, b); break;
+    case ND_FS_LOADTLUT: nd_tx_ldtlut(b); break;
     default: break;
     }
 }
 
-/* V06 rule, one owner (sync_render and the native model state, pm_gpu.c model_draw): the first blender cycle P * A_FOG + IN * (1 - A_FOG), P = BL or FOG.
+/* V06 rule, one owner (nd_rnd_sync and the native model state, pm_gpu.c model_draw): the first blender cycle P * A_FOG + IN * (1 - A_FOG), P = BL or FOG.
  * 1 with *col = the mix colour (RGB of P, alpha = the fog colour alpha), else 0. */
 extern int pm_nofog; /* MENUGEN part 3: Disable Fog (pm_options.c) */
 /* MENUGEN part 3: the room shroud is the blend colour mix (P = BL), so Disable Fog (the FOG mix) never turns it off (macros.h:319, nd_recs.c:95, :178) */
@@ -207,7 +208,7 @@ static __attribute__((cold, noinline)) void sr_orb_log(unsigned m, const NdRende
                rs->zcmp, rs->zupd, rs->decal, rs->memb, rs->nocol, (int)0, (int)fogmix_on);
     }
 }
-int nd_sr_same(unsigned sg) { /* NDR0F2: 1 when the GPU state of signature sg is the one set (sync_render skip) */
+int nd_sr_same(unsigned sg) { /* NDR0F2: 1 when the GPU state of signature sg is the one set (nd_rnd_sync skip) */
     if (sr_ok && sg == sr_sig) {
         GP_SET(6, 1);
         return 1;
@@ -216,7 +217,7 @@ int nd_sr_same(unsigned sg) { /* NDR0F2: 1 when the GPU state of signature sg is
     GP_SET(6, 0);
     return 0;
 }
-void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, unsigned oml, unsigned sg) { /* NDR0F2: the GPU part of sync_render */
+void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, unsigned oml, unsigned sg) { /* NDR0F2: the GPU part of nd_rnd_sync */
     sr_sig = sg;
     sr_ok = 1;
     pm_gpu_set_mix(mixk, mixc); /* V06 / F08: mixk 1 colour mix, 2 fog shade alpha mix, 0 none */
@@ -229,7 +230,7 @@ void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, 
     if (oml == 0x00504B50u && PMDL("orbdbg")) sr_orb_log(oml, rs); /* FX1-2b: the render state the glow's draws get, once per frame. HCCUT3: cold */
     pm_gpu_render_src(omh, oml, rs->depth);
 }
-void sync_render(void) {
+void nd_rnd_sync(void) {
     const unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
     if (nd_sr_same(sg)) return;
     const unsigned m = nd_ws.omode_l, p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;

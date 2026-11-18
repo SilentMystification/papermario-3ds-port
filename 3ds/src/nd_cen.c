@@ -12,7 +12,7 @@
 #include "nd_fs.h"
 
 /* PG0 / PERF-GBI counters (fed in prof mode, read by the census below every GP_PERIOD frames) */
-unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
+unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 nd_comb_sync calls, 6 nd_rnd_sync calls */
 __attribute__((cold, noinline)) void gp_note(int k, int same) { gp_set[k]++; if (same) gp_same[k]++; }
 /* PERF-GBI (prof mode): cycle laps inside draw_tri, a tick read costs 1.3 us in Azahar so the totals are inflated, the ranking holds. One load and one branch when off. */
 unsigned gp_acc[8], gp_last, gp_ntri, gp_frames;

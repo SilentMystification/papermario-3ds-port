@@ -1,0 +1,8 @@
+drop 3ds/tools/azt_scenarios.json napicen_mac01 14551 14574
+drop 3ds/tools/azt_scenarios.json napicen_talk 14551 14574
+drop 3ds/tools/azt_scenarios.json napicen_btl 14551 14574
+drop 3ds/tools/bench_defs.json napicen_mac01 8264 8279
+drop 3ds/tools/bench_defs.json napicen_talk 8264 8279
+drop 3ds/tools/bench_defs.json napicen_btl 8264 8279
+json ok
+moved lines 24

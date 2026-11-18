@@ -1,6 +1,6 @@
 /* nd_xf.c: the native transform calls (nd_xf.h). Each call records one typed matrix op unit (nd_op.h) as one native transform record
  * (nd_rec_xf, NDR5): core 1 applies the unit to nd_ds (nd_ds_unit), core 0 runs the matrix stack (nd_xf_run: the walker's MTX and
- * POPMTX arms: load_mtx, gbi_popmtx). The record replaces the unit in the state run. */
+ * POPMTX arms: nd_xf_load, nd_xf_popb). The record replaces the unit in the state run. */
 #include <stdint.h>
 #include "ultra64.h"
 #include "nd_op.h"
@@ -19,8 +19,8 @@ extern unsigned pm_gbi_cur_op; /* nd_walk.c */
 static void nd_xf_run(const uint32_t* r) {
     const unsigned id = r[0] >> 24;
     pm_gbi_cur_op = id;
-    if (id == ND_FS_MTX) load_mtx(r[0] & 0xffffffu, r[1], 0);
-    else gbi_popmtx(r[1]);
+    if (id == ND_FS_MTX) nd_xf_load(r[0] & 0xffffffu, r[1], 0);
+    else nd_xf_popb(r[1]);
 }
 
 /* core 1: the state and ep rule of the unit (as nd_rec_nr did), then the record */

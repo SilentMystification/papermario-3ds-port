@@ -67,7 +67,7 @@ int main(int argc, char** argv) {
         }
         printf("ndr0d fold bad %d\n", bad - before);
     }
-    { /* NDR0F1: the mix of sync_render (nd_snap_mix) on fixed colours: fogc 0x11223344, blendc 0x55667788 */
+    { /* NDR0F1: the mix of nd_rnd_sync (nd_snap_mix) on fixed colours: fogc 0x11223344, blendc 0x55667788 */
         static const struct { unsigned ol; int nofog, kind; unsigned col; } mc[] = {
             { 0x84000000u, 0, 1, 0x55667744u }, { 0xC4000000u, 0, 1, 0x11223344u }, { 0xC4000000u, 1, 0, 0u },
             { 0xC8000000u, 0, 2, 0x112233ffu }, { 0xC8000000u, 1, 0, 0u }, { 0x00552078u, 0, 0, 0u } };

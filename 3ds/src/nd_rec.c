@@ -197,22 +197,7 @@ static void task_open(void) {
     rec_ctx_check();
     if (!task_head) { task_head = wp; sh_all(); }
 }
-/* D9: the game writes no task list. At the top level gMainGfxPos names nd_rec_top: each redirected gbi macro takes its packet back
- * (nd_gx_w), so the pointer is back at nd_rec_top before every record. A pointer past it is a word that no redirect recorded: it is
- * logged (cold, 4 lines) and dropped. */
-Gfx nd_rec_top[8];
-static __attribute__((cold, noinline)) void stray_word(void) {
-    static int n;
-    const Gfx* g = nd_rec_top;
-    if (n++ < 4) pm_log_e("ndc: %d list words outside the stream f%u: %08x %08x", (int)(gMainGfxPos - nd_rec_top), pm_frame_count(),
-                          (unsigned)g->words.w0, (unsigned)g->words.w1);
-    gMainGfxPos = nd_rec_top;
-}
-static void rec_open(void) {
-    task_open();
-    if (__builtin_expect(gMainGfxPos != nd_rec_top, 0)) stray_word();
-}
-Gfx* nd_rec_task(void) { return nd_rec_top; }
+static void rec_open(void) { task_open(); } /* DEL3C1: no top-level packet on the device */
 static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_log_e("ndc: model record of %u words (most %u)", words, G_PM_REC_WORDS + ND_REC_AUX_MAX);
     pm_fatal_stop("ndc: model record too long");
@@ -376,7 +361,7 @@ void nd_parts_end(NdParts* b) {
         }
     nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
     nd_lsc_begin_v(1u); nd_ds_parts(&nd_ds, b->u, nd_ds_unit); nd_lsc_end_at(nd_rec_last_pay() + 1u); /* NST2C: the instances' state on core 1; NREC4: the instance snap table in payload word 1 */
-    nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NST2J: the parts runner ends with sync_combine */
+    nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NST2J: the parts runner ends with nd_comb_sync */
     b->n = 0;
 }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */
@@ -442,7 +427,7 @@ static unsigned st_kind(uint32_t w0) {
     if (op == ND_FS_MISC) return (w0 & 0xffffffu) == (ND_FS_MISC_NOP << 16) ? 2u : 0u;
     return (op <= ND_FS_COMB || nd_op_tex(op) || (op >= ND_FS_MTX && op <= ND_FS_MOVEMEM)) ? 1u : 0u;
 }
-static int rec_inline(uint32_t a) {
+int nd_rec_inline(uint32_t a) {
     if (a < 0x00100000u || a >= (uint32_t)(uintptr_t)__end__ || (a & 7u) || a - (uint32_t)(uintptr_t)gMapShapeData < 0x40000u) return 0;
     const NdNDev* nt = nd_ntab_find((const void*)(uintptr_t)a);
     const uint32_t* w = nt ? nt->u : (const uint32_t*)(uintptr_t)a; /* GKEY2: the words of a list with a device entry come from the entry, its end at nu */
@@ -457,63 +442,6 @@ static int rec_inline(uint32_t a) {
     { static const uint32_t lst[2] = { ND_FS_W0(ND_FS_MISC, ND_FS_MISC_LST << 16), 0 }; rec_op_t(lst); }
     for (unsigned i = 0; i < n; i++) if (st_kind(w[2u * i]) == 1u) nd_rec_nr(w[2u * i], w[2u * i + 1u]);
     return 1;
-}
-static uint32_t tr_w[3];
-static unsigned tr_n; /* the words of the texture rectangle being recorded */
-static __attribute__((cold, noinline)) void tr_bad(uint32_t w0) {
-    pm_log_e("ndc: texture rectangle word %u followed by %08x", tr_n, (unsigned)w0);
-    pm_fatal_stop("ndc: broken texture rectangle");
-}
-/* NAPI0 census (switch napicen): recorded typed ops per caller (ra) since the last 300 frame line */
-typedef struct { uint32_t ra, n; } napi_e_t;
-static napi_e_t* napi_tab;
-static unsigned napi_next = 300u;
-static unsigned napi_lost; /* ops of callers that found no free slot (all 512 taken) in this window */
-static __attribute__((cold, noinline)) void napi_dump(unsigned f) {
-    unsigned total = 0;
-    for (unsigned i = 0; i < 512u; i++) total += napi_tab[i].n;
-    for (unsigned r = 0; r < 512u; r++) {
-        unsigned b = 512u, bn = 0;
-        for (unsigned i = 0; i < 512u; i++) if (napi_tab[i].n > bn) { bn = napi_tab[i].n; b = i; }
-        if (b == 512u) break;
-        pm_log("napicen f%u ra %08x n %u", f, (unsigned)napi_tab[b].ra, bn / 300u);
-        napi_tab[b].n = 0;
-    }
-    pm_log_evt("napicen f%u done total %u lost %u", f, total / 300u, napi_lost / 300u);
-    napi_lost = 0;
-    memset(napi_tab, 0, 512u * sizeof(napi_e_t));
-}
-static __attribute__((cold, noinline)) void napi_note(uintptr_t ra) {
-    if (!napi_tab) napi_tab = (napi_e_t*)calloc(512u, sizeof(napi_e_t));
-    if (!napi_tab) return;
-    const unsigned f = pm_frame_count();
-    if (f >= napi_next) { napi_next += 300u; napi_dump(f); }
-    const uint32_t k = (uint32_t)ra;
-    unsigned i = (k >> 2) & 511u;
-    for (unsigned p = 0; p < 512u; p++, i = (i + 1u) & 511u) {
-        if (napi_tab[i].ra == k) { napi_tab[i].n++; return; }
-        if (napi_tab[i].ra == 0u) { napi_tab[i].ra = k; napi_tab[i].n = 1u; return; }
-    }
-    napi_lost++;
-}
-void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
-    if (g != gMainGfxPos - 1) { g->words.w0 = w0; g->words.w1 = w1; return; }
-    if (__builtin_expect(PMDL("napicen"), 0)) napi_note((uintptr_t)__builtin_return_address(0));
-    const unsigned op = w0 >> 24;
-    if (op == ND_FS_CALL && (w0 & 1u)) { g->words.w0 = w0; g->words.w1 = w1; return; } /* a branch: a unit of the list */
-    gMainGfxPos = g;
-    if (op == ND_FS_END) return; /* D7: the end of a task list or of a custom gfx builder (NDC_END closes both) */
-    if (__builtin_expect(tr_n != 0, 0)) {
-        if (tr_n == 1 && IS_NOP(w0)) { tr_w[2] = w1; tr_n = 2; return; } /* RDPHALF_1: s, t */
-        if (tr_n == 2 && IS_NOP(w0)) { tr_n = 0; nd_rec_texrect(tr_w[0], tr_w[1], tr_w[2], w1); return; } /* RDPHALF_2: dsdx, dtdy */
-        tr_bad(w0);
-    }
-    if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { /* the rectangle unit w0 and w1 without the flag (DEL1A) */
-        tr_w[0] = w0; tr_w[1] = w1 & ~ND_FS_RECT_TEX; tr_n = 1; return;
-    }
-    if (IS_NOP(w0)) return; /* the syncs are dropped (the walker skips them) */
-    if (op == ND_FS_CALL && rec_inline(w1)) return;
-    nd_rec_nr(w0, w1);
 }
 const uint32_t* nd_rec_pos(void) { return wp; }
 const uint32_t* nd_rec_mark(void) {
@@ -588,7 +516,7 @@ void nd_rec_list(const void* l) { /* DEL1A: the typed units of the list, no G_ t
         if (IS_NOP(w0)) continue; /* a sync or a no-op */
         if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { nd_rec_texrect(w0, w1 & ~ND_FS_RECT_TEX, g[3], g[5]); g += 4; n += 2; continue; }
         if (op == ND_FS_CALL && (w0 & 1u)) { if (!is_host(w1)) { list_bad(g, n); return; } g = (const uint32_t*)(uintptr_t)w1 - 2; continue; } /* a branch */
-        if (op == ND_FS_CALL && rec_inline(w1)) continue;
+        if (op == ND_FS_CALL && nd_rec_inline(w1)) continue;
         nd_rec_nr(w0, w1);
     }
     list_bad(g, 1024u);

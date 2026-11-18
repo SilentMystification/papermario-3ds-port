@@ -186,9 +186,9 @@ int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax) {
 #define ND_CULL_FRONT_CCW 1u
 #define ND_CULL_BACK_CCW 2u
 
-/* ---- S3N-3d: the combine inputs of a native draw (nd_comb_decide) ---- */
-/* The 16 combiner fields as op_setcombine (the former pm_gbi.c) decodes them into tst1, in NdCombIn.tst order. Returns 0 when the draw takes them.
- * 1: the combine reads tile 1 (the rename of op_setcombine) or the box product; both need tile state the native draw does not have (fallback).
+/* ---- S3N-3d: the combine inputs of a native draw (nd_comb_dec) ---- */
+/* The 16 combiner fields as nd_comb_set (the former pm_gbi.c) decodes them into tst1, in NdCombIn.tst order. Returns 0 when the draw takes them.
+ * 1: the combine reads tile 1 (the rename of nd_comb_set) or the box product; both need tile state the native draw does not have (fallback).
  * -1: the combine reads KEYCENTER, KEYSCALE or K4, whose values are not native (nost). */
 static int nd_comb_native(uint32_t w0, uint32_t w1, uint32_t oh, uint32_t prim, uint32_t env, uint32_t prim_lod, int tex, int t1v, NdCombIn* ci) {
     uint32_t* f = ci->tst;
@@ -347,13 +347,13 @@ static int nd_model_state_in(const uint32_t* rec, const NdMCtx* c, NdDraw* d, Nd
     const NdRender* r = &rr;
     const int two = ((oh >> 20) & 3u) == 1u; /* 2 cycle (from the merged other mode) */
     const uint32_t prim = (f & 4u) ? rec[12] : c->prim; /* R6: the prim of the draw */
-    /* S3N-3d: the combine choice is the walker's own function (nd_comb_decide) on the native inputs */
+    /* S3N-3d: the combine choice is the walker's own function (nd_comb_dec) on the native inputs */
     NdCombIn ci;
     NdCombOut co;
     /* MDL-1b: tile 1 valid from the walker state after pm_gbi_bind_tile1 (the ctx t1_valid, set before the draw): one decision */
     const int t1v = c->t1_valid;
     { int rc = nd_comb_native(w0, w1, oh, prim, c->env, c->prim_lod, tex_u, t1v, &ci); if (rc == 1) return (st->why = 8, 0); if (rc < 0) return (st->why = 8, -1); }
-    nd_comb_decide(&ci, &co);
+    nd_comb_dec(&ci, &co);
     const int combine = co.plan_on ? 8 : co.leg;
     const int tex = tex_u && combine >= 2; /* the walker reads a texel in the combine modes 2 and up only */
     /* MDL-1b: tex1 is native when the R13 ctx has unit 1 (the walker's plan reads it); noise stays why 6 (named); pm5 with tex1 is native (FB-3 uvx) */

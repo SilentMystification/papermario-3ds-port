@@ -41,7 +41,7 @@ typedef struct NdPsoOut NdPsoOut;  /* NPSO2: the decided TEV, blend and render b
 const NdPsoOut* nd_pso(NdPso id);  /* NPSO3: core 0, the table entry of a description id */
 
 /* NATIVEAPI S4 (particles): one NDC_NAPI record for a run of effect draws, one instance per nd_parts_add. Each instance is m units of the
- * stream form (8 bytes each): pre state units, the NDO_CALL unit of its static flat list (a triangle list with one vertex load at slot 0),
+ * stream form (8 bytes each): pre state units, the ND_FS_CALL unit of its static flat list (a triangle list with one vertex load at slot 0),
  * post units. Core 0 (nd_parts_run) runs the pre units with the walker, draws the list natively (nd_part_draw) and runs the post units. */
 typedef struct NdParts { unsigned n, pre, m, ok; const void* list; uint32_t u[2u + 2u * 252u]; } NdParts;
 void nd_parts_begin(NdParts* b, unsigned pre, unsigned post); /* core 1 */
@@ -54,7 +54,7 @@ int nd_part_draw(const struct NdNDev* t);                    /* nd_geom.c, core 
 
 /* NATIVEAPI A1 (NAPI2B): the shared direct-draw helpers. A direct executor (core 0) states a draw without the walker's op stream: the pso gives the
  * combine decision (made once, cold), the texture comes from a descriptor, the rectangle from the N64 rectangle words.
- * NdBindDesc: one texture window as a bind needs it (the facts ensure_tile_slow reads from nd_ws.td[n] and tst1). wrap: cms, cmt, masks, maskt (the
+ * NdBindDesc: one texture window as a bind needs it (the facts nd_tile_bind_slow reads from nd_ws.td[n] and tst1). wrap: cms, cmt, masks, maskt (the
  * G_SETTILE words); sz: the SetTileSize window (10.2); x0, y0: the window origin in texels; stride in texels of the format. */
 typedef struct NdBindDesc {
     const void* src; const void* pal;
@@ -69,7 +69,7 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
 
 int nd_direct_ready(void);                     /* core 0: 1 when the walker state lets a direct rectangle draw (main colour image, no shaded sprite, no off-screen tile 1); else -1 role, -2 colour image, -3 shaded sprite, -4 tile 1 target */
 int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env); /* core 0: the state of pso id for the next rectangles; 0 = not stated (nothing changed, run the old path) */
-int nd_direct_tex(const NdBindDesc* d);        /* core 0: tile 0 = d; the walker's set_tilesize bookkeeping and the bind */
+int nd_direct_tex(const NdBindDesc* d);        /* core 0: tile 0 = d; the walker's nd_tsz_set bookkeeping and the bind */
 void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd); /* core 0: one texture rectangle of tile 0 (the G_TEXRECT words, 1 or 2 cycle) */
 void nd_direct_end(void);                      /* core 0: the walker rebinds and resyncs at its next draw */
 void nd_direct_fallback(unsigned why);        /* core 0, cold: a record the direct executor handed back to the old path (census line napihud) */

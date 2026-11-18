@@ -18,8 +18,8 @@ typedef struct NdSDef {
     uint32_t vmask;         /* bit k: unit k is a value unit */
     uint32_t omh_m, omh_v, oml_m, oml_v; /* othermode H and L: the bits the def sets and their values */
     uint32_t geom_c, geom_s;             /* geometry: geom = (geom & geom_c) | geom_s */
-    uint32_t tex_a, tex_b, cw0, cw1;     /* the last G_TEXTURE unit (a, b) and the combine words (NDO_COMB_W0 form) */
-    /* S6SYNC: the sync units (the op path runs sync_combine there: OMH over the cycle bits, TEXTURE, COMB); at most 4, else the def is refused */
+    uint32_t tex_a, tex_b, cw0, cw1;     /* the last G_TEXTURE unit (a, b) and the combine words (ND_FS_COMB_W0 form) */
+    /* S6SYNC: the sync units (the op path runs nd_comb_sync there: OMH over the cycle bits, TEXTURE, COMB); at most 4, else the def is refused */
     uint8_t nsync; uint8_t sync_k[4];
 } NdSDef;
 

@@ -1826,7 +1826,7 @@ int pm_tex_load(const void* img, unsigned fmt, unsigned siz, int width, int heig
                 const void* tlut, int tlut_n, int stride) {
     int r;
     tm_caller = __builtin_return_address(0);
-    if (fmt != FMT_CI) { tlut = NULL; tlut_n = 0; } /* BTLDIM: a non-CI tile has no palette; set_tilesize passes the last loaded one, and the key took it (radial shimmer I4 misses every frame) */
+    if (fmt != FMT_CI) { tlut = NULL; tlut_n = 0; } /* BTLDIM: a non-CI tile has no palette; nd_tsz_set passes the last loaded one, and the key took it (radial shimmer I4 misses every frame) */
     mk_on = 1;
     r = load_impl(img, fmt, siz, width, height, tlut, tlut_n, stride, NULL, 0, 0, 0);
     mk_on = 0;

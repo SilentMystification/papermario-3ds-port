@@ -21,12 +21,12 @@ void pm_gpu_set_r13_t1(int bound);
  * R4: w0 fog colour word, w1 combine entry (0 when none). R5: w1 fog position word. R6: w0 prim, w1 env. R7: w0 blend, w1 shroud c2.
  * R8: billboard matrix op (0 when none). R9, R10: panner tile size ops (0 when none; typed by nd_rec_model). R13: the typed ops after the record.
  * rec_apply sets the walker state from them in the old word order: lights, bind list (nd_bind_run), combine (rec_op), render mode list
- * (the list runs as G_DL), fog (rec_fog), matrix (load_mtx), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
+ * (the list runs as G_DL), fog (rec_fog), matrix (nd_xf_load), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
 /* HC4b: one typed record op through the skip test and the handler of the walker (nd_set.c). */
 static __attribute__((noinline)) void rec_top(const uint32_t t[2]) {
-    if (nd_op_same(t)) return;
+    if (nd_unit_same(t)) return;
     gv_epoch++; /* GV1b, as the walker */
-    nd_op_apply(t);
+    nd_unit_apply(t);
 }
 static void rec_t(unsigned id, uint32_t a, uint32_t b) {
     const uint32_t t[2] = { ND_FS_W0(id, a), b };
@@ -63,9 +63,9 @@ static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
 extern int nd_mtx_static; /* SEAM2 */
 static __attribute__((noinline)) void rec_matrix(const Gfx* q) {
     u32 f = q[3].words.w0;
-    if (!(f & 256u)) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1);
+    if (!(f & 256u)) nd_xf_load(q[1].words.w0, q[2].words.w1, q[1].words.w1);
     else nd_mtx_static = 1;
-    if (q[8].words.w0) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1);
+    if (q[8].words.w0) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1);
 }
 static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
@@ -91,12 +91,12 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     } else if (f & 2u) {
         rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
     }
-    if (!(f & 256u) && !mdone) load_mtx(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
+    if (!(f & 256u) && !mdone) nd_xf_load(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     else if (f & 256u) nd_mtx_static = 1; /* SEAM2: IGNORE_MATRIX, no model matrix */
     if (q[11].words.w0) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w0); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) */
     if (q[9].words.w0) rec_top((const uint32_t*)&q[9]); /* S3F-2c: panner tile size, main then aux, as the old order (HC4c: typed by nd_rec_model) */
     if (q[10].words.w0) rec_top((const uint32_t*)&q[10]);
-    if (q[8].words.w0 && !mdone) load_mtx(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
+    if (q[8].words.w0 && !mdone) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
 extern int pm_gpu_ndm_on(void); /* S3N-3b: switch ndmcheck */
@@ -179,9 +179,9 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
         }
     }
 }
-/* the combine of a hit, as rec_top runs it (nd_op_same COMB, op_setcombine) */
+/* the combine of a hit, as rec_top runs it (nd_unit_same COMB, nd_comb_set) */
 static __attribute__((noinline)) void hd_comb(const NdHitD* d) {
-    if (!(comb_set && d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0 && cmb_gen_seen == comb_gen)) op_setcombine(d->cw0, d->cw1);
+    if (!(comb_set && d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0 && cmb_gen_seen == comb_gen)) nd_comb_set(d->cw0, d->cw1);
 }
 static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
@@ -240,7 +240,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
     if (!full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; } /* HC6 step 2: a cached key whose hit failed: the store reads the full key */
     rec_apply(q, mdone);
     { /* MDL-1b v2: once per record after rec_aux, before the ndm and model branches. SBKW: every record, not only R13 texture-only ones: the walker's
-       * tile 1 step (ensure_tile(1) of a plan that reads TEXEL1) runs for all records, so the native combine decision sees td[1].valid (sbk_56 water) */
+       * tile 1 step (nd_tile_bind(1) of a plan that reads TEXEL1) runs for all records, so the native combine decision sees td[1].valid (sbk_56 water) */
         const uint32_t* qw = (const uint32_t*)q; uint32_t cw_[4]; int cb_ = 0; int t1 = 0;
         if (!qw[26] || (!PMDL("r13off") && nd_r13_texonly(qw + NDMC_RW, qw[26], cw_, &cb_))) t1 = pm_gbi_bind_tile1();
         pm_gpu_set_r13_t1(t1);
@@ -294,7 +294,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
     }
     if (!nat && (ndm || nmn_sw())) rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); /* S3G-1: geometry (0 when none) */
     if (q[11].words.w1) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w1); /* S3G-1: custom gfx post (D10a: a stream range) */
-    if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
+    if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     if (ndm) pm_gpu_ndm_end();
     rec_nat_last = nat;
     if (__builtin_expect(mfr_on, 0)) pm_gpu_mfr_rec((uint32_t)q[12].words.w0, hit, nat, mfr_idx - mi0, mkp);
@@ -323,7 +323,7 @@ unsigned rec_run(const Gfx* q) {
     hit_apply(q, mce);
     sc_ok = 0; nd_sr_forget();
     if (q[11].words.w1) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w1); /* S3G-1: custom gfx post (D10a: a stream range) */
-    if (q[12].words.w1) gbi_popmtx(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
+    if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     rec_nat_last = 1;
     return G_PM_REC_WORDS - 1 + q[13].words.w0;
 }
