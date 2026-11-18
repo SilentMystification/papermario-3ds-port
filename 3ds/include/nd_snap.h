@@ -33,8 +33,11 @@ void nd_snap_mesh(void);
 void nd_snapchk_run(const uint32_t* rec);
 /* NDR0F1, nd_snap_in.c: the mix of sync_render (nd_set.c) on the arguments: 1 colour mix, 2 fog shade alpha mix (col), 0 none (col 0). */
 int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned* col);
-/* NDR0F1, nd_snap.c, core 0: the compare of the render block and the mix with the last sync_render, at its triangle epoch (nd_geom.c). */
+/* NDR0F1, nd_snap.c, core 0: the compare of the render block and the mix with the walker decision, at its triangle epoch (nd_geom.c).
+ * NDR0F2: called by nd_snap_render and by draw_tri (no new epoch). */
 void nd_snapchk_rnd(void);
+/* NDR0F2, nd_snap.c, core 0: the render state and mix of a triangle from its armed snapshot (nd_geom.c gv_epoch_enter); the GPU state if the epoch changed. */
+void nd_snap_render(void);
 extern unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snapchk_rnd */
 /* nd_snap.c, core 0: the compare of the armed snapshot at a triangle draw (nd_geom.c). */
 void nd_snapchk_tri(void);

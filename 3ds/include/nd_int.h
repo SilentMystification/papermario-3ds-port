@@ -166,6 +166,8 @@ void set_fillcolor(u32 w1);
 void nd_set_prim(u32 a, u32 b);              /* nd_set.c: G_SETPRIMCOLOR (a = LOD word, b = colour) */
 void nd_sr_forget(void);                     /* ST-1: nd_state.c, sync_render state forgotten */
 int nd_mix1(unsigned ol, unsigned* col);   /* nd_set.c: the V06 blend colour mix of other mode L (1 and the colour, else 0) */
+void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, unsigned oml, unsigned sg); /* NDR0F2: nd_set.c, the GPU part of sync_render */
+int nd_sr_same(unsigned sg);                /* NDR0F2: nd_set.c, 1 when the GPU state of signature sg is set (sync_render skip) */
 void gp_note(int k, int same);               /* PG0 counter, the former pm_gbi.c */
 void lit_freeze(void);                       /* GV5, the former pm_gbi.c */
 extern int sci_x0, sci_y0, sci_x1, sci_y1;   /* ST-1: nd_state.c, scissor of the walker */

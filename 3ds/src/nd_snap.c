@@ -127,13 +127,15 @@ static void sc_compare(void) {
     }
 }
 void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch (nd_geom.c gv_epoch_enter) */
-    extern NdRender nd_sr_rs; extern int nd_sr_mixk; extern unsigned nd_sr_mixc;
     char names[192];
     nd_snap_rpend = 0;
     if (!PMDL("snapchk")) return; /* NDR0F1B: draw_tri sets the flag in every run */
     sc_nb = 0;
-    if (memcmp(&sc_cur.rs, &nd_sr_rs, sizeof nd_sr_rs)) sc_add("rs");
-    if (sc_cur.mixk != nd_sr_mixk || sc_cur.mixc != nd_sr_mixc) sc_add("mix");
+    NdRender w; unsigned wc; /* NDR0F2: the walker decision, as sync_render makes it */
+    const int wk = nd_snap_mix(nd_ws.omode_l, fogc, blendc, pm_nofog, &wc);
+    nd_render_state(nd_ws.omode_h, nd_ws.omode_l, nd_img_role(0) == ROLE_DEPTH, &w);
+    if (memcmp(&sc_cur.rs, &w, sizeof w)) sc_add("rs");
+    if (sc_cur.mixk != wk || sc_cur.mixc != wc) sc_add("mix");
     if (sc_nb) {
         sc_bad++;
         sc_fbad += (unsigned)sc_nb;
@@ -145,6 +147,12 @@ void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch
             pm_log_evt("snapchk bad f%u rnd%s", pm_frame_n, names);
         }
     }
+}
+void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed snapshot, at the triangle epoch (nd_geom.c gv_epoch_enter) */
+    const unsigned sg = sc_cur.oml ^ (sc_cur.in.omode_h * 2654435761u) ^ sc_cur.geom ^ (unsigned)sc_cur.role;
+    nd_snapchk_rnd();
+    if (nd_sr_same(sg)) return;
+    nd_render_apply(&sc_cur.rs, sc_cur.mixk, sc_cur.mixc, sc_cur.in.omode_h, sc_cur.oml, sg);
 }
 void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
     nd_snap_arm = 0;
