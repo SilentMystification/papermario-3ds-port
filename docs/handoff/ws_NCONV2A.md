@@ -1,0 +1,24 @@
+# ws_NCONV2A (Haiku): the snap carries the texture scale (tss). Core 0 measures it against the walker (tsnap line). Stage S4 measure for NCONV2B. Counter: none of C1-C12. New data: tsnap `wtss`, `vtss` (not judged).
+Designer: oracle NREC. WAIT: branch from main after the NREC2 merge (both rows edit nd_snap.c). Worktree build3ds/wt/NCONV2A, branch NCONV2A. PM_ROW=NCONV2A PM_LANE=NCONV2A.
+Edit only (Edit tool, keep CRLF): 3ds/include/nd_snap.h, 3ds/src/nd_snap_in.c, 3ds/src/nd_snap.c (snap_build memo, sc_compare, nd_snapchk_tick, one new function), 3ds/src/nd_geom.c (draw_tri only), 3ds/tools/nd_snap_test.c.
+## Facts (code read, main 27f33ea1da; find the quoted text, line numbers move)
+- FACT walker tss reads at draw time: dlc_seg nd_shape.c:430 and nd_part_draw nd_geom.c:380 read the current nd_ws.tex_ss/ts. draw_tri reads vert_tss of the vertex load (nd_geom.c:490, :254, :264).
+- FACT NdSnapChk (nd_snap.h:17) has `uint32_t oml, geom, fogc, blendc, pad;` after `int32_t role`. No code reads NdSnapChk.pad (grep). The memo of snap_build compares role..blendc as 5 words (nd_snap.c:51).
+- FACT nd_snap_test.c:27-38 checks nd_snap_rnd (ndr0c rnd bad). ndr0a.sh runs it with a seeded fault.
+## Edits
+1. nd_snap.h:17. Before: `int32_t role; uint32_t oml, geom, fogc, blendc, pad;` After: `int32_t role; uint32_t oml, geom, fogc, blendc, tss; /* NCONV2A: tex_ss << 16 | tex_ts (was pad) */`. After the nd_snapchk_tri prototype add `void nd_tsnap_vtx(unsigned vt); /* NCONV2A, nd_snap.c, core 0: the vertex load tss of a snap triangle (snapchk only) */`.
+2. nd_snap_in.c nd_snap_rnd. Before: `r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc;` After: append ` r->tss = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); /* NCONV2A */`.
+3. nd_snap.c snap_build memo. Before: `!memcmp(&r.role, &sn_last.role, 5u * 4u)` After: `!memcmp(&r.role, &sn_last.role, 6u * 4u)` (NCONV2A: role..tss).
+4. nd_snap.c. After `static unsigned sc_wst, sc_bfr = ~0u;` add `static unsigned ts_cmp, ts_bad, ts_vn, ts_vb; /* NCONV2A: tsnap data */`.
+   sc_compare. After `if (sc_cur.blendc != blendc) sc_add("blendc");` add `ts_cmp++; if (sc_cur.tss != (((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu))) ts_bad++; /* NCONV2A: data, not a bad name */`.
+   After nd_snapchk_tri add `void nd_tsnap_vtx(unsigned vt) { if (!PMDL("snapchk")) return; ts_vn++; if (vt != sc_cur.tss) ts_vb++; } /* NCONV2A */`.
+   nd_snapchk_tick. After the `pm_log_evt("lsnap f%u ...` line add `pm_log_evt("tsnap f%u cmp %u wtss %u tris %u vtss %u", pm_frame_n, ts_cmp, ts_bad, ts_vn, ts_vb); /* NCONV2A */`.
+5. nd_geom.c draw_tri. After the line that starts `if (nd_snap_arm) { nd_snapchk_tri();` add `if (nd_snap_rpend) nd_tsnap_vtx(vert_tss[i0]); /* NCONV2A: the load tss of this snap triangle */`.
+6. nd_snap_test.c ndr0c block. Before: `ds.w.omode_l = 0x1234u; ds.w.geom = 0x5678u;` add in front `ds.w.tex_ss = 2u; ds.w.tex_ts = 0x10003u;`. Before: `nf += 4;` After: `nf += 5;`. After `if (r.blendc != 0xdef0u) rb++;` add `if (r.tss != 0x00020003u) rb++; /* NCONV2A */`.
+## Steps (one command per step, output to build3ds/out/, read the last 20 lines; Bash `timeout: 600000`; 1 lane build; at most 4 Azahar starts of 8)
+1. Edits 1-6. `sh 3ds/tools/nd_host_test.sh > build3ds/out/nconv2a_host.txt 2>&1`: PASS, `ndr0c rnd bad 0`, `ndr0a seed ok`. Commit `NCONV2A 1: tss in the snap, tsnap line`.
+2. `python 3ds/tools/bench.py base fxops_drec --commit $(git merge-base HEAD main) > build3ds/out/nconv2a_base.txt 2>&1`. Then `sh 3ds/tools/rowloop.sh --row NCONV2A --bench fxops_drec --no-host --why "NCONV2A tss snap" > build3ds/out/nconv2a_rowloop.txt 2>&1` (it builds).
+3. `PM_ROW=NCONV2A PM_LANE=NCONV2A python 3ds/tools/bench.py run fxops_snapchk --row NCONV2A --why "NCONV2A tsnap" > build3ds/out/nconv2a_run.txt 2>&1`. Then `grep -a "tsnap\|lsnap\|snapchk f\|snapchk bad" build3ds/azt/logs/fxops_snapchk.txt > build3ds/out/nconv2a_tsnap.txt`.
+Gate (exact): host PASS. fxops_drec byte-equal (rowloop exit 0; GUESS: an extra snap at a tss change arms the same combine). Last snapchk line: bad 0. Last lsnap line: tmis 0. A tsnap line with cmp above 0. Report wtss, tris, vtss and the snapchk recs (data for NCONV2B, not judged).
+Stop: a DIFF, bad or tmis above 0, no tsnap line, a crash, a fatal line, a tool fault. Commit the outputs (`git add -f`), send the paths to the oracle of the launch prompt with SendMessage, wait. Fix rights: the files of this page, compile errors only. Pitfalls: one host test at a time. One bench per rowloop call. PM_CACHE=off only as a prefix of one command.
+Hand-back: last commit `NCONV2A 2: gate. fxops drec equal; snapchk bad 0; tsnap cmp <n> wtss <n> vtss <n>` deletes this page. One SubagentHandback: commit hash, the last tsnap, lsnap and snapchk lines.
