@@ -198,10 +198,6 @@ void ent_refcheck(const EntKey* k, const Gfx* l) {
     }
 }
 
-/* CORE2-2 census: a flattened list (fw) is walker memory; when the walker frees it, its census entries go (the game may reuse the block). */
-extern int nd_c2_on;
-void nd_c2_forget_blk(const void* blk);
-static inline void nd_c2_forget(const void* blk) { if (nd_c2_on > 0 && blk) nd_c2_forget_blk(blk); }
 /* MERLEE: a list in a game heap (the general heap, or the battle heap, which is gFrameBuf2) was built at run time: the imgfx animated mesh lists
  * (imgfx.c imgfx_load_anim) point at vertex buffers that imgfx_mesh_anim_update rewrites every frame. Its vertex span goes into the per-frame hash
  * (ent_run), as for a keyed list; without it the first compiled pose was drawn for the whole animation. Static lists (entity, map, overlay data) keep the list-only hash. */
@@ -274,7 +270,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     NdObj o;
     ent_sdef_free(k);
     free(k->seg); k->seg = NULL; k->nseg = 0;
-    nd_c2_forget(k->fw); free(k->fw); k->fw = NULL;
+    free(k->fw); k->fw = NULL;
     k->st = ENT_REF; k->why = 0; k->fr = pm_frame_count(); k->retry = k->fr + 300u;
     ent_c.comp++;
     const NdNDev* nt = nd_ntab_find(l0); ent_flat_w = 0;
@@ -358,7 +354,7 @@ void ent_compile(EntKey* k, const Gfx* l0) {
 static void ent_compile_t(EntKey* k, const Gfx* l) { const unsigned t0 = pm_ticks(); ent_compile(k, l); if (pm_xf.on) pm_xf.ent_t += pm_ticks() - t0; } /* XFT: a first compile, timed */
 
 void ent_reset(void) {
-    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { ent_sdef_free(ent_tab[i]); free(ent_tab[i]->seg); nd_c2_forget(ent_tab[i]->fw); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
+    for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { ent_sdef_free(ent_tab[i]); free(ent_tab[i]->seg); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
     ent_nent = 0; ent_gen_seen = pm_dlc_gen;
 }
 

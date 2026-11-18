@@ -23,9 +23,6 @@
 #include "nd_lkey.h"
 #include "nd_gbi.h" /* FALLBK: pm_gbi_fallback's macros write typed units (nd_gx_w, nd_rec.c:487) */
 
-extern int nd_c2_on; /* CORE2-2 census (nd_c2haz.c, switch c2haz) */
-void nd_c2_rec(const Gfx* rec, unsigned words);
-void nd_c2_src(const Gfx* at);
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned pm_gbi_cur_op; /* PI2: op of the display list step now running (one store per op) */
 
@@ -90,7 +87,7 @@ unsigned pm_gbi_dbg_orb_tag(void) { return orb_tag; }
  * register per op and calls nothing. The debug work runs in cold functions out of the hot span. */
 unsigned pm_walk_dbg;
 void pm_walk_dbg_set(void) {
-    pm_walk_dbg = (pm_ph_cen ? WD_CEN : 0u) | (pm_ph_fine ? WD_FINE : 0u) | (nd_c2_on > 0 ? WD_C2 : 0u) | (pm_ph_on ? WD_PH : 0u) | (orb_lst_n ? WD_ORB : 0u);
+    pm_walk_dbg = (pm_ph_cen ? WD_CEN : 0u) | (pm_ph_fine ? WD_FINE : 0u) | (pm_ph_on ? WD_PH : 0u) | (orb_lst_n ? WD_ORB : 0u);
 }
 /* The op prologue of a debug walk: the op count (PH_ADD C_CMD, opsplit sample), the streak and per-op timers of the phase census, the phasegbi timer
  * (returns its phase id, popped after the handler), the opsplit sample and the model census. */
@@ -134,12 +131,8 @@ static __attribute__((cold, noinline)) void walk_dbg_end(unsigned dbg) { /* the 
     if (!(dbg & WD_CEN)) return;
     if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
 }
-static __attribute__((cold, noinline)) void walk_dbg_rec(unsigned dbg, const Gfx* rec, unsigned words) { /* a producer record: CORE2-2 census, WCEN2 count */
-    if (dbg & WD_C2) nd_c2_rec(rec, words);
-}
 /* The model record arm (G_PM_REC in a list, NDC_MODEL in the frame stream): the record words past the header. */
 static unsigned rec_case(unsigned dbg, const Gfx* q) {
-    if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, q, G_PM_REC_WORDS);
     NDT_BD(tr, dbg);
     unsigned n = rec_run(q);
     NDT_E(tr, NDT_REC);
@@ -166,7 +159,7 @@ void nd_walk_spr(const Gfx* q) {
     const unsigned dbg = pm_walk_dbg;
     pm_gbi_cur_op = G_PM_SPR;
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_SPR, q->words.w0, q->words.w1); walk_dbg_rec(dbg, q, G_PM_SPR_WORDS); }
+    if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_SPR, q->words.w0, q->words.w1); }
     NDT_BD(ts, dbg);
     int sh = pm_gpu_spr_native((const uint32_t*)q);
     NDT_E(ts, NDT_SPR);
@@ -184,7 +177,7 @@ void nd_walk_ent(const Gfx* q, unsigned words) {
     const uint32_t* const lsb = (const uint32_t*)(uintptr_t)((const uint32_t*)q)[-1]; nd_lsr_begin(lsb); if (lsb) ent_lsr_note(); /* NREC2: the list snap table (nd_rec_ent_draw) */
     gv_epoch++; /* GV1b, as the walker's prologue of G_PM_ENT */
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_ENT, q->words.w0, q->words.w1); walk_dbg_rec(dbg, q, G_PM_ENT_WORDS); }
+    if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_ENT, q->words.w0, q->words.w1); }
     NDT_BD(te, dbg);
     int drawn = nd_ent_case(q, q->words.w0, q->words.w1);
     NDT_E(te, NDT_ENT);
@@ -198,8 +191,6 @@ void nd_walk_ent(const Gfx* q, unsigned words) {
  * target nested (no list start or end rules, as the walker's G_DL push), at most ND_LIST_DEPTH deep (the walker's stack of 12; a deeper G_DL is
  * dropped as the walker dropped it). */
 void nd_walk_state(const uint32_t* q, unsigned n);
-void nd_c2_task(const void* list);
-void nd_c2_walked(void);
 #define ND_LIST_MAX 200000u
 #define ND_LIST_DEPTH 12
 static int ex_depth;
@@ -212,7 +203,6 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
  * static list goes to the entity path (ent_gdl) or a compiled map shape (dlc_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_ops_run), inside a list nested. */
 static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
-    if (__builtin_expect(dbg & WD_C2, 0)) nd_c2_src(at);
     Gfx* next = (Gfx*)ptr_of(w1);
     if (!next) return;
     if (!is_host((u32)next)) { gbi_cold_bad_next(w1, w0, (u32)(uintptr_t)at); return; }
@@ -377,19 +367,13 @@ static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of
 /* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words
  * of a model record, an interpreted map shape group) on the op executor (nd_walk_state), with the list start and end rules of nd_walk_run:
  * gv_epoch, dlc_on, a full combine and render sync unless keep (PERF2: a piece of one list), the vertex and texture streak flush. */
-/* The census of an outer run (W1/P1 producer cursor, CORE2-2 walked task), cold. */
-static __attribute__((cold, noinline)) void ops_cen_begin(const void* l) {
-    if (nd_c2_on > 0) nd_c2_task(l);
-}
 static __attribute__((cold, noinline)) void ops_cen_end(void) {
     if (pm_ph_cen) walk_dbg_end(pm_walk_dbg);
-    if (nd_c2_on > 0) nd_c2_walked();
 }
 void nd_list_run(const void* l) { nd_ops_run(l, ND_LIST_MAX, 0); }
 void nd_ops_run(const void* l, unsigned n, int keep) {
     PM_WALK_OWN(); /* CORE2-3a: a run is walker-side only */
-    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & (WD_CEN | WD_C2), 0) && d == 0;
-    if (cen) ops_cen_begin(l);
+    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
@@ -407,8 +391,7 @@ void nd_ops_run(const void* l, unsigned n, int keep) {
  * ENT_GBI (nd_ent.c) ran them with nd_ops_run; the steps and their order are the same. */
 void nd_ent_units(const uint32_t* u, unsigned n) {
     PM_WALK_OWN();
-    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & (WD_CEN | WD_C2), 0) && d == 0;
-    if (cen) ops_cen_begin(u);
+    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
     gv_epoch++; dlc_on = 1; gp_prev_op = -1; /* GV1b, as nd_ops_run */
     pm_walk_side++; ex_depth = d + 1;
     nd_nr_exec(u, n);
@@ -694,15 +677,8 @@ int is_host(u32 p) {
 
 /* PG3 A15: the host range that holds p (same three ranges as is_host). 0 when p is not host memory. */
 
-void nd_c2_note(const void* p);
-void nd_c2_task(const void* list);
-int nd_c2_init(void);
 static inline void* ptr_res(u32 w);
-void* ptr_of(u32 w) {
-    void* r = ptr_res(w);
-    if (__builtin_expect(nd_c2_on > 0, 0)) nd_c2_note(r);
-    return r;
-}
+void* ptr_of(u32 w) { return ptr_res(w); }
 static inline void* ptr_res(u32 w) {
     if (!w) return NULL;
     if (is_host(w)) return (void*)w;
@@ -714,7 +690,6 @@ static inline void* ptr_res(u32 w) {
 }
 void* pm_gbi_ptr_of(u32 w) { return ptr_of(w); } /* MDL-1: the walker's segment resolver, for the R13 texture block (nd_model.c nd_r13_desc) */
 void pm_gbi_init(void) {
-    nd_c2_init();
     if (pm_c2own < 0) pm_c2own = pm_debug_has("c2own"); /* CORE2-3a: ownership check (nd_wq.c) */
     nd_mtx_reset();
     memset(vert_live, 0, sizeof vert_live);
@@ -733,11 +708,9 @@ void gbi_cold_modifyvtx(unsigned where, unsigned vi) { /* B5 (HC4d2: typed NDO_M
     /* the screen position (b) is not used: a triangle with such a vertex is dropped (gv_tri GVR_SCR) */
     if (where == G_MWO_POINT_XYSCREEN && vi < 64) vert_scr[vi] = 1;
 }
-void nd_c2_walked(void);
-void nd_c2_drain(const char* why);
 /* CORE2-3b: the game thread is about to write memory that the walk of the last frame may have read: a ROM read into RAM, a decode, a map
  * load, a game mode change (load writes, the CORE2-2 census hazard 4). The walker must be idle from here on: wait until the walker queue
- * (nd_wq.c) is empty. The census (switch c2haz) checks the writes made before this point and starts the frame clean. Calls made on the
+ * (nd_wq.c) is empty. Calls made on the
  * walker side (the walker's own reads) do nothing. */
 void pm_wq_idle(void); /* nd_wq.c: CORE2C-2, return when the walker queue is empty */
 void pm_walk_drain(const char* why) {
@@ -746,7 +719,6 @@ void pm_walk_drain(const char* why) {
     if (pm_walk_side && !pm_wq_on_logic()) return;
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the dr stage of the xfer line */
     pm_wq_idle();
-    if (nd_c2_on > 0) nd_c2_drain(why);
     if (pm_xf.on) { pm_xf.dr_n++; pm_xf.dr_t += pm_ticks() - xt0; }
 }
 void pm_gbi_fallback(void) {

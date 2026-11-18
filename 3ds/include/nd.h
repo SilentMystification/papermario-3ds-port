@@ -458,9 +458,9 @@ void pm_gpu_ndt_pop(int k);
 #define NDT_B(v) const int v = pm_ph_on; if (__builtin_expect(v, 0)) pm_gpu_ndt_push()
 #define NDT_BD(v, dbg) const unsigned v = (dbg) & WD_PH; if (__builtin_expect(v, 0)) pm_gpu_ndt_push()
 #define NDT_E(v, k) do { if (__builtin_expect((v) != 0, 0)) pm_gpu_ndt_pop(k); } while (0)
-/* PROF2-5: the bits of pm_walk_dbg (pm_port.h): cen = phase census hooks (pm_ph_cen), fine = phasegbi op timers, c2 = c2haz census, ph = the class timers of
+/* PROF2-5: the bits of pm_walk_dbg (pm_port.h): cen = phase census hooks (pm_ph_cen), fine = phasegbi op timers, ph = the class timers of
  * a sampled frame (pm_ph_on), orb = an orbdbg list is registered. */
-enum { WD_CEN = 1u, WD_FINE = 2u, WD_C2 = 4u, WD_PH = 8u, WD_ORB = 16u };
+enum { WD_CEN = 1u, WD_FINE = 2u, WD_PH = 8u, WD_ORB = 16u };
 void pm_gpu_ndt_take(uint64_t o[NDT_N]); /* the ticks of the window, then reset (pm_phase.c prof report) */
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (the former pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
