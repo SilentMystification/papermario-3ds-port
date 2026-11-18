@@ -138,7 +138,6 @@ static int sh_drop(const uint32_t* t) {
 }
 /* A typed no-op unit (nd_op.h): a sync, G_SPNOOP, G_NOOP or a RDPHALF word. */
 #define IS_NOP(w0) ((w0) == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16))
-static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after ND_FS_DROP (nd_walk.c t4_check) */
 
 /* HC4b (W3): the render mode table. Entry i holds the typed ops of nd_rm_dev[i] (nd_rmtab.c, 61 device entries) without the syncs,
  * then ND_FS_END. Built by the recorder at the first record of index i; the frame push publishes it to core 0; never written again. */
@@ -411,7 +410,7 @@ void nd_parts_end(NdParts* b) {
 }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */
 /* D4b-3: a state op (HC4a: typed by the recorder) extends the open native record run when nothing was recorded after it (no span, no other command) and the chunk has room;
- * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after ND_FS_DROP). */
+ * else it opens a new run. HC4b: a typed op the shadow drops is not written. */
 static void st_put(uint32_t w0, uint32_t w1) {
     uint32_t* h = st_hdr;
     st_take = 1;
@@ -439,11 +438,7 @@ static void st_put(uint32_t w0, uint32_t w1) {
 static void rec_op_t(const uint32_t t[2]) {
     rec_open();
     ndc_sw++;
-    if (sh_drop(t)) {
-        if (t4_sw < 0) t4_sw = pm_debug_has("t4chk") ? 1 : 0;
-        if (!t4_sw) return;
-        st_put(ND_FS_W0(ND_FS_DROP, 0), 0);
-    }
+    if (sh_drop(t)) return; /* HC4b: a typed op the shadow drops is not written */
     st_put(t[0], t[1]);
 }
 static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {

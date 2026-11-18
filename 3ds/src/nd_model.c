@@ -287,7 +287,6 @@ static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw
         case NDC_NAPI:
             if (p[1] != (uint32_t)(uintptr_t)nd_nr_run) return 0; /* NSTREAM2: only a run of native records */
             for (unsigned k = 0; k < n; k++, i++) {
-                if ((p[2 + 2 * k] >> 24) == ND_FS_DROP) { k++; i--; continue; } /* HC4b t4chk: a dropped op is not in the list */
                 if (i >= 16u) return 0;
                 if (!nd_r11_op(p[2 + 2 * k], p[3 + 2 * k], pre, &pend, has_cb, cw, mo, nmo)) return 0;
             }
