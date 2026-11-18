@@ -5,6 +5,8 @@
 #include "nd_ds.h"
 #include "nd_op.h"
 #include "nd_gtab.h"
+#include <stdint.h>
+#include <stdlib.h>
 
 int pm_wide;
 int is_host(u32 p) { return p >= 0x00100000u; }
@@ -14,6 +16,8 @@ const NdNDev* nd_ntab_find(const void* list) { (void)list; return NULL; }
 const NdGTab* nd_gtab_find(const void* list) { (void)list; return NULL; }
 
 static int nf, bad;
+/* NST2b: the unit of nd_ds_model (the test form of ds_unit: the state write only) */
+static void nd_model_unit(NdDs* s, uint32_t w0, uint32_t w1) { nd_ds_apply(s, w0, w1); }
 #define CHK(name, got, want) do { nf++; if ((unsigned long)(got) != (unsigned long)(want)) { bad++; printf("nst1 BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
 #define U(id, a, b) nd_ds_apply(&nd_ds, NDO_W0(id, a), (b))
 
@@ -86,6 +90,81 @@ int main(int argc, char** argv) {
         CHK("list prim", s->w.prim, 0x11223344u); CHK("list prim_lod", s->w.prim_lod, 5);
         CHK("list env", s->w.envc, 0xCAFE0001u);
     }
+    /* NST2b: one model record through nd_ds_model (q = the payload words, pair Rk = q[2k], q[2k+1]) into a zeroed NdDs. fault: f without bit 8. */
+    {
+        static NdDs m;
+        static uint32_t q[32];
+        static Lightsn lsn;
+        static uint32_t bind[6], cb[2], rm[2];
+        static const uint32_t w0c = 1u << 20 | 4u << 15;
+        unsigned mf = 0, mb = 0;
+#define C2(name, got, want) do { mf++; if ((unsigned long)(got) != (unsigned long)(want)) { mb++; printf("nst2b BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
+        ((uint8_t*)&lsn.l[0])[0] = 10; ((uint8_t*)&lsn.l[0])[1] = 20; ((uint8_t*)&lsn.l[0])[2] = 30;
+        bind[0] = NDO_W0(NDO_TIMG, 2u << 19 | 31u); bind[1] = 0x00200000u;
+        bind[2] = NDO_W0(NDO_TILE, 2u << 21 | 2u << 19 | 0x40u); bind[3] = 0;
+        bind[4] = NDO_W0(NDO_END, 0); bind[5] = 0;
+        cb[0] = NDO_W0(NDO_COMB, w0c); cb[1] = 0x12345678u;
+        rm[0] = NDO_W0(NDO_OML, NDO_A_RENDERMODE); rm[1] = 0x0C184240u;
+        memset(q, 0, sizeof q);
+        q[6] = fault ? (4u | 64u | 2u) : (4u | 8u | 64u | 2u);
+        q[12] = 0x11223344u; q[13] = 0x55667788u;
+        q[8] = 0x0A0B0C0Du; q[11] = 0x01020304u;
+        q[4] = 1u; q[7] = (uint32_t)(uintptr_t)&lsn;
+        q[1] = (uint32_t)(uintptr_t)bind;
+        q[9] = (uint32_t)(uintptr_t)cb;
+        q[18] = NDO_W0(NDO_TILESIZE, 0); q[19] = 124u << 12 | 124u;
+        nd_ds_model(&m, q, rm, 1, nd_model_unit);
+        C2("prim", m.w.prim, 0x11223344u); C2("envc", m.w.envc, 0x55667788u);
+        C2("fogc", m.fogc, 0x0A0B0C0Du); C2("fog_fm", m.fog_fm, 0x0102); C2("fog_fo", m.fog_fo, 0x0304);
+        C2("lt_n", m.lt_n, 1); C2("lt0 col0", m.lt[0].col[0], 10); C2("lt0 col1", m.lt[0].col[1], 20); C2("lt0 col2", m.lt[0].col[2], 30);
+        C2("timg", (uintptr_t)m.w.timg, 0x00200000u); C2("timg_siz", m.w.tst1.timg_siz, 2); C2("timg_stride", m.w.tst1.timg_stride, 32);
+        C2("tile_fmt0", m.w.tst1.tile_fmt[0], 2); C2("tile_siz0", m.w.tst1.tile_siz[0], 2); C2("tile_tmem0", m.w.tst1.tile_tmem[0], 0x40);
+        C2("comb_w0", m.w.comb_w0, NDO_COMB_W0(w0c)); C2("comb_w1", m.w.comb_w1, 0x12345678u);
+        C2("omode_l", m.w.omode_l, 0x0C184240u);
+        C2("tile_sz0", m.w.tst1.tile_sz[0][2], 124); C2("tile_sz3", m.w.tst1.tile_sz[0][3], 124);
+        printf("nst2b model fields %u bad %u\n", mf, mb);
+        bad += (int)mb;
+#undef C2
+    }
+    /* NST2C (a): a parts record of 2 instances, m 3: {PRIM, CALL (index pre 1), ENV}. Instance 1 PRIM 0x1111 ENV 0x2222, instance 2 PRIM 0x3333 ENV 0x4444.
+     * fault: the pre field is 2, so the ENV post unit is the skipped index and envc stays 0. */
+    {
+        static NdDs pz;
+        static uint32_t pu[2 + 2 * 6];
+        unsigned xf = 0, xb = 0;
+#define C3(name, got, want) do { xf++; if ((unsigned long)(got) != (unsigned long)(want)) { xb++; printf("nst2c BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
+        memset(pu, 0, sizeof pu);
+        pu[0] = 2u | (fault ? 2u : 1u) << 8 | 3u << 16;
+        pu[2] = NDO_W0(NDO_PRIM, 5); pu[3] = 0x1111u;
+        pu[4] = NDO_W0(NDO_CALL, 0); pu[5] = 0xDEADu;
+        pu[6] = NDO_W0(NDO_ENV, 0); pu[7] = 0x2222u;
+        pu[8] = NDO_W0(NDO_PRIM, 7); pu[9] = 0x3333u;
+        pu[10] = NDO_W0(NDO_CALL, 0); pu[11] = 0xBEEFu;
+        pu[12] = NDO_W0(NDO_ENV, 0); pu[13] = 0x4444u;
+        nd_ds_parts(&pz, pu, nd_model_unit);
+        C3("parts prim", pz.w.prim, 0x3333u); C3("parts prim_lod", pz.w.prim_lod, 7);
+        C3("parts envc", pz.w.envc, 0x4444u);
+        printf("nst2c parts fields %u bad %u\n", xf, xb);
+        bad += (int)xb; nf += (int)xf;
+#undef C3
+    }
+    /* NST2C (b): a compiled def {PRIM value slot, ENV}, vmask 1, one value PRIM (0x5, 0xABCD): prim from the value, envc from the static unit. */
+    {
+        static NdDs dz;
+        static uint32_t du[4], dv[2];
+        unsigned yf = 0, yb = 0;
+#define C4(name, got, want) do { yf++; if ((unsigned long)(got) != (unsigned long)(want)) { yb++; printf("nst2c BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
+        du[0] = NDO_W0(NDO_PRIM, 0); du[1] = 0;
+        du[2] = NDO_W0(NDO_ENV, 0); du[3] = 0x7777u;
+        dv[0] = NDO_W0(NDO_PRIM, 5); dv[1] = 0xABCDu;
+        nd_ds_scomp(&dz, du, 2, 1u, dv, 1, nd_model_unit);
+        C4("scomp prim", dz.w.prim, 0xABCDu); C4("scomp prim_lod", dz.w.prim_lod, 5);
+        C4("scomp envc", dz.w.envc, 0x7777u);
+        printf("nst2c def fields %u bad %u\n", yf, yb);
+        bad += (int)yb; nf += (int)yf;
+#undef C4
+    }
+    printf("nst2c fields %d bad %d\n", nf, bad);
     printf("nst1 fields %d bad %d\n", nf, bad);
     return bad ? 1 : 0;
 }

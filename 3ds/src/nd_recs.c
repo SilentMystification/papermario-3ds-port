@@ -196,6 +196,7 @@ static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     if (fl & HD_FOGF) { fog_fm = d->fm; fog_fo = d->fo; }
 }
 static void hit_apply(const Gfx* q, const NdMEnt* e) {
+    extern unsigned char nd_dschk_hit; nd_dschk_hit = 1; /* NST2b: core 0 took a hit (nd_dschk.c adopts core 1 at the next command) */
     NdHitD dl, * d = &dl;
     if (e && q[13].words.w0 <= 8u) { d = nd_mc_hd(e); if (!d->fl) hit_delta(q, d); }
     else hit_delta(q, d);

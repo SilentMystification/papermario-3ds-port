@@ -275,12 +275,21 @@ static void spr_flat_gfx(uint32_t** o, Quad* vertices, IMG_PTR raster, PAL_PTR p
 
 /* S5SPR: the state record of an unshaded component (one NDC_NAPI record in place of its state ops): 4 units. word 0 raster, 1 palette, 2 quad, 3 viewport
  * of the shadow pass, 4 viewport of the main pass, 5 width << 16 | height, 6 alpha | flags << 8, 7 unused. Core 0 expands it to the ops it replaces. */
+void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c: NST2C */
 static void spr_state_run(const uint32_t* u) {
     static uint32_t buf[128];
     uint32_t* nrp = buf;
     spr_flat_gfx(&nrp, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
                  (s32)(u[6] & 0xffu), (u32)(u[6] >> 8), (Vp*)(uintptr_t)u[3], (Vp*)(uintptr_t)u[4]);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+}
+/* NST2C: the same units as spr_state_run, fed to core 1 (nd_ds) at record time. */
+static void spr_state_feed(const uint32_t* u) {
+    uint32_t buf[128];
+    uint32_t* nrp = buf;
+    spr_flat_gfx(&nrp, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
+                 (s32)(u[6] & 0xffu), (u32)(u[6] >> 8), (Vp*)(uintptr_t)u[3], (Vp*)(uintptr_t)u[4]);
+    nd_ds_feed(buf, (unsigned)(nrp - buf) / 2u);
 }
 void spr_appendGfx_component_flat(
     Quad* vertices,
@@ -311,6 +320,7 @@ void spr_appendGfx_component_flat(
         const uint32_t st[8] = { (u32)(uintptr_t)raster, (u32)(uintptr_t)palette, (u32)(uintptr_t)vertices, (u32)(uintptr_t)vpAlt, (u32)(uintptr_t)vpMain,
                                  ((u32)width << 16) | (u32)height, ((u32)alpha & 0xffu) | (flags << 8), 0 };
         nd_rec_napi(spr_state_run, st, 4u);
+        spr_state_feed(st); /* NST2C */
     } else
     {
         spr_flat_gfx(nullptr, vertices, raster, palette, width, height, mtx, alpha, flags, vpAlt, vpMain);

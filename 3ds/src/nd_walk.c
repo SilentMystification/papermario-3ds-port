@@ -147,13 +147,14 @@ static unsigned rec_case(unsigned dbg, const Gfx* q) {
     if (__builtin_expect(dbg & WD_CEN, 0) && rec_nat_last) walk_dbg_nat();
     return n;
 }
+extern unsigned nd_st_epoch; /* NST3, defined below: raised by the model record prologue (NST2B) */
 /* DIRECT D1: NDC_MODEL of the frame stream (nd_rec.c), with the walker's op prologue of G_PM_REC (gv_epoch, the census op hook). D10a: the
  * only model record path (no list holds a record). */
 void nd_walk_rec_model(const Gfx* q) {
     const unsigned dbg = pm_walk_dbg;
     dlc_on = 1;
     pm_gbi_cur_op = G_PM_REC;
-    gv_epoch++; /* GV1b, as the walker's prologue of G_PM_REC */
+    gv_epoch++; nd_st_epoch++; /* GV1b, as the walker's prologue of G_PM_REC; NST2B */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, q, 0, G_PM_REC, q->words.w0, q->words.w1);
     rec_case(dbg, q);

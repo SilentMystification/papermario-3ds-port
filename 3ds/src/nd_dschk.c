@@ -39,6 +39,19 @@ static void dschk_fill(NdDs* d) {
     d->tm = nd_tm;
 }
 
+unsigned char nd_dschk_hit; /* NST2b: set by hit_apply (nd_recs.c) when core 0 took a hit */
+/* NST2b: core 0 takes the state of the core 1 record after a hit (the hit path skips the lights, tile and load units, the panner sizes
+ * and the texture filter bits). Copies the fields the hit path does not write. */
+static void hit_adopt(const NdDs* c) {
+    nd_ws.timg = c->w.timg; nd_ws.tlut = c->w.tlut; nd_ws.tlut_n = c->w.tlut_n;
+    nd_ws.tst1 = c->w.tst1;
+    nd_ws.omode_h = (nd_ws.omode_h & ~(3u << G_MDSFT_TEXTFILT)) | (c->w.omode_h & (3u << G_MDSFT_TEXTFILT));
+    nd_tm = c->tm;
+    memcpy(lt, c->lt, sizeof lt);
+    lt_n = c->lt_n;
+    memcpy(lk, c->lk, sizeof lk);
+    dual_on = c->dual_on;
+}
 /* rec: the NdDs copy of core 1, then its ep word at word sizeof(NdDs) / 4 (nd_rec.c ds_rec). */
 void nd_dschk_run(const uint32_t* rec) {
     const NdDs* theirs = (const NdDs*)(const void*)rec;
@@ -46,6 +59,7 @@ void nd_dschk_run(const uint32_t* rec) {
     const char* bad[8];
     char names[192];
     NdDs mine;
+    if (nd_dschk_hit) { hit_adopt(theirs); nd_dschk_hit = 0; }
     dschk_fill(&mine);
     dk_cmds++;
     const int nb = nd_ds_cmp(theirs, &mine, bad, 8);
