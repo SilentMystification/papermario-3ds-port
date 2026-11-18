@@ -17,6 +17,8 @@
 extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
 extern unsigned fogc, blendc; /* nd_set.c:41 */
 void comb_in_walker(NdCombIn* in); /* nd_comb.c: the walker inputs of the combine (core 0) */
+extern int sl_const, ls_use, ls_cyc, ls_dual; extern unsigned sl_cc; /* NDR0E1: nd_comb.c */
+int pm_gpu_comb_now(void); const PmPlan* pm_gpu_plan_now(void); unsigned pm_gpu_const_now(void); unsigned pm_gpu_env_now(void);
 
 /* ---- core 1 ---- */
 static int sn_leg, sn_mode5, sn_pat;
@@ -47,6 +49,8 @@ void nd_snap_mesh(void) {
     r.plan_on = -1;
     if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
     else nd_comb_core1(&r.in, 0u, sn_mode5, &o); /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
+    if (o.plan_on) pm_comb_colours_k(&o.plan, r.in.prim, r.in.env, r.in.prim_lo8 & 0xffu, r.in.key_c, r.in.key_s, r.in.conv_k4 & 255u);
+    r.o = o;
     sn_leg = o.leg; sn_mode5 = o.mode5; sn_pat = o.pat;
     r.plan_on = o.plan_on;
     r.leg = sn_leg; r.mode5 = sn_mode5; r.pat = sn_pat;
@@ -97,6 +101,16 @@ void nd_snapchk_tri(void) {
     if (sc_cur.mode5 != comb_mode5) sc_add("mode5");
     if (sc_cur.pat != box_pat) sc_add("pat");
     if (sc_cur.plan_on != plan_active) sc_add("plan_on");
+    {   /* NDR0E1: the core 0 combine state and the GPU state against the snap decision */
+        const NdCombOut* o = &sc_cur.o;
+        if (plan_active && o->plan_on && memcmp(&cur_plan, &o->plan, sizeof o->plan)) sc_add("cplan");
+        if (sl_const != o->cc_on || (o->cc_on && sl_cc != o->cc)) sc_add("sl");
+        if (ls_use != o->use || ls_cyc != o->cyc || ls_dual != o->dual) sc_add("ls");
+        if (pm_gpu_comb_now() != (o->plan_on ? 8 : o->leg)) sc_add("gcomb");
+        else if (o->plan_on && memcmp(pm_gpu_plan_now(), &o->plan, sizeof o->plan)) sc_add("gplan");
+        if (o->cc_on && pm_gpu_const_now() != o->cc) sc_add("gconst");
+        if (o->env_on && pm_gpu_env_now() != sc_cur.in.env) sc_add("genv");
+    }
     if (sc_cur.key < 0) sc_miss++;
     if (sc_nb) {
         sc_bad++;

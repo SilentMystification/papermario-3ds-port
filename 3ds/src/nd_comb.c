@@ -307,27 +307,32 @@ static __attribute__((cold, noinline)) void scw_census(void) { /* PG0 census, pr
     last_sig = sg;
 }
 
+/* NDR0E1: the GPU part of sync_combine_work. o is the decision (plan coloured by the caller). The snapshot (nd_snap.c) does not call it. */
+void nd_comb_apply(const NdCombOut* o, uint32_t w0, uint32_t w1, int use_t1, uint32_t env) {
+    sl_const = o->cc_on; sl_env = o->env_on;
+    if (o->cc_on) { sl_cc = o->cc; pm_gpu_set_const(o->cc); }
+    if (o->env_on) pm_gpu_set_env(env);
+    leg_mode = o->leg; comb_mode5 = o->mode5; box_pat = o->pat;
+    plan_active = 0;
+    ls_use = o->use; if (o->use >= 0) ls_why = o->why; ls_cyc = o->cyc; ls_dual = o->dual; ls_frame = rm_frame;
+    if (o->plan_on) {
+        cur_plan = o->plan;
+        pm_gpu_plan_key(w0, w1, o->cyc, use_t1);
+        pm_gpu_set_plan(&cur_plan);
+        plan_active = 1;
+        return;
+    }
+    pm_gpu_set_combine(leg_mode);
+}
+
 void sync_combine_work(void) {
     NdCombIn in;
     NdCombOut o;
     if (gp_on()) scw_census(); /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
     comb_in_walker(&in);
     nd_comb_pick(&in, &o);
-    sl_const = o.cc_on; sl_env = o.env_on;
-    if (o.cc_on) { sl_cc = o.cc; pm_gpu_set_const(o.cc); }
-    if (o.env_on) pm_gpu_set_env(nd_ws.envc);
-    leg_mode = o.leg; comb_mode5 = o.mode5; box_pat = o.pat;
-    plan_active = 0;
-    ls_use = o.use; if (o.use >= 0) ls_why = o.why; ls_cyc = o.cyc; ls_dual = o.dual; ls_frame = rm_frame;
-    if (o.plan_on) {
-        cur_plan = o.plan;
-        pm_comb_colours(&cur_plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
-        pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, o.cyc, nd_ws.use_t1);
-        pm_gpu_set_plan(&cur_plan);
-        plan_active = 1;
-        return;
-    }
-    pm_gpu_set_combine(leg_mode);
+    if (o.plan_on) pm_comb_colours(&o.plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
+    nd_comb_apply(&o, nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.use_t1, nd_ws.envc);
 }
 
 void sync_combine(void) {

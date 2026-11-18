@@ -490,6 +490,7 @@ void nd_comb_core(const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut*
 void nd_comb_core1(const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut* out);
 int nd_const_rgb(const NdCombIn* c, unsigned* out);
 void nd_comb_tst(uint32_t w0, uint32_t w1, int use_t1, int box_folded, uint32_t t[16]);
+void nd_comb_apply(const NdCombOut* o, uint32_t w0, uint32_t w1, int use_t1, uint32_t env); /* NDR0E1: the GPU part of sync_combine_work */
 /* NPSO2: the decided pipeline of one NdPsoDesc (nd_decide.c). Colours are draw values: the plan has no constants, the TEV words no colour (nd_pso_colour). */
 struct NdPsoOut { NdCombOut comb; NdRender rnd; NdTevOut tev; };
 struct NdPsoDesc;

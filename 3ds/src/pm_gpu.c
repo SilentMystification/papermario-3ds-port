@@ -4462,6 +4462,11 @@ void pm_gpu_set_const(unsigned rgba) {
     cconst = rgba;
 }
 
+/* NDR0E1: the GPU state that nd_snap.c compares with the snapshot decision. */
+int pm_gpu_comb_now(void) { return gs.combine; }
+const PmPlan* pm_gpu_plan_now(void) { return &gs.plan; }
+unsigned pm_gpu_const_now(void) { return cconst; }
+unsigned pm_gpu_env_now(void) { return gs.env_col; }
 void pm_gpu_flush(void) { flush(); }
 
 /* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
