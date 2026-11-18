@@ -1,6 +1,6 @@
 /* nd_dschk.c: the dschk debug switch (NST3, design_nstate.md section 5). Core 1 records, before each command, the NdDs copy and the
  * ep bit (nd_rec.c rec_take, PMDL("dschk")). This runs on core 0 at that command: it fills an NdDs from nd_ws and the setter globals,
- * compares the two (nd_ds_cmp, draw-time fields zeroed), and compares the ep bit with nd_st_epoch (raised by the state ops). Logs:
+ * compares the two (nd_ds_cmp, draw-time fields zeroed), and compares the ep bit with the gv_epoch move since the last compare (NST2I: every core 0 batch cut). Logs:
  * `dschk bad f<n> <names>` (the first 8 bad records), `dschk f<n> cmds <c> bad <b> epbad <e>` every 100 frames, `dschk end f<n> ...`. */
 #include <stdio.h>
 #include <stdint.h>
@@ -13,6 +13,9 @@
 
 extern unsigned nd_st_epoch; /* nd_walk.c: the state epoch count, reset here at each command */
 extern unsigned nd_st_why; /* nd_walk.c: the source of the first epoch raise (NST2H) */
+extern unsigned gv_epoch; /* nd_geom.c: the batch cut count (NST2I) */
+extern unsigned char nd_cmd_last; /* nd_rec.c: the op of the last command core 0 ran (NST2I) */
+static unsigned dk_gv = 1; /* NST2I: gv_epoch at the last compare */
 extern unsigned pm_frame_n;  /* pm_main.c: the logic step counter */
 extern unsigned conv_k4, keyc, keys; /* nd_comb.c, nd_set.c: the core 0 setter globals of NdDs */
 extern int dual_on, box_prod, comb_set, comb_alpha_shade;
@@ -134,7 +137,14 @@ void nd_dschk_run(const uint32_t* rec) {
             pm_log_evt("dschk bad f%u%s", pm_frame_n, names);
         }
     }
-    if ((nd_st_epoch != 0) != (ep != 0)) { dk_epbad++; ep_note(nd_st_epoch ? (0x10000u | (nd_st_why & 0xffffu)) : (0x20000u | ((epw >> 8) & 0xffffu))); }
+    {   const int e0 = gv_epoch != dk_gv;   /* NST2I: every core 0 batch cut, not only the 4 nd_st_epoch sites */
+        dk_gv = gv_epoch;
+        if (e0 != (ep != 0)) {
+            dk_epbad++;
+            if (e0) ep_note(0x10000u | (nd_st_epoch ? (nd_st_why & 0xffffu) : (0xff00u | nd_cmd_last)));   /* site ff: the command op that ran */
+            else ep_note(0x20000u | (((epw >> 16) & 0xffu) == 9u ? (0x900u | nd_cmd_last) : ((epw >> 8) & 0xffffu)));
+        }
+    }
     nd_st_epoch = 0; nd_st_why = 0;
     if (pm_frame_n / 100 != dk_bucket) {
         dk_bucket = pm_frame_n / 100;
