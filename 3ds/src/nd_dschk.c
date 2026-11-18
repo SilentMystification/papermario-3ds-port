@@ -20,9 +20,13 @@ extern unsigned fogc, blendc;
 extern unsigned lt_n;      /* nd_mtx_set.c */
 extern int8_t lk[2][3];
 extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
+extern int box_folded;    /* nd_comb.c: the box fold state of core 0 */
+extern unsigned box_save[4]; /* nd_comb.c: the unfolded comb_a..comb_d while folded */
 
 static unsigned dk_cmds, dk_bad, dk_epbad, dk_nlog, dk_bucket;
 static unsigned dk_fbad; /* NST2A: the sum of the differing fields over all commands */
+static unsigned dk_adopt, dk_adiff; /* NST2F: adopts (hit or direct) and the fields they changed in core 0 */
+unsigned char nd_dschk_dir; /* NST2F: set by nd_direct_end and nd_glyph_draw; the next record is adopted (dir_adopt) */
 
 /* The core 0 side of NdDs: nd_ws, then the globals of the setters (the same values the NdDs fields hold on core 1). */
 static void dschk_fill(NdDs* d) {
@@ -37,6 +41,11 @@ static void dschk_fill(NdDs* d) {
     memcpy(d->lk, lk, sizeof d->lk);
     d->vp_sx = vp_sx; d->vp_sy = vp_sy; d->vp_sz = vp_sz; d->vp_tx = vp_tx; d->vp_ty = vp_ty; d->vp_tz = vp_tz;
     d->tm = nd_tm;
+    if (box_folded) { /* NST2F: the unfold of box_fold_sync (nd_comb.c), core 1 holds these values */
+        d->w.tst1.comb_a = box_save[0]; d->w.tst1.comb_b = box_save[1]; d->w.tst1.comb_c = box_save[2]; d->w.tst1.comb_d = box_save[3];
+        d->w.tst1.comb_aa = 7; d->w.tst1.comb_ab = 7; d->w.tst1.comb_ac = 7; d->w.tst1.comb_ad = 2;
+        d->w.use_t1 = 0;
+    }
 }
 
 unsigned char nd_dschk_hit; /* NST2b: set by hit_apply (nd_recs.c) when core 0 took a hit */
@@ -52,6 +61,26 @@ static void hit_adopt(const NdDs* c) {
     memcpy(lk, c->lk, sizeof lk);
     dual_on = c->dual_on;
 }
+/* NST2F: core 0 takes the state of a direct draw (nd_direct_bind, nd_direct_end, nd_glyph_draw): the draw writes the core 0 state at draw time
+ * and its fallback runs the units, so core 0 reads the core 1 copy from here on. Clears box_folded (the copy is unfolded). */
+static void dir_adopt(const NdDs* c) {
+    nd_ws.omode_h = c->w.omode_h; nd_ws.omode_l = c->w.omode_l; nd_ws.om_kh = c->w.om_kh; nd_ws.om_kl = c->w.om_kl;
+    nd_ws.comb_w0 = c->w.comb_w0; nd_ws.comb_w1 = c->w.comb_w1;
+    nd_ws.tst1 = c->w.tst1; nd_ws.use_t1 = c->w.use_t1;
+    nd_ws.prim = c->w.prim; nd_ws.prim_lod = c->w.prim_lod; nd_ws.envc = c->w.envc;
+    nd_ws.timg = c->w.timg; nd_ws.tlut = c->w.tlut; nd_ws.tlut_n = c->w.tlut_n;
+    nd_tm = c->tm;
+    comb_set = c->comb_set; box_prod = c->box_prod; comb_alpha_shade = c->comb_alpha_shade;
+    dual_on = c->dual_on;
+    box_folded = 0;
+}
+/* NST2F: counts one adopt and the fields core 0 differs by before it adopts (the fill is core 0 as it stands). */
+static void adopt_count(const NdDs* c) {
+    NdDs m;
+    dschk_fill(&m);
+    dk_adiff += (unsigned)nd_ds_cmp(c, &m, NULL, 0);
+    dk_adopt++;
+}
 /* rec: the NdDs copy of core 1, then its ep word at word sizeof(NdDs) / 4 (nd_rec.c ds_rec). */
 void nd_dschk_run(const uint32_t* rec) {
     if (nd_ds_rpl) return; /* NST2D: core 1 took this copy inside a range */
@@ -60,7 +89,8 @@ void nd_dschk_run(const uint32_t* rec) {
     const char* bad[8];
     char names[192];
     NdDs mine;
-    if (nd_dschk_hit) { hit_adopt(theirs); nd_dschk_hit = 0; }
+    if (nd_dschk_hit) { adopt_count(theirs); hit_adopt(theirs); nd_dschk_hit = 0; }
+    if (nd_dschk_dir) { adopt_count(theirs); dir_adopt(theirs); nd_dschk_dir = 0; }
     dschk_fill(&mine);
     dk_cmds++;
     const int nb = nd_ds_cmp(theirs, &mine, bad, 8);
@@ -79,13 +109,13 @@ void nd_dschk_run(const uint32_t* rec) {
     nd_st_epoch = 0;
     if (pm_frame_n / 100 != dk_bucket) {
         dk_bucket = pm_frame_n / 100;
-        pm_log_evt("dschk f%u cmds %u bad %u epbad %u fbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad);
+        pm_log_evt("dschk f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff);
     }
 }
 
 /* pm_fxtest.c: the end line at fxtest done (dschk switch only). */
 void nd_dschk_end(void) {
     if (!pm_debug_has("dschk")) return;
-    pm_log_evt("dschk end f%u cmds %u bad %u epbad %u fbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad);
+    pm_log_evt("dschk end f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff);
     pm_log_evt("dschk lg hw %u over %u", nd_ds_lg_hw, nd_ds_lg_over); /* NST2D */
 }
