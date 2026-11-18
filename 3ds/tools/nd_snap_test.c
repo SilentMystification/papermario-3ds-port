@@ -23,6 +23,20 @@ int main(int argc, char** argv) {
     ds.dual_on = 1;
     ds.w.td[1].valid = 1;
     nd_snap_in(&ds, 1, 2, &in);
+    {
+        NdSnapChk r;
+        int rb = 0;
+        memset(&r, 0, sizeof r);
+        ds.w.omode_l = 0x1234u; ds.w.geom = 0x5678u; ds.fogc = 0x9abcu; ds.blendc = fault ? 0x9abcu : 0xdef0u;
+        nd_snap_rnd(&ds, &r);
+        nf += 4;
+        if (r.oml != 0x1234u) rb++;
+        if (r.geom != 0x5678u) rb++;
+        if (r.fogc != 0x9abcu) rb++;
+        if (r.blendc != 0xdef0u) rb++;
+        bad += rb;
+        printf("ndr0c rnd bad %d\n", rb);
+    }
     CHK("w0", in.w0, 0x11223344u);
     CHK("key_s", in.key_s, 5u);
     CHK("tst15", in.tst[15], 9u);

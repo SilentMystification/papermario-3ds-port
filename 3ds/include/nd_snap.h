@@ -10,11 +10,16 @@
 typedef struct NdSnapChk {
     NdCombIn in;
     int32_t key, leg, mode5, pat, plan_on;
+    int32_t role; uint32_t oml, geom, fogc, blendc, pad;
 } NdSnapChk;
 _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
 
 /* nd_snap_in.c: the combine inputs of an NdDs (leg and pat are the walker's leg and box_pat of the snapshot). */
 void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in);
+/* nd_snap_in.c: the render inputs of an NdDs (oml, geom, fogc, blendc) into the snapshot (role left 0). */
+void nd_snap_rnd(const NdDs* s, NdSnapChk* r);
+/* nd_snap.c, core 1: the target record of set_cimg (w0 = siz << 12 | width - 1, w1 = the address; nd_target_beginw). */
+void nd_snap_tgt(uint32_t w0, uint32_t w1);
 /* nd_snap.c, core 1: the snapshot of the triangle about to be recorded (PMDL("snapchk") only). */
 void nd_snap_mesh(void);
 /* nd_snap.c, core 0: the NDC_NAPI runner of the snapshot record; sets nd_snap_arm. */

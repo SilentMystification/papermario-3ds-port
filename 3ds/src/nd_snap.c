@@ -11,15 +11,27 @@
 #include "nd_ds.h"
 #include "nd_api.h"
 #include "nd_snap.h"
+#include "nd_tgt.h"
 #include "pm_port.h"
 
 extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
+extern unsigned fogc, blendc; /* nd_set.c:41 */
 void comb_in_walker(NdCombIn* in); /* nd_comb.c: the walker inputs of the combine (core 0) */
 
 /* ---- core 1 ---- */
 static int sn_leg, sn_mode5, sn_pat;
 static NdSnapChk sn_last;
 static unsigned sn_cmds = ~0u;
+static NdTgt sn_tgt;
+/* the target record of set_cimg (nd_target.c:87-99) without the GPU calls */
+void nd_snap_tgt(uint32_t w0, uint32_t w1) {
+    void* nc = (void*)(uintptr_t)w1;
+    sn_tgt.img = nc; sn_tgt.siz = (uint8_t)((w0 >> 12) & 3u); sn_tgt.stride = (uint16_t)((w0 & 0xfffu) + 1u);
+    sn_tgt.kind = (uint8_t)((nc == NULL ? NDK_NULL : 0u) | (w1 == 0u ? NDK_ZERO : 0u) | (nc == (void*)DepthCopyBuffer ? NDK_DEPTHQ : 0u) |
+        (pm_is_cfb(nc) ? NDK_CFB : 0u) |
+        ((nuGfxZBuffer && (const unsigned short*)nc >= nuGfxZBuffer && (const unsigned short*)nc < nuGfxZBuffer + 320 * 240) ? NDK_INZ : 0u) |
+        (pm_fb_native(nc) ? NDK_NATIVE : 0u));
+}
 
 void nd_snap_mesh(void) {
     if (!PMDL("snapchk")) return;
@@ -28,7 +40,9 @@ void nd_snap_mesh(void) {
     memset(&r, 0, sizeof r);
     memset(&o, 0, sizeof o);
     nd_snap_in(&nd_ds, sn_leg, sn_pat, &r.in);
-    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in)) return; /* no new command, same inputs */
+    nd_snap_rnd(&nd_ds, &r);
+    r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, nd_ds.w.omode_l, nd_ds.w.omode_h, 0);
+    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u)) return; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, 0u, &o);
     r.plan_on = -1;
     if (r.key >= 0) {
@@ -74,6 +88,11 @@ void nd_snapchk_tri(void) {
     SC_CMP(tex_on, "tex_on"); SC_CMP(use_t1, "use_t1"); SC_CMP(t1_valid, "t1_valid"); SC_CMP(dual_on, "dual_on");
     SC_CMP(box_prod, "box_prod"); SC_CMP(box_folded, "box_folded"); SC_CMP(comb_set, "comb_set");
     SC_CMP(comb_alpha_shade, "comb_alpha_shade");
+    if (sc_cur.role != nd_img_role(0)) sc_add("role");
+    if (sc_cur.oml != nd_ws.omode_l) sc_add("oml");
+    if (sc_cur.geom != nd_ws.geom) sc_add("geom");
+    if (sc_cur.fogc != fogc) sc_add("fogc");
+    if (sc_cur.blendc != blendc) sc_add("blendc");
     if (memcmp(sc_cur.in.tst, mine.tst, sizeof mine.tst)) sc_add("tst");
     if (sc_cur.key >= 0) {
         if (sc_cur.leg != leg_mode) sc_add("leg");

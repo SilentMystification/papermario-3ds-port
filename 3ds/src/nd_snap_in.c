@@ -19,3 +19,8 @@ void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in) {
     in->tex_on = s->w.tex_on; in->use_t1 = s->w.use_t1; in->t1_valid = s->w.td[1].valid; in->dual_on = s->dual_on;
     in->box_prod = s->box_prod; in->box_pat = pat; in->box_folded = 0; in->comb_set = s->comb_set; in->comb_alpha_shade = s->comb_alpha_shade;
 }
+
+/* NDR0C: the render inputs of the snapshot (the walker reads the same words: nd_ws.omode_l, nd_ws.geom, fogc, blendc). */
+void nd_snap_rnd(const NdDs* s, NdSnapChk* r) {
+    r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc;
+}
