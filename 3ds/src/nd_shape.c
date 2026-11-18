@@ -432,7 +432,7 @@ __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, un
      * a static list on the SGEN-1 entity path) draws into the 64 x 64 image in the z-buffer memory; without this check it drew on the screen. */
     if (seg_osc_ep != gv_epoch) { off_screen_check(); seg_osc_ep = gv_epoch; }
     if (nd_ls_on) nd_lsr_seg(nd_ls_ord);
-    if (ep_epoch != gv_epoch) gv_epoch_enter();
+    if (ep_epoch != gv_epoch) gv_epoch_enter(); if (nd_ls_on) nd_lsr_bst(); /* NCONV1D2 */
     dbg_seg = 0;
     if (ep_why >= 0) { dbg_seg = 1 + (unsigned)ep_why; return 0; }
     if (ep_cullboth) { n_out += (int)nt; return 1; }
