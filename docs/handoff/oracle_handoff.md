@@ -15,7 +15,7 @@ Run listcen for fresh numbers.
 - NDR5 gap (answered): no row. load_mtx guards the source itself (nd_mtx_set.c:134 mtx_bad); gbi_cold_bad_mtx is a warning with list context.
 ## Open work (in order)
 1. Answer coder questions (NDR0E1: sl and ls names mean scm_replay leaves sl_* stale, nd_comb.c:180-188; then E2 must not write sl_*).
-2. From NDR0E2 data: NDR1B (texrect apply). From NDR0F1 data: NDR0F2 (render apply in gv_epoch_enter, keep zmark order nd_set.c:243, nd_geom.c:221),
+2. NDR1B 75024c7929 written (after NDR0E2 merge: texrect compare after box_fold_sync nd_rect.c:240, then nd_snapchk_tri; NDR0E2 nimgm bad 486 = this). From NDR0F1 data: NDR0F2 (render apply in gv_epoch_enter, keep zmark order nd_set.c:243, nd_geom.c:221),
    NDR0G (binds: ensure_tile, dual_bind nd_geom.c:212-213 from td in the snap). Then W5: NDR2 direct (nd_pso_decide nd_direct.c:69 desc form), NDR4, NCONV1D.
 3. NST2I rule 9 (every command sets ep first) masks rules 1-8 in the dschk word: epbad then counts quiet commands only (key 9xx, op).
    The per-draw ep (S4) needs sc_lost precision: NST2J measures it (sclbad, sigbad). From its scl lines: the next sc row (ranges, glyphs, box pattern).
@@ -44,4 +44,4 @@ Run listcen for fresh numbers.
   a direct draw (nd_direct.c:103-116) writes pso state and binds without tile ops. dschk adopts core 1 values there and counts adiff.
 ## What to do first
 1. Read plan_finish.md, design_nstate.md and the ws_* pages on main. Answer coder questions.
-2. Write the next row from each hand-back: NDR0E2 -> NDR1B, NDR0F1 -> NDR0F2 and NDR0G, NST2J -> sc fix row from its scl lines.
+2. Write the next row from each hand-back: NDR1B -> NDR1C (rect render and binds), NDR0F1 -> NDR0F2 and NDR0G, NST2J -> sc fix row from its scl lines.
