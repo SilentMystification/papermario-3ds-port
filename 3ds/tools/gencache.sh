@@ -11,8 +11,8 @@
 GC_ROOT=${GENCACHE_DIR:-$MAIN_ROOT/build3ds/gencache}
 GC_FAIL=0
 # Files under the key paths that are no input of a generator: pm_build.h is written after the generators and read only by
-# 3ds/src/pm_main.c, pm_options.c and pm_wdog.c; the other 3 are generator outputs (gen_pso_tab adds the 2 gfx outputs itself).
-GC_EXCL="3ds/include/pm_build.h 3ds/src/nd_pso_tab.c 3ds/src/nd_gfx_tab.c 3ds/src/nd_ntab_descs.c"
+# 3ds/src/pm_main.c, pm_options.c and pm_wdog.c; the others are generator outputs (gen_pso_tab adds the 2 gfx outputs itself).
+GC_EXCL="3ds/include/pm_build.h 3ds/src/nd_pso_tab.c 3ds/src/nd_imgfx_tab.c 3ds/src/nd_gfx_tab.c 3ds/src/nd_ntab_descs.c"
 
 gc_dir() { printf '%s/%s/%s' "$GC_ROOT" "$1" "$(printf '%s' "$2" | sha1sum | cut -c1-16)"; }
 

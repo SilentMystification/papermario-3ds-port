@@ -8,6 +8,7 @@ ND_PSO_DESC(pe_imgfx_1805, 0xfc121824, 0xff33ffff, 0x0008acf0, 0x00504e50, 0x000
 #include "pm_interp_fi.h"
 #include "nd_op.h" /* HC4e2b: the typed unit of a list word */
 #include "nd_imgfx.h"
+#include "nd_fs.h"
 #include "nd_st.h"
 #include "nd_val.h"
 #include "nd_xf.h"
@@ -238,6 +239,7 @@ u8* ImgFXAnimOffsets[] = {
     [IMGFX_ANIM_FLIP_CARD_3] (u8*)0xC6150,
     [IMGFX_ANIM_CYMBAL_CRUSH] (u8*)0xCA380,
 };
+_Static_assert(ARRAY_COUNT(ImgFXAnimOffsets) == ND_IMGFX_N, "IMGFX: one list per anim type");
 
 /* imgfx_data is read straight from the big-endian ROM. */
 static void imgfx_swap32(void* p, u32 words) {
@@ -1246,7 +1248,6 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
     ImgFXAnimHeader* anim = &ImgFXAnimHeaders[state->arrayIdx];
 
     if (state->curAnimOffset != romStart) {
-        u8* romEnd;
         s32 i;
 
         state->curAnimOffset = romStart;
@@ -1273,7 +1274,6 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         }
         if (state->gfxBufs[1] != nullptr) {
             // imgfx_add_to_cache(state->gfxBufs[1], 1);
-            romEnd = (u8*) state->gfxBufs[1]; // required to match
             imgfx_add_to_cache(state->gfxBufs[1], 1);
             state->gfxBufs[1] = nullptr;
             state->gfxDev[1].list = nullptr;
@@ -1283,16 +1283,26 @@ ImgFXAnimHeader* imgfx_load_anim(ImgFXState* state) {
         state->gfxBufs[0] = heap_malloc(anim->gfxCount * 2 * sizeof(uint32_t));
         state->gfxBufs[1] = heap_malloc(anim->gfxCount * 2 * sizeof(uint32_t));
 
-        romStart = imgfx_data_ROM_START + (s32)anim->gfxOffset;
-        romEnd = romStart + anim->gfxCount * 2 * sizeof(uint32_t);
-        dma_copy(romStart, romEnd, state->gfxBufs[0]);
-        dma_copy(romStart, romEnd, state->gfxBufs[1]);
-        imgfx_swap32(state->gfxBufs[0], anim->gfxCount * 2);
-        imgfx_swap32(state->gfxBufs[1], anim->gfxCount * 2);
+        /* IMGFX: the typed units come from nd_imgfx_tab.c (gen_imgfx_tab.py); nd_imgfx_n equals anim->gfxCount */
+        {
+            const uint32_t* tu = nd_imgfx_tab[state->ints.anim.type];
+            const unsigned n = nd_imgfx_n[state->ints.anim.type];
 
-        for (i = 0; i < ARRAY_COUNT(state->gfxBufs); i++) { /* PIPEFX: raw ROM words to typed units, vertex loads into vtxBufs[i] */
-            const unsigned nd = nd_imgfx_type((uint32_t*)state->gfxBufs[i], anim->gfxCount, (uint32_t)(uintptr_t)anim->keyframesOffset, (uintptr_t)state->vtxBufs[i]);
-            imgfx_make_dev(&state->gfxDev[i], state->gfxBufs[i], nd);
+            for (i = 0; i < ARRAY_COUNT(state->gfxBufs); i++) {
+                uint32_t* g = state->gfxBufs[i];
+                const uint32_t vb = (uint32_t)(uintptr_t)state->vtxBufs[i];
+                unsigned j;
+
+                for (j = 0; j < 2u * n; j++) {
+                    g[j] = tu[j];
+                }
+                for (j = 0; j < n; j++) {
+                    if ((g[2u * j] >> 24) == ND_FS_VTX) {
+                        g[2u * j + 1u] += vb;
+                    }
+                }
+                imgfx_make_dev(&state->gfxDev[i], g, n);
+            }
         }
     }
 

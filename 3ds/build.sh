@@ -34,7 +34,7 @@ CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 
 # The build key covers the code dirs, the build recipe and this script.
 KEY_IN="$CODE_DIRS docker/Dockerfile.build 3ds/build.sh"
 # Generator outputs and the build header inside CODE_DIRS: their ids are taken after the generators (gen_ids).
-GEN_FILES="3ds/src/nd_gfx_tab.c 3ds/src/nd_ntab_descs.c 3ds/src/nd_pso_tab.c 3ds/include/texkey_patch.h"
+GEN_FILES="3ds/src/nd_gfx_tab.c 3ds/src/nd_ntab_descs.c 3ds/src/nd_pso_tab.c 3ds/src/nd_imgfx_tab.c 3ds/include/texkey_patch.h"
 . 3ds/tools/gencache.sh
 . 3ds/tools/src_sync.sh
 . 3ds/tools/readkey.sh
@@ -155,21 +155,23 @@ gt_run() {
     gc_put "$GT_RKDIR" "$(rk_full "$(cat $OUT/gt_k0.txt)" $OUT/in_now.txt $OUT/rk_gfx_tab_reads.txt)" $GT_OUT reads.txt:$OUT/rk_gfx_tab_reads.txt || true
     gc_trim gfx_tab
 }
-# NPSO3: the build-time pipeline table (3ds/tools/gen_pso_tab.py) -> 3ds/src/nd_pso_tab.c (git-ignored). GENKEY: K0 as gfx_tab
+# NPSO3: the build-time pipeline table (3ds/tools/gen_pso_tab.py) -> 3ds/src/nd_pso_tab.c (git-ignored), and the imgfx anim units
+# (gen_imgfx_tab.py) -> 3ds/src/nd_imgfx_tab.c. GENKEY: K0 as gfx_tab
 # plus the 2 gfx_tab outputs and the .c files that hold ND_PSO_DESC (the scan set); the python reads of other .c files leave.
 PT_IN="3ds/tools 3ds/include 3ds/stub_include include src 3ds/src"
 PT_CMD='
     set -e; '"$GEN_AV"'; '"$RK_SO"'
     '"$RK_TRACE"' python3 3ds/tools/gen_pso_tab.py "$GOUT/nd_pso_tab.c" src 3ds/src
+    '"$RK_TRACE"' python3 3ds/tools/gen_imgfx_tab.py "$GOUT/nd_imgfx_tab.c" assets/us/imgfx
     cp /tmp/rt/log "$RKO"'
 pt_run() {
     gen_run gen_pso_tab "$PT_CMD" $OUT/rk_pso_tab_paths.txt
     G=$OUT/gen_out_gen_pso_tab
-    [ -s $G/nd_pso_tab.c ] || { echo "gen_pso_tab failed: no output" >&2; exit 1; }
-    gen_put $G/nd_pso_tab.c 3ds/src/nd_pso_tab.c
+    [ -s $G/nd_pso_tab.c ] && [ -s $G/nd_imgfx_tab.c ] || { echo "gen_pso_tab failed: no output" >&2; exit 1; }
+    gen_put $G/nd_pso_tab.c 3ds/src/nd_pso_tab.c; gen_put $G/nd_imgfx_tab.c 3ds/src/nd_imgfx_tab.c
     awk -F'\t' '!($1 ~ /^python/ && $2 ~ /^(src|3ds\/src)\/.*\.c$/)' $OUT/rk_gen_pso_tab.log > $OUT/rk_pso_tab_log2.txt
-    rk_reads $OUT/rk_pso_tab_log2.txt $OUT/rk_pso_tab_paths.txt $OUT/rk_pso_tab_reads.txt 3ds/tools/gen_pso_tab.py 3ds/tools/gen_pso_main.c 3ds/src/nd_decide.c 3ds/src/nd_psokey.c
-    gc_put "$PT_RKDIR" "$(rk_full "$(cat $OUT/pt_k0.txt)" $OUT/in_now.txt $OUT/rk_pso_tab_reads.txt)" nd_pso_tab.c:3ds/src/nd_pso_tab.c reads.txt:$OUT/rk_pso_tab_reads.txt || true
+    rk_reads $OUT/rk_pso_tab_log2.txt $OUT/rk_pso_tab_paths.txt $OUT/rk_pso_tab_reads.txt 3ds/tools/gen_pso_tab.py 3ds/tools/gen_imgfx_tab.py 3ds/tools/gen_pso_main.c 3ds/src/nd_decide.c 3ds/src/nd_psokey.c
+    gc_put "$PT_RKDIR" "$(rk_full "$(cat $OUT/pt_k0.txt)" $OUT/in_now.txt $OUT/rk_pso_tab_reads.txt)" nd_pso_tab.c:3ds/src/nd_pso_tab.c nd_imgfx_tab.c:3ds/src/nd_imgfx_tab.c reads.txt:$OUT/rk_pso_tab_reads.txt || true
     gc_trim pso_tab
 }
 
