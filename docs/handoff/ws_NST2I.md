@@ -37,5 +37,4 @@ PM_ROW=NST2I PM_LANE=NST2I. Edit only: 3ds/src/nd_rec.c (3 places), 3ds/src/nd_d
 3. bench.py run the 4 dschk scenes; `grep -a "dschk"` > build3ds/out/nst2i_dschk.txt; write it into dschk_base.txt (replace). Pass: bad 0 in the last counter line
    of each; the epsrc counts plus `other` sum to epbad. epbad is data (GUESS: the 10130, 1012b, 1033e and direct-draw keys go; 2022d, 20220, 1012a and rule 9
    keys of quiet commands stay). Send the epsrc lines in the hand-back.
-Fix rights: the listed files; compile errors. A DIFF, a crash, a sum that differs: stop, send the output path to the oracle. Wait.
-Stop: last commit `NST2I 2: gate. dschk bad <4> epbad <4>; top key per scene <4>` deletes this page. One SubagentHandback with the epsrc lines of the 4 scenes.
+Fix rights: the listed files; compile errors. A DIFF, a crash, a sum that differs: stop, send the output path to the oracle. Wait. Stop: last commit `NST2I 2: gate. dschk bad <4> epbad <4>; top key per scene <4>` deletes this page. One SubagentHandback with the epsrc lines of the 4 scenes.
