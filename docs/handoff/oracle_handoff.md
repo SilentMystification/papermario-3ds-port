@@ -19,7 +19,8 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
   dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
   unfold values, shaded sprite dual_on on core 1; S3 end gate bad 0 epbad 0. Every NST2 row replaces fxrest.d/dschk_base.txt.
 ## Open work (in order)
-1. Answer coder questions (HWFIX1 first, NST1, NST3, NST2A-F). epbad is OPEN: no data; NST2F expects a diagnose round.
+1. Answer coder questions (HWFIX1 first, NST1, NST3, NST2A-F). epbad: core 0 bumps gv_epoch but not nd_st_epoch at
+   every model record (nd_walk.c:156); fix is ws_NST2B edit 7. Other prologues without nd_st_epoch (nd_walk.c:184 ENT) count once their unit feeds ds_ep.
 2. PSOFB psomiss (from PHASEE2): each gate bench (spot_mac01_drec, wscmb_pause_drec) has 1 psomiss entry whose combine inputs hold a
    one-bit flag above 1 or below 0. The 4 builders (nd_comb.c:199, nd_model.c:209, pm_gpu.c:3925, nd_scomp.c:226) and the flag writers
    write 0 or 1 (code read). After the PSOFB merge: read the 8 flag values in the PSOFB 2 commit text, find the writer, write a Haiku page.

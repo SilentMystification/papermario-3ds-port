@@ -1,6 +1,6 @@
 # ws_NST2B (Haiku): model records feed the core 1 state nd_ds (stage S3; counter: dschk fbad lower than base)
 Designer: oracle NSTO. WAIT: branch from main after the NST2A merge. Worktree build3ds/wt/NST2B, branch NST2B. PM_ROW=NST2B PM_LANE=NST2B.
-Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_rec.c, 3ds/src/nd_dschk.c, 3ds/src/nd_recs.c (2 lines), 3ds/tools/nd_ds_test.c,
+Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_rec.c, 3ds/src/nd_dschk.c, 3ds/src/nd_recs.c (2 lines), 3ds/src/nd_walk.c (edit 7), 3ds/tools/nd_ds_test.c,
 3ds/tests/host.d/nst1.sh, 3ds/tools/fxrest.d/dschk_base.txt.
 ## Facts (code read, main 4b6423aa11)
 - nd_rec_model (nd_rec.c:220-230) sends no unit through nd_rec_nr. Payload q = p + 2: pair Rk is q[2k], q[2k+1]. Kept R13 units: count q[26],
@@ -26,15 +26,15 @@ Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_rec.c, 3ds/src/nd_ds
 3. nd_rec.c: move the nd_rec_nr body after the untyped check, except rec_op_t (nd_ds_apply, NST3 ep rule, NST2A NDO_CALL list), into
    `static void ds_unit(NdDs* s, uint32_t w0, uint32_t w1)`. nd_rec_nr calls `ds_unit(&nd_ds, w0, w1);`. In nd_rec_model after :229 add
    `{ const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, ds_unit); }`
-4. nd_recs.c: `extern unsigned char nd_dschk_hit;` and `nd_dschk_hit = 1;` as the first line of hit_apply (:198).
-5. nd_dschk.c: define `unsigned char nd_dschk_hit;`. In nd_dschk_run, before core 0 fills its NdDs: `if (nd_dschk_hit) { hit_adopt(c); nd_dschk_hit = 0; }`
-   (c = the core 1 NdDs of the record). hit_adopt copies from c into core 0: nd_ws.timg, tlut, tlut_n, tst1 (whole), the omode_h bits
-   `3u << G_MDSFT_TEXTFILT`, nd_tm = c->tm, lt[], lt_n, lk[][], dual_on. Use the field names of nd_ds.h on main.
-6. nd_ds_test.c: one record: f = 4|8|64|2, one light, bind list {TIMG, TILE, END}, comb unit, rm {OML}, R9 TILESIZE. Check prim, envc, fogc,
-   fog_fm, lt_n, lt[0].col, timg, tile_fmt[0], comb_w0, omode_l, tile_sz[0]. Print `nst2b model fields <n> bad <b>`. Fault: clear bit 8 of f.
-## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 4 Azahar starts)
-1. Edits 1-6. Host PASS with `nst2b model fields <n> bad 0` and the fault seen. Commit `NST2B 1: model records feed nd_ds; dschk hit adopt`.
+4. nd_recs.c hit_apply (:198) first line: `extern unsigned char nd_dschk_hit; nd_dschk_hit = 1;`. 5. nd_dschk.c: define `unsigned char nd_dschk_hit;`.
+   nd_dschk_run, before core 0 fills its NdDs: `if (nd_dschk_hit) { hit_adopt(c); nd_dschk_hit = 0; }` (c = the core 1 NdDs of the record).
+   hit_adopt copies from c into core 0: nd_ws.timg, tlut, tlut_n, tst1, omode_h bits `3u << G_MDSFT_TEXTFILT`, nd_tm, lt[], lt_n, lk, dual_on.
+6. nd_ds_test.c: one record (f = 4|8|64|2, one light, bind list, comb, rm, R9), `nst2b model fields <n> bad <b>`, fault: clear bit 8 of f.
+7. (round 1, epbad) nd_walk.c:156 before `gv_epoch++; /* GV1b, as the walker's prologue of G_PM_REC */` after `gv_epoch++; nd_st_epoch++; /* GV1b; NST2B */`
+   (`extern unsigned nd_st_epoch;` above nd_walk_rec_model, definition :279). nd_rec.c nd_rec_model: `ds_ep = 1;` after the nd_ds_model call.
+## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 4 Azahar starts; edit 7 reruns steps 2-3)
+1. Edits 1-6. Host PASS with `nst2b model fields <n> bad 0` and the fault seen. Commit `NST2B 1: ...`. Edit 7: commit `NST2B 1b: dschk model epoch`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2B --bench the same 2: LOOP PASS, byte-equal.
 3. bench.py run the 2 dschk scenes spot_mac01_dschk and fxchk_a_dschk. Grep their dschk lines > build3ds/out/nst2b_dschk.txt. Pass: in each scene the last
-   `dschk f`/`dschk end` fbad is not higher than dschk_base.txt of the merge-base, and the sum of the 2 is lower (GUESS). Write the grep into dschk_base.txt.
-## Fix rights: the listed files; fix compile errors. A higher fbad, a crash, a DIFF: stop, send the output path to oracle NSTO. Wait. Stop: last commit `NST2B 2: gate. 2 benches byte-equal; dschk fbad <2> (base <2>)` deletes this page. One SubagentHandback.
+   `dschk f`/`dschk end` fbad and epbad are not higher than dschk_base.txt of the merge-base (epbad 6536, 51224 FACT), the fbad sum is lower. Write the grep into dschk_base.txt.
+## Fix rights: the listed files; fix compile errors. A higher fbad or epbad, a crash, a DIFF: stop, send the output path to oracle NSTO. Wait. Stop: last commit `NST2B 2: gate. 2 benches byte-equal; dschk fbad <2> (base <2>)` deletes this page. One SubagentHandback.
