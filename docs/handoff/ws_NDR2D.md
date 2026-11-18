@@ -1,5 +1,5 @@
 # ws_NDR2D (Haiku): nd_direct_bind takes the combine decision of the live snap; the core 0 pso decision (nd_pso_decide, dec_*) is deleted (stage S4, apply; counter: none of C1-C12)
-Designer: oracle FIN. WAIT: branch from main after the NDR2B and NDR2C merges (every caller of nd_direct_bind records with nd_dir_rec: fill, trect, HUD rect, complex HUD, stencil),
+Designer: oracle FIN. WAIT: branch from main after the NDR2B, NDR2C and NDR4 merges (NDR4 also appends to nd_snap.c) (every caller of nd_direct_bind records with nd_dir_rec: fill, trect, HUD rect, complex HUD, stencil),
 and only when their hand-backs give snapchk `dir` bad 0. Worktree build3ds/wt/NDR2D, branch NDR2D. PM_ROW=NDR2D PM_LANE=NDR2D.
 Edit only: 3ds/src/nd_direct.c, 3ds/include/nd_api.h, 3ds/src/nd_snap.c, 3ds/include/nd_snap.h, 3ds/tools/nd_direct_test.c.
 ## Facts (main 136c960247; find each line by its text)
