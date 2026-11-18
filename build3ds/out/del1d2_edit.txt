@@ -1,0 +1,42 @@
+\bNDO_ -> 31
+deleted line containing void nd_walk_state(const uint32_t* q, unsigned n);
+deleted line containing void nd_nr_exec(const uint32_t* u, unsigned n) { n
+void nd_walk_state\(const uint32_t\* q, unsigned n\) \{ -> 1
+\bnd_walk_state\( -> 3
+\bop_typed\b -> 4
+\bop_geo\b -> 6
+\bop_ctl\b -> 4
+\bop_unknown\b -> 3
+\bwalk_call\b -> 7
+\bgbi_cold_bad_next\b -> 2
+\bgbi_cold_bad_vtx\b -> 1
+\bgbi_cold_bad_vp\b -> 2
+\bgbi_cold_bad_mtx\b -> 3
+\bgbi_cold_modifyvtx\b -> 2
+\bgbi_cold_bad_next\b -> 0
+\bgbi_cold_bad_vtx\b -> 1
+\bgbi_cold_bad_vp\b -> 0
+\bgbi_cold_bad_mtx\b -> 0
+\bgbi_cold_modifyvtx\b -> 0
+\bgbi_cold_bad_next\b -> 1
+\bgbi_cold_bad_vtx\b -> 0
+\bgbi_cold_bad_vp\b -> 0
+\bgbi_cold_bad_mtx\b -> 0
+\bgbi_cold_modifyvtx\b -> 0
+\bgbi_cold_bad_next\b -> 1
+\bgbi_cold_bad_vtx\b -> 1
+\bgbi_cold_bad_vp\b -> 0
+\bgbi_cold_bad_mtx\b -> 1
+\bgbi_cold_modifyvtx\b -> 1
+deleted line containing void nd_walk_state(const uint32_t* q, unsigned n);
+deleted line containing void nd_walk_state(const uint32_t* q, unsigned n);
+ND_W0_D2\(G_MTX,  -> 1
+\(_SHIFTL\(G_TRI1, 24, 8\) \| (__gsSP1Triangle_w1f\(0, [12], [23], 0\))\) -> 2
+deleted line containing void nd_walk_state(const uint32_t* q, unsigned n) 
+deleted line containing void nd_walk_state(const uint32_t* q, unsigned n) 
+\.text\.op_typed\) -> 1
+\.text\.nd_walk_state\) -> 1
+\.text\.op_geo\) -> 1
+\.text\.op_ctl\) -> 1
+"nd_walk_state" -> 1
+EDITS DONE

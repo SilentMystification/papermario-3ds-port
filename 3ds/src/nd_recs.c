@@ -48,7 +48,7 @@ static __attribute__((noinline)) void rec_rm(unsigned i) {
  * (nd_list_run, D10c) to its G_ENDDL. */
 static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (!l) return;
-    if (!is_host((u32)(uintptr_t)l)) { gbi_cold_bad_next((u32)(uintptr_t)l, ND_FS_W0(ND_FS_CALL, 0u), 0); return; }
+    if (!is_host((u32)(uintptr_t)l)) { nd_bad_next((u32)(uintptr_t)l, ND_FS_W0(ND_FS_CALL, 0u), 0); return; }
     if (dlc_on && dlc_try(l)) { /* DLC1: a compiled list, as G_DL */
         return;
     }

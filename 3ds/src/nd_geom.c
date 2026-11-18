@@ -449,7 +449,7 @@ void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (c
     Vtx* src = (Vtx*)ptr_of(w1);
     if (src) __builtin_prefetch(src + n); /* H4: the next vertex block */
     if (src && !is_host((u32)src)) {
-        gbi_cold_bad_vtx(w1, w0, (u32)list);
+        nd_bad_vtx(w1, w0, (u32)list);
         src = NULL;
     }
     if (src && n <= 64) {
