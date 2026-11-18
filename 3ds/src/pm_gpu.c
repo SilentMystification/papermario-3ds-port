@@ -4574,6 +4574,7 @@ static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int
     }
     return 1;
 }
+int nd_snap_spr(uint32_t o[9]); /* nd_snap.c, NDR4 */
 int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) {
     NdSprRec r;
     nd_sprite_decode(rec, &r);
@@ -4595,6 +4596,8 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     if (shaded || tex) { if (!spr_build_rare(&r, shaded, tex, &ds, &un, &tw, &th, why)) return 0; }
     unsigned sw_tss, sw_geo, sw_cw0, sw_cw1;
     pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
+    uint32_t sv[9]; const int sn = nd_snap_spr(sv); /* NDR4 */
+    if (sn) { sw_geo = sv[4]; sw_cw0 = sv[5]; sw_cw1 = sv[6]; }
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
     pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
@@ -4608,9 +4611,10 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
     c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = gs.r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    c.env = nd_ws.envc; c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
+    c.env = sn ? sv[0] : nd_ws.envc; c.prim = sn ? sv[1] : nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = nd_ws.omode_h; c.base_ol = nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
+    c.base_oh = sn ? sv[2] : nd_ws.omode_h; c.base_ol = sn ? sv[3] : nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
+    if (sn) { c.r_mix = (int)sv[7]; c.mixcol = sv[7] ? sv[8] : r_mixcol; } else /* NDR4: the mix of the snap */
     { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as sync_render), not gs.r_mix of the last model's sync_render:
        * a sprite drawn after a shrouded model took its shroud (star power). */
         unsigned mixc; const unsigned ol_ = nd_ws.omode_l, p_ = (ol_ >> 30) & 3u, a_ = (ol_ >> 26) & 3u, mm_ = (ol_ >> 22) & 3u, b_ = (ol_ >> 18) & 3u;

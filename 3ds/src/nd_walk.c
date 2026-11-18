@@ -176,7 +176,7 @@ void nd_walk_spr(const Gfx* q) {
     NDT_E(ts, NDT_SPR);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
-    if (sh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat(); return; }
+    if (sh) { extern unsigned char nd_snap_arm; nd_snap_arm = 0; /* NDR4: the native sprite took its snap */ if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat(); return; }
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(q, 3u);
     { extern int nd_spr_walk; nd_spr_walk = 1; nd_ops_run(q + G_PM_SPR_WORDS, 2u, 1); nd_spr_walk = 0; } /* WALLSHADE */
 }
