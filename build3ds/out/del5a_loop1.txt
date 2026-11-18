@@ -1,0 +1,6 @@
+LOOP DEL5A host rc 0, build rc 0, 65 s
+STAGE key-inputs 4 s STAGE slot-wait 2 s STAGE gen 32 s STAGE key 0 s STAGE asset-check 1 s STAGE romfs 0 s STAGE sync 0 s STAGE configure 1 s STAGE compile-link 15 s STAGE copy-out 2 s STAGE tail 2 s 
+
+cmp spot_mac01_drec: 1/1 byte-equal 
+LOOP TIME host+build 65 s, run+cmp 31 s, total 96 s
+LOOP PASS
