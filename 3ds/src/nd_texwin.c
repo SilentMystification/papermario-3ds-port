@@ -1,4 +1,4 @@
-/* nd_texwin.c: S7TEX1: the pure tile 0 window (tex_win0) and the descriptor of a tile load (nd_tex_win_desc), moved from nd_tex_set.c unchanged so the host table tool can link them. */
+/* nd_texwin.c: S7TEX1: the pure tile 0 window (nd_texw0) and the descriptor of a tile load (nd_tex_win_desc), moved from nd_tex_set.c unchanged so the host table tool can link them. */
 #include <stdint.h>
 #include <string.h>
 #include "ultra64.h"
@@ -8,7 +8,7 @@
 
 /* D4a-1: the tile 0 window of a SetTileSize (source, size, stride): a pure function of the tile state t, the texture image timg and the
  * load model m (no global writes). set_tilesize applies it (td[0], the origin, the repeated-load skips). */
-void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o) {
+void nd_texw0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o) {
     int w = ((lrs - uls) >> 2) + 1;
     int h = ((lrt - ult) >> 2) + 1;
     /* FX3f, PT37: a T wrap tile too (confetti: 16 rows of a 256 row sheet moved by ult). the RDP reads TMEM row (t - SetTileSize ult) wrapped by the T mask. A window shorter than the mask period (shape_spell:
@@ -31,7 +31,7 @@ void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ul
     int r_x = m->ld_x, r_y = m->ld_y, r_str = t->timg_stride, r_v = m->ld_valid;
     /* V12c: the render tile shows what was loaded at its own TMEM address. A later load of another image at another
      * address (bulb glow: the frame buffer window into the upper half of TMEM, then SetTileSize of tile 0 for the
-     * next strip) must not replace the image of tile 0. tex_win1 does the same lookup for tile 1. */
+     * next strip) must not replace the image of tile 0. nd_texw1 does the same lookup for tile 1. */
     for (unsigned k = 0; k < 4; k++) {
         if (t->ldrec[k].img && t->ldrec[k].tmem == t->tile_tmem[0] && t->ldrec[k].img != timg) {
             src = (const u8*)t->ldrec[k].img; r_x = t->ldrec[k].x; r_y = t->ldrec[k].y; r_str = t->ldrec[k].stride; r_v = 1;
@@ -55,7 +55,7 @@ void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ul
     o->src = src; o->w = w; o->h = h; o->stride = stride; o->x0 = uls >> 2;
 }
 
-/* NAPI2B: the descriptor of tile 0 after a gDPLoadTextureTile of the stated image, as set_tilesize and tex_win0 make it (the same function): the image
+/* NAPI2B: the descriptor of tile 0 after a gDPLoadTextureTile of the stated image, as set_tilesize and nd_texw0 make it (the same function): the image
  * (timg, its row stride in texels of the load size), the tile format and size, the four wrap words, the LoadTile window (ld*: texel origin and size) and the
  * SetTileSize window (10.2). pal, pal_n: the palette for a CI tile (else NULL, 0). Returns 0 when set_tilesize would leave tile 0 invalid (empty window, no source). */
 int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned fmt, unsigned siz, const unsigned wrap[4], int ldx, int ldy, int ldw, int ldh,
@@ -70,7 +70,7 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
     memcpy(t.tile_wrap[0], wrap, sizeof t.tile_wrap[0]);
     m.ld_valid = 1; m.ld_x = ldx; m.ld_y = ldy; m.ld_w = ldw; m.ld_h = ldh;
     if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) return 0;
-    tex_win0(&t, &m, timg, uls, ult, lrs, lrt, &wn);
+    nd_texw0(&t, &m, timg, uls, ult, lrs, lrt, &wn);
     if (!wn.src || wn.w <= 0 || wn.h <= 0 || (wn.h <= 1 && (unsigned)(uintptr_t)timg - (unsigned)(uintptr_t)nuGfxZBuffer < 320u * 240u * 2u)) return 0;
     o->src = wn.src; o->pal = pal; o->pal_n = pal_n; o->fmt = fmt; o->siz = siz;
     o->stride = wn.stride; o->x0 = wn.x0; o->y0 = ult >> 2; o->w = wn.w; o->h = wn.h;
@@ -79,8 +79,8 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
     return 1;
 }
 
-/* D4a-1: the tile 1 window of a SetTileSize (source, size, stride, origin column): pure, as tex_win0. */
-void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o) {
+/* D4a-1: the tile 1 window of a SetTileSize (source, size, stride, origin column): pure, as nd_texw0. */
+void nd_texw1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o) {
     int w = ((lrs - uls) >> 2) + 1, h = ((lrt - ult) >> 2) + 1;
     if (t->tile_wrap[1][2] && !(t->tile_wrap[1][0] & 2) && m->ld_valid) { /* VIS3: the same as PT09 for tile 1. The RDP reads (s - sl) through the mask, a mirrored or wrapped read of a window to the right of the image start (walking dust frame i + 1) needs the sheet from its start. */
         int per = 1 << t->tile_wrap[1][2];

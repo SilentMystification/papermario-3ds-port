@@ -171,7 +171,7 @@ static DecTab dt0 = { dec0, 128, 0, 0, 0 }, dt1 = { dec1, 64, 0, 0, 0 };
 /* the 24 random inputs of the decision: a fixed seed per decision, so the choice is repeatable (the seed is the caller's) */
 static float lcg_f(unsigned* s) { *s = *s * 1664525u + 1013904223u; return (float)((*s >> 8) & 0xffff) / 65535.f; }
 
-static Dec* decide_miss(DecTab* tb, const NdCombIn* c, int two, unsigned key, unsigned vprim, int own_k4) {
+static Dec* dc_new(DecTab* tb, const NdCombIn* c, int two, unsigned key, unsigned vprim, int own_k4) {
     Dec* d;
     if (tb->n < tb->cap) d = &tb->dec[tb->n++];
     else { d = &tb->dec[tb->next]; if (++tb->next == tb->cap) tb->next = 0; }
@@ -214,7 +214,7 @@ static Dec* decide_miss(DecTab* tb, const NdCombIn* c, int two, unsigned key, un
     return d;
 }
 
-static Dec* decide(DecTab* tb, const NdCombIn* c, int two, unsigned vprim, int own_k4) {
+static Dec* dc_pick(DecTab* tb, const NdCombIn* c, int two, unsigned vprim, int own_k4) {
     unsigned key = 2166136261u, i;
     unsigned parts[] = { c->w0, c->w1, (unsigned)two, (unsigned)c->leg_mode, (unsigned)(c->tex_on | c->use_t1 << 1 | c->t1_valid << 2), (unsigned)c->comb_alpha_shade,
                          (unsigned)(uint8_t)c->prim_lo8, c->key_c, c->key_s, c->conv_k4, vprim }; /* pm_comb_colours and the K4 input read these too */
@@ -224,7 +224,7 @@ static Dec* decide(DecTab* tb, const NdCombIn* c, int two, unsigned vprim, int o
         for (i = 0; i < (unsigned)tb->n; i++)
             if (tb->dec[i].key == key) { tb->last = i; return &tb->dec[i]; }
     }
-    return decide_miss(tb, c, two, key, vprim, own_k4); /* HCCUT4: the miss part (a new combine key) is cold */
+    return dc_new(tb, c, two, key, vprim, own_k4); /* HCCUT4: the miss part (a new combine key) is cold */
 }
 
 /* The combine decision (the dry sync_combine_work) on the inputs in. The plan in out has the colour names and constants as pm_comb_build makes them
@@ -236,7 +236,7 @@ static void comb_core(DecTab* tb, int own_k4, const NdCombIn* in, unsigned vprim
     dc_legacy(&c, mode5_prev, out);
     out->use = -1; out->cyc = (int)cyc; out->dual = c.dual_on | c.box_prod << 1 | c.box_pat << 2;
     if (cyc <= 1 && c.comb_set && !c.dual_on && (!c.box_prod || !c.box_folded)) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too */
-        Dec* d = decide(tb, &c, (int)cyc, vprim, own_k4);
+        Dec* d = dc_pick(tb, &c, (int)cyc, vprim, own_k4);
         out->use = d->use; out->why = d->why;
         if (d->use) { out->plan = d->plan; out->plan_on = 1; }
     }

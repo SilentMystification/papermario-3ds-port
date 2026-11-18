@@ -216,7 +216,7 @@ int main(int argc, char** argv) {
 #undef C6
     }
     /* NDR0B: the texture descriptors. Case tlut: td[0] valid, fmt 2, pal A, tile_pal[0] 0, tmem 256; TIMG B; LOADTLUT moves td[0].pal to B
-     * (fault: tile_pal[0] 1, the slot differs, td[0].pal stays A). Case tile 1: td[1] equals tex_win1 on the same state. */
+     * (fault: tile_pal[0] 1, the slot differs, td[0].pal stays A). Case tile 1: td[1] equals nd_texw1 on the same state. */
     {
         static NdDs tl, t1s;
         static unsigned char palA[32];
@@ -235,7 +235,7 @@ int main(int argc, char** argv) {
         nd_ds_apply(&t1s, NDO_W0(NDO_TILESIZE, 0), 1u << 24 | 124u << 12 | 124u);
         {
             NdWin w1;
-            tex_win1(&t1s.w.tst1, &t1s.tm, t1s.w.timg, 0, 0, 124, 124, &w1);
+            nd_texw1(&t1s.w.tst1, &t1s.tm, t1s.w.timg, 0, 0, 124, 124, &w1);
             C7("t1 valid", t1s.w.td[1].valid, !!(w1.src && w1.w > 0 && w1.h > 0));
             C7("t1 src", t1s.w.td[1].src, w1.src);
             C7("t1 w", t1s.w.td[1].w, w1.w); C7("t1 h", t1s.w.td[1].h, w1.h);

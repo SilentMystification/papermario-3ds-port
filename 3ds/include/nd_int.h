@@ -190,10 +190,10 @@ extern unsigned st0_ep; extern int st0_ok; /* nd_tex_set.c */
 typedef struct NdTexM { int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; const void* tlut_pal[16]; } NdTexM;
 extern NdTexM nd_tm;
 /* D4a-1: the tile 0 window of a SetTileSize (source, size, stride): a pure function of the tile state t, the texture image timg and the
- * load model m (no global writes). set_tilesize applies it (td[0], the origin, the repeated-load skips). tex_win0 is in nd_texwin.c. */
+ * load model m (no global writes). set_tilesize applies it (td[0], the origin, the repeated-load skips). nd_texw0 is in nd_texwin.c. */
 typedef struct NdWin { const u8* src; int w, h, stride, x0; } NdWin;
-void tex_win0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o);
-void tex_win1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o); /* D4a-1: the tile 1 window, in nd_texwin.c */
+void nd_texw0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o);
+void nd_texw1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o); /* D4a-1: the tile 1 window, in nd_texwin.c */
 extern int dual_on;              /* the former pm_gbi.c */
 extern void* const zb_fake;      /* the former pm_gbi.c */
 extern unsigned sp0_cur;         /* the former pm_gbi.c: split timer kind */
