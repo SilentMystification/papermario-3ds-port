@@ -26,7 +26,7 @@ NdTgt nd_tgt;
 int zcol;
 void pm_zbuf_need(void) {}
 unsigned keyc, keys, conv_k4, gv_epoch;
-int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
+int ls_use, ls_why, ls_cyc, ls_dual, ls_frame; int sl_const, sl_env; unsigned sl_cc; /* NREC2B */
 int pm_comb_vprim;
 PmPlan cur_plan;
 M1Rec m1;
