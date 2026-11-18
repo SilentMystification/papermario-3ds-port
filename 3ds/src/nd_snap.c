@@ -242,7 +242,7 @@ void nd_snap_rlog(void) {
 }
 void nd_snapchk_rect(void) { nd_snap_arm = 0; if (PMDL("snapchk")) sc_compare(); }   /* NDR0E2: a texture rectangle: compare only */
 /* NCONV1D1: core 0 compares each list range with the walker at its first triangle (nd_lsr_tri); the counters go to the lsnap line. */
-unsigned char nd_ls_on; unsigned nd_ls_ord; static const uint32_t* lr_b; static unsigned char lr_p1; static unsigned lr_cur, lr_nx, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_bad, lr_wst, lr_tmis, lr_nlog;
+unsigned char nd_ls_on; unsigned nd_ls_ord; static const uint32_t* lr_b; static unsigned char lr_p1; static unsigned lr_cur, lr_nx, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_tmis, lr_bst;
 void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; if (b) { lr_lists++; lr_snaps += b[0]; } }
 void nd_lsr_end(void) { if (nd_ls_on && nd_ls_ord != lr_b[1]) lr_tmis++; nd_ls_on = 0; }
 void nd_lsr_seg(unsigned ord) { lr_p1 = 1; nd_lsr_tri(ord); lr_p1 = 0; }
@@ -252,13 +252,10 @@ void nd_lsr_tri(unsigned ord) {
     lr_nx = r + 1u < n ? lr_b[2u + r + 1u] : ~0u;
     if (r == lr_cur) return;
     lr_cur = r;
-    if (!PMDL("snapchk")) return;
     memcpy(&sc_cur, (const char*)lr_b + ND_LS_HDR(n) + r * sizeof sc_cur, sizeof sc_cur);
-    const unsigned b0 = sc_bad, w0 = sc_wst;
-    lr_cmp++; lr_c1 += lr_p1;
-    sc_compare(); nd_snapchk_rnd(); lr_wst += sc_wst - w0;
-    if (sc_bad != b0) { lr_bad++; if (lr_nlog++ < 8u) pm_log_evt("lsnap bad f%u r %u ord %u", pm_frame_n, r, ord); }
+    nd_snap_arm = 1; lr_cmp++; lr_c1 += lr_p1; /* NCONV1D2: the next draw step consumes the range snap (nd_snapchk_tri) */
 }
+void nd_lsr_bst(void) { if (PMDL("snapchk") && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) lr_bst++; } /* NCONV1D2: a list triangle whose epoch binds other tile words than its range snap */
 const NdCombOut* nd_snap_dir_o(void) { return nd_snap_live ? &sc_cur.o : NULL; } /* NDR2D: the decision of the live snap */
 
 /* NDR0A: the 100-frame counter line, once per frame stream end (nd_rec.c stream_run NDC_END); behind PMDL. */
@@ -267,7 +264,7 @@ void nd_snapchk_tick(void) {
     if (pm_frame_n / 100 != sc_bucket) {
         sc_bucket = pm_frame_n / 100;
         pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
-        pm_log_evt("lsnap f%u lists %u snaps %u cmp %u p1 %u bad %u wst %u tmis %u over %u", pm_frame_n, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_bad, lr_wst, lr_tmis, ls_over);
+        pm_log_evt("lsnap f%u lists %u snaps %u cmp %u p1 %u bst %u tmis %u over %u", pm_frame_n, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_bst, lr_tmis, ls_over);
     }
 }
 /* NDR4: the snap of a sprite record (pm_gpu_spr_build reads it). core 0. */

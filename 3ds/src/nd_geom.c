@@ -350,11 +350,11 @@ void draw_tri(unsigned w) {
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
     if (nd_ls_on) nd_lsr_tri(nd_ls_ord - 1u);
     if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */
-    nd_snap_rpend = nd_snap_arm; /* NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
+    nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NCONV1D2: a list triangle binds from its range snap. NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
     if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } } /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         const int done = vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx);
-        nd_snap_rpend = 0; /* NDR0F1B */
+        nd_snap_rpend = 0; /* NDR0F1B */ if (nd_ls_on) nd_lsr_bst(); /* NCONV1D2 */
         if (done) return;
     }
     /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
