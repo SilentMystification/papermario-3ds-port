@@ -90,9 +90,7 @@ struct sprite {
 
 	Bitmap	*bitmap;	/* Pointer to first bitmap	*/
 
-	Gfx	*rsp_dl;	/* Pointer to RSP display list	*/
 
-	Gfx	*rsp_dl_next;	/* Pointer to next RSP display entry	*/
 
 	s16	frac_s,		/* Fractional Texture offsets */
 		frac_t;		/* These have 5 fraction bits */
@@ -184,10 +182,7 @@ void spMove (Sprite *sp, s32 x, s32 y);
 void spScale (Sprite *sp, f32 sx, f32 sy);
 void spSetZ  (Sprite *sp, s32 z );
 void spColor (Sprite *sp, u8 red, u8 green, u8 blue, u8 alpha);
-Gfx *spDraw (Sprite *sp);
-void spInit( Gfx **glistp );
 void spScissor( s32 xmin, s32 xmax, s32 ymin, s32 ymax );
-void spFinish( Gfx **glistp );
 
 #ifdef _LANGUAGE_C_PLUS_PLUS
 }

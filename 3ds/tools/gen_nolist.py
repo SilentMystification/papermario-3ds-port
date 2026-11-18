@@ -18,7 +18,6 @@ HEADERS = [
     "include/PR/gbi.h",
     "include/gbi_custom.h",
     "include/PR/gs2dex.h",
-    "include/PR/gt.h",
     "3ds/include/nd_gbi.h",
 ]
 
