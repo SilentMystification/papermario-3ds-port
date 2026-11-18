@@ -11,6 +11,7 @@ typedef struct NdMSnap {
     NdSnapBind b[2];
 } NdMSnap;
 _Static_assert(sizeof(NdMSnap) % 8u == 0u, "units");
+#define ND_MSNAP_U ((unsigned)(sizeof(NdMSnap) / 8u)) /* NREC1B: the snap in 8-byte units */
 void nd_msnap_take(const NdDs* s, NdMSnap* m);
 unsigned nd_msnap_diff(const NdMSnap* a, const NdMSnap* b, const char** nm, int max, int* nb);
 void nd_msnap_rec(uint32_t* p, unsigned units);
