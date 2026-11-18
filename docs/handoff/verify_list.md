@@ -21,3 +21,4 @@ Row VINE (merge 006a7015ad, no bench reaches kzn_19 or kmr_22): lava piranha vin
 Row VCFIX (vertex copy entry, model.c mdl_make_local_vertex_copy). User: in Toad Town mac_01 look at Rowf's rug (it ripples); in a Shooting Star
   Summit battle look at the stage stars (they twinkle); in Club 64 (mac_05) look at the sign. Each draws whole, no crash.
 Row TATTLEAR (wide tattle view, cam_main.c set_cam_viewport, 16C8E0.c scissor). User: in battle, use Tattle on an enemy in widescreen: the zoomed-in enemy picture fills the tattle window at its true proportions (not stretched 1.25 x).
+Row FPS60MENU (revert of FSKIP2 1e7ddd7ea1, Select menu and Options panel tab 0). User: open the Select menu, General tab. Rows: Frame skip, Resolution Mode, 60 FPS. Set 60 FPS to On: the log shows `options: live row 0 value 1 (On)` and the game draws 60 frames a second (prof line).
