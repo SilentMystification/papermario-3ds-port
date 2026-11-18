@@ -1,19 +1,14 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 969ac09f71, 2026-11-17 (NSTO). PHASEE2 (Opus) wrote ws_FLAMEDL (merged), ws_PSOFB (coder aa0ba759af9c83fdf runs), design_nstate.md
-(S2, revised 8aabea0190: no NST0), ws_NST1 (Sonnet), ws_NST3, ws_NST2A. Merged since b4de08e55b: OPMOVE, FXSLOT2, PSOSEEN, FLAMEDL, TST13, TATTLEAR.
-Counters FACT (listcen on b4de08e55b): build 311, gfxpos 3, recdl 5, reader 792, model 15. Moves since: OPMOVE reader -62, FXSLOT2 recdl -5,
-FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen for fresh numbers.
+State: main 48cb964cd4+, 2026-11-17. Counters FACT (listcen on b4de08e55b): build 311, gfxpos 3, recdl 5, reader 792, model 15; page moves since:
+OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1, PSOFB model -2. Run listcen for fresh numbers.
 ## The chain: plan_walker_delete.md (stages; S3-S6 rows updated) and design_nstate.md (the S3-S6 design). Read both first.
 - D1 A, D2 A. UD1 option 1 (user): core 1 keeps the N64 field model; listcen reports a class core1 outside the end proof.
   UD2 option 1: core 0 keeps a native transform stack. UD3 option 1: prof push at the NST1 gate. Sonnet yes: NST1, NDR0, NCONV1, NREC1.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
-- Console build 6449 (user, FACT): white and black rectangles everywhere. Cause: PSOFB pso_fallback (nd_comb.c:257-264) draws vertex
-  colour only on a miss. ws_HWFIX1 (05cc4cae3a, DIAG1) puts nd_comb_core back on a miss (nd_decide.c back to 3ds/src). Its gate is
-  switch psooff, which makes every key miss: drec must equal the table run. ws_TATTLEAR merged: wide CAM_TATTLE 3D x = (x + 40) * 4 / 5.
+- HWFIX1 merged (nd_comb_core on a miss); user console check of 0f39de90cb: visual faults gone (FACT). TATTLEAR merged.
 ## Pages on main and their waits (chain: NST1 -> NST3 -> NST2A -> NST2B -> NST2C -> NST2D -> NST2E -> NST2F -> NDR0)
-- ws_PSOFB (Haiku, running): model -2. ws_NST1 (Sonnet, running; worktree build3ds/wt/NST1 has nd_ds.c, NdDs holds lt[], lk, vp_*, tm).
-- ws_NST3: dschk switch, 4 dschk scenes, dschk_base.txt. ws_NST2A: static lists (fixed by NSTO: nd_ds_list after nd_rec_napi).
+- Merged: PSOFB, NST1, NST3, NST2A, HWFIX1, BOTSCR. NdDs holds lt[], lk, vp_*, tm. dschk switch and dschk_base.txt exist.
 - NSTO pages (oracle NSTO): NST2B model records (nd_ds_model; dschk adopts the groups a model cache hit skips), NST2C entity draw, sprite
   state, compiled def, particles (nd_ds_unit, nd_ds_feed), NST2D ranges (unit log of core 1 applies, marks, sub save/restore, R11 replay;
   dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
@@ -21,8 +16,7 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 ## Open work (in order)
 1. Answer coder questions (HWFIX1 first, NST1, NST3, NST2A-F). epbad: core 0 bumps gv_epoch but not nd_st_epoch at
    every model record (nd_walk.c:156); fix is ws_NST2B edit 7. Other prologues without nd_st_epoch (nd_walk.c:184 ENT) count once their unit feeds ds_ep.
-2. PSOFB psomiss: tex_on 2167585 = 0x211321 (f5d196a337 text, both benches). Trace (no cause, 2026-11-17): model input is bool (nd_model.c:335);
-   so nd_ws.tex_on. Only writers: set_texture nd_tex_set.c:223 (via nd_op_apply nd_set.c:172, nd_scomp.c:195, :248) and nd_recs.c:195 (u8).
+2. PSOFB psomiss: tex_on 2167585 = 0x211321 (f5d196a337 text). No cause by code read: model input is bool (nd_model.c:335), so nd_ws.tex_on. Writers: set_texture nd_tex_set.c:223 (via nd_op_apply nd_set.c:172, nd_scomp.c:195, :248) and nd_recs.c:195 (u8).
    Every NDO_TEXTURE encoder masks a to 0/1 (nd_op.h:89, nd_nr.h:15, nd_op.c:29). So a non-unit word with top byte 0x2A ran as a unit.
    GUESS paths: stale def units nd_scomp.c:241-248 (ent_sdef nd_ent.c:213 points into a heap list), stale nd_cgfx_rng range (nd_recs.c:99).
    OPEN: needs a user yes for one debug-log run (log unit pointer and pm_gbi_cur_op in set_texture when on > 1). The gate logs are gone.
