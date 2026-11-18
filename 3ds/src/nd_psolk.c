@@ -15,7 +15,7 @@ extern const NdPlanRec nd_pso_plan[];                   /* nd_pso_tab.c */
 extern const uint8_t nd_pso_stage_raw[][sizeof(PmTevStage)]; /* nd_pso_tab.c */
 extern const unsigned nd_pso_nkey;                      /* nd_pso_tab.c */
 
-int nd_pso_find(const NdCombIn* w, unsigned vprim, NdCombOut* o) {
+int nd_pso_find_i(const NdCombIn* w, unsigned vprim, NdCombOut* o) { /* NDR0A: the key index m on a hit, -1 on none */
     unsigned lo = 0, hi = nd_pso_nkey, m;
     while (lo < hi) { /* the lower bound of (w0, w1) in the keys */
         m = (lo + hi) >> 1;
@@ -40,8 +40,9 @@ int nd_pso_find(const NdCombIn* w, unsigned vprim, NdCombOut* o) {
                 memcpy(o->plan.ks, r->ks, sizeof o->plan.ks); memcpy(o->plan.fold, r->fold, sizeof o->plan.fold);
                 for (unsigned i = 0; i < 6; i++) memcpy(&o->plan.st[i], nd_pso_stage_raw[r->si[i]], sizeof(PmTevStage));
             }
-            return 1;
+            return (int)m;
         }
     }
-    return 0;
+    return -1;
 }
+int nd_pso_find(const NdCombIn* w, unsigned vprim, NdCombOut* o) { return nd_pso_find_i(w, vprim, o) >= 0; }

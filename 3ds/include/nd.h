@@ -520,6 +520,7 @@ uint8_t nd_pso_flags(int tex_on, int use_t1, int t1_valid, int dual_on, int box_
 int nd_pso_in_eq(const NdPsoKey* d, const NdCombIn* w, unsigned vprim); /* NPSO2D: w equals key d in every input of nd_comb_core but prim, env, leg_mode, box_pat */
 void nd_pso_fix(NdCombOut* o, const NdCombIn* w, int mode5_prev); /* NPSO2D: a table decision under w's colours, box_pat and mode5 */
 int nd_pso_find(const NdCombIn* w, unsigned vprim, NdCombOut* o); /* nd_psolk.c: 1 and the table comb of the key equal to w in o; 0 when none */
+int nd_pso_find_i(const NdCombIn* w, unsigned vprim, NdCombOut* o); /* NDR0A (nd_psolk.c): the key index of the hit, -1 when none */
 
 /* S6-2c-1: an entity list cut at its state ops (segment compile, row S6-2c). A segment is the geometry ops [op0, op1) (VTX, TRI1, TRI2; its triangles are
  * tri0 to tri0 + ntri - 1 in list order) and the state ops [sop0, op0) that come before it, decoded into d (the delta, the nd_mode_compile rules).

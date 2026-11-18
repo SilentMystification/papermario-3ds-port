@@ -10,6 +10,8 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_snap.h"
+__attribute__((weak)) void nd_snapchk_tri(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_geom.c */
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -337,6 +339,7 @@ void draw_tri(unsigned w) {
     idx[1] = i1;
     idx[2] = i2;
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    if (nd_snap_arm) nd_snapchk_tri(); /* NDR0A: the armed snapchk compare (nd_snap.c) */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
     }
