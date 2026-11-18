@@ -48,6 +48,7 @@ static void dschk_fill(NdDs* d) {
     }
 }
 
+unsigned char nd_dschk_fb; /* NST2G: set after pm_gbi_fallback; the next record is adopted (fb_adopt) */
 unsigned char nd_dschk_hit; /* NST2b: set by hit_apply (nd_recs.c) when core 0 took a hit */
 /* NST2b: core 0 takes the state of the core 1 record after a hit (the hit path skips the lights, tile and load units, the panner sizes
  * and the texture filter bits). Copies the fields the hit path does not write. */
@@ -62,19 +63,29 @@ static void hit_adopt(const NdDs* c) {
     memcpy(lk, c->lk, sizeof lk);
     dual_on = c->dual_on;
 }
+/* NST2G: core 0 takes the fill and the mode words of core 1 after the boot fallback (its units run on core 0 only). */
+static void fb_adopt(const NdDs* c) { nd_ws.omode_h = c->w.omode_h; nd_ws.om_kh = c->w.om_kh; nd_ws.fill = c->w.fill; }
 /* NST2F: core 0 takes the state of a direct draw (nd_direct_bind, nd_direct_end, nd_glyph_draw): the draw writes the core 0 state at draw time
- * and its fallback runs the units, so core 0 reads the core 1 copy from here on. Clears box_folded (the copy is unfolded). */
+ * and its fallback runs the units, so core 0 reads the core 1 copy from here on. */
 static void dir_adopt(const NdDs* c) {
     nd_ws.omode_h = c->w.omode_h; nd_ws.omode_l = c->w.omode_l; nd_ws.om_kh = c->w.om_kh; nd_ws.om_kl = c->w.om_kl;
     nd_ws.comb_w0 = c->w.comb_w0; nd_ws.comb_w1 = c->w.comb_w1;
-    nd_ws.tst1 = c->w.tst1; nd_ws.use_t1 = c->w.use_t1;
+    {   /* NST2G: a folded core 0 keeps its folded combine; box_save takes the core 1 (unfolded) values, so dschk_fill and the unfold give them */
+        const NdTst k = nd_ws.tst1; const int ku = nd_ws.use_t1;
+        nd_ws.tst1 = c->w.tst1; nd_ws.use_t1 = c->w.use_t1;
+        if (box_folded) {
+            box_save[0] = c->w.tst1.comb_a; box_save[1] = c->w.tst1.comb_b; box_save[2] = c->w.tst1.comb_c; box_save[3] = c->w.tst1.comb_d;
+            nd_ws.tst1.comb_a = k.comb_a; nd_ws.tst1.comb_b = k.comb_b; nd_ws.tst1.comb_c = k.comb_c; nd_ws.tst1.comb_d = k.comb_d;
+            nd_ws.tst1.comb_aa = k.comb_aa; nd_ws.tst1.comb_ab = k.comb_ab; nd_ws.tst1.comb_ac = k.comb_ac; nd_ws.tst1.comb_ad = k.comb_ad;
+            nd_ws.use_t1 = ku;
+        }
+    }
     memcpy(nd_ws.td, c->w.td, sizeof nd_ws.td); /* NDR0B: the texture descriptors */
     nd_ws.prim = c->w.prim; nd_ws.prim_lod = c->w.prim_lod; nd_ws.envc = c->w.envc;
     nd_ws.timg = c->w.timg; nd_ws.tlut = c->w.tlut; nd_ws.tlut_n = c->w.tlut_n;
     nd_tm = c->tm;
     comb_set = c->comb_set; box_prod = c->box_prod; comb_alpha_shade = c->comb_alpha_shade;
     dual_on = c->dual_on;
-    box_folded = 0;
 }
 /* NST2F: counts one adopt and the fields core 0 differs by before it adopts (the fill is core 0 as it stands). */
 static void adopt_count(const NdDs* c) {
@@ -93,6 +104,7 @@ void nd_dschk_run(const uint32_t* rec) {
     NdDs mine;
     if (nd_dschk_hit) { adopt_count(theirs); hit_adopt(theirs); nd_dschk_hit = 0; }
     if (nd_dschk_dir) { adopt_count(theirs); dir_adopt(theirs); nd_dschk_dir = 0; }
+    if (nd_dschk_fb) { adopt_count(theirs); fb_adopt(theirs); nd_dschk_fb = 0; }
     dschk_fill(&mine);
     dk_cmds++;
     const int nb = nd_ds_cmp(theirs, &mine, bad, 8);
