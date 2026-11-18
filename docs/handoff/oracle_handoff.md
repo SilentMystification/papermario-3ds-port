@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main b31daf9ca6+, 2026-11-18. Counters FACT (row gates): reader 630 (REN6 gate), model 15, elfgate func 48 data 365 (brief 2026-11-17).
+State: main 461b70e216+, 2026-11-18. Counters FACT (row gates): reader 630 (REN6 gate), model 15, elfgate func 48 data 365 (brief 2026-11-17).
 Run listcen for fresh numbers.
 ## The plan: plan_finish.md (15 waves, 50 Haiku rows, width and stop file per wave), design_nstate.md (S3-S6 design). Read both first.
 - D1 A, D2 A. UD1 option 1 (user): core 1 keeps the N64 field model; listcen reports a class core1 outside the end proof.
@@ -9,16 +9,18 @@ Run listcen for fresh numbers.
 - User 2026-11-17: as many parallel Haiku coders as the plan allows. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0.
 ## Merged on main: NST1, NST3, NST2A-G, FALLBK, NDR0A-D, NDR5, NCONV1A, REN1-REN6, PSOFB, HWFIX1, BOTSCR.
 ## Pages on main (oracle FIN)
-- Running: REN7, NST2H (c19b1b7efa), MREN (f1c6cf10ef). Ready: NDR0E1 7c8aeb0f21 (snap NdCombOut coloured, nd_comb_apply, GPU getters, snapchk vs GPU).
-- Waiting: NDR0E2 b47413357f (after NDR0E1 and NST2H: mesh apply, nd_rec_st, texrect compare, nd_rec.c:655 keeps the arm at TEXRECT),
-  REN8 c229b712e9 (after NDR0E2), NDR0F1 b31daf9ca6 (after NDR0E2: render block and mix compare in gv_epoch_enter).
+- Running: NDR0E1 7c8aeb0f21. Gated, merge pending: NST2H a06c9a7b4c, MREN.
+- Waiting: NST2I 461b70e216 (after NST2H: dschk compares the gv_epoch move; core 1 ep rules 6 tex/fill/primz/scissor/rare, 7 MW not LIGHTCOL,
+  8 RECT and MISC not MODVTX, 9 every command), NDR0E2 b47413357f (after NDR0E1 and NST2I), REN8 (after NDR0E2), NDR0F1 b31daf9ca6 (after NDR0E2).
+- NST2H keys (FACT, a06c9a7b4c): spot 10130 2022d 1033e 1012a 1012b; wscmb 20130 1033e 10130 2022d 20220; axns and fxchk_a 20220 20121 10130.
 - NDR5 gap (answered): no row. load_mtx guards the source itself (nd_mtx_set.c:134 mtx_bad); gbi_cold_bad_mtx is a warning with list context.
 ## Open work (in order)
 1. Answer coder questions (NDR0E1: sl and ls names mean scm_replay leaves sl_* stale, nd_comb.c:180-188; then E2 must not write sl_*).
 2. From NDR0E2 data: NDR1B (texrect apply). From NDR0F1 data: NDR0F2 (render apply in gv_epoch_enter, keep zmark order nd_set.c:243, nd_geom.c:221),
    NDR0G (binds: ensure_tile, dual_bind nd_geom.c:212-213 from td in the snap). Then W5: NDR2 direct (nd_pso_decide nd_direct.c:69 desc form), NDR4, NCONV1D.
-3. NST2H keys name each epbad source: side 1 core 0 site (1 op_typed, 2 MOVEMEM, 3 op_ctl, 4 model), side 2 core 1 rule (1 change, 2 sclost,
-   3 MOVEMEM, 4 model, 5 list marker), low byte the unit id. From the top keys write the ep rule fix (nd_rec.c nd_ds_unit) or a core 0 fix.
+3. NST2H keys name each epbad source (NST2I adds site ff = command op, rules 6-9): side 1 core 0 site (1 op_typed, 2 MOVEMEM, 3 op_ctl, 4 model), side 2 core 1 rule (1 change, 2 sclost,
+   3 MOVEMEM, 4 model, 5 list marker), low byte the unit id. After NST2I: NST2J sets ds_sclost only at the commands whose core 0 runner clears
+   sc_ok (F6 list: nd_walk.c:437 :692, particles, nd_rect.c:122, nd_direct.c:184, nd_recs.c:243 :292 :329); TEXTURE skip also reads sc_sig.
 4. After REN5-8 and MREN: no rename row is left. Files with NDO_ that stay: none outside the deleted set (nd_op.h, nd_set.c, nd_walk.c,
    nd_dlc.c, nd_shape.c, nd_tex_set.c, nd_gtab.c, nd_mtx_set.c 1, nd_geo.c REN5). Comment-only NDO_ in nd_int.h, nd_target.c, nd_scomp.h, nd_gtab.h, nd_api.h.
 ## Facts that cost time
@@ -43,4 +45,4 @@ Run listcen for fresh numbers.
   a direct draw (nd_direct.c:103-116) writes pso state and binds without tile ops. dschk adopts core 1 values there and counts adiff.
 ## What to do first
 1. Read plan_finish.md, design_nstate.md and the ws_* pages on main. Answer coder questions.
-2. Write the next row from each hand-back: NDR0E1 -> E2 go, NDR0E2 -> NDR1B, NDR0F1 -> NDR0F2 and NDR0G, NST2H -> the epbad fix row.
+2. Write the next row from each hand-back: NDR0E1 -> E2 go, NDR0E2 -> NDR1B, NDR0F1 -> NDR0F2 and NDR0G, NST2I -> NST2J.

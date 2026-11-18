@@ -34,8 +34,8 @@ Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them
 | W13 | DEL3C nd_op.h, nd_gbi.h, the last reader headers, gMainGfxPos (variables.h:111, game_stubs.c:9) | W12 | 1 | nd_op.h users |
 | W14 | DEL4D1-4: gDP/gSP/gsDP/gsSP definitions and Gfx prototypes to 3ds/tools/gconv_inc (FACT gen_gfx_tab.sh:14): gbi.h; gbi_custom.h; gs2dex.h and gt.h; sp.h and gu.h | W13 | 4 | one header per row |
 | W15 | S9GATE: listcen all 0, elfgate 0 0 0, the full drec set, then the user's end checks (section 5) | W14 | 1 | - |
-Width now (main b31daf9ca6): running REN7, NST2H, MREN; ready NDR0E1; waiting NDR0E2 (NDR0E1, NST2H), REN8 (NDR0E2), NDR0F1 (NDR0E2). Merged: NDR0D, NDR5, REN5, REN6, NST2G. Critical path:
-NDR0E1 -> NDR0E2 -> NDR0F1 -> NDR0F2/NDR0G -> W5. W5 rows (NDR1-4, NCONV1D) need the full mesh snap run (combine, render, binds): no page before the NDR0E2 and NDR0F1 data. nd_rec.c order: NST2H, NDR0E2, REN8. W10 DEL3A6 is done by REN6; DEL2A and DEL2C keep no rename part (MREN).
+Width now (main 461b70e216): running NDR0E1; gated NST2H (a06c9a7b4c, merge pending), MREN; waiting NST2I (NST2H), NDR0E2 (NDR0E1, NST2I), REN8 (NDR0E2), NDR0F1 (NDR0E2). Merged: NDR0D, NDR5, REN5-7, NST2G. Critical path:
+NDR0E1 -> NDR0E2 -> NDR0F1 -> NDR0F2/NDR0G -> W5. W5 rows (NDR1-4, NCONV1D) need the full mesh snap run (combine, render, binds): no page before the NDR0E2 and NDR0F1 data. nd_rec.c order: NST2H, NST2I, NDR0E2, REN8. NST2I (dschk on gv_epoch, ep rules 6-9) then NST2J (sc_lost per command kind). W10 DEL3A6 is done by REN6; DEL2A and DEL2C keep no rename part (MREN).
 ## 4. Sonnet rows split into Haiku rows, and rows Haiku cannot do
 - NDR0 (Sonnet) is NDR0A-E. A, B and C are measured steps: snapchk and dschk counts name each missing input. D and E follow from those counts.
 - NCONV1 (Sonnet) is NCONV1A and NCONV1D. NCONV1B and C are dropped: the ndnu_ unit arrays already hold the field-set words (ids equal ND_FS_, NCONV1A
