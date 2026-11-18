@@ -124,9 +124,7 @@ void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     }
 }
 
-extern unsigned char nd_dschk_dir; /* NST2F: core 1 adopts its state at the next dschk record */
 void nd_direct_end(void) {
-    nd_dschk_dir = 1;
     ens_clear();
     nd_ws.cur_tile = -1;
     sc_ok = 0;
@@ -161,7 +159,6 @@ static inline int sx12(int v) { v &= 0xfff; return (v & 0x800) ? v | ~0xfff : v;
 
 void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ulx, int uly, int lrx, int lry, int s, int t, int dsdx_, int dtdy_) {
     const unsigned char sn = nd_snap_arm; /* NDR3: the snap of this glyph */
-    nd_dschk_dir = 1; /* NST2F */
     int tw = 1, th = 1;
     const int xl = sx12(ulx * 4), yl = sx12(uly * 4), xh = sx12(lrx * 4), yh = sx12(lry * 4);
     nd_tex_bind_glyph(raster, pal, tlut, w, h);

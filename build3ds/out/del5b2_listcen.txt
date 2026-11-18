@@ -1,0 +1,48 @@
+listcen group include gfxtype 3
+listcen file gfxtype 3ds/src/nd_ent.c 29
+listcen file gfxtype 3ds/src/nd_walk.c 24
+listcen file gfxtype 3ds/src/nd_rec.c 15
+listcen file gfxtype 3ds/src/nd_recs.c 15
+listcen file gfxtype 3ds/src/game_stubs.c 1
+listcen file gfxtype 3ds/src/nd_geom.c 1
+listcen file gfxtype 3ds/src/nd_shape.c 1
+listcen file gfxtype include/PR/gbi.h 1
+listcen file gfxtype include/gbi_custom.h 1
+listcen file gfxtype include/variables.h 1
+listcen file reader 3ds/include/nd_op.h 173
+listcen file reader 3ds/src/nd_walk.c 60
+listcen file reader 3ds/src/nd_set.c 39
+listcen file reader 3ds/include/nd_gbi.h 11
+listcen file reader 3ds/src/nd_cen.c 11
+listcen file reader 3ds/src/nd_direct.c 9
+listcen file reader 3ds/src/nd_gtab.c 7
+listcen file reader 3ds/src/nd_rec.c 7
+listcen file reader 3ds/src/nd_tex_set.c 6
+listcen file reader 3ds/src/nd_mtx_set.c 3
+listcen file reader 3ds/src/nd_recs.c 3
+listcen file reader 3ds/include/nd.h 1
+listcen file reader 3ds/include/nd_api.h 1
+listcen file reader 3ds/include/nd_nr.h 1
+listcen file reader 3ds/src/nd_shape.c 1
+listcen file reader 3ds/src/nd_st.c 1
+listcen file model 3ds/src/nd_comb.c 3
+listcen file model 3ds/src/nd_tex_set.c 3
+listcen file model 3ds/src/nd_rect.c 2
+listcen file model 3ds/src/nd_geom.c 1
+listcen file model 3ds/src/nd_mtx_set.c 1
+listcen file model 3ds/src/nd_set.c 1
+listcen total build 0
+listcen total build_n64 0
+listcen total gfxpos 0
+listcen total gfxpos_n64 0
+listcen total data 0
+listcen total data_n64 0
+listcen total data_arrays 0
+listcen total data_arrays_n64 0
+listcen total gfxtype 89
+listcen total gfxtype_n64 0
+listcen total recdl 0
+listcen total recdl_n64 0
+listcen total reader 334
+listcen total model 11
+listcen core1 507

@@ -92,7 +92,7 @@ void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { (void)p; (voi
 static int snap_none; static NdCombOut snap_o;
 const NdCombOut* nd_snap_dir_o(void) { NdCombIn in; if (snap_none) return NULL; comb_in_walker(&in); nd_comb_decide(&in, &snap_o); return &snap_o; } /* NDR2D: the decision core 1 would snap */
 unsigned char nd_snap_live; /* NDR2A */
-unsigned char nd_dschk_dir; /* NST2F: nd_dschk.c is not linked here; nd_direct.c sets it */ /* nd_rec.c is not linked here; NST2E feeds (nd_fill_feed, nd_trect_feed) */
+/* nd_rec.c is not linked here; NST2E feeds (nd_fill_feed, nd_trect_feed) */
 /* NSTREAM3: the native record runner of the direct fallbacks (nd_walk.c); the same count as the op walker */
 void nd_nr_exec(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void gp3_t0_surv(void) {}
