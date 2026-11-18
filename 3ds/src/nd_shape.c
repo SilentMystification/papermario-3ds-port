@@ -11,6 +11,7 @@
 #include "nd.h"
 #include "nd_snap.h"
 #include "nd_op.h"
+#include "nd_fs.h"
 #include "pm_tex.h"
 static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const float (*m)[4], int culled);
 #include "pm_port.h"
@@ -30,22 +31,20 @@ int dlc_on; int dlc_depth;
 DlcCnt dlc_c;
 unsigned sp0_grp, sp0_skip; /* SPLIT0C: groups and skips per phase window (sp0c line), counted under phase only */
 unsigned dlc_dirty; /* the last replay left vert_live cleared although the interpreter would have left slots live */
-const Gfx dlc_end[1] = { { { NDO_W0(NDO_END, 0), 0 } } };
 
 /* hash of a list (words up to G_ENDDL) and of the Vtx bytes of its G_VTX ops */
-u32 dlc_hash(const Gfx* l) {
+u32 dlc_hash(const uint32_t* l) {
     u32 h = 2166136261u;
     for (unsigned i = 0; i < 4096; i++) {
-        u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
+        const u32 w0 = l[2u * i], w1 = l[2u * i + 1u]; /* DEL5A: the unit pair */
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
-        uint32_t t[2]; t[0] = w0; t[1] = w1; /* HC4f3: the typed unit (G_ENDDL is NDO_END); a typed word is its own unit */
-        const unsigned op = t[0] >> 24;
-        if (op == NDO_VTX) {
+        const unsigned op = w0 >> 24;
+        if (op == ND_FS_VTX) {
             unsigned n = (w0 >> 12) & 0xff;
             const unsigned char* v = (const unsigned char*)ptr_of(w1);
             if (v && is_host((u32)v) && n <= 64) for (unsigned k = 0; k < n * 16; k++) h = (h ^ v[k]) * 16777619u;
         }
-        if (op == NDO_END) break;
+        if (op == ND_FS_END) break;
     }
     return h;
 }
@@ -384,7 +383,7 @@ __attribute__((cold, noinline)) void nd_dlcp_line(unsigned f) {
     nd_dlcp_pre = nd_dlcp_rt = nd_dlcp_full = 0;
 }
 extern int nd_mtx_static; /* SEAM2: the last model matrix load was a static matrix (nd_mtx_set.c) */
-__attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const Gfx* l, int stat) {
+__attribute__((cold, noinline)) int dlc_build(DlcEnt* e, const void* l, int stat) {
     const NdSeamTab* st = seam_get();
     const NdSeamList* sl = st ? nd_seam_find(st, (u32)(uintptr_t)l) : NULL;
     const int use_tp = sl && sl->cnt && (sl->cls < 2 || stat); /* SEAM2: a T point list under a moving matrix is split in object space: not used */
@@ -483,7 +482,7 @@ __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const DlcGrp* g,
     return drawn;
 }
 
-__attribute__((noinline)) DlcEnt* dlc_find(const Gfx* l) {
+__attribute__((noinline)) DlcEnt* dlc_find(const void* l) {
     u32 a = (u32)l;
     unsigned k = ((a >> 3) * 2654435761u) >> 21 & (DLC_TAB - 1);
     for (unsigned n = 0; n < DLC_TAB; n++, k = (k + 1) & (DLC_TAB - 1)) {
@@ -594,13 +593,12 @@ int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigne
 
 
 /* One group in view: the interpreter code for G_VTX (GV1 ring copy, no CPU transform) and draw_tri. Returns 0 on success. */
-__attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* g, unsigned gmi) {
+__attribute__((noinline)) void dlc_run_group(const uint32_t* l, const DlcGrp* g, unsigned gmi) {
     unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
     for (u32 j = g->op0; j < g->op1; j++) {
-        uint32_t t[2]; t[0] = l[j].words.w0; t[1] = l[j].words.w1; /* HC4f3: the typed unit of the list word */
-        u32 w0 = t[0], w1 = t[1];
+        const u32 w0 = l[2u * j], w1 = l[2u * j + 1u]; /* DEL5A: the unit pair */
         switch (w0 >> 24) {
-        case NDO_VTX: {
+        case ND_FS_VTX: {
             unsigned n = (w0 >> 12) & 0xff, v0n = (w0 >> 1) & 0x7f, v0 = v0n >= n ? v0n - n : 0;
             const Vtx* src = (const Vtx*)ptr_of(w1);
             if (v0 + n > 64) n = 64 - v0;
@@ -622,16 +620,16 @@ __attribute__((noinline)) void dlc_run_group(const Gfx* l, const DlcGrp* g, unsi
             }
             break;
         }
-        case NDO_TRI1:
+        case ND_FS_TRI1:
             tri_prep_ok = 0;
             draw_tri(w0);
             break;
-        case NDO_TRI2:
+        case ND_FS_TRI2:
             tri_prep_ok = 0;
             draw_tri(w0);
             draw_tri(w1);
             break;
-        case NDO_GEOM:
+        case ND_FS_GEOM:
             set_geom(w0, w1);
             gv_epoch++;
             break;
@@ -665,7 +663,7 @@ int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigne
 /* SBKW-M (diagnostic, switch dlchash): per frame 200 to 211, the lists the native ranges read, and how many of them have live Vtx bytes
  * that differ from the bytes compiled into their static copy (e->hash = dlc_hash at build). Logs the first two stale lists per frame with their first G_VTX source. */
 extern void pm_log_prof_line(const char* fmt, ...);
-static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
+static void sbkw_dlchash(const uint32_t* l, const DlcEnt* e) {
     unsigned f = pm_frame_count();
     static unsigned lf_, nl_, ns_;
     if (f < 200u) return;
@@ -678,9 +676,7 @@ static void sbkw_dlchash(const Gfx* l, const DlcEnt* e) {
     if (ns_ > 2) return;
     u32 src = 0; u32 nv = 0;
     for (unsigned i = 0; i < 4096; i++) {
-        uint32_t t[2]; t[0] = l[i].words.w0; t[1] = l[i].words.w1; /* HC4f3: the typed unit */
-        if ((t[0] >> 24) == NDO_VTX) { if (!src) src = l[i].words.w1; nv++; }
-        if ((t[0] >> 24) == NDO_END) break;
+        const uint32_t w0 = l[2u * i]; if ((w0 >> 24) == ND_FS_VTX) { if (!src) src = l[2u * i + 1u]; nv++; } if ((w0 >> 24) == ND_FS_END) break;
     }
     pm_log_prof_line("dlch f%u list %08x live %08x pool %08x vtx0 %08x nvtx %u ngrp %u", f, (u32)(uintptr_t)l, live, e->hash, src, nv, (unsigned)e->ngrp);
 }
@@ -693,7 +689,7 @@ void pm_gbi_dnr_take(unsigned* o, unsigned n) { for (unsigned i = 0; i < n && i 
  * of them with a corner inside the five clip planes that dlc_box_out tests (x +- w, y +- w, z - w <= 0, w > 0). A box test that is exact removes none
  * of those (box_plane_out removes a group only when every corner is outside one plane). ons > 0 is a wrong cull of an on-screen group. Mono only. */
 int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons) {
-    const Gfx* l = (const Gfx*)lv;
+    const uint32_t* l = (const uint32_t*)lv; /* DEL5A */
     *culled = 0; *ons = 0;
     if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
     DlcEnt* e = dlc_find(l);
@@ -716,7 +712,7 @@ int pm_dlc_ons_note(const void* lv, unsigned* culled, unsigned* ons) {
 }
 uint64_t pm_dlc_vm; int pm_dlc_vm_ok;
 int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
-    const Gfx* l = (const Gfx*)lv;
+    const uint32_t* l = (const uint32_t*)lv; /* DEL5A */
     if (!dlc_on) return -1;
     if (!is_host((u32)(uintptr_t)l)) { *out = 0; return 0; } /* as pm_dlc_native_ranges: no draw */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
@@ -736,7 +732,7 @@ int pm_dlc_vis_mask(const void* lv, uint64_t* out) {
 /* MAPX-2: the entry geometry bits the groups of a built static list keep (or of the group am masks: every other bit is set by the list before a
  * triangle). -1 when the list has no current entry (the model key then keeps the whole geometry word). */
 int pm_dlc_geom_keep(const void* lv, uint32_t* keep) {
-    const Gfx* l = (const Gfx*)lv;
+    const uint32_t* l = (const uint32_t*)lv; /* DEL5A */
     if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7) || dlc_seen_gen != pm_dlc_gen) return -1;
     DlcEnt* e = dlc_find(l);
     if (!e || e->gen != pm_dlc_gen || e->refused) return -1;
@@ -746,7 +742,7 @@ int pm_dlc_geom_keep(const void* lv, uint32_t* keep) {
     return 0;
 }
 int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned max) {
-    const Gfx* l = (const Gfx*)lv;
+    const uint32_t* l = (const uint32_t*)lv; /* DEL5A */
     pm_dlc_vm_ok = 0;
     if (PMDL("dlchash")) { /* SBKW-M: calls per frame 200 to 211 and the list address of each (first four) */
         unsigned f = pm_frame_count(); static unsigned lf2, c2, n2;
@@ -821,7 +817,7 @@ int pm_dlc_native_ranges(const void* lv, uint32_t entry, NdRng* out, unsigned ma
 /* DOORHITCH: build the compiled list of a model before its first draw (pm_xfer.c: the hidden models of a new map, under the covered frames of
  * the load). The same build as dlc_try's; 1 when it built. Cold: once per list and map. */
 __attribute__((cold, noinline)) int pm_dlc_prebuild(const void* lv, int stat) {
-    const Gfx* l = (const Gfx*)lv;
+    const uint32_t* l = (const uint32_t*)lv; /* DEL5A */
     if (!dlc_on || !is_host((u32)(uintptr_t)l) || (u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);
@@ -859,7 +855,7 @@ static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const f
     if (wmin < wmin_) wmin_ = wmin;
 }
 /* HC8 step 5: the build of a list entry (first use of the list in this map generation) and the fallback arm of a group are cold. */
-static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const Gfx* l) {
+static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const uint32_t* l) {
     dlc_free(e);
     e->gen = pm_dlc_gen; e->refused = 0;
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
@@ -869,13 +865,14 @@ static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const Gfx* l
     dlc_c.compile++;
     if (r) { e->refused = (u8)r; dlc_c.refused[r < DLR_N ? r : DLR_LONG]++; }
 }
-static void __attribute__((noinline, cold)) dlc_group_slow(const Gfx* l, const DlcGrp* g, int why) {
+static void __attribute__((noinline, cold)) dlc_group_slow(const uint32_t* l, const DlcGrp* g, int why) {
     if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
     dlc_depth++;
-    nd_ops_run(l + g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
+    nd_ops_run(l + 2u * g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
     dlc_depth--;
 }
-int dlc_try(const Gfx* l) {
+int dlc_try(const void* lv) {
+    const uint32_t* l = (const uint32_t*)lv; /* DEL5A: the unit pairs of the shape list */
     if ((u32)l - (u32)gMapShapeData >= 0x40000u || ((u32)l & 7)) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     DlcEnt* e = dlc_find(l);

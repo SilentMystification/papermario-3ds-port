@@ -1,0 +1,46 @@
+LIST: 2 scenarios, one kept slot, warm restart between them: vcfix_hos01_drec, vcfix_hos01_drec
+LIST: start vcfix_hos01_drec at 16:43:48
+queue: position 1 of 1 waiting (lane 'base_3c2469a28', speed turbo, scenario vcfix_hos01_drec, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario vcfix_hos01_drec, row BASECACHE, lane 'base_3c2469a28', slot 1, cap 30 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 8s: matched 'drec f440 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 7.4 s; end at 7.9 s; 0.5 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: vcfix_hos01_drec cap 30 until 7.4
+PASS  battle: #280 debug battle: formation 1025 stage 1 at scene frame 100
+PASS  drec: #387 drec f440 draws 246 bytes 384874
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL5A\build3ds\azt\logs\vcfix_hos01_drec.txt (copy of this run's log; slot 1)
+SUBJECT: VCFIX: debug battle Ember x2 (BTL_HOS_FORMATION_01:BTL_HOS_STAGE_01, stage hos_01 vertex copy) started at frame 100 from kmr_03, det, draw records of frames 400, 420 and 440 in shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL5A\build3ds\azt\shots\vcfix_hos01_drec\base_3c2469a28\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL5A\build3ds\lane-base_3c2469a28\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1905412, build 6917, commit 3c2469a282ac6afc6c57367cec46f5ea4ea6e22c
+  scene -                              windows   0 fps - ft -
+LIST: vcfix_hos01_drec rc 0, wall 21.2 s
+LIST: start vcfix_hos01_drec at 16:44:09
+queue: position 1 of 1 waiting (lane 'base_3c2469a28', speed turbo, scenario vcfix_hos01_drec, want slot 1)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario vcfix_hos01_drec, row BASECACHE, lane 'base_3c2469a28', slot 1, cap 30 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.1 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 6s: matched 'drec f440 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 6.1 s; end at 6.5 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: vcfix_hos01_drec cap 30 until 6.1
+PASS  battle: #280 debug battle: formation 1025 stage 1 at scene frame 100
+PASS  drec: #387 drec f440 draws 246 bytes 384874
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL5A\build3ds\azt\logs\vcfix_hos01_drec.txt (copy of this run's log; slot 1)
+SUBJECT: VCFIX: debug battle Ember x2 (BTL_HOS_FORMATION_01:BTL_HOS_STAGE_01, stage hos_01 vertex copy) started at frame 100 from kmr_03, det, draw records of frames 400, 420 and 440 in shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL5A\build3ds\azt\shots\vcfix_hos01_drec\base_3c2469a28\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DEL5A\build3ds\lane-base_3c2469a28\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1906239, build 6917, commit 3c2469a282ac6afc6c57367cec46f5ea4ea6e22c
+  scene -                              windows   0 fps - ft -
+LIST: vcfix_hos01_drec rc 0, wall 19.6 s
+LIST DONE: wall 40.9 s. vcfix_hos01_drec rc 0 21.2 s; vcfix_hos01_drec rc 0 19.6 s
+base vcfix_hos01_drec at 3c2469a28: not stored. One base build of that commit (lane base_3c2469a28), then the runs.
+base 3c2469a28: build from the basebin store (entry b0cba04c7b65016e), no build
+list of 2 benches on one kept slot: vcfix_hos01_drec, vcfix_hos01_drec
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.
+base vcfix_hos01_drec at 3c2469a28: two runs equal, stored 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\3c2469a282ac6afc6c57367cec46f5ea4ea6e22c\vcfix_hos01_drec
