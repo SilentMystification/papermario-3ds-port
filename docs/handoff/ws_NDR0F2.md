@@ -1,6 +1,6 @@
 # ws_NDR0F2 (Haiku): a mesh triangle takes its render state from the snap at its epoch (stage S4; counter: none of C1-C12, snapchk bad stays 0)
 Designer: oracle FIN. WAIT: branch from main after the NDR0F1 merge (its gate shows no `rnd` name). Worktree build3ds/wt/NDR0F2, branch NDR0F2. PM_ROW=NDR0F2 PM_LANE=NDR0F2.
-Edit only: 3ds/src/nd_set.c (sync_render), 3ds/include/nd_int.h (after nd_mix1 :168), 3ds/src/nd_snap.c (below sc_compare only), 3ds/include/nd_snap.h (prototypes only), 3ds/src/nd_geom.c.
+Edit only: 3ds/src/nd_set.c (sync_render), 3ds/include/nd_int.h (after nd_mix1 :168), 3ds/src/nd_snap.c (the last line of sc_compare and below), 3ds/include/nd_snap.h (prototypes only), 3ds/src/nd_geom.c.
 Runs in parallel with NDR0G1 (it edits nd_snap_mesh, sc_compare and the NdSnapChk struct).
 ## Facts (code read, NDR0F1 138c5a5a2a; find each line by its text)
 - sync_render (nd_set.c:211-254): skip test on sg, the mix, nd_render_state, the GPU calls. The snap holds the same inputs (snapchk: omh, oml, geom, role equal) and rs, mixk, mixc.
