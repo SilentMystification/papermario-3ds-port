@@ -128,7 +128,7 @@ void pm_tsten_feed(const uint32_t* u) {
     uint32_t buf[16];
     uint32_t* p = buf;
     tsten_emit((const NdTStenRec*)u, &p);
-    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
+    nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
 }
 
 void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* overlay) {

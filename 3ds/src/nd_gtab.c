@@ -106,7 +106,6 @@ static __attribute__((cold, noinline)) void entcap_nt(const void* l, uint32_t si
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap nt l %08x s %08x", a, site); }
 static const NdPsoDesc* dl_ent; /* ENTRY1: the entry of the nd_rec_dl_e call in progress (null: none) */
 static uint32_t dl_site; /* FXENT3: site | (k + 1) << 28 of nd_rec_dl_key, 0: none */
-void nd_rec_scl(unsigned ntri); /* nd_rec.c: NST3, a list with triangles clears the dschk scalar-lost bit */
 void nd_rec_dl(const void* list) {
     static const void* memo_l[8];
     static const void* memo_t[8]; /* GKEY2: NdNDev* when memo_f bit 1, else NdGTab* */
@@ -131,11 +130,10 @@ void nd_rec_dl(const void* list) {
     }
     gtr_tab++;
     const int v2 = (fl & 2u) != 0; fl &= 1u;
-    if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (dl_site ? dl_site : (uint32_t)(uintptr_t)__builtin_return_address(0)), (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(v2 ? (dl_ent ? nd_ntab_rec_e : nd_ntab_rec) : (dl_ent ? nd_gtab_run_e : nd_gtab_run), r4, 2u); nd_ds_list(&nd_ds, list, 0); nd_rec_scl(v2 ? ((const NdNDev*)t)->ntri : ((const NdGTab*)t)->ntri); return; }
+    if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (dl_site ? dl_site : (uint32_t)(uintptr_t)__builtin_return_address(0)), (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(v2 ? (dl_ent ? nd_ntab_rec_e : nd_ntab_rec) : (dl_ent ? nd_gtab_run_e : nd_gtab_run), r4, 2u); nd_ds_list(&nd_ds, list, 0); return; }
     const uint32_t rec[2] = { (uint32_t)(uintptr_t)t, fl };
     nd_rec_napi(v2 ? nd_ntab_rec : nd_gtab_run, rec, 1u);
     nd_ds_list(&nd_ds, list, 0); /* NST2A: the list's state units follow its record */
-    nd_rec_scl(v2 ? ((const NdNDev*)t)->ntri : ((const NdGTab*)t)->ntri);
 }
 void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_dl(list); dl_ent = NULL; }
 void nd_rec_dl_key(const void* list, unsigned k) { dl_site = (uint32_t)(uintptr_t)__builtin_return_address(0) | ((k & 15u) + 1u) << 28; nd_rec_dl(list); dl_site = 0; }

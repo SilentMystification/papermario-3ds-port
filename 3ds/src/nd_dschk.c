@@ -31,6 +31,7 @@ static unsigned dk_cmds, dk_bad, dk_epbad, dk_nlog, dk_bucket;
 static unsigned dk_fbad; /* NST2A: the sum of the differing fields over all commands */
 static unsigned dk_adopt, dk_adiff; /* NST2F: adopts (hit or direct) and the fields they changed in core 0 */
 unsigned char nd_dschk_dir; /* NST2F: set by nd_direct_end and nd_glyph_draw; the next record is adopted (dir_adopt) */
+static unsigned dk_sclbad, dk_sigbad, dk_sclog; /* NST2J: core 1 sc_lost and sc_dirty against core 0 (sc_ok, sc_sig) */
 
 /* The core 0 side of NdDs: nd_ws, then the globals of the setters (the same values the NdDs fields hold on core 1). */
 static void dschk_fill(NdDs* d) {
@@ -146,10 +147,13 @@ void nd_dschk_run(const uint32_t* rec) {
         }
     }
     nd_st_epoch = 0; nd_st_why = 0;
+    { const int l0 = !sc_ok, d0 = sc_ok && sc_sig != sc_sig_now(), l1 = theirs->sc_lost != 0, d1 = theirs->sc_dirty != 0; /* NST2J */
+      if (l0 != l1 || (!l0 && d0 != d1)) { if (l0 != l1) dk_sclbad++; else dk_sigbad++;
+          if (dk_sclog < 16u) { dk_sclog++; pm_log_evt("dschk scl f%u op %x c0 %d %d c1 %d %d", pm_frame_n, (unsigned)nd_cmd_last, l0, d0, l1, d1); } } }
     if (pm_frame_n / 100 != dk_bucket) {
         dk_bucket = pm_frame_n / 100;
         ep_print();
-        pm_log_evt("dschk f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff);
+        pm_log_evt("dschk f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u sclbad %u sigbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff, dk_sclbad, dk_sigbad);
     }
 }
 
@@ -157,6 +161,6 @@ void nd_dschk_run(const uint32_t* rec) {
 void nd_dschk_end(void) {
     if (!pm_debug_has("dschk")) return;
     ep_print();
-    pm_log_evt("dschk end f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff);
+    pm_log_evt("dschk end f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u sclbad %u sigbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff, dk_sclbad, dk_sigbad);
     pm_log_evt("dschk lg hw %u over %u", nd_ds_lg_hw, nd_ds_lg_over); /* NST2D */
 }

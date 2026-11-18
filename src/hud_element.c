@@ -561,7 +561,7 @@ static void hud_rect_feed(const uint32_t* u) {
     static uint32_t fb[1024];
     uint32_t* p = fb;
     hud_rect_emit((const NdHudRec*)u, &p, 0);
-    nd_ds_feed(fb, (unsigned)(p - fb) / 2u);
+    nd_ds_feed_dir(fb, (unsigned)(p - fb) / 2u);
 }
 
 /* S5CHUDB (NATIVEAPI E1): one complex HUD quad of mode 2 (IA8): the matrix stack entry, the 4 vertices, the image and the state. */
@@ -593,7 +593,7 @@ static void cplx_quad_feed(const uint32_t* u) {
     uint32_t buf[64];
     uint32_t* p = buf;
     cplx_quad_emit((const NdCHudRec*)u, &p);
-    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
+    nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
 }
 
 __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {

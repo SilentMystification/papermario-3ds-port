@@ -22,6 +22,7 @@ typedef struct NdDs {
     float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
     NdTexM tm;                     /* nd_tex_set.c nd_tm: the load side of the texture model */
     int m1v, m1w, m1h;             /* NST2F: the shaded sprite record of tile 1 (m1.valid, m1.w, m1.h) */
+    uint8_t sc_lost, sc_dirty;     /* NST2J: core 1 view of !sc_ok and sc_sig != sc_sig_now() (nd_comb.c:342); not in ds_fields */
 } NdDs;
 extern NdDs nd_ds;
 /* Applies one typed unit (w0 = id << 24 | a, w1 = b). Bit 0 of the result: a field value changed. Other ids change nothing. */

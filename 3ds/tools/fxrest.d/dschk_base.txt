@@ -1,4 +1,4 @@
-#10 switches bootid=29daa1720f warp=mac_01:0 pos=0:0:200 loglevel=debug det dschk
+#10 switches bootid=cd23eb7d20 warp=mac_01:0 pos=0:0:200 loglevel=debug det dschk
 #154 dschk epbad f35 k 2090a
 #173 dschk epbad f35 k 2090a
 #174 dschk epbad f35 k 2090a
@@ -6,22 +6,38 @@
 #176 dschk epbad f35 k 2090a
 #177 dschk epbad f35 k 2090a
 #179 dschk epbad f35 k 2090a
-#206 dschk epbad f36 k 2090a
-#211 dschk epbad f36 k 2090a
+#180 dschk scl f35 op a c0 0 0 c1 0 1
+#182 dschk scl f35 op a c0 0 0 c1 0 1
+#183 dschk scl f35 op a c0 0 0 c1 0 1
+#184 dschk scl f35 op a c0 0 0 c1 0 1
+#185 dschk scl f35 op a c0 0 0 c1 0 1
+#186 dschk scl f35 op a c0 0 0 c1 0 1
 #212 dschk epbad f36 k 2090a
-#213 dschk epbad f36 k 2090a
-#214 dschk epbad f36 k 2090a
-#215 dschk epbad f36 k 2090a
-#216 dschk epbad f36 k 2090a
-#222 dschk epbad f37 k 2090a
-#223 dschk epbad f37 k 2090a
-#292 dschk epsrc f100 2090a=455
-#293 dschk epsrc f100 other 0
-#294 dschk f100 cmds 10554 bad 0 epbad 455 fbad 0 adopt 5791 adiff 23861
-#319 dschk epsrc f200 2090a=1155
-#320 dschk epsrc f200 other 0
-#321 dschk f200 cmds 27392 bad 0 epbad 1155 fbad 0 adopt 15291 adiff 62991
-#10 switches bootid=003d87cac0 preset=toad padscript=wait80,START*3,wait100 loglevel=debug det dschk
+#217 dschk epbad f36 k 2090a
+#218 dschk epbad f36 k 2090a
+#219 dschk epbad f36 k 2090a
+#220 dschk epbad f36 k 2090a
+#221 dschk epbad f36 k 2090a
+#222 dschk epbad f36 k 2090a
+#223 dschk scl f36 op a c0 0 0 c1 0 1
+#224 dschk scl f36 op a c0 0 0 c1 0 1
+#225 dschk scl f36 op a c0 0 0 c1 0 1
+#226 dschk scl f36 op a c0 0 0 c1 0 1
+#227 dschk scl f36 op a c0 0 0 c1 0 1
+#228 dschk scl f36 op a c0 0 0 c1 0 1
+#234 dschk epbad f37 k 2090a
+#235 dschk epbad f37 k 2090a
+#236 dschk scl f37 op a c0 0 0 c1 0 1
+#237 dschk scl f37 op a c0 0 0 c1 0 1
+#238 dschk scl f37 op a c0 0 0 c1 0 1
+#239 dschk scl f37 op a c0 0 0 c1 0 1
+#308 dschk epsrc f100 2090a=455
+#309 dschk epsrc f100 other 0
+#310 dschk f100 cmds 10554 bad 0 epbad 455 fbad 0 adopt 5791 adiff 23861 sclbad 1020 sigbad 390
+#335 dschk epsrc f200 2090a=1155
+#336 dschk epsrc f200 other 0
+#337 dschk f200 cmds 27392 bad 0 epbad 1155 fbad 0 adopt 15291 adiff 62991 sclbad 3020 sigbad 990
+#10 switches bootid=7e1cfb23f0 preset=toad padscript=wait80,START*3,wait100 loglevel=debug det dschk
 #155 dschk epbad f37 k 2090a
 #170 dschk epbad f37 k 2090a
 #171 dschk epbad f37 k 2090a
@@ -38,41 +54,73 @@
 #182 dschk epbad f37 k 2090a
 #183 dschk epbad f37 k 2090a
 #184 dschk epbad f37 k 2090a
-#262 dschk epsrc f100 2090a=1283
-#263 dschk epsrc f100 other 0
-#264 dschk f100 cmds 13567 bad 0 epbad 1283 fbad 0 adopt 6239 adiff 26907
-#449 dschk epsrc f200 2090a=1382
-#450 dschk epsrc f200 other 0
-#451 dschk f200 cmds 34954 bad 0 epbad 1382 fbad 0 adopt 19186 adiff 51889
-#10 switches bootid=b8d6b2f9ec warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det dschk turbo
+#187 dschk scl f37 op a c0 0 0 c1 0 1
+#189 dschk scl f37 op a c0 0 0 c1 0 1
+#213 dschk scl f38 op a c0 0 0 c1 0 1
+#214 dschk scl f38 op a c0 0 0 c1 0 1
+#219 dschk scl f39 op a c0 0 0 c1 0 1
+#220 dschk scl f39 op a c0 0 0 c1 0 1
+#227 dschk scl f40 op a c0 0 0 c1 0 1
+#228 dschk scl f40 op a c0 0 0 c1 0 1
+#230 dschk scl f41 op a c0 0 0 c1 0 1
+#231 dschk scl f41 op a c0 0 0 c1 0 1
+#233 dschk scl f42 op a c0 0 0 c1 0 1
+#234 dschk scl f42 op a c0 0 0 c1 0 1
+#236 dschk scl f43 op a c0 0 0 c1 0 1
+#237 dschk scl f43 op a c0 0 0 c1 0 1
+#239 dschk scl f44 op a c0 0 0 c1 0 1
+#240 dschk scl f44 op a c0 0 0 c1 0 1
+#278 dschk epsrc f100 2090a=1283
+#279 dschk epsrc f100 other 0
+#280 dschk f100 cmds 13567 bad 0 epbad 1283 fbad 0 adopt 6239 adiff 26907 sclbad 900 sigbad 120
+#465 dschk epsrc f200 2090a=1382
+#466 dschk epsrc f200 other 0
+#467 dschk f200 cmds 34954 bad 0 epbad 1382 fbad 0 adopt 19186 adiff 51889 sclbad 984 sigbad 120
+#10 switches bootid=b324d87f50 warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det dschk turbo
 #151 dschk epbad f39 k 2090a
 #173 dschk epbad f39 k 2090a
 #176 dschk epbad f39 k 2090a
-#211 dschk epbad f40 k 2090a
-#218 dschk epbad f40 k 2090a
-#219 dschk epbad f40 k 2090a
-#231 dschk epbad f40 k 2090a
-#234 dschk epbad f41 k 2090a
-#235 dschk epbad f41 k 2090a
-#236 dschk epbad f41 k 2090a
-#237 dschk epbad f41 k 2090a
-#242 dschk epbad f42 k 2090a
-#243 dschk epbad f42 k 2090a
-#244 dschk epbad f42 k 2090a
-#245 dschk epbad f42 k 2090a
-#247 dschk epbad f43 k 2090a
-#287 dschk epsrc f100 2090a=213
-#288 dschk epsrc f100 other 0
-#289 dschk f100 cmds 8486 bad 0 epbad 213 fbad 0 adopt 2453 adiff 10836
-#352 dschk epsrc f200 2090a=521
-#353 dschk epsrc f200 other 0
-#354 dschk f200 cmds 19417 bad 0 epbad 521 fbad 0 adopt 6261 adiff 31521
-#393 dschk epsrc f300 2090a=821
-#394 dschk epsrc f300 other 0
-#395 dschk f300 cmds 29883 bad 0 epbad 821 fbad 0 adopt 11789 adiff 61946
-#408 dschk epsrc f400 2090a=1121
-#409 dschk epsrc f400 other 0
-#410 dschk f400 cmds 40583 bad 0 epbad 1121 fbad 0 adopt 17489 adiff 92746
+#177 dschk scl f39 op a c0 0 0 c1 0 1
+#178 dschk scl f39 op a c0 0 0 c1 0 1
+#192 dschk scl f39 op a c0 0 0 c1 0 1
+#194 dschk scl f39 op a c0 0 0 c1 0 1
+#195 dschk scl f39 op a c0 0 0 c1 0 1
+#196 dschk scl f39 op a c0 0 0 c1 0 1
+#217 dschk epbad f40 k 2090a
+#224 dschk epbad f40 k 2090a
+#225 dschk epbad f40 k 2090a
+#227 dschk scl f40 op a c0 0 0 c1 0 1
+#228 dschk scl f40 op a c0 0 0 c1 0 1
+#229 dschk scl f40 op a c0 0 0 c1 0 1
+#230 dschk scl f40 op a c0 0 0 c1 0 1
+#231 dschk scl f40 op a c0 0 0 c1 0 1
+#232 dschk scl f40 op a c0 0 0 c1 0 1
+#243 dschk epbad f40 k 2090a
+#246 dschk epbad f41 k 2090a
+#247 dschk epbad f41 k 2090a
+#248 dschk epbad f41 k 2090a
+#249 dschk scl f41 op a c0 0 0 c1 0 1
+#250 dschk scl f41 op a c0 0 0 c1 0 1
+#251 dschk scl f41 op a c0 0 0 c1 0 1
+#252 dschk scl f41 op a c0 0 0 c1 0 1
+#253 dschk epbad f41 k 2090a
+#258 dschk epbad f42 k 2090a
+#259 dschk epbad f42 k 2090a
+#260 dschk epbad f42 k 2090a
+#261 dschk epbad f42 k 2090a
+#263 dschk epbad f43 k 2090a
+#303 dschk epsrc f100 2090a=213
+#304 dschk epsrc f100 other 0
+#305 dschk f100 cmds 8486 bad 0 epbad 213 fbad 0 adopt 2453 adiff 10836 sclbad 940 sigbad 353
+#368 dschk epsrc f200 2090a=521
+#369 dschk epsrc f200 other 0
+#370 dschk f200 cmds 19417 bad 0 epbad 521 fbad 0 adopt 6261 adiff 31521 sclbad 2000 sigbad 648
+#409 dschk epsrc f300 2090a=821
+#410 dschk epsrc f300 other 0
+#411 dschk f300 cmds 29883 bad 0 epbad 821 fbad 0 adopt 11789 adiff 61946 sclbad 2000 sigbad 648
+#424 dschk epsrc f400 2090a=1121
+#425 dschk epsrc f400 other 0
+#426 dschk f400 cmds 40583 bad 0 epbad 1121 fbad 0 adopt 17489 adiff 92746 sclbad 2000 sigbad 648
 #155 dschk epbad f35 k 2090a
 #174 dschk epbad f35 k 2090a
 #175 dschk epbad f35 k 2090a
@@ -80,85 +128,82 @@
 #177 dschk epbad f35 k 2090a
 #178 dschk epbad f35 k 2090a
 #180 dschk epbad f35 k 2090a
-#207 dschk epbad f36 k 2090a
-#212 dschk epbad f36 k 2090a
+#181 dschk scl f35 op a c0 0 0 c1 0 1
+#183 dschk scl f35 op a c0 0 0 c1 0 1
+#184 dschk scl f35 op a c0 0 0 c1 0 1
+#185 dschk scl f35 op a c0 0 0 c1 0 1
+#186 dschk scl f35 op a c0 0 0 c1 0 1
+#187 dschk scl f35 op a c0 0 0 c1 0 1
 #213 dschk epbad f36 k 2090a
-#214 dschk epbad f36 k 2090a
-#215 dschk epbad f36 k 2090a
-#216 dschk epbad f36 k 2090a
-#217 dschk epbad f36 k 2090a
-#223 dschk epbad f37 k 2090a
-#224 dschk epbad f37 k 2090a
-#293 dschk epsrc f100 2090a=455
-#294 dschk epsrc f100 other 0
-#295 dschk f100 cmds 10554 bad 0 epbad 455 fbad 0 adopt 5791 adiff 23861
-#320 dschk epsrc f200 2090a=1155
-#321 dschk epsrc f200 other 0
-#322 dschk f200 cmds 27392 bad 0 epbad 1155 fbad 0 adopt 15291 adiff 62991
-#357 dschk epsrc f300 2090a=1855
-#358 dschk epsrc f300 other 0
-#359 dschk f300 cmds 44128 bad 0 epbad 1855 fbad 0 adopt 24904 adiff 102944
-#378 dschk epsrc f400 2090a=2555
-#379 dschk epsrc f400 other 0
-#380 dschk f400 cmds 61628 bad 0 epbad 2555 fbad 0 adopt 36404 adiff 157044
-#425 dschk epsrc f500 2090a=3255
-#426 dschk epsrc f500 other 0
-#427 dschk f500 cmds 79674 bad 0 epbad 3255 fbad 0 adopt 47904 adiff 211144
-#478 dschk epsrc f600 2090a=3955
-#479 dschk epsrc f600 other 0
-#480 dschk f600 cmds 97390 bad 0 epbad 3955 fbad 0 adopt 59404 adiff 265244
-#516 dschk epsrc f700 2090a=4655
-#517 dschk epsrc f700 other 0
-#518 dschk f700 cmds 115219 bad 0 epbad 4655 fbad 0 adopt 70904 adiff 319344
-#570 dschk epsrc f800 2090a=5355
-#571 dschk epsrc f800 other 0
-#572 dschk f800 cmds 132807 bad 0 epbad 5355 fbad 0 adopt 82404 adiff 373444
-#627 dschk epsrc f900 2090a=6055
-#628 dschk epsrc f900 other 0
-#629 dschk f900 cmds 150539 bad 0 epbad 6055 fbad 0 adopt 93904 adiff 427544
-#666 dschk epsrc f1000 2090a=6785
-#667 dschk epsrc f1000 other 0
-#668 dschk f1000 cmds 168154 bad 0 epbad 6785 fbad 0 adopt 105404 adiff 481644
-#715 dschk epsrc f1100 2090a=7485
-#716 dschk epsrc f1100 other 0
-#717 dschk f1100 cmds 185946 bad 0 epbad 7485 fbad 0 adopt 116904 adiff 535744
-#770 dschk epsrc f1200 2090a=8345
-#771 dschk epsrc f1200 other 0
-#772 dschk f1200 cmds 203818 bad 0 epbad 8345 fbad 0 adopt 128404 adiff 589844
-#813 dschk epsrc f1300 2090a=9063
-#814 dschk epsrc f1300 other 0
-#815 dschk f1300 cmds 221790 bad 0 epbad 9063 fbad 0 adopt 139904 adiff 643944
-#855 dschk epsrc f1400 2090a=9783
-#856 dschk epsrc f1400 other 0
-#857 dschk f1400 cmds 239628 bad 0 epbad 9783 fbad 0 adopt 151404 adiff 698044
-#901 dschk epsrc f1500 2090a=10483
-#902 dschk epsrc f1500 other 0
-#903 dschk f1500 cmds 257814 bad 0 epbad 10483 fbad 0 adopt 162904 adiff 752144
-#1015 dschk epsrc f1600 2090a=11183
-#1016 dschk epsrc f1600 other 0
-#1017 dschk f1600 cmds 276650 bad 0 epbad 11183 fbad 0 adopt 174204 adiff 804754
-#1070 dschk epsrc f1700 2090a=11941
-#1071 dschk epsrc f1700 other 0
-#1072 dschk f1700 cmds 294655 bad 0 epbad 11941 fbad 0 adopt 185144 adiff 854682
-#1158 dschk epsrc f1800 2090a=12702
-#1159 dschk epsrc f1800 other 0
-#1160 dschk f1800 cmds 312743 bad 0 epbad 12702 fbad 0 adopt 196644 adiff 908782
-#1197 dschk epsrc f1900 2090a=13402
-#1198 dschk epsrc f1900 other 0
-#1199 dschk f1900 cmds 330475 bad 0 epbad 13402 fbad 0 adopt 208144 adiff 962882
-#1237 dschk epsrc f2000 2090a=14102
-#1238 dschk epsrc f2000 other 0
-#1239 dschk f2000 cmds 348081 bad 0 epbad 14102 fbad 0 adopt 219644 adiff 1016982
-#1278 dschk epsrc f2100 2090a=14802
-#1279 dschk epsrc f2100 other 0
-#1280 dschk f2100 cmds 365925 bad 0 epbad 14802 fbad 0 adopt 231144 adiff 1071082
-#1315 dschk epsrc f2200 2090a=15502
-#1316 dschk epsrc f2200 other 0
-#1317 dschk f2200 cmds 383665 bad 0 epbad 15502 fbad 0 adopt 242644 adiff 1125182
-#1352 dschk epsrc f2292 2090a=16146
-#1353 dschk epsrc f2292 other 0
-#1354 dschk end f2292 cmds 400186 bad 0 epbad 16146 fbad 0 adopt 253224 adiff 1174954
-#1355 dschk lg hw 119 over 0
-#1357 dschk epsrc f2300 2090a=16202
-#1358 dschk epsrc f2300 other 0
-#1359 dschk f2300 cmds 401587 bad 0 epbad 16202 fbad 0 adopt 254144 adiff 1179282
+#218 dschk epbad f36 k 2090a
+#219 dschk epbad f36 k 2090a
+#220 dschk epbad f36 k 2090a
+#221 dschk epbad f36 k 2090a
+#222 dschk epbad f36 k 2090a
+#223 dschk epbad f36 k 2090a
+#224 dschk scl f36 op a c0 0 0 c1 0 1
+#225 dschk scl f36 op a c0 0 0 c1 0 1
+#226 dschk scl f36 op a c0 0 0 c1 0 1
+#227 dschk scl f36 op a c0 0 0 c1 0 1
+#228 dschk scl f36 op a c0 0 0 c1 0 1
+#229 dschk scl f36 op a c0 0 0 c1 0 1
+#235 dschk epbad f37 k 2090a
+#236 dschk epbad f37 k 2090a
+#237 dschk scl f37 op a c0 0 0 c1 0 1
+#238 dschk scl f37 op a c0 0 0 c1 0 1
+#239 dschk scl f37 op a c0 0 0 c1 0 1
+#240 dschk scl f37 op a c0 0 0 c1 0 1
+#309 dschk epsrc f100 2090a=455
+#310 dschk epsrc f100 other 0
+#311 dschk f100 cmds 10554 bad 0 epbad 455 fbad 0 adopt 5791 adiff 23861 sclbad 1020 sigbad 390
+#336 dschk epsrc f200 2090a=1155
+#337 dschk epsrc f200 other 0
+#338 dschk f200 cmds 27392 bad 0 epbad 1155 fbad 0 adopt 15291 adiff 62991 sclbad 3020 sigbad 990
+#373 dschk epsrc f300 2090a=1855
+#374 dschk epsrc f300 other 0
+#375 dschk f300 cmds 44128 bad 0 epbad 1855 fbad 0 adopt 24904 adiff 102944 sclbad 4899 sigbad 1590
+#394 dschk epsrc f400 2090a=2555
+#395 dschk epsrc f400 other 0
+#396 dschk f400 cmds 61628 bad 0 epbad 2555 fbad 0 adopt 36404 adiff 157044 sclbad 4899 sigbad 2190
+#441 dschk epsrc f500 2090a=3255
+#442 dschk epsrc f500 other 0
+#443 dschk f500 cmds 79674 bad 0 epbad 3255 fbad 0 adopt 47904 adiff 211144 sclbad 4899 sigbad 2790
+#494 dschk epsrc f600 2090a=3955
+#495 dschk epsrc f600 other 0
+#496 dschk f600 cmds 97390 bad 0 epbad 3955 fbad 0 adopt 59404 adiff 265244 sclbad 4899 sigbad 3390
+#532 dschk epsrc f700 2090a=4655
+#533 dschk epsrc f700 other 0
+#534 dschk f700 cmds 115219 bad 0 epbad 4655 fbad 0 adopt 70904 adiff 319344 sclbad 4899 sigbad 3990
+#586 dschk epsrc f800 2090a=5355
+#587 dschk epsrc f800 other 0
+#588 dschk f800 cmds 132807 bad 0 epbad 5355 fbad 0 adopt 82404 adiff 373444 sclbad 4899 sigbad 4590
+#643 dschk epsrc f900 2090a=6055
+#644 dschk epsrc f900 other 0
+#645 dschk f900 cmds 150539 bad 0 epbad 6055 fbad 0 adopt 93904 adiff 427544 sclbad 4899 sigbad 5190
+#682 dschk epsrc f1000 2090a=6785
+#683 dschk epsrc f1000 other 0
+#684 dschk f1000 cmds 168154 bad 0 epbad 6785 fbad 0 adopt 105404 adiff 481644 sclbad 4899 sigbad 5790
+#731 dschk epsrc f1100 2090a=7485
+#732 dschk epsrc f1100 other 0
+#733 dschk f1100 cmds 185946 bad 0 epbad 7485 fbad 0 adopt 116904 adiff 535744 sclbad 4899 sigbad 6390
+#786 dschk epsrc f1200 2090a=8345
+#787 dschk epsrc f1200 other 0
+#788 dschk f1200 cmds 203818 bad 0 epbad 8345 fbad 0 adopt 128404 adiff 589844 sclbad 4899 sigbad 6990
+#829 dschk epsrc f1300 2090a=9063
+#830 dschk epsrc f1300 other 0
+#831 dschk f1300 cmds 221790 bad 0 epbad 9063 fbad 0 adopt 139904 adiff 643944 sclbad 4899 sigbad 7590
+#871 dschk epsrc f1400 2090a=9783
+#872 dschk epsrc f1400 other 0
+#873 dschk f1400 cmds 239628 bad 0 epbad 9783 fbad 0 adopt 151404 adiff 698044 sclbad 4899 sigbad 8190
+#917 dschk epsrc f1500 2090a=10483
+#918 dschk epsrc f1500 other 0
+#919 dschk f1500 cmds 257814 bad 0 epbad 10483 fbad 0 adopt 162904 adiff 752144 sclbad 4899 sigbad 8790
+#1031 dschk epsrc f1600 2090a=11183
+#1032 dschk epsrc f1600 other 0
+#1033 dschk f1600 cmds 276650 bad 0 epbad 11183 fbad 0 adopt 174204 adiff 804754 sclbad 5099 sigbad 9390
+#1086 dschk epsrc f1700 2090a=11941
+#1087 dschk epsrc f1700 other 0
+#1088 dschk f1700 cmds 294655 bad 0 epbad 11941 fbad 0 adopt 185144 adiff 854682 sclbad 5659 sigbad 9990
+#1174 dschk epsrc f1800 2090a=12702
+#1175 dschk epsrc f1800 other 0
+#1176 dschk f1800 cmds 312743 bad 0 epbad 12702 fbad 0 adopt 196644 adiff 908782 sclbad 5659 sigbad 10590

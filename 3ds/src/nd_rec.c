@@ -173,9 +173,9 @@ static void rec_ctx_check(void) {
     nd_ds_lg_reset();
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
-/* NST3 dschk (design_nstate.md section 6): ds_ep is the batch bit before the next command, ds_sclost the scalar-lost bit, ds_in
+/* NST3 dschk (design_nstate.md section 6): ds_ep is the batch bit before the next command, ds_in
  * guards the dschk record itself (its nested rec_take). ds_rec holds the NdDs copy and the ep word (8-byte units). */
-static uint8_t ds_ep, ds_sclost, ds_in;
+static uint8_t ds_ep, ds_in;
 static uint32_t ds_epw; /* NST2H: rule << 8 | unit id of the first ep rule since the last dschk record */
 unsigned char nd_cmd_last; /* NST2I: the op of the last command core 0 ran (not a state run, not the dschk record) */
 #define DS_EP(r, i) do { if (!ds_ep) ds_epw = (uint32_t)(r) << 8 | ((i) & 0xffu); ds_ep = 1; } while (0)
@@ -185,13 +185,11 @@ void nd_dschk_run(const uint32_t* rec) __attribute__((weak)); /* nd_dschk.c, cor
 enum { DS_REC_W = (sizeof(NdDs) / 4u + 2u) & ~1u };
 _Static_assert(DS_REC_W / 2u <= 255u, "dschk record units");
 static uint32_t ds_rec[DS_REC_W] __attribute__((aligned(8)));
-/* NST3: a list call with triangles draws (nd_gtab.c nd_rec_dl) and clears the scalar-lost bit. */
-void nd_rec_scl(unsigned ntri) { if (ntri) ds_sclost = 0; }
 static int st_take; /* HC4b: rec_take of a state op (the shadow stays) */
 static uint32_t* rec_take(unsigned n) {
     st_hdr = NULL; /* any record closes the open state run (nd_rec_nr reopens its own) */
     if (!st_take) sh_all(); /* HC4b: any other command resets the shadow */
-    if (!st_take) { /* NST3: the dschk record before a command; the command sets sc_lost */
+    if (!st_take) { /* NST3: the dschk record before a command */
         if (!ds_in && PMDL("dschk")) {
             ds_in = 1;
             memset(ds_rec, 0, sizeof ds_rec);
@@ -203,7 +201,6 @@ static uint32_t* rec_take(unsigned n) {
             ds_epw = 0;
             DS_EP(9, 0); /* NST2I: core 0 runs every command with a gv_epoch cut; the key names the quiet ones */
         }
-        ds_sclost = 1;
     }
     if (wp + n > wend) {
         NdChain* c = &chain[rec_ctx];
@@ -250,12 +247,13 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
 /* NST2b: one typed unit into the core 1 state (nd_ds_apply), its NDO_CALL list (depth 1) and the NST3 ep rule. The model record
  * (nd_rec_model) and the stream units (nd_rec_nr) both call it. */
 void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
+    const int lost = s->sc_lost, dirty = s->sc_dirty; /* NST2J: before the unit */
     const unsigned ch = nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
     if ((w0 >> 24) == NDO_CALL) nd_ds_list(s, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
     { /* NST3 ep rule (design section 6), core 1 data only */
         const unsigned id = w0 >> 24;
         if ((ch & 1u) && id != NDO_VTX && id != NDO_TRI1 && id != NDO_TRI2 && id != NDO_MTX && id != NDO_POPMTX) DS_EP(1, id);
-        if (ds_sclost && (id == NDO_OMH || id == NDO_PRIM || id == NDO_ENV || id == NDO_TEXTURE || id == NDO_COMB)) DS_EP(2, id);
+        if ((lost && (id == ND_FS_OMH || id == ND_FS_PRIM || id == ND_FS_ENV)) || ((lost || dirty) && (id == ND_FS_TEXTURE || id == ND_FS_COMB))) DS_EP(2, id);
         if (id == NDO_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) DS_EP(3, id);
         if ((id >= NDO_TIMG && id <= NDO_LOADTLUT) || id == NDO_FILL || id == NDO_PRIMZ || id == NDO_SCISSOR || id == NDO_RARE) DS_EP(6, id);   /* nd_op_same never skips */
         if (id == NDO_MW && ((w0 & 0xffffffu) >> 16) != NDO_MW_LIGHTCOL) DS_EP(7, id);                                                       /* nd_set.c:142-144 */
@@ -395,8 +393,10 @@ void nd_parts_end(NdParts* b) {
         }
     nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
     nd_ds_parts(&nd_ds, b->u, nd_ds_unit); /* NST2C: the instances' state on core 1 */
+    nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NST2J: the parts runner ends with sync_combine */
     b->n = 0;
 }
+void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */
 /* D4b-3: a state op (HC4a: typed by the recorder) extends the open native record run when nothing was recorded after it (no span, no other command) and the chunk has room;
  * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after NDO_DROP). */
 static void st_put(uint32_t w0, uint32_t w1) {

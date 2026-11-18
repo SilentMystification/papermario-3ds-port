@@ -282,7 +282,7 @@ void nd_fill_feed(const uint32_t* u) {
     uint32_t buf[8];
     uint32_t* p = buf;
     nd_fill_emit(f, f->kind & 3u, &p);
-    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
+    nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
 }
 
 /* core 0: the 1-cycle fill of a rectangle, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
@@ -364,7 +364,7 @@ void nd_trect_feed(const uint32_t* u) {
     uint32_t buf[32];
     uint32_t* p = buf;
     trect_emit((const NdTRect*)u, &p);
-    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
+    nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
 }
 
 /* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by
