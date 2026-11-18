@@ -6,7 +6,7 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
 - User 2026-11-17: at most 5 parallel Haiku coders. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0. No console check until the end.
 - User 2026-11-18 option A: NDR0G2 and NDR1C have an expected-diff gate (the correct bind from the snap, not the stale walker bind). Other rows stay byte-equal.
-## Chain NCONV coach: a NCONV1D1 coder afc7b34e8d19be862 (done).
+## Chain NCONV coach: coders afc7b34e8d19be862 (NCONV1D1), aeaed982632fdec55 (NCONV1D2), both done.
 ## Merged on main: NST1, NST3, NST2A-K, FALLBK, NDR0A-F, NDR0G1-2, NDR1B-C, NDR2A-C, NDR3, NDR4, NDR5, NCONV1A, NCONV1D1, NDR2D, REN1-8, MREN, PSOFB, DEL4D34, BUILDO.
 ## Chain NDR: done (coach a28bf24a1ad35b1c8). No NDR page is left. Snapchk data at the end (FACT NDR2D): nimgm f400 recs 14138 cmp 6286 wst 870; wscmb f200 recs 18047 cmp 13482 wst 12060.
 ## Open work (in order)
@@ -14,6 +14,7 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
 2. NCONV1D: pages ws_NCONV1D1 (core 1 list snaps in the list record, rec[4] table, core 0 ordinal and compare, scenes fxops_snapchk and entcape_kmr03_snapchk) and ws_NCONV1D2 (consume in P1 dlc_seg and P2 draw_tri). Haiku, Sonnet standing yes if Haiku fails twice.
    Order: after NDR0G2, NDR1C, NDR2A, NDR4 (all edit nd_snap.c), parallel with NDR2B, NDR2C, NDR2D. NCONV1D2 starts only when NCONV1D1 shows lsnap bad 0, tmis 0, over 0, p1 above 0, wst 0. A wst above 0: ask the user for an expected-diff gate (default no). Then NCONV2, NREC1A-5, DEL rows.
    NCONV1D1 merged ae0f255985. FACT hand-back: fxops_snapchk lsnap f500 lists 1118 snaps 1583 cmp 1583 p1 1583 bad 0 wst 1577 tmis 0 over 0 (snapchk wst 4101). entcape_kmr03_snapchk lsnap f200 lists 644 cmp 644 p1 644 bad 0 wst 0.
+   NCONV1D2 GATED 7b972a0b6d (merge pending). FACT: fxops lsnap bst 1577 to 0, cmp 1583 p1 1583 tmis 0 over 0, snapchk bad 0 wst 4101, fxops_drec byte-equal, memcheck margin 206 KB.
    ws_NCONV1D2 rewritten (no wst WAIT): new lsnap counter bst = list triangles whose epoch binds tiles other than the range snap. Step 1 measures bst before (seeded fault, GUESS above 0), step 2 consumes, gate bst 0 + fxops_drec byte-equal. A DIFF stops: the user decides an expected-diff gate (bindsnap proof). Both list scenes have p1 = cmp: P2 (draw_tri) has no list compare in them (FACT), nd_part_draw does not count nd_ls_ord (tmis guards it).
    Design: a list snap range starts at the first triangle after a state unit; core 0 finds it by triangle ordinal (nd_snap_lsr). Open risk: P1 compares may name box_folded (dlc_seg runs no box_fold_sync).
 3. NDR4 merged byte-equal with 0 sprsnap lines (FACT 0cf4333a5e).
