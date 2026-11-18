@@ -50,11 +50,10 @@ push with `-Profile prof -GameDebug "warp=mac_01:0 pos=0:0:200"`, the bottom scr
 - The first push of build 6449 booted fine; the [CRASH] blocks in its log are an old crash.txt replay (old build numbers), not a new crash.
 
 ## Agents at handoff (ListAgents is the truth)
-Coders: BOTSCR a22eb8d737b53293f is finished and waits for its merge (oracle NEXT3 a26f678cb67ee83db, 237K). Running: NST2A ae0efb252e4b0141c (relaunched on its branch from the corrected page,
-budget reset; oracle NSTO a4979ad6150eacb9f, 380K; hold its MERGE until the console check, the work runs).
-Oracles (all idle, resume by SendMessage): NEXT3 a26f678cb67ee83db, NSTO a4979ad6150eacb9f, PHASEE2 a2895cb81ea2b910a (360K), DIAG1 a19976ad4fb0c998a (205K).
-Pages on main: ws_BOTSCR, ws_NST2B to ws_NST2F (chain after NST2A: the metric is fbad per tst1 member; start each from the branch of the row before).
-NDR0 is deferred until the NST2F data exists (oracle advice). docs/handoff/oracle_handoff.md holds the oracle facts (keep it at 60 lines or less).
+Finished, waiting for a merge: BOTSCR (branch BOTSCR, bb7520d044, merge AFTER the push, then rebuild main) and NST2A (branch NST2A, 86b4a06909, gate PASS: fbad lower in both dschk scenes; merge after the user's console check of 0f39de90cb).
+Running at 20:00: NST2B coder (branch NST2B from branch NST2A, oracle NSTO a4979ad6150eacb9f). Chain: start NST2C from the NST2B branch, NST2D from NST2C, and so on (pages on main).
+Oracles (all idle, resume by SendMessage): NEXT3 a26f678cb67ee83db (237K), NSTO a4979ad6150eacb9f (380K), PHASEE2 a2895cb81ea2b910a (360K), DIAG1 a19976ad4fb0c998a (205K).
+Pages on main: ws_NST2B to ws_NST2F. NDR0 is deferred until the NST2F data exists (oracle advice). docs/handoff/oracle_handoff.md holds the oracle facts (60 lines or less).
 
 ## Open faults
 - PSOFB psomiss: one draw has tex_on 2167585 (a bad flag value); the writer is not found (oracle_handoff.md item 2). Write a page after the console check.
