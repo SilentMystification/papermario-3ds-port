@@ -30,6 +30,7 @@ branch NST2G. PM_ROW=NST2G PM_LANE=NST2G. Edit only: 3ds/src/nd_dschk.c, 3ds/src
 1. Edits 1-3. `sh 3ds/tools/nd_host_test.sh` PASS. Commit `NST2G 1: dschk adopt after the boot fallback, box fold kept at a direct adopt`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2G --bench the same 2: LOOP PASS, byte-equal.
 3. bench.py run the 4 dschk scenes; grep the dschk lines > build3ds/out/nst2g_dschk.txt. Write the grep into dschk_base.txt (the first base with FALLBK).
-   Pass: bad 0 and epbad 0 in the last line of each. Else: commit the grep, send the output path (with the `dschk bad` name lines) to the oracle, wait.
+   Pass (oracle round 1): bad 0 in the last line of each; epbad is recorded (the counter of row NST2H). Append each scene's grep right after its run
+   (the lane log is overwritten). Else: commit the grep, send the `dschk bad` name lines to the oracle, wait.
 ## Fix rights: the listed files; compile errors. A DIFF, a crash: stop, send the output path to the oracle. Wait.
 Stop: last commit `NST2G 2: gate. dschk bad <4> epbad <4> fbad <4>; adopt <4> adiff <4>` deletes this page. One SubagentHandback.
