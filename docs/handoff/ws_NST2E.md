@@ -1,4 +1,4 @@
-# ws_NST2E (Haiku): the units of the 6 direct-draw runners feed nd_ds (stage S3; counter: dschk bad not higher)
+# ws_NST2E (Haiku): the units of the 6 direct-draw runners feed nd_ds (stage S3; counter: dschk fbad not higher)
 Designer: oracle NSTO. WAIT: branch from main after the NST2D merge. Worktree build3ds/wt/NST2E, branch NST2E. PM_ROW=NST2E PM_LANE=NST2E.
 Edit only: src/hud_element.c, src/msg_draw.c, src/screen_overlays.c, src/screen_render_util.c, src/battle/190B20.c, src/draw_img_util.c,
 src/msg.c, src/state_title_screen.c (1 line each in the last 5), 3ds/src/nd_direct.c, 3ds/include/nd_api.h, 3ds/tools/fxrest.d/dschk_base.txt.
@@ -25,10 +25,10 @@ src/msg.c, src/state_title_screen.c (1 line each in the last 5), 3ds/src/nd_dire
    const int full = (int)(r->full_and_id & 1u); if (full) NDST_CC(...); NDVAL_PRIM(...); NDTX_RECT_W(...); *o = nrp; }` (the same 3 lines).
 5. nd_api.h: declare `void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c, core 1 */`. Remove the local copy in src/sprite.c only
    when it conflicts (else leave it).
-## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 6 Azahar starts)
+## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 4 Azahar starts)
 1. Edits 1-5. `sh 3ds/tools/nd_host_test.sh` PASS (no new case: the edit moves unit writes). Commit `NST2E 1: the 6 direct-draw runners feed nd_ds`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2E --bench the same 2: LOOP PASS, byte-equal.
-3. bench.py run the 4 dschk scenes; grep their dschk lines > build3ds/out/nst2e_dschk.txt. Pass: each scene's last bad is not higher than
+3. bench.py run the 2 dschk scenes spot_mac01_dschk and fxchk_a_dschk; grep their dschk lines > build3ds/out/nst2e_dschk.txt. Pass: each scene's last fbad is not higher than
    dschk_base.txt (the direct path still differs; row NST2F adopts it). Write the grep into dschk_base.txt.
-## Fix rights: the listed files; compile errors. A DIFF (an emit changed a unit), a higher bad, a crash: stop, send the output path to oracle
-  NSTO. Wait. Stop: last commit `NST2E 2: gate. 2 benches byte-equal; dschk bad <4> (base <4>)` deletes this page. One SubagentHandback.
+## Fix rights: the listed files; compile errors. A DIFF (an emit changed a unit), a higher fbad, a crash: stop, send the output path to oracle
+  NSTO. Wait. Stop: last commit `NST2E 2: gate. 2 benches byte-equal; dschk fbad <2> (base <2>)` deletes this page. One SubagentHandback.

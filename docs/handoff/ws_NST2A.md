@@ -19,14 +19,17 @@ branch NST2A. PM_ROW=NST2A PM_LANE=NST2A. Edit only: 3ds/src/nd_ds.c, 3ds/includ
 3. nd_rec.c nd_rec_nr: when `(w0 >> 24) == NDO_CALL` call `nd_ds_list(&nd_ds, (const void*)(uintptr_t)w1, 1)` after nd_ds_apply.
 4. nd_ds_test.c: one case: a raw typed list {PRIM, CALL(list B), END} with B = {ENV, END}: nd_ds_list sets prim and env. Fault case:
    B without its ENV must fail the expected table.
-## Steps (each output to build3ds/out/, read the last 20 lines)
-1. Edits 1-4. Host test. Commit `NST2A 1: static lists feed nd_ds (nd_ds_list)`.
-2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2A --bench spot_mac01_drec,wscmb_pause_drec.
-3. bench.py run for the 4 dschk scenes (azt.d/NST3.json). grep their dschk lines > build3ds/out/nst2a_dschk.txt. After a pass,
-   write the same grep (form of NST3 step 3) into 3ds/tools/fxrest.d/dschk_base.txt (replace) and commit it: the next NST2 row reads it.
-## Tests that decide (1 build, 6 Azahar starts)
-- Host PASS. LOOP PASS (both benches byte-equal: core 0 does not change).
-- In each of the 4 scenes the last `dschk f` or `dschk end` line has bad not higher than in dschk_base.txt, and the sum of bad of the
-  4 scenes is lower. Write the 4 values into the stop commit text.
-## Fix rights: the listed files. A higher bad in any scene, a crash, a DIFF: stop, send the output path to the oracle. Wait.
-## Stop: last commit `NST2A 2: gate. 2 benches byte-equal; dschk bad <4 values> (base <4 values>)` deletes this page. One SubagentHandback.
+5. Correction (oracle NSTO, round 1): bad == cmds in every scene of the NST3 base (FACT: ds_fields compares tst1 as one block, one
+   member differs from f1). nd_ds.c ds_fields: replace DSW(tst1) with one entry per NdTst member (nd.h:118-133):
+   `#define DST(f) { "tst1." #f, offsetof(NdDs, w.tst1.f), sizeof(((NdDs*)0)->w.tst1.f) }`. nd_dschk.c: `static unsigned dk_fbad;`,
+   `dk_fbad += (unsigned)nb;` after nd_ds_cmp, ` fbad %u` at the end of the 100-frame line and the end line.
+## Steps (each output to build3ds/out/, read the last 20 lines). State: branch NST2A has dede6113b7 (edits 1-4, host PASS, LOOP PASS).
+1. `git switch -c NST2A0 60182a2edd`. Edit 5. Host test. Commit `NST2A 0: dschk names the tst1 members; fbad`. `sh 3ds/build.sh`.
+   bench.py run spot_mac01_dschk and fxchk_a_dschk. Grep their dschk lines > build3ds/out/nst2a_base2.txt.
+2. `git switch NST2A`, `git cherry-pick <NST2A 0>`. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged).
+   rowloop --row NST2A --bench spot_mac01_drec,wscmb_pause_drec. bench.py run the same 2 dschk scenes > build3ds/out/nst2a_dschk.txt.
+## Tests that decide (2 builds, 6 Azahar starts)
+- Host PASS. LOOP PASS (both benches byte-equal). In both scenes the last `dschk f`/`dschk end` fbad is lower than nst2a_base2.txt.
+- Pass: write the grep of nst2a_dschk.txt (with the `dschk bad` name lines) into 3ds/tools/fxrest.d/dschk_base.txt (replace). Commit it.
+## Fix rights: the listed files. A higher fbad, a crash, a DIFF: stop, send both output paths to oracle NSTO. Wait.
+## Stop: last commit `NST2A 2: gate. 2 benches byte-equal; dschk fbad <2> (base <2>)` deletes this page. One SubagentHandback.
