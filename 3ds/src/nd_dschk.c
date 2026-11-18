@@ -54,6 +54,7 @@ unsigned char nd_dschk_hit; /* NST2b: set by hit_apply (nd_recs.c) when core 0 t
 static void hit_adopt(const NdDs* c) {
     nd_ws.timg = c->w.timg; nd_ws.tlut = c->w.tlut; nd_ws.tlut_n = c->w.tlut_n;
     nd_ws.tst1 = c->w.tst1;
+    memcpy(nd_ws.td, c->w.td, sizeof nd_ws.td); /* NDR0B: the texture descriptors */
     nd_ws.omode_h = (nd_ws.omode_h & ~(3u << G_MDSFT_TEXTFILT)) | (c->w.omode_h & (3u << G_MDSFT_TEXTFILT));
     nd_tm = c->tm;
     memcpy(lt, c->lt, sizeof lt);
@@ -67,6 +68,7 @@ static void dir_adopt(const NdDs* c) {
     nd_ws.omode_h = c->w.omode_h; nd_ws.omode_l = c->w.omode_l; nd_ws.om_kh = c->w.om_kh; nd_ws.om_kl = c->w.om_kl;
     nd_ws.comb_w0 = c->w.comb_w0; nd_ws.comb_w1 = c->w.comb_w1;
     nd_ws.tst1 = c->w.tst1; nd_ws.use_t1 = c->w.use_t1;
+    memcpy(nd_ws.td, c->w.td, sizeof nd_ws.td); /* NDR0B: the texture descriptors */
     nd_ws.prim = c->w.prim; nd_ws.prim_lod = c->w.prim_lod; nd_ws.envc = c->w.envc;
     nd_ws.timg = c->w.timg; nd_ws.tlut = c->w.tlut; nd_ws.tlut_n = c->w.tlut_n;
     nd_tm = c->tm;

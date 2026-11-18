@@ -172,6 +172,22 @@ static unsigned ds_tile(NdDs* s, u32 a, u32 b) {
     SET(t->tile_shift[tile][1], (b >> 10) & 15);
     return ch;
 }
+static void ds_td0(NdDs* s, int uls, int ult, int lrs, int lrt) {   /* set_tilesize tile 0 (nd_tex_set.c:158-213) */
+    NdTst* t = &s->w.tst1; NdTd* d = &s->w.td[0]; NdWin wn;
+    tex_win0(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
+    if (!wn.src || wn.w <= 0 || wn.h <= 0) return;
+    if (wn.h == 1 && (unsigned)(uintptr_t)s->w.timg - (unsigned)(uintptr_t)nuGfxZBuffer < 320u * 240u * 2u) return;
+    d->valid = 1; d->src = wn.src; d->fmt = t->tile_fmt[0]; d->siz = t->tile_siz[0]; d->w = wn.w; d->h = wn.h; d->stride = wn.stride;
+    d->x0 = uls >> 2; d->y0 = ult >> 2; d->pal_n = s->w.tlut_n;
+    d->pal = s->tm.tlut_pal[t->tile_pal[0] & 15] ? s->tm.tlut_pal[t->tile_pal[0] & 15] : s->w.tlut; }
+static void ds_td1(NdDs* s, int uls, int ult, int lrs, int lrt) {   /* tex_tile1 (nd_tex_set.c:464-482) */
+    NdTst* t = &s->w.tst1; NdTd* d = &s->w.td[1]; NdWin wn;
+    tex_win1(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
+    d->valid = 0;
+    if (!wn.src || wn.w <= 0 || wn.h <= 0) return;
+    d->valid = 1; d->src = wn.src; d->fmt = t->tile_fmt[1]; d->siz = t->tile_siz[1]; d->w = wn.w; d->h = wn.h; d->stride = wn.stride;
+    d->x0 = wn.x0; d->y0 = ult >> 2; d->pal_n = s->w.tlut_n;
+    d->pal = s->tm.tlut_pal[t->tile_pal[1] & 15] ? s->tm.tlut_pal[t->tile_pal[1] & 15] : s->w.tlut; }
 static unsigned ds_tilesize(NdDs* s, u32 a, u32 b) {
     unsigned ch = 0, tile = (b >> 24) & 7;
     NdTst* t = &s->w.tst1;
@@ -185,10 +201,14 @@ static unsigned ds_tilesize(NdDs* s, u32 a, u32 b) {
     if (tile == 0 && s->dual_on) SET(s->dual_on, 0);
     if (tile == 1 && t->tile_fmt[1] == 2 && t->tile_siz[1] == 0 && s->tm.ld_valid && s->w.timg) {        /* tex_tile1 :453 */
         s->m1v = 1; s->m1w = ((lrs - uls) >> 2) + 1; s->m1h = ((lrt - ult) >> 2) + 1; }
+    if (tile == 1) ds_td1(s, uls, ult, lrs, lrt);                                                       /* tex_tile1 :468-481 */
     if (tile == 0) {                                                                                   /* tex_shaded0 :497 */
-        if (s->m1v && t->tile_fmt[0] == 2 && t->tile_siz[0] == 0 && t->tile_pal[0] != t->tile_pal[1] && t->comb_a == 1 && t->comb_c == 2 &&
-            s->m1w > 0 && s->m1h > 0) SET(s->dual_on, 1);  /* GUESS: load_shaded_sprite succeeds */
-        s->m1v = 0; }
+        s->w.td[0].valid = 0;                                                                          /* set_tilesize :153 */
+        const int sh = s->m1v && t->tile_fmt[0] == 2 && t->tile_siz[0] == 0 && t->tile_pal[0] != t->tile_pal[1] && t->comb_a == 1 && t->comb_c == 2 &&
+            s->m1w > 0 && s->m1h > 0; /* GUESS: load_shaded_sprite succeeds */
+        if (sh) SET(s->dual_on, 1);
+        s->m1v = 0;
+        if (!sh) ds_td0(s, uls, ult, lrs, lrt); }                                                       /* set_tilesize :158-213 */
     return ch;
 }
 
@@ -241,7 +261,13 @@ static unsigned ds_loadtlut(NdDs* s, u32 b) {
     SET(s->w.tlut, s->w.timg);
     SET(s->w.tlut_n, (int)count + 1);
     unsigned slot = (s->w.tst1.tile_tmem[tile] - 256u) >> 4;
-    if (slot < 16) SET(s->tm.tlut_pal[slot], s->w.timg);
+    if (slot < 16) {
+        SET(s->tm.tlut_pal[slot], s->w.timg);
+        for (int n = 0; n < 2; n++)                                                                    /* tlut_v20 :487-493 */
+            if (s->w.td[n].valid && s->w.td[n].fmt == 2 && (s->w.tst1.tile_pal[n] & 15) == slot && s->w.td[n].pal != s->w.timg) {
+                s->w.td[n].pal = s->w.timg;
+                s->w.td[n].pal_n = s->w.tlut_n; }
+    }
     return ch;
 }
 
@@ -432,7 +458,7 @@ typedef struct { const char* name; unsigned off, size; } NdDsField;
 #define DST(f) { "tst1." #f, offsetof(NdDs, w.tst1.f), sizeof(((NdDs*)0)->w.tst1.f) } /* NST2A: one entry per NdTst member */
 static const NdDsField ds_fields[] = {
     DSW(geom), DSW(omode_h), DSW(omode_l), DSW(prim), DSW(envc), DSW(fill), DSW(prim_z), DSW(om_kh), DSW(om_kl), DSW(prim_lod),
-    DSW(tex_on), DSW(timg), DSW(tlut), DSW(tlut_n), DSW(tex_ss), DSW(tex_ts), DSW(segbase), DSW(comb_w0), DSW(comb_w1), DSW(use_t1),
+    DSW(td), DSW(tex_on), DSW(timg), DSW(tlut), DSW(tlut_n), DSW(tex_ss), DSW(tex_ts), DSW(segbase), DSW(comb_w0), DSW(comb_w1), DSW(use_t1),
     DST(timg_fmt),
     DST(timg_siz),
     DST(timg_stride),
@@ -469,7 +495,7 @@ static const NdDsField ds_fields[] = {
 };
 
 static void ds_zero_draw(NdDs* s) {
-    memset(s->w.td, 0, sizeof s->w.td);
+    for (int n = 0; n < 2; n++) if (!s->w.td[n].valid) memset(&s->w.td[n], 0, sizeof s->w.td[n]);
     s->m1v = 0; s->m1w = 0; s->m1h = 0;
     s->w.tile_x0 = 0; s->w.tile_y0 = 0; s->w.tile_fx = 0.f; s->w.tile_fy = 0.f; s->w.cur_tile = 0;
     s->fogmix_on = 0;

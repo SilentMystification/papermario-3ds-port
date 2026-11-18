@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 int pm_wide;
+unsigned short* nuGfxZBuffer; /* NDR0B: the z-buffer address of the window rule in ds_td0 */
 int is_host(u32 p) { return p >= 0x00100000u; }
 void tex_win_s25(int* a, int* b, int* c, int* d, unsigned e, unsigned f, unsigned g, unsigned h) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; }
 /* NST2A: no device table and no v1 table in the host test (the list case below is a raw typed list). */
@@ -213,6 +214,36 @@ int main(int argc, char** argv) {
         printf("nst2f shaded bad %u\n", hb);
         bad += (int)hb; nf += (int)hf;
 #undef C6
+    }
+    /* NDR0B: the texture descriptors. Case tlut: td[0] valid, fmt 2, pal A, tile_pal[0] 0, tmem 256; TIMG B; LOADTLUT moves td[0].pal to B
+     * (fault: tile_pal[0] 1, the slot differs, td[0].pal stays A). Case tile 1: td[1] equals tex_win1 on the same state. */
+    {
+        static NdDs tl, t1s;
+        static unsigned char palA[32];
+        unsigned rf = 0, rb = 0;
+#define C7(name, got, want) do { rf++; if ((uintptr_t)(got) != (uintptr_t)(want)) { rb++; printf("ndr0b BAD %s got %lx want %lx\n", name, (unsigned long)(uintptr_t)(got), (unsigned long)(uintptr_t)(want)); } } while (0)
+        memset(&tl, 0, sizeof tl);
+        nd_ds_apply(&tl, NDO_W0(NDO_TILE, 2u << 21 | 0x100u), (fault ? 1u : 0u) << 20);
+        tl.w.td[0].valid = 1; tl.w.td[0].fmt = 2; tl.w.td[0].pal = palA;
+        nd_ds_apply(&tl, NDO_W0(NDO_TIMG, 2u << 19 | 31u), 0x00300000u);
+        nd_ds_apply(&tl, NDO_W0(NDO_LOADTLUT, 0), 15u << 14);
+        C7("tlut td0 pal", tl.w.td[0].pal, 0x00300000u);
+        memset(&t1s, 0, sizeof t1s);
+        nd_ds_apply(&t1s, NDO_W0(NDO_TIMG, 2u << 19 | 31u), 0x00200000u);
+        nd_ds_apply(&t1s, NDO_W0(NDO_TILE, 2u << 21 | 0x40u), 1u << 24 | 1u << 20);
+        nd_ds_apply(&t1s, NDO_W0(NDO_LOADTILE, 0), 1u << 24 | 124u << 12 | 124u);
+        nd_ds_apply(&t1s, NDO_W0(NDO_TILESIZE, 0), 1u << 24 | 124u << 12 | 124u);
+        {
+            NdWin w1;
+            tex_win1(&t1s.w.tst1, &t1s.tm, t1s.w.timg, 0, 0, 124, 124, &w1);
+            C7("t1 valid", t1s.w.td[1].valid, !!(w1.src && w1.w > 0 && w1.h > 0));
+            C7("t1 src", t1s.w.td[1].src, w1.src);
+            C7("t1 w", t1s.w.td[1].w, w1.w); C7("t1 h", t1s.w.td[1].h, w1.h);
+            C7("t1 stride", t1s.w.td[1].stride, w1.stride); C7("t1 x0", t1s.w.td[1].x0, w1.x0);
+        }
+        printf("ndr0b cases 2 bad %u\n", rb);
+        bad += (int)rb; nf += (int)rf;
+#undef C7
     }
     printf("nst2c fields %d bad %d\n", nf, bad);
     printf("nst1 fields %d bad %d\n", nf, bad);
