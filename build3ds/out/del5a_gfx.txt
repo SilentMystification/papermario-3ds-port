@@ -1,0 +1,1 @@
+3ds/src/nd_shape.c:948:Gfx ent_flat_buf[ND_DLC_MAXOPS + 1];

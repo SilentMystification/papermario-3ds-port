@@ -1,0 +1,2 @@
+OK C:/Users/Andrew/Documents/GitHub/papermario-3ds-port/build3ds/wt/DEL5A/3ds/src/nd_shape.c 21
+OK C:/Users/Andrew/Documents/GitHub/papermario-3ds-port/build3ds/wt/DEL5A/3ds/include/nd_int.h 2
