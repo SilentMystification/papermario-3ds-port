@@ -182,7 +182,7 @@ static void conv(const GSym* g) {
 
 /* ---- CONV2C: the v2 tables (nd_gtab.h NdNOp / NdNTab) of the self-contained lists. One walk over the typed units of a list, with the calls inlined (a
  * called list runs on the state of its call point, and the state it leaves stays), tracks the state groups of an NdPsoDesc, the tile state of tile 0
- * (the walker's set_tile / set_loadtile / set_loadblock / set_timg / set_loadtlut / set_tilesize rules, tex_win0 of nd_texwin.c), the matrices and the
+ * (the walker's set_tile / set_loadtile / set_loadblock / set_timg / set_loadtlut / set_tilesize rules, nd_texw0 of nd_texwin.c), the matrices and the
  * colours. A list that reaches a triangle before it has set a combine, the cycle bits of other mode H and G_TEXTURE inherits state from its caller:
  * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights outside a Lights1 symbol, image and marker units, tile 1, an
  * address outside the set) gets none either (ntab_unsup.txt, the reason). There is never a v1 fallback inside a v2 table. ---- */
@@ -388,7 +388,7 @@ static void v2_tilesize(V2St* s, unsigned k, unsigned tile, int uls, int ult, in
         s->td1_valid = 0;
         if (!s->timg_ok) { v2_unsup("texture image outside the set", k); return; }
         NdWin wn;
-        tex_win1(&s->t, &s->m, s->timg, uls, ult, lrs, lrt, &wn);
+        nd_texw1(&s->t, &s->m, s->timg, uls, ult, lrs, lrt, &wn);
         if (wn.src && wn.w > 0 && wn.h > 0) {
             const unsigned pi = s->t.tile_pal[1] & 15u;
             NdBindDesc* d = &s->td1;
@@ -404,7 +404,7 @@ static void v2_tilesize(V2St* s, unsigned k, unsigned tile, int uls, int ult, in
     s->td_valid = 0;
     if (!s->timg_ok) { v2_unsup("texture image outside the set", k); return; }
     NdWin wn;
-    tex_win0(&s->t, &s->m, s->timg, uls, ult, lrs, lrt, &wn);
+    nd_texw0(&s->t, &s->m, s->timg, uls, ult, lrs, lrt, &wn);
     if (wn.src && wn.w > 0 && wn.h > 0 && (wn.h > 1 || (unsigned)(uintptr_t)s->timg - (unsigned)(uintptr_t)nuGfxZBuffer >= 320u * 240u * 2u)) {
         const void* pal = s->t.tile_pal[0] < 16u && s->m.tlut_pal[s->t.tile_pal[0] & 15] ? s->m.tlut_pal[s->t.tile_pal[0] & 15] : s->tlut;
         NdBindDesc* d = &s->td;

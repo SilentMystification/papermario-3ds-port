@@ -175,7 +175,7 @@ static unsigned ds_tile(NdDs* s, u32 a, u32 b) {
 }
 static void ds_td0(NdDs* s, int uls, int ult, int lrs, int lrt) {   /* set_tilesize tile 0 (nd_tex_set.c:158-213) */
     NdTst* t = &s->w.tst1; NdTd* d = &s->w.td[0]; NdWin wn;
-    tex_win0(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
+    nd_texw0(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
     if (!wn.src || wn.w <= 0 || wn.h <= 0) return;
     if (wn.h == 1 && (unsigned)(uintptr_t)s->w.timg - (unsigned)(uintptr_t)nuGfxZBuffer < 320u * 240u * 2u) return;
     d->valid = 1; d->src = wn.src; d->fmt = t->tile_fmt[0]; d->siz = t->tile_siz[0]; d->w = wn.w; d->h = wn.h; d->stride = wn.stride;
@@ -183,7 +183,7 @@ static void ds_td0(NdDs* s, int uls, int ult, int lrs, int lrt) {   /* set_tiles
     d->pal = s->tm.tlut_pal[t->tile_pal[0] & 15] ? s->tm.tlut_pal[t->tile_pal[0] & 15] : s->w.tlut; }
 static void ds_td1(NdDs* s, int uls, int ult, int lrs, int lrt) {   /* tex_tile1 (nd_tex_set.c:464-482) */
     NdTst* t = &s->w.tst1; NdTd* d = &s->w.td[1]; NdWin wn;
-    tex_win1(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
+    nd_texw1(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
     d->valid = 0;
     if (!wn.src || wn.w <= 0 || wn.h <= 0) return;
     d->valid = 1; d->src = wn.src; d->fmt = t->tile_fmt[1]; d->siz = t->tile_siz[1]; d->w = wn.w; d->h = wn.h; d->stride = wn.stride;

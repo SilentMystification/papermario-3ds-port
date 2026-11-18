@@ -191,7 +191,7 @@ static void check_tab(const char* name, const NdGTab* t, unsigned nu) {
 /* ---- CONV2C: the host compare of the v2 tables (nd_gtab.h NdNTab). Compiled with -DNTAB_V2 by 3ds/tests/host.d/conv2c.sh, linked with nd_ntab_idx.c, nd_decide.c,
  * nd_tmpl.c, nd_texwin.c and pm_comb.c. For every v2 table the v1 table of the same list is walked as the v1 path walks it (the NdGDef words and the unit ops, the
  * calls of the callee tables), on the reset walker state (all zero: a self-contained list needs no other), by a state model written here from the walker's setters
- * (op_setcombine, set_tile, set_loadtile, set_loadblock, set_timg, set_loadtlut, set_tilesize; tex_win0 of nd_texwin.c is the one shared function). The model gives, per
+ * (op_setcombine, set_tile, set_loadtile, set_loadblock, set_timg, set_loadtlut, set_tilesize; nd_texw0 of nd_texwin.c is the one shared function). The model gives, per
  * triangle: the vertex array and the three absolute indices, the pipeline description (nd_pso_build output bytes and the description bytes), the tile 0 bind
  * descriptor; and the transform and colour op sequences. The table is replayed the same way. Any difference counts in bad.
  * --fault: one NDN_COL value + 1 in the compare's copy (the compare must then report bad above 0). ---- */
@@ -283,7 +283,7 @@ static void m_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
     if (tile == 1) {
         ms.td1_valid = 0;
         NdWin w1;
-        tex_win1(&ms.t, &ms.m, ms.timg, uls, ult, lrs, lrt, &w1);
+        nd_texw1(&ms.t, &ms.m, ms.timg, uls, ult, lrs, lrt, &w1);
         if (w1.src && w1.w > 0 && w1.h > 0) {
             const unsigned pi = ms.t.tile_pal[1] & 15u;
             NdBindDesc* d = &ms.td1;
@@ -299,7 +299,7 @@ static void m_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
     if (tile != 0) return;
     ms.td_valid = 0;
     NdWin w;
-    tex_win0(&ms.t, &ms.m, ms.timg, uls, ult, lrs, lrt, &w);
+    nd_texw0(&ms.t, &ms.m, ms.timg, uls, ult, lrs, lrt, &w);
     if (!(w.src && w.w > 0 && w.h > 0 && (w.h > 1 || (unsigned)(uintptr_t)ms.timg - (unsigned)(uintptr_t)nuGfxZBuffer >= 320u * 240u * 2u))) return;
     const unsigned pi = ms.t.tile_pal[0] & 15u;
     NdBindDesc* d = &ms.td;
