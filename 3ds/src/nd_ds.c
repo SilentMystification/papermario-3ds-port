@@ -472,8 +472,7 @@ void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, N
     if (q[22]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[22], NULL); /* NST2D: custom gfx pre (R11, nd_range_run) */
     if (q[18]) nd_ds_apply(s, q[18], q[19]);
     if (q[20]) nd_ds_apply(s, q[20], q[21]);
-    s->sc_lost = 1; /* NST2J: the model runner leaves sc_ok 0 before the post range */
-    if (q[23]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[23], NULL); /* NST2D: custom gfx post */
+    s->sc_lost = 1; /* NST2J: the model runner leaves sc_ok 0 before the post range NREC1A: the caller applies the post range */
 }
 #undef T
 #undef FOGP
