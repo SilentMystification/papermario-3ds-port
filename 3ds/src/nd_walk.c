@@ -369,6 +369,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
         if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
         break;
     case NDO_RECT:
+        if (nd_ls_on) nd_lsr_rect++; /* NCONV2C */
         if (!(b & NDO_RECT_TEX)) nd_fillrect(a, b);
         else if (at + 4 < e) { nd_texrect(a, b & 0x07ffffffu, at[3], at[5]); r = 2; } /* D10b: the op and its two RDPHALF units */
         break;
@@ -466,7 +467,7 @@ void nd_parts_run(const uint32_t* u) {
     if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4 */
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); nd_lsr_noep(); /* NREC4; NCONV2C: a parts run keeps its units */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
@@ -516,7 +517,7 @@ void nd_parts_run_v(const uint32_t* u) {
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     const unsigned dbg = pm_walk_dbg;
     pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4 */
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); nd_lsr_noep(); /* NREC4; NCONV2C: a parts run keeps its units */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;

@@ -35,6 +35,7 @@ typedef void (*NdDsUnitFn)(NdDs* s, uint32_t w0, uint32_t w1);
 void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit);
 /* NST2C: one typed unit into the core 1 state (ds_unit of nd_rec.c: nd_ds_apply, the ND_FS_CALL list, the ep rule). */
 void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1);
+unsigned nd_ds_ep_rule(uint32_t w0, unsigned ch, int lost, int dirty); void nd_lsc_ep(void); /* NCONV2C: nd_ds.c; nd_snap.c */
 /* NST2C: the state units of a record fed to core 1 (nd_rec.c: each unit by nd_ds_unit; syncs skipped). */
 void nd_ds_feed(const uint32_t* u, unsigned n);
 /* NST2C: the units of a parts record (nd_parts_end layout: u[0] = n | pre << 8 | m << 16); the list call at index pre has no state. */

@@ -13,7 +13,7 @@
 #include "nd_dual.h"
 #include "macros.h"
 #include "nd_fs.h"
-unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */ __attribute__((weak)) void nd_lsc_tris(unsigned n) { (void)n; } /* NREC4 */
+unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */ __attribute__((weak)) void nd_lsc_tris(unsigned n) { (void)n; } /* NREC4 */ __attribute__((weak)) void nd_lsc_ep(void) {} /* NCONV2C */
 
 extern int pm_wide;  /* nd_set.c set_scissor: the wide sign rule */
 int is_host(u32 p);  /* nd_walk.c: the range test of ptr_res */
@@ -398,6 +398,14 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
  * a v2 table its units nt->u (nu pairs); a v1 table its ops in gt_ops order (NDG_DEF d.u, NDG_UNIT, NDG_CALL); any other list its typed
  * pairs to ND_FS_END (at most DS_LIST_MAX). A call unit recurses at depth + 1 (ND_LIST_DEPTH 12, nd_walk.c); a call with w0 bit 0 (the
  * branch form) ends the list that holds it. */
+/* NCONV2C: the ep rule of one applied unit (moved from nd_rec.c nd_ds_unit): the first rule that fires, 0 none. ch: nd_ds_apply's result; lost, dirty: before the unit. */
+unsigned nd_ds_ep_rule(uint32_t w0, unsigned ch, int lost, int dirty) { const unsigned id = w0 >> 24;
+    if ((ch & 1u) && id != ND_FS_VTX && id != ND_FS_TRI1 && id != ND_FS_TRI2 && id != ND_FS_MTX && id != ND_FS_POPMTX) return 1u;
+    if ((lost && (id == ND_FS_OMH || id == ND_FS_PRIM || id == ND_FS_ENV)) || ((lost || dirty) && (id == ND_FS_TEXTURE || id == ND_FS_COMB))) return 2u;
+    if (id == ND_FS_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) return 3u;
+    if ((id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT) || id == ND_FS_FILL || id == ND_FS_PRIMZ || id == ND_FS_SCISSOR || id == ND_FS_RARE) return 6u;
+    if (id == ND_FS_MW && ((w0 & 0xffffffu) >> 16) != ND_FS_MW_LIGHTCOL) return 7u;
+    return (id == ND_FS_RECT || (id == ND_FS_MISC && w0 != ND_NOP_A && ((w0 & 0xffffffu) >> 16) != ND_FS_MISC_MODVTX)) ? 8u : 0u; }
 #define DS_LIST_MAX 200000u
 #define DS_LIST_DEPTH 12u
 static void ds_list_at(NdDs* s, uint32_t w, unsigned depth);
@@ -411,8 +419,8 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
             ds_list_at(s, w1, depth + 1u);
             if (w0 & 1u) return;
         } else {
-            nd_ds_apply(s, w0, w1);
-            if (nd_lsc_on) nd_lsc_unit(w0);
+            const int lost = s->sc_lost, dirty = s->sc_dirty; const unsigned ch = nd_ds_apply(s, w0, w1);
+            if (nd_lsc_on) { if (nd_ds_ep_rule(w0, ch, lost, dirty)) nd_lsc_ep(); nd_lsc_unit(w0); } /* NCONV2C */
         }
     }
 }
