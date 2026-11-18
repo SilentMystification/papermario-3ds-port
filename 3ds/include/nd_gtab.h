@@ -77,7 +77,7 @@ typedef const void* NdLst; /* FXTYPE: a list handle (NDN(x) or a list name); nd_
 /* S7RUN: the static list call from a table. nd_rec_dl(list) replaces gSPDisplayList(gMainGfxPos++, list) at a call site (push form). When the
  * list has a table (nd_gtab_find, memo of the last 8 lookups) it records one NDC_NAPI record {nd_gtab_run, table, state-only flag}; else it writes
  * the G_DL unit as the macro did (counted). Core 1. nd_gtab_run (nd_walk.c, core 0) draws the table: a state-only list (what rec_inline records in
- * line) as G_PM_LST and its state ops; any other list through the walker's G_DL arms (ent_gdl, dlc_try), else its ops. */
+ * line) as G_PM_LST and its state ops; any other list through the walker's G_DL arms (ent_gdl, nd_sg_try), else its ops. */
 void nd_rec_ntab(const void* list); /* DEL5B2: was nd_rec_dl */
 void nd_ntab_rec(const uint32_t* rec); void nd_ntab_rec_e(const uint32_t* rec); /* GKEY2: rec[0] = const NdNDev* */
 
@@ -119,7 +119,7 @@ typedef struct NdNDev { const void* list; uint32_t fl; const uint32_t* u; uint32
 void nd_rec_ndev(const NdNDev* e); /* MESHST: record a built NdNDev (nd_mesh.h): it runs as nd_ntab_rec, no list key, no cache */
 /* NTABFIND: the record of nd_rec_ndev holds a copy of the entry, not its address. Core 0 runs the record after core 1 goes on, and the owner
  * changes the entry first: imgfx.c imgfx_cache_instance_data and imgfx_load_anim set gfxDev[i].list to NULL (then gt_run gave ent_gdl(NULL) and
- * ent_flat read 0x0..0x7FFC), imgfx_init allocates ImgFXInstances again, animator.c frees a mesh later. rec[0] 0, rec[1] 0 (not state-only),
+ * nd_eg_flat read 0x0..0x7FFC), imgfx_init allocates ImgFXInstances again, animator.c frees a mesh later. rec[0] 0, rec[1] 0 (not state-only),
  * rec[2] the call site, rec[3] 0 (no entry), rec[4..8] the NdNDev, rec[9] 0. nd_ndev_rec (nd_walk.c, core 0) runs the copy as nd_ntab_rec. */
 #define ND_NDEV_REC_UNITS 5u
 _Static_assert(sizeof(NdNDev) == 20u, "NTABFIND: the record holds the 5 words of an NdNDev");
@@ -134,5 +134,5 @@ extern const unsigned ndn_dev_n;
 const NdNDev* nd_ntab_find(const void* list);
 void nd_ntab_run(const NdNDev* e);
 unsigned nd_gt_state_only(const uint32_t* l); /* 1: the end within 64 units, every unit before it a state op or a sync */
-int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)); /* EMIT4: the ent_flat words of a v2 list from e->u (1 done, 0 refused) */
+int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)); /* EMIT4: the nd_eg_flat words of a v2 list from e->u (1 done, 0 refused) */
 #endif

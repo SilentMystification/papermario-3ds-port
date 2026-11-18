@@ -442,7 +442,7 @@ const NdMEnt* nd_mc_ent(unsigned i);                           /* S3N-7 diagnost
 void nd_mc_diag_take(unsigned o[15]);                          /* S3N-7: the miss classes of the window (0 new, 1 clr, 2 rec, 3 st, 4 hd, 5 gv, 6 same, 7 rcap, 8 ncap: stores refused), then reset them; table use */
 unsigned nd_mc_clears(void);
 /* PERF1: exclusive tick timers, one per producer class of the walk (pm_gpu.c). Sampled frames only (pm_ph_on). A region's ticks less the regions timed
- * inside it. rec: G_PM_REC (rec_run); ent: G_PM_ENT and ent_gdl; spr: the native sprite draw; dlc: dlc_try; sub: every native submit.
+ * inside it. rec: G_PM_REC (rec_run); ent: G_PM_ENT and ent_gdl; spr: the native sprite draw; dlc: nd_sg_try; sub: every native submit.
  * PROF2-5: pm_gpu.c keeps a 4-deep stack of u32 start ticks (pm_gpu_ndt_push) and the ticks of the inner regions, so a region's exclusive time is its
  * total less its children. NDT_B declares the flag v (a clean frame: one load of pm_ph_on, no call, no timer struct); NDT_E pops into class k.
  * NDT_BD is the walker form: the PH bit of the walker debug word (one register test). */

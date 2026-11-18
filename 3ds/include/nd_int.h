@@ -55,7 +55,7 @@ int pm_gpu_spr_native(const uint32_t* rec);
 /* ---- W: globals and prototypes of the walker helpers that stayed in the former pm_gbi.c (moved with the group) ---- */
 const float (*pm_gbi_combined_ptr(void))[4];
 int clip_bits4(const float* p);
-int dlc_try(const void* l);
+int nd_sg_try(const void* l);
 int ent_draw(const Gfx* rec);
 int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
 #define gp_on() (pm_ph_cen) /* PG0 and PERF-GBI counters: phase mode only (PROF2-2: not in a prof sample) */
@@ -168,7 +168,7 @@ extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor
 int ent_gdl(const Gfx* l);
 extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
-extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside ent_run; full combine and render syncs and walks run there (entsync line) */
+extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside nd_eg_run; full combine and render syncs and walks run there (entsync line) */
 
 
 /* ---- T: texture group (plan_s10_path TX). TX-1 cut the setters to nd_tex.c; globals not yet moved stay in the former pm_gbi.c (extern here). ---- */
@@ -346,12 +346,12 @@ void dlc_reset(void);
 unsigned dlc_gmi(void);
 int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi);
 void ent_reset(void);
-void ent_compile(EntKey* k, const Gfx* l0);
+void nd_eg_build(EntKey* k, const Gfx* l0);
 EntKey* ent_lookup(const Gfx* l, u32 vb);
 EntKey* ent_find(const Gfx* l, u32 vb);
 int ent_seg_native(const EntKey* k, const EntSeg* s);
 void ent_log(void);
-int ent_run(const Gfx* l, EntKey* k, u32 segid);
+int nd_eg_run(const Gfx* l, EntKey* k, u32 segid);
 u32 ent_segkey(void);
 int entchk_on(void);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx);

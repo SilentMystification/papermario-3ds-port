@@ -199,7 +199,7 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
     pm_log("orbdbg enter f%u tag %u", pm_frame_count(), t);
 }
 /* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
- * static list goes to the entity path (ent_gdl) or a compiled map shape (dlc_try); else the list runs on the op executor with the sync state
+ * static list goes to the entity path (ent_gdl) or a compiled map shape (nd_sg_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_nr_list), inside a list nested. */
 static void nr_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     Gfx* next = (Gfx*)ptr_of(w1);
@@ -210,7 +210,7 @@ static void nr_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     const unsigned ot = orb_tag;
     int ow = 0; /* FX1-3: a tagged list under orbdbg runs on the executor (no ent or DLC path) */
     if (__builtin_expect(dbg & WD_ORB, 0) && PMDL("orbdbg")) { unsigned t = orb_tag_of(next); if (t) { orb_enter(t); ow = 1; } }
-    int ring = 0; /* PBATCH1: a particle list (ent_gdl -1) runs on the op executor, not dlc_try */
+    int ring = 0; /* PBATCH1: a particle list (ent_gdl -1) runs on the op executor, not nd_sg_try */
     if (ent_skipgen) ent_skipgen = 0;
     else if (!ow && dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
         NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
@@ -218,7 +218,7 @@ static void nr_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
         if (eh < 0) ring = 1;
     }
     if (!ow && dlc_on && !ring) {
-        NDT_BD(td, dbg); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
+        NDT_BD(td, dbg); int dh = nd_sg_try(next); NDT_E(td, NDT_DLC);
         if (dh) return;
     }
     if (!ex_depth) { if (nt) nd_nr_list(nt->u, nt->nu, 1); else nd_nr_list(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
@@ -506,7 +506,7 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
 /* S7RUN (nd_gtab.h nd_rec_dl): the core 0 runner of one static list call from its table. rec[0] = the table, rec[1] = the state-only flag.
  * Arm rule (the commit names it): a state-only list (nd_rec.c rec_inline: fewer than 64 units, all state ops) never reached the walker's G_DL arms,
  * so it runs as G_PM_LST and its ops (the list start of that unit: gv_epoch, ent_skipgen, gp_prev_op); any other list takes the arms of nr_call
- * in its order (ent_skipgen, ent_gdl, dlc_try) and, when neither draws it, the list start of nd_nr_list (keep) and its table ops. A def whose value
+ * in its order (ent_skipgen, ent_gdl, nd_sg_try) and, when neither draws it, the list start of nd_nr_list (keep) and its table ops. A def whose value
  * units all precede the statics (nv == pre, the S6E rule of ent_gap) runs compiled, else as units. A debug walk (pm_walk_dbg) runs the G_DL unit on
  * the walker so its census hooks see the list. Vertex and triangle ops are the walker's typed units (nr_geo), so clip, cull, lit loads and the
  * ring stay the walker's. */
@@ -545,7 +545,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
         if (eh > 0) { nd_gtr_ent++; return; }
         if (eh < 0) ring = 1;
     }
-    if (dlc_on && !ring && dlc_try(next)) { nd_gtr_dlc++; return; }
+    if (dlc_on && !ring && nd_sg_try(next)) { nd_gtr_dlc++; return; }
     nd_gtr_ops++;
     const int d = ex_depth;
     gv_epoch++; /* GV1b */

@@ -39,17 +39,17 @@ static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
     rec_fogpos(pos);
 }
 /* HC4b (W3): the render mode list of index i as the typed ops of the render mode table (nd_rec.c, built by the recorder), run as the list ran
- * (nd_list_run: the list start rules, then the ops; dlc_try never took a render mode list: it is not map shape data). */
+ * (nd_list_run: the list start rules, then the ops; nd_sg_try never took a render mode list: it is not map shape data). */
 static __attribute__((noinline)) void rec_rm(unsigned i) {
     if (i >= ND_RM_N) return; /* HWFIX */
     nd_nr_list(nd_rm_tab[i], nd_rm_n[i], 0);
 }
-/* S3G-1: a model list of a record (the render mode list, the geometry): run as G_DL does (dlc_try first), else on the list executor
+/* S3G-1: a model list of a record (the render mode list, the geometry): run as G_DL does (nd_sg_try first), else on the list executor
  * (nd_list_run, D10c) to its G_ENDDL. */
 static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (!l) return;
     if (!is_host((u32)(uintptr_t)l)) { nd_bad_next((u32)(uintptr_t)l, ND_FS_W0(ND_FS_CALL, 0u), 0); return; }
-    if (dlc_on && dlc_try(l)) { /* DLC1: a compiled list, as G_DL */
+    if (dlc_on && nd_sg_try(l)) { /* DLC1: a compiled list, as G_DL */
         return;
     }
     nd_list_run(l);

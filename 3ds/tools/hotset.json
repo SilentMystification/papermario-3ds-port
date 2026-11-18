@@ -12,7 +12,7 @@
     "F": {"name": "vertex and triangle", "roots": ["nd_gv_tri", "pm_gpu_gtrip", "nd_geom_vtx", "nd_gv_params"]},
     "G": {"name": "texrect and fillrect", "roots": ["nd_trect_draw", "nd_tile_bind", "pm_gpu_tex_rect", "box_pattern_rect"]},
     "H": {"name": "sprite", "roots": ["nd_model_state_in", "pm_gpu_spr_build", "nd_comb_dec"]},
-    "I": {"name": "entity and dlc", "roots": ["dlc_try", "pm_gpu_grange", "dlc_box_out", "ent_run"]}
+    "I": {"name": "entity and dlc", "roots": ["nd_sg_try", "pm_gpu_grange", "dlc_box_out", "nd_eg_run"]}
   },
   "calls": {
     "log": ["^pm_log"],
