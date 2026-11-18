@@ -1,0 +1,28 @@
+#174 lsnap ent f35
+#206 snapchk bad f36 sl last 6
+#207 snapchk bad f36 sl last 6
+#211 snapchk bad f37 sl last 6
+#212 snapchk bad f37 sl last 6
+#217 snapchk bad f38 sl last 6
+#218 snapchk bad f38 sl last 6
+#220 snapchk bad f39 sl last 6
+#221 snapchk bad f39 sl last 6
+#286 snapchk f100 recs 536 cmp 1020 bad 107 fbad 107 miss 1020 wst 840
+#287 lsnap f100 lists 823 snaps 888 cmp 888 p1 888 bst 0 tmis 0 over 0
+#314 snapchk f200 recs 1336 cmp 2589 bad 207 fbad 207 miss 2589 wst 2409
+#315 lsnap f200 lists 2092 snaps 2257 cmp 2257 p1 2257 bst 0 tmis 0 over 0
+#350 snapchk f300 recs 2280 cmp 4125 bad 307 fbad 307 miss 4125 wst 3945
+#351 lsnap f300 lists 3292 snaps 3557 cmp 3557 p1 3557 bst 0 tmis 0 over 0
+#372 snapchk f400 recs 5780 cmp 6425 bad 407 fbad 407 miss 6425 wst 6245
+#373 lsnap f400 lists 4492 snaps 4857 cmp 4857 p1 4857 bst 0 tmis 0 over 0
+#378 partsrun f402 v 1 old 0
+#379 lsnap parts f402
+#426 snapchk f500 recs 9280 cmp 9025 bad 527 fbad 547 miss 9025 wst 8845
+#427 lsnap f500 lists 5825 snaps 6457 cmp 6457 p1 6157 bst 0 tmis 0 over 138
+#516 snapchk f600 recs 12780 cmp 11891 bad 693 fbad 779 miss 11891 wst 11711
+#517 lsnap f600 lists 7591 snaps 8323 cmp 8323 p1 7497 bst 0 tmis 0 over 276
+#552 partsrun f622 v 245 old 0
+#617 snapchk f700 recs 16280 cmp 14896 bad 793 fbad 879 miss 14896 wst 14716
+#618 lsnap f700 lists 9438 snaps 10328 cmp 10328 p1 8797 bst 0 tmis 0 over 2882
+#639 snapchk f800 recs 19780 cmp 17206 bad 893 fbad 979 miss 17206 wst 17026
+#640 lsnap f800 lists 10639 snaps 11638 cmp 11638 p1 10097 bst 0 tmis 0 over 2886

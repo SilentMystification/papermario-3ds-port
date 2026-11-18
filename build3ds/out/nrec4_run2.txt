@@ -1,0 +1,18 @@
+queue: position 1 of 1 waiting (lane 'NREC4', speed normal, scenario fxp_snapchk, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario fxp_snapchk, row NREC4, lane 'NREC4', slot 1, cap 30 s, deadline 25 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 25 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 1.6 s (deadline kind warm, 25 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 7s: matched 'lsnap f800 ' (Azahar running; stopped by this run) warm kept; until at 7.4 s; end at 7.9 s; 0.5 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: fxp_snapchk cap 30 until 7.4
+PASS  warp: #134 warp: mac_01 entry 0 (area 1 map 2) story -128 flag 0
+PASS  lsnap: #640 lsnap f800 lists 10639 snaps 11638 cmp 11638 p1 10097 bst 0 tmis 0 over 2886
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\azt\logs\fxp_snapchk.txt (copy of this run's log; slot 1)
+SUBJECT: NREC4 particle snaps: the 7 nd_parts_add effects (shimmer_burst 50, effect_3D 55, snowfall 63, snaking_static 81, water_block 84, embers 105, pink_sparkles 124) on mac_01 (pos 0 0 200), cold det start with the snapchk switch (no drec), no shots.
+SHOTS: 0 from this run
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC4\build3ds\lane-NREC4\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1857436, build 6867, commit 5577b7720a
+  scene -                              windows   0 fps - ft -
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+bench fxp_snapchk: azt.ps1 exit 0. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl.
