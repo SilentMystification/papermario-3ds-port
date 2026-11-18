@@ -78,17 +78,27 @@ static void tsten_emit(const NdTStenRec* r, uint32_t** o) {
     *o = nrp;
 }
 
+/* NDR2C: the pso of one transition stencil record (the words pm_tsten_run always set). core 1 takes it as the snap of nd_dir_rec. */
+void pm_tsten_pso(const uint32_t* u, NdPsoN64* pd) {
+    static const u32 cw_3a[2] = TST_CW(PM_CC_3A, PM_CC_3A), cw_full[2] = TST_CW(PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
+    const int full = (int)(((const NdTStenRec*)u)->full_and_id & 1u);
+    pd->cw0 = (full ? cw_full : cw_3a)[0];
+    pd->cw1 = (full ? cw_full : cw_3a)[1];
+    pd->oml = G_RM_CLD_SURF | G_RM_CLD_SURF2;
+    pd->omh = G_TT_NONE | G_TF_AVERAGE;
+    pd->omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+}
+
 /* core 0: the transition stencil rectangle. Direct when the tile 0 window of the image and the walker state allow it (the pso is the
  * combine of PM_CC_3A, or PM_CC_PRIM_FULL_ALPHA when full, with the stencil render mode); else the old ops run (combine, prim colour, rectangle). */
 void pm_tsten_run(const uint32_t* u) {
-    static const u32 cw_3a[2] = TST_CW(PM_CC_3A, PM_CC_3A), cw_full[2] = TST_CW(PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
     static const unsigned wrapT[3][4] = { { 2, 2, 6, 6 }, { 3, 2, 5, 6 }, { 3, 3, 5, 5 } };
     static const int strideT[3] = { 32, 16, 16 }, ldwT[3] = { 32, 16, 16 }, ldhT[3] = { 64, 64, 32 };
     static const int sizeT[3] = { 0xFC, 0xFC, 0xFC };
     static uint32_t buf[16];
     static unsigned n;
     const NdTStenRec* r = (const NdTStenRec*)u;
-    const int id = (int)((r->full_and_id >> 1) & 3u), full = (int)(r->full_and_id & 1u);
+    const int id = (int)((r->full_and_id >> 1) & 3u);
     const void* img = id == 0 ? (const void*)ui_stencil_mario_png : id == 1 ? (const void*)ui_stencil_star_png : (const void*)ui_stencil_sharp_circle_png;
     NdBindDesc d;
     NdPsoN64 pd;
@@ -97,11 +107,7 @@ void pm_tsten_run(const uint32_t* u) {
     int ok = 0, k;
 
     for (k = 0; k < 4; k++) wrap[k] = wrapT[id][k];
-    pd.cw0 = (full ? cw_full : cw_3a)[0];
-    pd.cw1 = (full ? cw_full : cw_3a)[1];
-    pd.oml = G_RM_CLD_SURF | G_RM_CLD_SURF2;
-    pd.omh = G_TT_NONE | G_TF_AVERAGE;
-    pd.omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT);
+    pm_tsten_pso(u, &pd);
     if (nd_tex_win_desc(&d, img, strideT[id], G_IM_FMT_I, G_IM_SIZ_4b, wrap, 0, 0, ldwT[id], ldhT[id], 0, 0, sizeT[id], sizeT[id], NULL, 0) &&
         nd_direct_ready() == 1) {
         NdPso pid = nd_pso_n64(&pd);
@@ -119,6 +125,7 @@ void pm_tsten_run(const uint32_t* u) {
     }
     if (ok) return;
 
+    nd_dir_drop(); /* NDR2C */
     tsten_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
