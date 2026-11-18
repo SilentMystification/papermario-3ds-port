@@ -6,17 +6,17 @@ The Core block is printed every turn by the UserPromptSubmit hook (.claude/setti
 
 <!-- CORE -->
 FACT/GUESS/OPEN on every number. Style: the global style hook. One reply per turn.
-EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply. Read ALL user messages of the turn. A state the user reports is fact. 1 Run `date` and ListAgents (the dispatcher runs or not). 2 You start no coder, oracle or merger: the dispatcher does (dispatcher.md). Order it with SendMessage. A dispatcher line gets one short line to the user: MERGED, FAULT, DECISION (take its default), CYCLE (start a fresh dispatcher). 3 No foreground command over 10 s. 4 CHAT: report only a merge, a fault, a user decision or a user answer. No echo of notices. 5 Object first if a directive looks wrong or costly. 6 PUSH: when a build of main is ready write ONE line `Build <commit> ready. Say the console.` No popup. On the user's word run the push_runbook.md command at once (-ip, -NoBuild). Never push without that word. 7 Never end a turn while the dispatcher waits on a job: ScheduleWakeup 10 min. 8 No console check until S9GATE merges. 9 SATURATE: every turn compare ListAgents with the quota of 5 coders. A free slot, or no design oracle writing the next pages, is a fault: order the dispatcher at once (dispatcher.md SATURATE). A coder waiting on a merge is not a reason to idle: pages are written ahead from the branch data.
+EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply. Read ALL user messages of the turn. A state the user reports is fact. 1 Run `date` and ListAgents (the dispatcher runs or not). 2 You start the coaches, design oracles and mergers (dispatcher.md holds the duties, no dispatcher agent runs). Keep build3ds/out/dispatch_state.md. A reply to the user is ONE line per merge, fault or decision (take its default). 3 No foreground command over 10 s. 4 CHAT: report only a merge, a fault, a user decision or a user answer. No echo of notices. 5 Object first if a directive looks wrong or costly. 6 PUSH: when a build of main is ready write ONE line `Build <commit> ready. Say the console.` No popup. On the user's word run the push_runbook.md command at once (-ip, -NoBuild). Never push without that word. 7 Never end a turn while a coach, coder or merger runs: ScheduleWakeup 10 min. 8 No console check until S9GATE merges. 9 SATURATE: every turn compare ListAgents with the quota of 5 coders. A free slot, or no design oracle writing the next pages, is a fault: start the work at once (dispatcher.md SATURATE). A coder waiting on a merge is not a reason to idle: pages are written ahead from the branch data.
 <!-- /CORE -->
 
 ## Roles
-- Orchestrator (Sonnet): talks to the user, starts and cycles the dispatcher, asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push), does the push. No game code, no debugging, no agent launches except the dispatcher.
-- Dispatcher (Haiku, dispatcher.md): owns the state file, the coder quota, the merger and all agent traffic.
+- Orchestrator (Sonnet): talks to the user, starts the coaches, design oracles and mergers (dispatcher.md duties), asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push), does the push. No game code, no debugging, no coder launches (a coach starts them).
+- Dispatcher: removed (coders and coaches report to the main chat anyway). Its duties in dispatcher.md belong to the orchestrator.
 - Oracle (Opus, oracle.md): a coach runs the coders of one chain, a design oracle writes pages and starts no agent. Never writes code. At most 2 design oracles at once.
 - Coders (Haiku, coder.md): implement and run ALL tests, ask their coach at the first failure. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
-- Dispatcher launches: label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
+- Orchestrator launches: label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
 - A coder prompt names its coach oracle id. The coder asks that coach.
 - Resume a finished agent when its context helps. Start a fresh one when it does not. Oracle context (about 500K) is a SOFT limit: never interrupt work because it is passed. Reuse an old oracle for work that fits its context. If an oracle is bloated and has no relevant work, do not resume it for new work: start a fresh one.
 - Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. A purely mechanical edit (same change at many sites) may go in `ws_<id>.patch` (`git apply`).
@@ -27,7 +27,7 @@ EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply. R
 - Bug, test, gate and code rules: CLAUDE.md rules 1 to 10. A tool fault stops the gate: read the tool source first. Never guess and check. No build or push in the foreground of the chat.
 - Memcheck margin above 0 KB is the real limit (soft).
 
-## Merge (the dispatcher's Haiku merger runs merge_protocol.md)
+## Merge (a Haiku merger started by the orchestrator runs merge_protocol.md)
 1. `sh 3ds/tools/merge_row.sh <row>` (main clean).
 2. Rebuild main in the background with `sh 3ds/build.sh` before a push.
 3. `postmerge_FAIL.txt` blocks merges (exit 8). Tool fault: fix with plain git, then `postmerge_bg.sh --queue`. Code fault: never override. A full pass on a newer commit clears it.

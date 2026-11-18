@@ -1,4 +1,4 @@
-# Dispatcher (the proxy agent). Edit in place.
+# Chain duties (once a Haiku dispatcher agent; now the ORCHESTRATOR does these duties itself, no dispatcher agent). Edit in place.
 
 Chain: orchestrator (Sonnet, talks to the user) -> dispatcher (Haiku, general-purpose) -> coach oracles (Opus) -> coders (Haiku). The dispatcher also starts mergers (Haiku) and design oracles (Opus, no children).
 Hand-backs go to the spawner: coders report to their coach, coaches and mergers report to the dispatcher. The orchestrator sees only the dispatcher.

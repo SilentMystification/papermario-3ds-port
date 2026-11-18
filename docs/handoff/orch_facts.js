@@ -62,11 +62,11 @@ function freePages() {
 
 if (mode === 'facts') { // orchestrator: main and the dispatcher state only. Agent traffic is the dispatcher's job.
   const lines = [];
-  lines.push('FACTS FROM DISK (orch_facts.js). Call ListAgents: the dispatcher must run. Agent detail is in the state file.');
+  lines.push('FACTS FROM DISK (orch_facts.js). Call ListAgents. Agent detail is in the state file.');
   lines.push('main ' + sh('git rev-parse --short HEAD') + (dirty.length ? ' DIRTY: ' + dirty.slice(0, 4).join(' | ') + (dirty.length > 4 ? ' ...' : '') : ' clean'));
   let st = '';
   try { st = fs.readFileSync(path.join(root, 'build3ds', 'out', 'dispatch_state.md'), 'utf8'); } catch (e) { /* none */ }
-  if (!st) lines.push('dispatch state: NONE (no dispatcher yet: start one from docs/handoff/dispatcher.md)');
+  if (!st) lines.push('dispatch state: NONE (write build3ds/out/dispatch_state.md from dispatcher.md)');
   else {
     const sl = st.split('\n').filter(Boolean);
     const n = (k) => sl.filter(l => l.startsWith(k + ' ')).length;
@@ -74,7 +74,7 @@ if (mode === 'facts') { // orchestrator: main and the dispatcher state only. Age
     const hold = sl.find(l => l.startsWith('HOLD '));
     lines.push('dispatch state: ' + (px || 'PROXY ?') + ', ' + n('RUN') + ' coders, ' + n('GATED') + ' gated, ' + n('WAIT') + ' waiting, ' + (hold || 'HOLD none'));
   }
-  { const pg = freePages(); lines.push('SATURATE: quota 5 coders. Worktrees with a branch: ' + wts.length + '. Free goal pages: ' + (pg.length ? pg.join(' ') : 'NONE') + '. Compare with ListAgents: a free slot, or no design oracle writing ahead, is a fault: order the dispatcher.'); }
+  { const pg = freePages(); lines.push('SATURATE: quota 5 coders. Worktrees with a branch: ' + wts.length + '. Free goal pages: ' + (pg.length ? pg.join(' ') : 'NONE') + '. Compare with ListAgents: a free slot, or no design oracle writing ahead, is a fault: start the work.'); }
   process.stdout.write(lines.join('\n') + '\n');
   process.exit(0);
 }
