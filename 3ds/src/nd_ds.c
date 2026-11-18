@@ -183,6 +183,12 @@ static unsigned ds_tilesize(NdDs* s, u32 a, u32 b) {
     SET(t->tile_sz[tile][2], lrs);
     SET(t->tile_sz[tile][3], lrt);
     if (tile == 0 && s->dual_on) SET(s->dual_on, 0);
+    if (tile == 1 && t->tile_fmt[1] == 2 && t->tile_siz[1] == 0 && s->tm.ld_valid && s->w.timg) {        /* tex_tile1 :453 */
+        s->m1v = 1; s->m1w = ((lrs - uls) >> 2) + 1; s->m1h = ((lrt - ult) >> 2) + 1; }
+    if (tile == 0) {                                                                                   /* tex_shaded0 :497 */
+        if (s->m1v && t->tile_fmt[0] == 2 && t->tile_siz[0] == 0 && t->tile_pal[0] != t->tile_pal[1] && t->comb_a == 1 && t->comb_c == 2 &&
+            s->m1w > 0 && s->m1h > 0) SET(s->dual_on, 1);  /* GUESS: load_shaded_sprite succeeds */
+        s->m1v = 0; }
     return ch;
 }
 
@@ -464,6 +470,7 @@ static const NdDsField ds_fields[] = {
 
 static void ds_zero_draw(NdDs* s) {
     memset(s->w.td, 0, sizeof s->w.td);
+    s->m1v = 0; s->m1w = 0; s->m1h = 0;
     s->w.tile_x0 = 0; s->w.tile_y0 = 0; s->w.tile_fx = 0.f; s->w.tile_fy = 0.f; s->w.cur_tile = 0;
     s->fogmix_on = 0;
 }

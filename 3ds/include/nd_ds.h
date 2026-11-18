@@ -20,6 +20,7 @@ typedef struct NdDs {
     int8_t lk[2][3];               /* look-at vectors */
     float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
     NdTexM tm;                     /* nd_tex_set.c nd_tm: the load side of the texture model */
+    int m1v, m1w, m1h;             /* NST2F: the shaded sprite record of tile 1 (m1.valid, m1.w, m1.h) */
 } NdDs;
 extern NdDs nd_ds;
 /* Applies one typed unit (w0 = id << 24 | a, w1 = b). Bit 0 of the result: a field value changed. Other ids change nothing. */

@@ -20,7 +20,18 @@ static int nf, bad;
 static void nd_model_unit(NdDs* s, uint32_t w0, uint32_t w1) { nd_ds_apply(s, w0, w1); }
 #define CHK(name, got, want) do { nf++; if ((unsigned long)(got) != (unsigned long)(want)) { bad++; printf("nst1 BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
 #define U(id, a, b) nd_ds_apply(&nd_ds, NDO_W0(id, a), (b))
-
+/* NST2F: the shaded sprite units on a zeroed NdDs. Tile 1 CI 4b pal 1 loaded (LOADTILE), TILESIZE tile 1 records m1; tile 0 CI 4b with pal0,
+ * COMB comb_a 1 and comb_c 2, TILESIZE tile 0 sets dual_on when pal0 differs from pal 1 (tex_shaded0 :497). */
+static void shaded_run(NdDs* s, unsigned pal0) {
+    memset(s, 0, sizeof *s);
+    nd_ds_apply(s, NDO_W0(NDO_TIMG, 0), 0x00200000u);
+    nd_ds_apply(s, NDO_W0(NDO_TILE, 2u << 21 | 0x40u), 1u << 24 | 1u << 20);
+    nd_ds_apply(s, NDO_W0(NDO_LOADTILE, 0), 1u << 24 | 124u << 12 | 124u);
+    nd_ds_apply(s, NDO_W0(NDO_TILESIZE, 0), 1u << 24 | 124u << 12 | 124u);
+    nd_ds_apply(s, NDO_W0(NDO_TILE, 2u << 21), pal0 << 20);
+    nd_ds_apply(s, NDO_W0(NDO_COMB, 1u << 20 | 2u << 15), 0);
+    nd_ds_apply(s, NDO_W0(NDO_TILESIZE, 0), 124u << 12 | 124u);
+}
 int main(int argc, char** argv) {
     int fault = argc > 1 && !strcmp(argv[1], "--fault");
     NdDs* s = &nd_ds;
@@ -189,6 +200,19 @@ int main(int argc, char** argv) {
         printf("nst2d cases 2 bad %u\n", rb);
         bad += (int)rb; nf += (int)rf;
 #undef C5
+    }
+    /* NST2F: pal0 0 (differs from tile 1 pal 1): dual_on 1 and m1 taken. pal0 1 (same pal): dual_on 0. */
+    {
+        static NdDs sh;
+        unsigned hf = 0, hb = 0;
+#define C6(name, got, want) do { hf++; if ((unsigned long)(got) != (unsigned long)(want)) { hb++; printf("nst2f BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
+        shaded_run(&sh, 0);
+        C6("shaded dual_on", sh.dual_on, 1); C6("shaded m1v", sh.m1v, 0);
+        shaded_run(&sh, 1);
+        C6("same pal dual_on", sh.dual_on, 0); C6("same pal m1v", sh.m1v, 0);
+        printf("nst2f shaded bad %u\n", hb);
+        bad += (int)hb; nf += (int)hf;
+#undef C6
     }
     printf("nst2c fields %d bad %d\n", nf, bad);
     printf("nst1 fields %d bad %d\n", nf, bad);
