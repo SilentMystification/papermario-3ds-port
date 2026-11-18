@@ -1,0 +1,6 @@
+LOOP DEL1D1 host rc 0, build rc 0, 41 s
+STAGE key-inputs 3 s STAGE slot-wait 0 s STAGE gen 24 s STAGE key 0 s STAGE asset-check 0 s STAGE romfs 0 s STAGE sync 1 s STAGE configure 0 s STAGE compile-link 7 s STAGE copy-out 1 s STAGE tail 2 s 
+
+cmp spot_mac01_drec: no stored base of spot_mac01_drec at e626a8ab5. Run: bench.py base spot_mac01_drec 
+LOOP TIME host+build 41 s, run+cmp 21 s, total 62 s
+LOOP FAIL: cmp, read build3ds/out/loop_DEL1D1_cmp_<bench>.txt
