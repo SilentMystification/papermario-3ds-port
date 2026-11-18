@@ -1,14 +1,11 @@
 # ws_NDR2A (Haiku): a fill record takes a core 1 snap of its pso state; snapchk compares it with nd_pso_decide (stage S4, measure; counter: none of C1-C12)
-Designer: oracle FIN. WAIT: branch from main after the NDR1C merge (snap_take(int zc) of NDR1C, sc_count of NDR0G2; NDR3 is merged: nd_rec_napi_s, the nd_snap.h include of nd_direct.c).
-Worktree build3ds/wt/NDR2A, branch NDR2A. PM_ROW=NDR2A PM_LANE=NDR2A. Edit only: 3ds/src/nd_snap.c, 3ds/include/nd_snap.h, 3ds/src/nd_direct.c, 3ds/include/nd_api.h, src/screen_overlays.c, src/battle/190B20.c, 3ds/tools/nd_direct_test.c (host stubs).
+Designer: oracle FIN. WAIT: branch from main after the NDR1C merge (snap_take(int zc) of NDR1C, sc_count of NDR0G2; NDR3 is merged: nd_rec_napi_s, the nd_snap.h include of nd_direct.c). Worktree build3ds/wt/NDR2A, branch NDR2A. PM_ROW=NDR2A PM_LANE=NDR2A. Edit only: 3ds/src/nd_snap.c, 3ds/include/nd_snap.h, 3ds/src/nd_direct.c, 3ds/include/nd_api.h, src/screen_overlays.c, src/battle/190B20.c, 3ds/tools/nd_direct_test.c (host stubs).
 ## Facts (code read, main 94901a28aa; find each line by its text)
 - nd_direct_bind (nd_direct.c:96-141) writes the pso words into the walker (omode_h by omh_m, omode_l but its low 3 bits, op_setcombine when the words differ or
   comb_set is 0, dual_on 0, prim, prim_lod 0, env), then decides with nd_pso_decide (:69, walker state). nd_ds.c ds_comb (:55) is the core 1 copy of op_setcombine.
-- The 3 fill producers record `nd_rec_napi(nd_fill_run, &rec, 3u);` and `nd_fill_feed(...)`: screen_overlays.c:170-171, :180-181, battle/190B20.c:3017-3018.
-  nd_fill_run (nd_direct.c:289-309) builds the pso from kFillKind[k] (:244-250) and f->rgba, env = nd_ws.envc.
+- The 3 fill producers record `nd_rec_napi(nd_fill_run, &rec, 3u);` and `nd_fill_feed(...)`: screen_overlays.c:170-171, :180-181, battle/190B20.c:3017-3018. nd_fill_run (nd_direct.c:289-309) builds the pso from kFillKind[k] (:244-250) and f->rgba, env = nd_ws.envc.
 ## Edits
-1. nd_snap.c: `snap_take(int zc)` becomes `snap_take(const NdDs* s, int zc)`; in its body `&nd_ds` becomes `s` and `nd_ds.` becomes `s->` (sed on its line range only).
-   nd_snap_mesh and nd_snap_rect pass `&nd_ds`. New:
+1. nd_snap.c: `snap_take(int zc)` becomes `snap_take(const NdDs* s, int zc)`; in its body `&nd_ds` becomes `s` and `nd_ds.` becomes `s->` (`sed -b -i` on its line range only: keep CRLF). nd_snap_mesh and nd_snap_rect pass `&nd_ds`. New:
    ```
    static NdDs sn_tmp; /* NDR2A, core 1: nd_ds with the pso words of a direct draw */
    void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) {   /* NDR2A: the state words of nd_direct_bind, in its order */
