@@ -10,6 +10,7 @@
 #include "nd_ops.h"
 #include "nd_op.h"
 #include "nd_dual.h"
+#include "macros.h"
 
 extern int pm_wide;  /* nd_set.c set_scissor: the wide sign rule */
 int is_host(u32 p);  /* nd_walk.c: the range test of ptr_res */
@@ -345,6 +346,36 @@ static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth) {
 }
 /* nd_rec_dl (nd_gtab.c) and nd_rec_nr (nd_rec.c, an NDO_CALL unit with depth 1). l: a host address or a segment address. */
 void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(uintptr_t)l, (unsigned)depth); }
+
+/* NST2b nd_ds_model (design_nstate.md section 5, row NST2b): the state units of one model record, in the order of rec_apply (nd_recs.c:72-103)
+ * and rec_lights (nd_mtx_set.c:202). q: the record payload (pair Rk = q[2k], q[2k+1]). The R13 units (kept count q[26], from q[28]) and the
+ * render mode pairs rm (nrm) go through unit. Left out: the matrix loads, the ranges (R11) and the billboard matrix (R8). */
+#define T(id, a, b) nd_ds_apply(s, NDO_W0(id, a), (b))
+#define FOGP(x) T(NDO_MW, NDO_MW_FOG << 16, x)
+void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit) {
+    const uint32_t f = q[6];
+    if (f & 4u) T(NDO_PRIM, 0, q[12]);
+    if (f & 8u) T(NDO_ENV, 0, q[13]);
+    if (f & 64u) { T(NDO_FOG, 0, q[8]); FOGP(q[11]); }
+    if (q[7] && q[4] <= 7u) {
+        const unsigned n = q[4] ? q[4] : 1u;
+        const Lightsn* L = (const Lightsn*)(uintptr_t)q[7];
+        T(NDO_MW, NDO_MW_NUMLIGHT << 16, NUML(n));
+        for (unsigned i = 1; i <= n + 1u; i++)
+            T(NDO_MOVEMEM, (((uint32_t)sizeof(Light) - 1u) / 8u) << 19 | (3u * i + 3u) << 8 | G_MV_LIGHT,
+              (uint32_t)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a));
+    }
+    if (q[26]) { for (unsigned k = 0; k < q[26]; k++) unit(s, q[28 + 2 * k], q[29 + 2 * k]); }
+    else if (q[1]) for (const uint32_t* u = (const uint32_t*)(uintptr_t)q[1]; (u[0] >> 24) != NDO_END; u += 2) nd_ds_apply(s, u[0], u[1]);
+    if (q[9]) { const uint32_t* c = (const uint32_t*)(uintptr_t)q[9]; nd_ds_apply(s, c[0], c[1]); }
+    for (unsigned k = 0; k < nrm; k++) unit(s, rm[2 * k], rm[2 * k + 1]);
+    if (f & 32u) { T(NDO_OML, NDO_A_RENDERMODE, (uint32_t)(PM_RM_SHROUD) | q[15]); T(NDO_FOG, 0, q[8]); if (f & 16u) T(NDO_BLEND, 0, q[14]); FOGP(q[11]); }
+    else if (f & 2u) { T(NDO_FOG, 0, q[8]); FOGP(q[11]); }
+    if (q[18]) nd_ds_apply(s, q[18], q[19]);
+    if (q[20]) nd_ds_apply(s, q[20], q[21]);
+}
+#undef T
+#undef FOGP
 
 /* NST3 dschk compare (design_nstate.md section 3). The draw-time fields are zeroed in both copies first: core 0 writes them at draw
  * time (td[], tile_x0/y0, tile_fx/fy, cur_tile) and sync_render writes fogmix_on. The table names every other field of NdDs (the

@@ -26,6 +26,10 @@ extern NdDs nd_ds;
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v);
 /* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an NDO_CALL unit of nd_rec_nr); see nd_ds.c. */
 void nd_ds_list(NdDs* s, const void* l, int depth);
+/* NST2b: applies one typed unit of a record (the ds_unit of nd_rec.c: nd_ds_apply, the NDO_CALL list, the ep rule). */
+typedef void (*NdDsUnitFn)(NdDs* s, uint32_t w0, uint32_t w1);
+/* NST2b: the state units of one model record q (the payload, pair Rk = q[2k], q[2k+1]), its R13 units and the render mode pairs rm (nrm). */
+void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit);
 /* NST3 dschk: the count of differing fields of two NdDs copies (draw-time fields zeroed first); the first max names into bad. */
 int nd_ds_cmp(const NdDs* a, const NdDs* b, const char** bad, int max);
 #endif
