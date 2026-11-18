@@ -18,6 +18,7 @@
 #include "nd_ds.h" /* NST2D: nd_ds_rpl */
 #include "nd_op.h"
 #include "nd_api.h"
+#include "nd_snap.h"
 #include "nd_gtab.h"
 #include "nd_lkey.h"
 #include "nd_gbi.h" /* FALLBK: pm_gbi_fallback's macros write typed units (nd_gx_w, nd_rec.c:487) */
@@ -636,9 +637,11 @@ static void gt_body(const NdGTab* t, const NdNDev* nt) {
 static __attribute__((cold, noinline)) void entcap_so(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
     const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap so l %08x s %08x", a, site); }
-static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec) {
+static void gt_run0(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec);
+static void gt_run(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec) { nd_lsr_begin((rec[1] & 2u) ? (const uint32_t*)(uintptr_t)rec[4] : NULL); gt_run0(key, t, nt, rec); nd_lsr_end(); } /* NCONV1D1: the snap table of a drawing list (rec[1] bit 1) */
+static void gt_run0(const void* key, const NdGTab* t, const NdNDev* nt, const uint32_t* rec) {
     PM_WALK_OWN();
-    if (rec[1]) { /* state-only */
+    if (rec[1] & 1u) { /* state-only */
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
         static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0u };
         pm_walk_side++;
