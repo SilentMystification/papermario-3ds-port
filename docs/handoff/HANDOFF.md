@@ -45,12 +45,12 @@ push with `-Profile prof -GameDebug "warp=mac_01:0 pos=0:0:200"`, the bottom scr
 ## Console reports (O3DS .170, build 6449 = main 60182a2edd) and their rows
 - White and black rectangles, grey HUD, dim Mario, black menu part: PSOFB fallback. HWFIX1 merged (0f39de90cb). Needs the user's console check.
 - 60 FPS row missing: commit 1e7ddd7ea1 (before the session). ws_FPS60MENU merged (c56518f604).
-- Bottom screen blank when Logging is off: pm_log.c:905 (LOG4 0c1f761665). ws_BOTSCR is on main; its coder (a22eb8d737b53293f) runs. Merge on its hand-back.
+- Bottom screen blank when Logging is off: pm_log.c:905 (LOG4 0c1f761665). BOTSCR is DONE (branch BOTSCR, bb7520d044, LOOP PASS, host botscr ok). Merge it AFTER the push of build 0f39de90cb: a merge changes pm_log.c and makes that built 3dsx stale (push says STALE 3DSX). Then build main again for the next push.
 - Option rows that change nothing: no cause by code read (see Waiting on the user, item 3).
 - The first push of build 6449 booted fine; the [CRASH] blocks in its log are an old crash.txt replay (old build numbers), not a new crash.
 
 ## Agents at handoff (ListAgents is the truth)
-Coders running: BOTSCR a22eb8d737b53293f (oracle NEXT3 a26f678cb67ee83db, 237K), NST2A ae0efb252e4b0141c (relaunched on its branch from the corrected page,
+Coders: BOTSCR a22eb8d737b53293f is finished and waits for its merge (oracle NEXT3 a26f678cb67ee83db, 237K). Running: NST2A ae0efb252e4b0141c (relaunched on its branch from the corrected page,
 budget reset; oracle NSTO a4979ad6150eacb9f, 380K; hold its MERGE until the console check, the work runs).
 Oracles (all idle, resume by SendMessage): NEXT3 a26f678cb67ee83db, NSTO a4979ad6150eacb9f, PHASEE2 a2895cb81ea2b910a (360K), DIAG1 a19976ad4fb0c998a (205K).
 Pages on main: ws_BOTSCR, ws_NST2B to ws_NST2F (chain after NST2A: the metric is fbad per tst1 member; start each from the branch of the row before).
