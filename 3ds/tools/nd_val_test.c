@@ -76,7 +76,8 @@ static void nat_tile(void) { nd_val_tile_size(1, 5, 7, 5 + 124, 7 + 508); }
 static void mac_psync(void) { gDPSetPrimColor(gMainGfxPos++, 0, 0, 0, 0, 128, 0); gDPPipeSync(gMainGfxPos++); gDPSetEnvColor(gMainGfxPos++, 10, 20, 30, 0); }
 static void nat_psync(void) { nd_val_prim(0, 0, 0, 0, 128, 0); nd_val_env(10, 20, 30, 0); }
 
-/* one run of a shape: the words of the range, its unit log, and the r11 result */
+/* one run of a shape: the words of the range, its unit log, and the r11 result.
+ * push and pop: the native form is a transform record (NDR5), the run words differ; the unit log and r11 are compared. */
 typedef struct {
     uint32_t w[256]; unsigned nw;
     uint32_t u[512]; unsigned nu;
@@ -101,8 +102,8 @@ static void run_one(void (*fn)(void*), void* arg, Res* out) {
     out->r = nd_r11_state((uint32_t)(uintptr_t)mk, &nr, out->cw, &out->hcb, out->mo, &out->nmo);
 }
 
-static int same(const Res* a, const Res* b) {
-    return a->nw == b->nw && memcmp(a->w, b->w, a->nw * sizeof(uint32_t)) == 0
+static int same(const Res* a, const Res* b, int cmpw) {
+    return (!cmpw || (a->nw == b->nw && memcmp(a->w, b->w, a->nw * sizeof(uint32_t)) == 0))
         && a->nu == b->nu && memcmp(a->u, b->u, a->nu * sizeof(uint32_t)) == 0
         && a->r == b->r && memcmp(a->cw, b->cw, sizeof a->cw) == 0 && a->hcb == b->hcb
         && a->nmo == b->nmo && memcmp(a->mo, b->mo, sizeof a->mo) == 0;
@@ -124,25 +125,25 @@ static void f_nat_tile(void* a) { (void)a; nat_tile(); }
 static void f_mac_psync(void* a) { (void)a; mac_psync(); }
 static void f_nat_psync(void* a) { (void)a; nat_psync(); }
 
-static int shape(const char* name, void (*fa)(void*), void (*fb)(void*), unsigned n) {
+static int shape(const char* name, void (*fa)(void*), void (*fb)(void*), unsigned n, int cmpw) {
     static Res a, b;
     for (unsigned i = 0; i < n; i++) {
         unsigned arg = i;
         run_one(fa, &arg, &a);
         run_one(fb, &arg, &b);
-        if (!same(&a, &b)) { printf("hunit FAIL %s\n", name); return 0; }
+        if (!same(&a, &b, cmpw)) { printf("hunit FAIL %s\n", name); return 0; }
     }
     return 1;
 }
 
 int main(void) {
-    if (!shape("push", f_mac_push, f_nat_push, 8u)) return 1;
-    if (!shape("pop", f_mac_pop, f_nat_pop, 1u)) return 1;
-    if (!shape("prim", f_mac_prim, f_nat_prim, 1u)) return 1;
-    if (!shape("env", f_mac_env, f_nat_env, 1u)) return 1;
-    if (!shape("seg", f_mac_seg, f_nat_seg, 1u)) return 1;
-    if (!shape("tilesize", f_mac_tile, f_nat_tile, 1u)) return 1;
-    if (!shape("pipesync", f_mac_psync, f_nat_psync, 1u)) return 1;
+    if (!shape("push", f_mac_push, f_nat_push, 8u, 0)) return 1;
+    if (!shape("pop", f_mac_pop, f_nat_pop, 1u, 0)) return 1;
+    if (!shape("prim", f_mac_prim, f_nat_prim, 1u, 1)) return 1;
+    if (!shape("env", f_mac_env, f_nat_env, 1u, 1)) return 1;
+    if (!shape("seg", f_mac_seg, f_nat_seg, 1u, 1)) return 1;
+    if (!shape("tilesize", f_mac_tile, f_nat_tile, 1u, 1)) return 1;
+    if (!shape("pipesync", f_mac_psync, f_nat_psync, 1u, 1)) return 1;
     printf("hunit ok 7/7\n");
     return 0;
 }
