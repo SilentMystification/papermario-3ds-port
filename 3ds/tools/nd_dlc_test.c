@@ -13,6 +13,7 @@
 #include "nd_ops.h"
 #include "gbi_custom.h"
 #include "nd_op.h"
+#include "nd_x.h" /* IMGFX2: ND_X0, ND_X1 */
 #include "nd_fs.h"
 
 #define SHAPE_BASE 0x80210000u

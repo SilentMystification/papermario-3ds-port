@@ -17,6 +17,7 @@
 #include "ultra64.h"
 #include "gbi_custom.h"
 #include "nd_op.h"
+#include "nd_x.h" /* IMGFX2: ND_X0, ND_X1 */
 
 /* pm_interp.c stubs (nd_mtx.c links them): no replacement table */
 int pm_interp_repl;

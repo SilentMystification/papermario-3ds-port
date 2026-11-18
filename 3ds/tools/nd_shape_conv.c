@@ -21,6 +21,7 @@
 #include "ultra64.h"
 #include "gbi_custom.h"
 #include "nd_op.h"
+#include "nd_x.h" /* IMGFX2: ND_X0, ND_X1 */
 #include "nd.h"
 #include <dirent.h>
 
