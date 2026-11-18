@@ -274,6 +274,20 @@ int main(int argc, char** argv) {
         bad += (int)rb; nf += (int)rf;
 #undef C7
     }
+    { /* NCONV2C: the ep rule of one applied unit (nd_ds_ep_rule): the first rule that fires, 0 none. fault: TIMG wants 0 */
+        const struct { uint32_t w0; unsigned ch; int lost, dirty; unsigned want; } ec[8] = {
+            { ND_FS_W0(ND_FS_PRIM, 0), 1u, 0, 0, 1u },
+            { ND_FS_W0(ND_FS_VTX, 0), 1u, 0, 0, 0u },
+            { ND_FS_W0(ND_FS_TEXTURE, 0), 0u, 1, 0, 2u },
+            { ND_FS_W0(ND_FS_MOVEMEM, G_MV_LIGHT), 0u, 0, 0, 0u },
+            { ND_FS_W0(ND_FS_MOVEMEM, G_MV_VIEWPORT), 0u, 0, 0, 3u },
+            { ND_FS_W0(ND_FS_TIMG, 0), 0u, 0, 0, fault ? 0u : 6u },
+            { ND_FS_W0(ND_FS_MW, ND_FS_MW_LIGHTCOL << 16), 0u, 0, 0, 0u },
+            { ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16), 0u, 0, 0, 0u } };
+        unsigned eb = 0;
+        for (unsigned i = 0; i < 8; i++) if (nd_ds_ep_rule(ec[i].w0, ec[i].ch, ec[i].lost, ec[i].dirty) != ec[i].want) eb++;
+        printf("nconv2c ep bad %u\n", eb); bad += (int)eb;
+    }
     printf("nst2c fields %d bad %d\n", nf, bad);
     printf("nst1 fields %d bad %d\n", nf, bad);
     return bad ? 1 : 0;

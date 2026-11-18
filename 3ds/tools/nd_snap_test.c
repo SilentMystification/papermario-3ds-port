@@ -124,6 +124,14 @@ int main(int argc, char** argv) {
         for (unsigned i = 0; i < 6; i++) if (nd_snap_lsr(b, ord[i]) != want[i]) d++;
         printf("nconv1d1 lsr bad %d\n", d); bad += d;
     }
+    { /* NCONV2C: nd_snap_lsr with the ep and dup flags (masked by ND_LS_ORD); the ranges of the block above */
+        const uint32_t b2[5] = { 3, 12, 0u | ND_LS_EP, 4u | ND_LS_EP | ND_LS_DUP, 9 };
+        const unsigned ord[6] = { 0, 3, 4, 8, 9, 100 };
+        const unsigned want[6] = { 0, 0, fault ? 0u : 1u, 1, 2, 2 };
+        int d = 0;
+        for (unsigned i = 0; i < 6; i++) if (nd_snap_lsr(b2, ord[i]) != want[i]) d++;
+        printf("nconv2c lsr bad %d\n", d); bad += d;
+    }
     (void)nf;
     return bad ? 1 : 0;
 }

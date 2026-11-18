@@ -67,9 +67,10 @@ static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, z
 #define LS_MAX 16u
 static NdSnapChk ls_s[LS_MAX]; static uint32_t ls_f[LS_MAX]; static unsigned ls_n, ls_ord, ls_over; static unsigned char ls_chg;
 static unsigned char ls_ovl; /* NREC2: this list has more ranges than LS_MAX */
-void nd_lsc_begin(void) { ls_n = 0; ls_ord = 0; ls_chg = 1; ls_ovl = 0; sn_cmds = ~0u; nd_lsc_on = 1; }
+static unsigned char ls_ep; static unsigned ls_dup; void nd_lsc_ep(void) { ls_ep = 1; } /* NCONV2C */
+void nd_lsc_begin(void) { ls_n = 0; ls_ord = 0; ls_chg = 1; ls_ovl = 0; ls_ep = 0; sn_cmds = ~0u; nd_lsc_on = 1; }
 void nd_lsc_begin_v(unsigned v) { nd_lsc_begin(); sn_vprim = v; } /* NREC4 */
-void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) { ls_over++; ls_ovl = 1; } else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord; sn_cmds = nd_rec_cmds(); } } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
+void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_MAX) { ls_over++; ls_ovl = 1; } else if (snap_build(&nd_ds, 0, &ls_s[ls_n])) { ls_f[ls_n++] = ls_ord | (ls_ep ? ND_LS_EP : 0u); sn_cmds = nd_rec_cmds(); } else if (ls_ep && ls_n) { ls_s[ls_n] = ls_s[ls_n - 1u]; ls_f[ls_n++] = ls_ord | ND_LS_EP | ND_LS_DUP; ls_dup++; } ls_ep = 0; } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
 void nd_lsc_tris(unsigned n) { if (!n) return; nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); ls_ord += n - 1u; } /* NREC4: n list triangles, one snap test */
 void nd_lsc_end_at(uint32_t* dst) { nd_lsc_on = 0; sn_cmds = ~0u; sn_vprim = 0; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
     const unsigned h = ND_LS_HDR(ls_n); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0]); b[0] = ls_n; b[1] = ls_ord; memcpy(b + 2, ls_f, 4u * ls_n); memcpy((char*)b + h, ls_s, ls_n * sizeof ls_s[0]); *dst = (uint32_t)(uintptr_t)b; }
@@ -269,15 +270,22 @@ static unsigned pr_cmp, pr_bad; /* NREC4: the particle compares (no combine appl
 void nd_snapchk_part(void) { nd_snap_arm = 0; if (!PMDL("snapchk")) return; const unsigned b0 = sc_bad; sc_compare(); pr_cmp++; pr_bad += sc_bad != b0; } /* NREC4 */
 /* NCONV1D1: core 0 compares each list range with the walker at its first triangle (nd_lsr_tri); the counters go to the lsnap line. */
 unsigned char nd_ls_on; unsigned nd_ls_ord; static const uint32_t* lr_b; static unsigned char lr_p1; static unsigned lr_cur, lr_nx, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_tmis, lr_bst;
-void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; if (b) { lr_lists++; lr_snaps += b[0]; } }
+static unsigned lr_st, lr_epc, lr_epm, lr_epx; static unsigned char lr_noep; unsigned nd_lsr_rect; extern unsigned nd_st_epoch; /* NCONV2C: lscut data; nd_walk.c:287 */
+void nd_lsr_noep(void) { lr_noep = 1; }
+static void lsr_cut(unsigned ord) { /* NCONV2C: the walker cut before this triangle against the ep flag of its range start */
+    const uint32_t f = lr_b[2u + nd_snap_lsr(lr_b, ord)]; const unsigned flag = (f & ND_LS_EP) && ND_LS_ORD(f) == ord, cut = nd_st_epoch != lr_st;
+    lr_st = nd_st_epoch; if (lr_noep) return; lr_epc += flag; if (cut && !flag) lr_epm++; else if (flag && !cut) lr_epx++; }
+void nd_lsr_begin(const uint32_t* b) { lr_b = b; nd_ls_on = b != NULL; nd_ls_ord = 0; lr_cur = ~0u; lr_nx = 0; lr_st = nd_st_epoch; lr_noep = 0; if (b) { lr_lists++; lr_snaps += b[0]; } }
 void nd_lsr_end(void) { if (nd_ls_on && nd_ls_ord != lr_b[1]) lr_tmis++; nd_ls_on = 0; }
 void nd_lsr_seg(unsigned ord) { lr_p1 = 1; nd_lsr_tri(ord); lr_p1 = 0; }
 void nd_lsr_tri(unsigned ord) {
+    if (PMDL("snapchk")) lsr_cut(ord); /* NCONV2C */
     if (ord < lr_nx) return;
     const unsigned r = nd_snap_lsr(lr_b, ord), n = lr_b[0];
-    lr_nx = r + 1u < n ? lr_b[2u + r + 1u] : ~0u;
+    lr_nx = r + 1u < n ? ND_LS_ORD(lr_b[2u + r + 1u]) : ~0u;
     if (r == lr_cur) return;
     lr_cur = r;
+    if (lr_b[2u + r] & ND_LS_DUP) return; /* NCONV2C: an ep-only range: the armed snap stays */
     memcpy(&sc_cur, (const char*)lr_b + ND_LS_HDR(n) + r * sizeof sc_cur, sizeof sc_cur);
     nd_snap_arm = 1; lr_cmp++; lr_c1 += lr_p1; /* NCONV1D2: the next draw step consumes the range snap (nd_snapchk_tri) */
 }
@@ -291,6 +299,7 @@ void nd_snapchk_tick(void) {
         sc_bucket = pm_frame_n / 100;
         pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
         pm_log_evt("lsnap f%u lists %u snaps %u cmp %u p1 %u bst %u tmis %u over %u", pm_frame_n, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_bst, lr_tmis, ls_over);
+        pm_log_evt("lscut f%u epc %u epm %u epx %u dup %u rect %u", pm_frame_n, lr_epc, lr_epm, lr_epx, ls_dup, nd_lsr_rect); /* NCONV2C */
         pm_log_evt("tsnap f%u cmp %u wtss %u tris %u vtss %u", pm_frame_n, ts_cmp, ts_bad, ts_vn, ts_vb); /* NCONV2A */
         pm_log_evt("psnap f%u cmp %u bad %u", pm_frame_n, pr_cmp, pr_bad); /* NREC4 */
     }

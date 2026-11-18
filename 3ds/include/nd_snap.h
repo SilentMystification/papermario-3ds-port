@@ -94,4 +94,8 @@ int nd_snap_spr(uint32_t o[9]); /* NDR4, nd_snap.c, core 0: the snap words of a 
 extern unsigned char nd_ls_on, nd_lsc_on; extern unsigned nd_ls_ord;
 void nd_lsr_begin(const uint32_t* b); void nd_lsr_end(void); void nd_lsr_tri(unsigned ord); void nd_lsr_seg(unsigned ord); void nd_lsc_unit(uint32_t w0); void nd_lsr_bst(void); void nd_lsc_tris(unsigned n);
 unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
+#define ND_LS_EP 0x80000000u /* NCONV2C: a core 0 cut comes before this range start */
+#define ND_LS_DUP 0x40000000u /* NCONV2C: the range repeats the snap before it; core 0 does not arm it */
+#define ND_LS_ORD(f) ((f) & 0x3fffffffu)
+void nd_lsr_noep(void); extern unsigned nd_lsr_rect; /* NCONV2C */
 #endif

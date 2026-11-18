@@ -253,15 +253,7 @@ void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
     const int lost = s->sc_lost, dirty = s->sc_dirty; /* NST2J: before the unit */
     const unsigned ch = nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
     if ((w0 >> 24) == ND_FS_CALL) nd_ds_list(s, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
-    { /* NST3 ep rule (design section 6), core 1 data only */
-        const unsigned id = w0 >> 24;
-        if ((ch & 1u) && id != ND_FS_VTX && id != ND_FS_TRI1 && id != ND_FS_TRI2 && id != ND_FS_MTX && id != ND_FS_POPMTX) DS_EP(1, id);
-        if ((lost && (id == ND_FS_OMH || id == ND_FS_PRIM || id == ND_FS_ENV)) || ((lost || dirty) && (id == ND_FS_TEXTURE || id == ND_FS_COMB))) DS_EP(2, id);
-        if (id == ND_FS_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) DS_EP(3, id);
-        if ((id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT) || id == ND_FS_FILL || id == ND_FS_PRIMZ || id == ND_FS_SCISSOR || id == ND_FS_RARE) DS_EP(6, id);   /* nd_op_same never skips */
-        if (id == ND_FS_MW && ((w0 & 0xffffffu) >> 16) != ND_FS_MW_LIGHTCOL) DS_EP(7, id);                                                       /* nd_set.c:142-144 */
-        if (id == ND_FS_RECT || (id == ND_FS_MISC && w0 != ND_NOP_A && ((w0 & 0xffffffu) >> 16) != ND_FS_MISC_MODVTX)) DS_EP(8, id);               /* op_ctl nd_walk.c:357 */
-    }
+    { const unsigned r = nd_ds_ep_rule(w0, ch, lost, dirty); if (r) DS_EP(r, w0 >> 24); } /* NST3 ep rule (design section 6); NCONV2C: nd_ds.c */
 }
 void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak below */
 void nd_rec_model(const void* rec, unsigned words) {
