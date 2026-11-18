@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include "pm_moon.h"
+#include "pm_speedx2.h"
 
 enum { PM_DBG_MAXHP, PM_DBG_MAXFP, PM_DBG_BP, PM_DBG_LEVEL, PM_DBG_COINS, PM_DBG_SP, PM_DBG_STARPC, PM_DBG_FORT, PM_DBG_NSTAT };
 static const struct { int lo, hi, st; } rg[PM_DBG_NSTAT] = { { 10, 75, 5 }, { 5, 75, 5 }, { 3, 30, 3 }, { 1, 27, 1 }, { 0, 999, 10 }, { 0, 99, 1 }, { 0, MAX_STAR_PIECES, 1 }, { 0, 99, 1 } }; /* Set Stats steps: HP 5, FP 5, BP 3 (level-up gains); star pieces 0 to the game maximum; fortress keys 0 to 99 */
@@ -311,7 +312,7 @@ void pm_cheat_tick(void) {
     if (cheat_bits & CHB_FP && p->curFP != p->curMaxFP) { pm_log("cheat: infinite FP refill %d -> %d", (int)p->curFP, (int)p->curMaxFP); p->curFP = p->curMaxFP; }
     if (cheat_bits & CHB_SP) p->starPower = (s16)(p->maxStarPower * 256);
     if (cheat_bits & CHB_NOBATTLE) gCurrentEncounter.battleTriggerCooldown = 2;
-    if (cheat_bits & CHB_SPEED) { ps->walkSpeed *= 2.0f; ps->runSpeed *= 2.0f; } /* the action code sets the speeds each step, so this does not compound */
+    { static PmSpd spd; pm_speedx2(&spd, (cheat_bits & CHB_SPEED) != 0, &ps->walkSpeed, &ps->runSpeed); } /* SPEEDX2: base x2, no compound */
     if ((cheat_bits & ~cheat_seen) != 0) {
         int k;
         for (k = 0; k < 6; k++) if ((cheat_bits & ~cheat_seen) & cheat_bit[k]) pm_log("cheat: %s active, star power %d, walk %.2f", cheat_name[k], (int)p->starPower, ps->walkSpeed);
