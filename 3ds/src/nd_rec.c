@@ -18,6 +18,7 @@
 #include "nd_lkey.h"
 #include "nd_rmdef.h"
 #include "nd_ds.h"
+#include "nd_fs.h"
 
 extern s32 gCurrentDisplayContextIndex;
 void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
@@ -86,7 +87,7 @@ static int sh_unit(uint32_t* v, uint8_t* ok, const uint32_t* t) {
 static int sh_drop(const uint32_t* t) {
     const uint32_t a = t[0] & 0xffffffu, b = t[1];
     switch (t[0] >> 24) {
-    case NDO_OMH: {
+    case ND_FS_OMH: {
         const uint32_t m = nd_op_om_mask(a), sft = a & 0xffu, len = (a >> 8) & 0xffu;
         if (sh.sc1 && !(m & ~sh.omh_k) && !((b ^ sh.omh_v) & m)) return 1;
         sh.omh_v = (sh.omh_v & ~m) | (b & m); sh.omh_k |= m;
@@ -94,52 +95,52 @@ static int sh_drop(const uint32_t* t) {
         else sh.tex_ok = sh.comb_ok = 0; /* the combine input hash may differ from the last sync's */
         return 0;
     }
-    case NDO_OML: {
+    case ND_FS_OML: {
         const uint32_t m = nd_op_om_mask(a);
         if (!(m & ~sh.oml_k) && !((b ^ sh.oml_v) & m)) return 1;
         sh.oml_v = (sh.oml_v & ~m) | (b & m); sh.oml_k |= m;
         return 0;
     }
-    case NDO_GEOM: return sh_unit(sh.geom, &sh.geom_ok, t);
-    case NDO_PRIM: { const int d = sh_unit(sh.prim, &sh.prim_ok, t); sh.sc1 = 1; return d; }
-    case NDO_TEXTURE: { const int d = sh_unit(sh.tex, &sh.tex_ok, t); sh.sc1 = 1; return d; }
-    case NDO_COMB: { const int d = sh_unit(sh.comb, &sh.comb_ok, t); sh.sc1 = 1; return d; }
-    case NDO_ENV:
+    case ND_FS_GEOM: return sh_unit(sh.geom, &sh.geom_ok, t);
+    case ND_FS_PRIM: { const int d = sh_unit(sh.prim, &sh.prim_ok, t); sh.sc1 = 1; return d; }
+    case ND_FS_TEXTURE: { const int d = sh_unit(sh.tex, &sh.tex_ok, t); sh.sc1 = 1; return d; }
+    case ND_FS_COMB: { const int d = sh_unit(sh.comb, &sh.comb_ok, t); sh.sc1 = 1; return d; }
+    case ND_FS_ENV:
         sh.sc1 = 1;
         if (sh.env_ok && sh.env == b) return 1;
         sh.env = b; sh.env_ok = 1;
         return 0;
-    case NDO_FOG:
+    case ND_FS_FOG:
         if (sh.fog_ok && sh.fog == b) return 1;
         sh.fog = b; sh.fog_ok = 1;
         return 0;
-    case NDO_BLEND:
+    case ND_FS_BLEND:
         if (sh.blend_ok && sh.blend == b) return 1;
         sh.blend = b; sh.blend_ok = 1;
         return 0;
-    case NDO_MW:
-        if ((a >> 16) == NDO_MW_LIGHTCOL) {
+    case ND_FS_MW:
+        if ((a >> 16) == ND_FS_MW_LIGHTCOL) {
             const unsigned k = a & 0xffffu;
             if ((sh.lc_ok >> k & 1u) && !((sh.lc[k] ^ b) & 0xffffff00u)) return 1;
             sh.lc[k] = b; sh.lc_ok |= (uint16_t)(1u << k);
         }
         return 0;
-    case NDO_RARE: sh.sc1 = 1; return 0;
-    case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE: case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT:
+    case ND_FS_RARE: sh.sc1 = 1; return 0;
+    case ND_FS_TIMG: case ND_FS_TILE: case ND_FS_TILESIZE: case ND_FS_LOADBLOCK: case ND_FS_LOADTILE: case ND_FS_LOADTLUT:
         sh_sc(); return 0; /* HC4c: a tile, load or image op may change the combine inputs (td[1].valid, dual_on) */
-    case NDO_VTX: case NDO_TRI1: case NDO_TRI2: case NDO_MTX: case NDO_POPMTX:
+    case ND_FS_VTX: case ND_FS_TRI1: case ND_FS_TRI2: case ND_FS_MTX: case ND_FS_POPMTX:
         sh_sc(); return 0; /* HC4d: a draw or matrix op keeps the walker fields but may change the combine inputs (box_fold_sync, dual_bind) */
-    case NDO_MOVEMEM: sh_all(); return 0; /* a light or viewport: the walker state after it is not followed */
-    case NDO_CALL: case NDO_RECT: case NDO_MISC: sh_all(); return 0; /* HC4d2: a list call, rectangle, image or marker (as the word ops before) */
+    case ND_FS_MOVEMEM: sh_all(); return 0; /* a light or viewport: the walker state after it is not followed */
+    case ND_FS_CALL: case ND_FS_RECT: case ND_FS_MISC: sh_all(); return 0; /* HC4d2: a list call, rectangle, image or marker (as the word ops before) */
     default: return 0;
     }
 }
 /* A typed no-op unit (nd_op.h): a sync, G_SPNOOP, G_NOOP or a RDPHALF word. */
-#define IS_NOP(w0) ((w0) == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16))
-static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after NDO_DROP (nd_walk.c t4_check) */
+#define IS_NOP(w0) ((w0) == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16))
+static int t4_sw = -1; /* debug switch t4chk: a dropped op is written after ND_FS_DROP (nd_walk.c t4_check) */
 
 /* HC4b (W3): the render mode table. Entry i holds the typed ops of nd_rm_dev[i] (nd_rmtab.c, 61 device entries) without the syncs,
- * then NDO_END. Built by the recorder at the first record of index i; the frame push publishes it to core 0; never written again. */
+ * then ND_FS_END. Built by the recorder at the first record of index i; the frame push publishes it to core 0; never written again. */
 uint32_t nd_rm_tab[ND_RM_N][2u * ND_RM_OPS];
 uint8_t nd_rm_n[ND_RM_N];
 static uint8_t rm_built[ND_RM_N];
@@ -150,12 +151,12 @@ __attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
     const uint32_t* lu = e ? nd_lkey_units(e, e, 4096u, &nl) : NULL;
     for (unsigned k = 0; k < nl && n + 1u < ND_RM_OPS; k++) {
         const uint32_t w0 = lu[2u * k], w1 = lu[2u * k + 1u];
-        if ((w0 >> 24) == NDO_END) break;
+        if ((w0 >> 24) == ND_FS_END) break;
         if (IS_NOP(w0)) continue; /* a typed sync or no-op */
         nd_rm_tab[i][2u * n] = w0; nd_rm_tab[i][2u * n + 1u] = w1; /* HC4e4: the device units are typed (gs forms) */
         n++;
     }
-    nd_rm_tab[i][2u * n] = NDO_W0(NDO_END, 0);
+    nd_rm_tab[i][2u * n] = ND_FS_W0(ND_FS_END, 0);
     nd_rm_tab[i][2u * n + 1u] = 0;
     nd_rm_n[i] = (uint8_t)n;
     rm_built[i] = 1;
@@ -243,21 +244,21 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
 }
 /* HC4c (W4): the payload holds typed ops: the panner tile sizes (R9, R10) and the R13 words. R13 w0 is the count of typed units.
  * HC4e4: the producer macros (nd_gbi.h) type every unit, so the payload is copied as it is.
- * R13NOP: the R13 syncs (typed NDO_MISC_NOP units) are dropped here; the count q[26] is the kept units. */
-/* NST2b: one typed unit into the core 1 state (nd_ds_apply), its NDO_CALL list (depth 1) and the NST3 ep rule. The model record
+ * R13NOP: the R13 syncs (typed ND_FS_MISC_NOP units) are dropped here; the count q[26] is the kept units. */
+/* NST2b: one typed unit into the core 1 state (nd_ds_apply), its ND_FS_CALL list (depth 1) and the NST3 ep rule. The model record
  * (nd_rec_model) and the stream units (nd_rec_nr) both call it. */
 void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
     const int lost = s->sc_lost, dirty = s->sc_dirty; /* NST2J: before the unit */
     const unsigned ch = nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
-    if ((w0 >> 24) == NDO_CALL) nd_ds_list(s, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
+    if ((w0 >> 24) == ND_FS_CALL) nd_ds_list(s, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
     { /* NST3 ep rule (design section 6), core 1 data only */
         const unsigned id = w0 >> 24;
-        if ((ch & 1u) && id != NDO_VTX && id != NDO_TRI1 && id != NDO_TRI2 && id != NDO_MTX && id != NDO_POPMTX) DS_EP(1, id);
+        if ((ch & 1u) && id != ND_FS_VTX && id != ND_FS_TRI1 && id != ND_FS_TRI2 && id != ND_FS_MTX && id != ND_FS_POPMTX) DS_EP(1, id);
         if ((lost && (id == ND_FS_OMH || id == ND_FS_PRIM || id == ND_FS_ENV)) || ((lost || dirty) && (id == ND_FS_TEXTURE || id == ND_FS_COMB))) DS_EP(2, id);
-        if (id == NDO_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) DS_EP(3, id);
-        if ((id >= NDO_TIMG && id <= NDO_LOADTLUT) || id == NDO_FILL || id == NDO_PRIMZ || id == NDO_SCISSOR || id == NDO_RARE) DS_EP(6, id);   /* nd_op_same never skips */
-        if (id == NDO_MW && ((w0 & 0xffffffu) >> 16) != NDO_MW_LIGHTCOL) DS_EP(7, id);                                                       /* nd_set.c:142-144 */
-        if (id == NDO_RECT || (id == NDO_MISC && w0 != ND_NOP_A && ((w0 & 0xffffffu) >> 16) != NDO_MISC_MODVTX)) DS_EP(8, id);               /* op_ctl nd_walk.c:357 */
+        if (id == ND_FS_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) DS_EP(3, id);
+        if ((id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT) || id == ND_FS_FILL || id == ND_FS_PRIMZ || id == ND_FS_SCISSOR || id == ND_FS_RARE) DS_EP(6, id);   /* nd_op_same never skips */
+        if (id == ND_FS_MW && ((w0 & 0xffffffu) >> 16) != ND_FS_MW_LIGHTCOL) DS_EP(7, id);                                                       /* nd_set.c:142-144 */
+        if (id == ND_FS_RECT || (id == ND_FS_MISC && w0 != ND_NOP_A && ((w0 & 0xffffffu) >> 16) != ND_FS_MISC_MODVTX)) DS_EP(8, id);               /* op_ctl nd_walk.c:357 */
     }
 }
 void nd_rec_model(const void* rec, unsigned words) {
@@ -331,7 +332,7 @@ void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
     p[1] = (uint32_t)(uintptr_t)run;
     memcpy(p + 2, rec, units * 8u);
 }
-/* NDR5: a transform record is taken as a state op: the shadow stays, no dschk record, ds_sclost stays (rec_take :188-201) */
+/* NDR5: a transform record is taken as a state op: the shadow stays, no dschk record, nd_ds.sc_lost stays (rec_take :188-201) */
 void nd_rec_xf(NdNapiRun run, const uint32_t* rec) {
     st_take = 1;
     nd_rec_napi(run, rec, 1u);
@@ -363,7 +364,7 @@ static const NdGTab* parts_tab(const void* l) {
 void nd_parts_begin(NdParts* b, unsigned pre, unsigned post) {
     b->n = 0; b->pre = pre; b->m = pre + 1u + post; b->ok = 0; b->list = NULL;
 }
-/* units: m units (8 bytes each) of one instance; the NDO_CALL unit of its list at index pre (the push form). A list that is not a particle list
+/* units: m units (8 bytes each) of one instance; the ND_FS_CALL unit of its list at index pre (the push form). A list that is not a particle list
  * (or a call that is not the push form) takes the stream form of its units: the open run is recorded first, so the order is kept. */
 void nd_parts_add(NdParts* b, const uint32_t* units) {
     const unsigned m = b->m, pre = b->pre;
@@ -389,7 +390,7 @@ void nd_parts_end(NdParts* b) {
     for (unsigned k = 0; v && k < b->n; k++)
         for (unsigned j = 0; j < b->m; j++) {
             const unsigned id = b->u[2u + 2u * (k * b->m + j)] >> 24;
-            if (j == b->pre ? id != NDO_CALL : !(id == NDO_MTX || id == NDO_PRIM || id == NDO_ENV || id == NDO_TILESIZE || id == NDO_POPMTX)) { v = 0; break; }
+            if (j == b->pre ? id != ND_FS_CALL : !(id == ND_FS_MTX || id == ND_FS_PRIM || id == ND_FS_ENV || id == ND_FS_TILESIZE || id == ND_FS_POPMTX)) { v = 0; break; }
         }
     nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
     nd_ds_parts(&nd_ds, b->u, nd_ds_unit); /* NST2C: the instances' state on core 1 */
@@ -398,7 +399,7 @@ void nd_parts_end(NdParts* b) {
 }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */
 /* D4b-3: a state op (HC4a: typed by the recorder) extends the open native record run when nothing was recorded after it (no span, no other command) and the chunk has room;
- * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after NDO_DROP). */
+ * else it opens a new run. HC4b: a typed op the shadow drops is not written (t4chk: written after ND_FS_DROP). */
 static void st_put(uint32_t w0, uint32_t w1) {
     uint32_t* h = st_hdr;
     st_take = 1;
@@ -429,7 +430,7 @@ static void rec_op_t(const uint32_t t[2]) {
     if (sh_drop(t)) {
         if (t4_sw < 0) t4_sw = pm_debug_has("t4chk") ? 1 : 0;
         if (!t4_sw) return;
-        st_put(NDO_W0(NDO_DROP, 0), 0);
+        st_put(ND_FS_W0(ND_FS_DROP, 0), 0);
     }
     st_put(t[0], t[1]);
 }
@@ -459,9 +460,9 @@ extern u8 gMapShapeData[];
 static unsigned st_kind(uint32_t w0) {
     const unsigned op = w0 >> 24;
     if (!nd_op_typed(op)) return 0u; /* HC4e4: no raw word in a typed list */
-    if (op == NDO_END) return 3u;
-    if (op == NDO_MISC) return (w0 & 0xffffffu) == (NDO_MISC_NOP << 16) ? 2u : 0u;
-    return (op <= NDO_COMB || nd_op_tex(op) || (op >= NDO_MTX && op <= NDO_MOVEMEM)) ? 1u : 0u;
+    if (op == ND_FS_END) return 3u;
+    if (op == ND_FS_MISC) return (w0 & 0xffffffu) == (ND_FS_MISC_NOP << 16) ? 2u : 0u;
+    return (op <= ND_FS_COMB || nd_op_tex(op) || (op >= ND_FS_MTX && op <= ND_FS_MOVEMEM)) ? 1u : 0u;
 }
 static int rec_inline(uint32_t a) {
     if (a < 0x00100000u || a >= (uint32_t)(uintptr_t)__end__ || (a & 7u) || a - (uint32_t)(uintptr_t)gMapShapeData < 0x40000u) return 0;
@@ -476,7 +477,7 @@ static int rec_inline(uint32_t a) {
         if (!k) return 0;
     }
     DS_EP(5, 0); /* NST3: the list marker ends a batch */
-    { static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0 }; rec_op_t(lst); }
+    { static const uint32_t lst[2] = { ND_FS_W0(ND_FS_MISC, ND_FS_MISC_LST << 16), 0 }; rec_op_t(lst); }
     for (unsigned i = 0; i < n; i++) if (st_kind(w[2u * i]) == 1u) nd_rec_nr(w[2u * i], w[2u * i + 1u]);
     return 1;
 }
@@ -522,19 +523,19 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) {
     if (g != gMainGfxPos - 1) { g->words.w0 = w0; g->words.w1 = w1; return; }
     if (__builtin_expect(PMDL("napicen"), 0)) napi_note((uintptr_t)__builtin_return_address(0));
     const unsigned op = w0 >> 24;
-    if (op == NDO_CALL && (w0 & 1u)) { g->words.w0 = w0; g->words.w1 = w1; return; } /* a branch: a unit of the list */
+    if (op == ND_FS_CALL && (w0 & 1u)) { g->words.w0 = w0; g->words.w1 = w1; return; } /* a branch: a unit of the list */
     gMainGfxPos = g;
-    if (op == NDO_END) return; /* D7: the end of a task list or of a custom gfx builder (NDC_END closes both) */
+    if (op == ND_FS_END) return; /* D7: the end of a task list or of a custom gfx builder (NDC_END closes both) */
     if (__builtin_expect(tr_n != 0, 0)) {
         if (tr_n == 1 && IS_NOP(w0)) { tr_w[2] = w1; tr_n = 2; return; } /* RDPHALF_1: s, t */
         if (tr_n == 2 && IS_NOP(w0)) { tr_n = 0; nd_rec_texrect(tr_w[0], tr_w[1], tr_w[2], w1); return; } /* RDPHALF_2: dsdx, dtdy */
         tr_bad(w0);
     }
-    if (op == NDO_RECT && (w1 & NDO_RECT_TEX)) { /* the words nd_texrect_run reads: G_TEXRECT with the a field, w1 without the flag */
-        tr_w[0] = ((uint32_t)G_TEXRECT << 24) | (w0 & 0xffffffu); tr_w[1] = w1 & ~NDO_RECT_TEX; tr_n = 1; return;
+    if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { /* the words nd_texrect_run reads: G_TEXRECT with the a field, w1 without the flag */
+        tr_w[0] = ((uint32_t)G_TEXRECT << 24) | (w0 & 0xffffffu); tr_w[1] = w1 & ~ND_FS_RECT_TEX; tr_n = 1; return;
     }
     if (IS_NOP(w0)) return; /* the syncs are dropped (the walker skips them) */
-    if (op == NDO_CALL && rec_inline(w1)) return;
+    if (op == ND_FS_CALL && rec_inline(w1)) return;
     nd_rec_nr(w0, w1);
 }
 const uint32_t* nd_rec_pos(void) { return wp; }
@@ -607,10 +608,10 @@ void nd_rec_list(const void* l) {
         u32 w0 = u0, w1 = u1;
         unsigned op = w0 >> 24;
         if (!nd_op_typed(op)) { list_bad(g, n); return; } /* HC4e4: a static list is typed at compile time */
-        if (op == NDO_END) op = G_ENDDL; /* the raw op the cases below know */
+        if (op == ND_FS_END) op = G_ENDDL; /* the raw op the cases below know */
         else if (IS_NOP(w0)) op = G_SPNOOP;
-        else if (op == NDO_RECT && (w1 & NDO_RECT_TEX)) { w0 = ((u32)G_TEXRECT << 24) | (w0 & 0xffffffu); w1 &= ~NDO_RECT_TEX; op = G_TEXRECT; }
-        else if (op == NDO_CALL) { w0 = ((u32)G_DL << 24) | ((w0 & 1u) ? (u32)G_DL_NOPUSH << 16 : 0u); op = G_DL; }
+        else if (op == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { w0 = ((u32)G_TEXRECT << 24) | (w0 & 0xffffffu); w1 &= ~ND_FS_RECT_TEX; op = G_TEXRECT; }
+        else if (op == ND_FS_CALL) { w0 = ((u32)G_DL << 24) | ((w0 & 1u) ? (u32)G_DL_NOPUSH << 16 : 0u); op = G_DL; }
         switch (op) {
         case G_ENDDL: return;
         case G_RDPPIPESYNC: case G_RDPTILESYNC: case G_RDPLOADSYNC: case G_RDPFULLSYNC: case G_SPNOOP: break;
