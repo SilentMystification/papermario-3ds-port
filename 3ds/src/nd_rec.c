@@ -307,8 +307,9 @@ void nd_rec_ent(const void* rec) {
     memcpy(p + 2, rec, G_PM_ENT_WORDS * 8u);
 }
 void nd_snap_mesh(void); /* NDR0E2: prototype (fix: implicit declaration warning); strong in nd_snap.c */
+void nd_snap_rect(void); /* NDR1C: strong in nd_snap.c */
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
-    if (PMDL("snapchk")) nd_snap_mesh(); /* NDR0E2: the snap of a texture rectangle (compare only) */
+    nd_snap_rect(); /* NDR1C: the snap of every texture rectangle (memo: one per new input) */
     rec_open();
     uint32_t* p = rec_take(6);
     ndc_n[NDC_TEXRECT]++;
@@ -665,8 +666,10 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
     if (n++ < 4) pm_log_e("ndc: bad command %08x at %p", (unsigned)h, (const void*)p);
 }
 __attribute__((weak)) void nd_snap_mesh(void) {} /* NDR0E2: strong in nd_snap.c; weak for the host units that link nd_rec.c */
+__attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_snapchk_tick(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
+unsigned char nd_snap_live __attribute__((weak)); /* NDR1C */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
 /* POSTFAIL2: the context of the chain whose chunk holds p (*chunk: its index), else -1. Cold: the bad viewport log only. */
 int nd_rec_where(const void* p, unsigned* chunk) {
@@ -682,7 +685,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         if (p == stop) return;
         const uint32_t h = p[0];
         nd_stream_cur = p;
-        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && (op != NDC_NAPI || (p[1] != (uint32_t)(uintptr_t)nd_nr_run && !(h & 1u)))) nd_snap_arm = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */
+        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && (op != NDC_NAPI || (p[1] != (uint32_t)(uintptr_t)nd_nr_run && !(h & 1u)))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */
         { const unsigned op = h >> 24; if (op != NDC_JUMP && !(op == NDC_NAPI && (p[1] == (uint32_t)(uintptr_t)nd_nr_run || p[1] == (uint32_t)(uintptr_t)nd_dschk_run))) { nd_cmd_last = (uint8_t)op; nd_cmd_run = op == NDC_NAPI ? p[1] : 0u; } } /* NST2I, NST2K */
         switch (h >> 24) {
         case NDC_END: nd_snapchk_tick(); return; /* NDR0A: the snapchk frame line (nd_snap.c) */

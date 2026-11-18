@@ -37,14 +37,14 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1) {
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 
-void nd_snap_mesh(void) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle; the compare stays behind PMDL("snapchk") */
+static void snap_take(int zc) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle; the compare stays behind PMDL("snapchk") */
     NdSnapChk r;
     NdCombOut o;
     memset(&r, 0, sizeof r);
     memset(&o, 0, sizeof o);
     nd_snap_in(&nd_ds, sn_leg, sn_pat, &r.in);
     nd_snap_rnd(&nd_ds, &r);
-    r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, nd_ds.w.omode_l, nd_ds.w.omode_h, 0);
+    r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, nd_ds.w.omode_l, nd_ds.w.omode_h, zc);
     r.mixk = nd_snap_mix(nd_ds.w.omode_l, nd_ds.fogc, nd_ds.blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
     nd_render_state(nd_ds.w.omode_h, nd_ds.w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
     nd_snap_bind(&nd_ds.w.td[0], &nd_ds.w.tst1, 0, &r.b[0]); nd_snap_bind(&nd_ds.w.td[1], &nd_ds.w.tst1, 1, &r.b[1]); /* NDR0G1 */
@@ -62,9 +62,12 @@ void nd_snap_mesh(void) { /* NDR0E2: the snap is taken at every mesh triangle an
     nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */
     sn_cmds = nd_rec_cmds();
 }
+void nd_snap_mesh(void) { snap_take(0); }
+void nd_snap_rect(void) { snap_take(sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL))); } /* NDR1C: zcol of nd_rect.c:236 */
 
 /* ---- core 0 ---- */
 unsigned char nd_snap_arm;
+unsigned char nd_snap_live; /* NDR1C: a snap is armed for this rectangle run; a command clears it */
 unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snapchk_rnd */
 static NdSnapChk sc_cur;
 static unsigned sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_nlog, sc_bucket;
@@ -120,6 +123,7 @@ const NdSnapBind* nd_snap_eb(void) {
 void nd_snapchk_run(const uint32_t* rec) {
     memcpy(&sc_cur, rec, sizeof sc_cur);
     nd_snap_arm = 1;
+    nd_snap_live = 1; /* NDR1C */
     sc_recs++;
 }
 
@@ -204,7 +208,22 @@ void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed sna
 void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
     nd_snap_arm = 0;
     if (PMDL("snapchk")) sc_compare();
-    nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env);
+    nd_snap_comb();
+}
+/* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
+void nd_snap_comb(void) { nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); }
+const NdSnapBind* nd_snap_cur_b(void) { return sc_cur.b; } /* NDR1C */
+/* NDR1C: the render state log of a rectangle (drec runs): one line per frame that differs from the walker. */
+void nd_snap_rlog(void) {
+    static unsigned sc_rfr = ~0u;
+    if (!pm_drec_now() || pm_frame_count() == sc_rfr) return;
+    NdRender w; unsigned wc;
+    const int wk = nd_snap_mix(nd_ws.omode_l, fogc, blendc, pm_nofog, &wc);
+    nd_render_state(nd_ws.omode_h, nd_ws.omode_l, nd_img_role(0) == ROLE_DEPTH, &w);
+    if (memcmp(&sc_cur.rs, &w, sizeof w) || sc_cur.mixk != wk || sc_cur.mixc != wc || sc_cur.role != nd_img_role(0) || nd_snap_bnew(NULL)) {
+        sc_rfr = pm_frame_count();
+        pm_log_d("rectsnap f%u", sc_rfr);
+    }
 }
 void nd_snapchk_rect(void) { nd_snap_arm = 0; if (PMDL("snapchk")) sc_compare(); }   /* NDR0E2: a texture rectangle: compare only */
 

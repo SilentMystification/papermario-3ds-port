@@ -65,6 +65,16 @@ extern unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own trian
 void nd_snapchk_tri(void);
 /* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */
 void nd_snapchk_rect(void);
+/* NDR1C, nd_snap.c, core 1: the snap of a texture rectangle (nd_rec_texrect); zcol of nd_rect.c:236 from the target. */
+void nd_snap_rect(void);
+/* NDR1C, nd_snap.c, core 0: 1 while the rectangle run has a live snap (a command clears it). */
+extern unsigned char nd_snap_live;
+/* NDR1C, nd_snap.c, core 0: the tile words of the armed snap, for the rectangle binds (nd_rect.c nd_bsrc). */
+const NdSnapBind* nd_snap_cur_b(void);
+/* NDR1C, nd_snap.c, core 0: the combine of the armed snap (nd_comb_apply on its inputs). */
+void nd_snap_comb(void);
+/* NDR1C, nd_snap.c, core 0: the drec log line `rectsnap f<n>` for a rectangle whose snap differs from the walker. */
+void nd_snap_rlog(void);
 /* nd_snap.c, core 0: the 100-frame counter line (PMDL("snapchk")), called at each frame stream end (nd_rec.c). */
 void nd_snapchk_tick(void);
 /* nd_rec.c: the count of the commands of every kind (the snapshot is taken when it changes). */
