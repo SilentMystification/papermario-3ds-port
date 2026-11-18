@@ -1,5 +1,5 @@
 # verify_list: reported faults with a merged fix and no console confirmation (next push test list; edit in place)
-Rule (user): only items the user has not confirmed go on a test list. Confirmed by the user: select menu flash, pipes, map change crash, the white and black rectangles, grey HUD, dim Mario and black menu part (HWFIX1, build 0f39de90cb, O3DS).
+Rule (user): only items the user has not confirmed go on a test list. Confirmed by the user: select menu flash, pipes, map change crash, the white and black rectangles, grey HUD, dim Mario and black menu part (HWFIX1, build 0f39de90cb, O3DS). Build 0148237d47 (NST2A) on the O3DS: no clear fault seen. Performance is not measured until the optimization pass after the display list work.
 Binary check before the push (FACT: every count above 0 in build3ds/pm_3ds.elf of 2026-11-16 02:53, binchk OK):
 `python 3ds/tools/binchk.py build3ds/pm_3ds.elf "pauseh f%u held 30 resets %u" nd_dual_keep ndnu_D_0900BE40_3F7CA0 "anim mesh f%u units %d dev %d" nd_mesh_size`
 nd_dual_keep and nd_mesh_size are names of static inline functions: they are in the ELF debug data only, not in the 3dsx. Check the ELF.
@@ -25,3 +25,6 @@ Row FPS60MENU (revert of FSKIP2 1e7ddd7ea1, Select menu and Options panel tab 0)
 ## d. Bottom screen with Logging off (BOTSCR)
 Fix: Merge BOTSCR (pm_log_sink_kick from the HUD, footer and menu close: pm_gpu_ui.c, pm_log.c). Host test botscr.sh.
 User: select menu > Debug > Logging page, set Logging Off, close the menu. The bottom screen shows the HUD (fps row updates) and the footer.
+## e. Option rows (OPTIONS) and Speed x2
+Fix: Merge OPTIONS (pm_options.c, pm_dbg_game.c, pm_speedx2.h). Host test speedx2.sh.
+User: on an O3DS the C-Stick dead zone, ZL, ZR and C-Stick map rows are hidden. Stats and Position HUD show grey while HUD is off. Fixed Seed shows On or Off at restart. Speed x2: turn it on, change map: the walk speed stays at 2 x the base and does not grow.
