@@ -804,4 +804,5 @@ void pm_gbi_fallback(void) {
         ready = 1;
     }
     nd_ops_run(dl, ND_LIST_MAX, 0);
+    { extern unsigned char nd_dschk_fb; nd_dschk_fb = 1; }
 }
