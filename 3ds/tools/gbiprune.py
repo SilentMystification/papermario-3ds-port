@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""GBIHDR: delete the gbi macros that no file uses (include/PR/gbi.h, include/gbi_custom.h, include/PR/gs2dex.h).
+"""GBIHDR: delete the gbi macros that no file uses (include/PR/gbi.h, include/gbi_custom.h, 3ds/tools/gbi_inc/PR/gbi.h, include/PR/gs2dex.h).
 Usage: gbiprune.py [--dry] [root]   (root: the repo root, default: the current directory)
 A candidate is a macro whose name starts with gDP, gSP, gsDP, gsSP, gdDP or gdSP. It is live when its name is a token of a user file, or of a
 header line that is not in a #define block, or of the body of a live macro (closure). A user file: every git-tracked .c .h .inc .s .cpp .sh .txt
@@ -11,7 +11,7 @@ import re
 import subprocess
 import sys
 
-HDR = ["include/PR/gbi.h", "include/gbi_custom.h", "include/PR/gs2dex.h"]
+HDR = ["include/PR/gbi.h", "include/gbi_custom.h", "3ds/tools/gbi_inc/PR/gbi.h", "include/PR/gs2dex.h"]
 SKIP = {"3ds/include/nd_nolist.h"}  # the NOLIST poison list names every macro; it is not a user
 USER_EXTRA = []  # GBIHDR fix scope: a user file the census misses (repo-relative path)
 DEFRX = re.compile(r"^[ \t]*#[ \t]*define[ \t]+(\w+)")

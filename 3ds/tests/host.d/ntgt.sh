@@ -1,6 +1,6 @@
 #!/bin/sh
 # NTGT: nd_tgt_role (nd_tgt.h) equals the former img_role body for every kind bit combination (nd_tgt_test.c). Seeded fault: one branch changed in a copy must print ntgt FAIL.
-F="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
+F="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
 mkdir -p /tmp/ntgt_seed
 sed 's/if (siz == 2 \&\& (kind \& (NDK_ZERO | NDK_INZ))/if (siz == 3 \&\& (kind \& (NDK_ZERO | NDK_INZ))/' 3ds/include/nd_tgt.h > /tmp/ntgt_seed/nd_tgt.h
 if cmp -s 3ds/include/nd_tgt.h /tmp/ntgt_seed/nd_tgt.h; then echo "ntgt seed FAIL: sed changed nothing"; exit 1; fi

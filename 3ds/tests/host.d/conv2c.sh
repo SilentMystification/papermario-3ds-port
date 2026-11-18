@@ -1,7 +1,7 @@
 #!/bin/sh
 # CONV2C: host compare of the v2 tables (nd_gtab_test.c, -DNTAB_V2) against the v1 tables on the reset walker state. The seeded fault (one NDN_COL value + 1 in the compare's copy)
 # runs first and must report bad above 0. Needs /tmp/gconv of nd_host_test.sh (gen_gfx_tab.sh output, nd_gfx_tab.o, gconv_in.o).
-F="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
+F="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
 FP="-msse2 -mfpmath=sse -ffp-contract=off"
 gcc -m32 -w $F -c -o /tmp/ndcomb_c.o 3ds/src/pm_comb.c
 gcc -m32 -w $F -I /tmp/gconv -c -o /tmp/gconv/nd_ntab_idx.o /tmp/gconv/nd_ntab_idx.c

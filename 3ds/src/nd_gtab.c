@@ -125,7 +125,7 @@ void nd_rec_dl(const void* list) {
     if (!t) {
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_nt(list, (uint32_t)(uintptr_t)__builtin_return_address(0));
         gtr_dl++;
-        gSPDisplayList(gMainGfxPos++, list);
+        if (gtr_dl <= 4u) pm_log_e("ndc: list %p has no table f%u", list, pm_frame_count()); /* DEL4D12: no raw G_DL word (stray_word dropped it) */
         return;
     }
     gtr_tab++;
