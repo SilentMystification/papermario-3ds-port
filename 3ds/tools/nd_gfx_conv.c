@@ -160,8 +160,6 @@ static void conv(const GSym* g) {
                d->oml_m, d->oml_v, d->geom_c, d->geom_s, d->tex_a, d->tex_b, d->cw0, d->cw1, d->nsync, d->sync_k[0], d->sync_k[1], d->sync_k[2], d->sync_k[3], o->inh, NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM, o->k);
         fprintf(stderr, "gconv def %s+%u n %u inherit 0x%02x ctx 0x%x\n", g->name, o->k, d->n, o->inh, NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM);
     }
-    const int dev = g->moved && parts; /* PMOVE: a moved particle list keeps ndgo and a device ndg (no list word) */
-    if (dev) printf("#endif\n");
     printf("static const NdGOp ndgo_%s[%u] = {\n", g->name, no);
     for (unsigned i = 0; i < no; i++) {
         const Op* o = &ops[i];
@@ -177,9 +175,7 @@ static void conv(const GSym* g) {
         printf(" },\n");
     }
     printf("};\n");
-    if (dev) printf("#ifdef ND_HOST_GFX\n");
     printf("const NdGTab ndg_%s = { (const uint32_t*)%s, ndgo_%s, %u, %u, %u, %u };\n", g->name, g->name, g->name, no, parts ? NDG_F_PARTS : 0u, nvtx, ntri);
-    if (dev) printf("#else\nconst NdGTab ndg_%s = { (const uint32_t*)&ndd_%s, ndgo_%s, %u, %uu, %u, %u };\n#endif\n#ifdef ND_HOST_GFX\n", g->name, g->name, g->name, no, NDG_F_PARTS | NDG_F_MOVED, nvtx, ntri);
     n_lists++; n_parts += (unsigned)parts; n_defs += defi; n_ops += no;
 }
 
@@ -1004,20 +1000,9 @@ int main(int argc, char** argv) {
         conv(&gconv_sym[i]);
         if (gconv_sym[i].moved) printf("#endif\n");
     }
-    printf("NdGIdx nd_gtab_idx[] = {\n");
-    unsigned n_mp = 0; /* PMOVE: moved particle lists, in the device index too */
-    for (unsigned i = 0; i < gconv_nsym; i++) {
-        if (gconv_sym[i].kind != GS_GFX) continue;
-        if (gconv_sym[i].moved && g_parts[i]) {
-            n_mp++;
-            printf("#ifdef ND_HOST_GFX\n    { %s, &ndg_%s },\n#else\n    { &ndd_%s, &ndg_%s },\n#endif\n", gconv_sym[i].name, gconv_sym[i].name, gconv_sym[i].name, gconv_sym[i].name);
-            continue;
-        }
-        if (gconv_sym[i].moved) printf("#ifdef ND_HOST_GFX\n");
-        printf("    { %s, &ndg_%s },\n", gconv_sym[i].name, gconv_sym[i].name);
-        if (gconv_sym[i].moved) printf("#endif\n");
-    }
-    printf("};\n#ifdef ND_HOST_GFX\nconst unsigned nd_gtab_n = %uu;\n#else\nconst unsigned nd_gtab_n = %uu;\n#endif\n", n_lists, n_lists - n_moved + n_mp);
+    printf("#ifdef ND_HOST_GFX /* DEL5B3: the v1 tables are host only (the particles read the v2 entry) */\nNdGIdx nd_gtab_idx[] = {\n");
+    for (unsigned i = 0; i < gconv_nsym; i++) if (gconv_sym[i].kind == GS_GFX) printf("    { %s, &ndg_%s },\n", gconv_sym[i].name, gconv_sym[i].name);
+    printf("};\nconst unsigned nd_gtab_n = %uu;\n#endif\n", n_lists);
     if (argc < 9) { fprintf(stderr, "usage: nd_gfx_conv <nd_ntab_descs.c> <ntab_inherit.txt> <ntab_unsup.txt> <nd_ntab_idx.c> <ntab_tables.txt> <ntab_entries.txt> <ntab_pairs.txt> <gset_ok.txt>\n"); return 2; }
     if (argc > 9) sdef_load(argv[9]);
     v2_pairs_load(argv[6]);

@@ -86,7 +86,7 @@ unsigned pm_iw_us[3];
 static unsigned long long iw_tk; /* INTERP1: ticks inside nd_stream_run of the pass being timed */
 
 /* S10-2, DIRECT D0: one replay of the task stream (nd_rec.c). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
-static void gbi_walk(const uint32_t* s) {
+static void stream_walk(const uint32_t* s) {
     uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
     const uint64_t f0 = pm_cnt_on ? svcGetSystemTick() : 0; /* FXSPLIT */
     const uint64_t w0 = svcGetSystemTick(); /* INTERP1 */
@@ -97,12 +97,12 @@ static void gbi_walk(const uint32_t* s) {
 }
 
 /* PI1: walk one task (walker side). */
-static void gbi_task_w(const uint32_t* s) {
+static void stream_task(const uint32_t* s) {
     if (pm_fs_on) pm_fs_tasks++; /* WMODEL: render tasks per frame, fsplit only */
     pm_gpu_begin_wait(); /* LB1: every gbi task (also the key replay) waits for the GPU tail of the last frame */
     FS_MARK(FS_GBI); /* LB1b: the walk after the wait is gbi work, not rest (fsplit label only) */
     nd_frame_begin();
-    gbi_walk(s); /* STEREO: one walk; the right eye replays the GPU entries at the frame end (pm_gpu.c sr_replay) */
+    stream_walk(s); /* STEREO: one walk; the right eye replays the GPU entries at the frame end (pm_gpu.c sr_replay) */
 }
 
 /* CORE2C-2: the walker side of one queued frame (nd_wq.c): the background task, then the main task. */
@@ -127,10 +127,10 @@ void pm_frame_walk(const PmFrame* f) {
     iw_tk = 0; /* INTERP1 */
     if (__builtin_expect(((f->flags & PMF_WIDE) != 0) != (pm_wide != 0), 0)) wide_walk_note((f->flags & PMF_WIDE) != 0);
     pm_walk_cfb = f->cfb;
-    if (f->bg.ptr) gbi_task_w((const uint32_t*)f->bg.ptr);
+    if (f->bg.ptr) stream_task((const uint32_t*)f->bg.ptr);
     if (f->main.ptr) {
         pm_interp_repl = (f->flags & PMF_REPL) != 0;
-        gbi_task_w((const uint32_t*)f->main.ptr);
+        stream_task((const uint32_t*)f->main.ptr);
         pm_interp_repl = 0;
     }
     pm_iw_us[(f->flags & PMF_REPL) ? 0 : 2] = (unsigned)(iw_tk / 268u); /* INTERP1 */
@@ -197,7 +197,7 @@ void pm_key_walk(const PmKey* k) { /* walker side */
     pm_gpu_begin(1);
     PH_PUSH(PH_DRAW);
     iw_tk = 0; /* INTERP1 */
-    for (int i = 0; i < MAX_KEY && k->t[i].ptr; i++) gbi_task_w((const uint32_t*)k->t[i].ptr);
+    for (int i = 0; i < MAX_KEY && k->t[i].ptr; i++) stream_task((const uint32_t*)k->t[i].ptr);
     pm_iw_us[1] = (unsigned)(iw_tk / 268u); /* INTERP1 */
     PH_POP();
     pm_gpu_end();

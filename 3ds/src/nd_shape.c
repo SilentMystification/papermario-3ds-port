@@ -22,7 +22,7 @@ static __attribute__((cold, noinline)) void dlc_wz_note(const DlcGrp* g, const f
  * A shape list is cut into groups: a group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices that it loads itself. The compiler keeps the box of the
  * object coordinates of each group. At replay a group whose box lies outside one clip plane is skipped: the interpreter rejects every triangle of it as well. A group in view runs
  * the same code as the interpreter (G_VTX copy to the GV1 ring, draw_tri) without the CPU transform of the vertices. A group that is near the camera plane, lit, or does not
- * fit the ring runs through the op executor (DIRECT D10b: nd_ops_run on the op range of the group). */
+ * fit the ring runs through the op executor (DIRECT D10b: nd_nr_list on the op range of the group). */
 unsigned pm_dlc_gen = 1; /* bumped when the shape buffer is written (pm_tex_invalidate, decode_yay0) */
 
 DlcEnt* dlc_tab[DLC_TAB];
@@ -868,7 +868,7 @@ static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const uint32
 static void __attribute__((noinline, cold)) dlc_group_slow(const uint32_t* l, const DlcGrp* g, int why) {
     if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
     dlc_depth++;
-    nd_ops_run(l + 2u * g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
+    nd_nr_list(l + 2u * g->op0, g->op1 - g->op0, 0); /* D10b: a flat range on the op executor */
     dlc_depth--;
 }
 int dlc_try(const void* lv) {

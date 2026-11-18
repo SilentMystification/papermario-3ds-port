@@ -1,0 +1,3 @@
+3ds/include/nd_int.h:318:void nd_ent_units(const uint32_t* u, unsigned n); /* nd_walk.c, core 0 (DEL1B): n flat units of an entity list, the list start and end of nd_ops_run (keep 1) */
+3ds/src/nd_rec.c:433: * list outside the map shapes; nd_ops_run with the sync state kept); G_PM_LST carries its list start (gv_epoch, ent_skipgen). The list is
+3ds/src/pm_phase.c:607:        /* PERF2 step 6: rest = the walk (nd: gbi_walk ticks) less the classes; task = gbi less the walk (the task start: the GPU tail wait outside its own phases, nd_frame_begin) */
