@@ -22,7 +22,8 @@
 #include "nd_snap.h"
 #include "nd_gtab.h"
 #include "nd_lkey.h"
-#include "nd_gbi.h" /* FALLBK: pm_gbi_fallback's macros write typed units (nd_gx_w, nd_rec.c:487) */
+#include "nd_gbi.h" /* ND_W0_D2 of the fallback matrix unit */
+#include "nd_nr.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned pm_gbi_cur_op; /* PI2: the unit id (ND_FS_*) of the step now running, or a record op G_PM_* (DEL1D1; one store per op) */
@@ -645,7 +646,7 @@ void pm_walk_drain(const char* why) {
 }
 void pm_gbi_fallback(void) {
     static int ready;
-    static Gfx dl[8];
+    static uint32_t dl[16];
     static Vtx fv[3];
     static Mtx fm;
     if (!ready) {
@@ -665,15 +666,15 @@ void pm_gbi_fallback(void) {
             fv[i].v.cn[2] = rgb[i][2];
             fv[i].v.cn[3] = 255;
         }
-        Gfx* g = dl;
-        gDPSetCycleType(g++, G_CYC_FILL);
-        gDPSetFillColor(g++, 0x22292229);
-        gDPFillRectangle(g++, 0, 0, 319, 239);
-        gDPSetCycleType(g++, G_CYC_1CYCLE);
-        gSPMatrix(g++, &fm, G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH);
-        gSPVertex(g++, fv, 3, 0);
-        gSP1Triangle(g++, 0, 1, 2, 0);
-        gSPEndDisplayList(g++);
+        uint32_t* nrp = dl; /* DEL3C1: the units of the old gbi macros (ND_X0, ND_X1 of each word) */
+        ND_NR_AT(ND_NR_OM(1, G_MDSFT_CYCLETYPE, 2), G_CYC_FILL);
+        ND_NR_AT(ND_FS_W0(ND_FS_FILL, 0u), 0x22292229u);
+        ND_NR_AT(ND_FS_W0(ND_FS_RECT, ND_NR_XY10(319, 239)), ND_NR_XY10(0, 0));
+        ND_NR_AT(ND_NR_OM(1, G_MDSFT_CYCLETYPE, 2), G_CYC_1CYCLE);
+        ND_NR_AT(ND_FS_W0(ND_FS_MTX, ND_W0_D2(0, sizeof(Mtx), (G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH) ^ G_MTX_PUSH, 0)), (uint32_t)(uintptr_t)&fm);
+        ND_NR_AT(ND_NR_VTX(3, 0), (uint32_t)(uintptr_t)fv);
+        ND_NR_AT(ND_FS_W0(ND_FS_TRI1, __gsSP1Triangle_w1f(0, 1, 2, 0)), 0u);
+        ND_NR_AT(ND_FS_W0(ND_FS_END, 0u), 0u);
         ready = 1;
     }
     nd_nr_list(dl, ND_LIST_MAX, 0);

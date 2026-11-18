@@ -108,7 +108,6 @@ extern MusicControlData gMusicControlData[2];
 
 // gfx
 extern DisplayContext* gDisplayContext;
-extern Gfx* gMainGfxPos;
 extern u16 gMatrixListPos;
 extern s32 gCurrentDisplayContextIndex;
 
