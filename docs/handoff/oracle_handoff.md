@@ -1,14 +1,14 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 48cb964cd4+, 2026-11-17. Counters FACT (listcen on b4de08e55b): build 311, gfxpos 3, recdl 5, reader 792, model 15; page moves since:
-OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1, PSOFB model -2. Run listcen for fresh numbers.
-## The chain: plan_walker_delete.md (stages; S3-S6 rows updated) and design_nstate.md (the S3-S6 design). Read both first.
+State: main b0763f2abf+, 2026-11-17. Counters FACT (orchestrator brief): build 308, data 191, gfxtype 251 (246 on branch GFXT1), reader 772,
+model 15, elfgate func 48 data 365. Run listcen for fresh numbers.
+## The chain: plan_finish.md (every row to the end, critical path, one console check per stage), design_nstate.md (S3-S6 design). Read both first.
 - D1 A, D2 A. UD1 option 1 (user): core 1 keeps the N64 field model; listcen reports a class core1 outside the end proof.
   UD2 option 1: core 0 keeps a native transform stack. UD3 option 1: prof push at the NST1 gate. Sonnet yes: NST1, NDR0, NCONV1, NREC1.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
 - HWFIX1 merged (nd_comb_core on a miss); user console check of 0f39de90cb: visual faults gone (FACT). TATTLEAR merged.
 ## Pages on main and their waits (chain: NST1 -> NST3 -> NST2A -> NST2B -> NST2C -> NST2D -> NST2E -> NST2F -> NDR0)
-- Merged: PSOFB, NST1, NST3, NST2A, HWFIX1, BOTSCR. Parallel (no chain file): ws_GFXT1 (C7 -5), ws_PSOCOV (pso miss harvest; fxchk_a at the 256 cap).
+- Merged: PSOFB, NST1, NST3, NST2A, HWFIX1, BOTSCR. Done on branches, not on main: NST2B, NST2C, GFXT1, PSOCOV, BASELOG, OPTIONS (6efc8f900d).
 - NSTO pages (oracle NSTO): NST2B model records (nd_ds_model; dschk adopts the groups a model cache hit skips), NST2C entity draw, sprite
   state, compiled def, particles (nd_ds_unit, nd_ds_feed), NST2D ranges (unit log of core 1 applies, marks, sub save/restore, R11 replay;
   dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
@@ -25,7 +25,7 @@ OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 
    box_fold_sync nd_comb.c:374, nd_mesh_* are VTX/TRI state-run units (nd_geo.c:29-37), not commands. Then NCONV1 (section 8), NREC1 (9).
 4. Add the listcen class core1 (UD1) in the first row that adds ND_FS_ ids (NCONV1).
 ## Facts that cost time
-- Every setter unit passes nd_rec_nr (nd_rec.c:375); core 0 runs it in nd_walk_state (nd_walk.c:390). reader, model, data, build fall only in S4-S7 (no row free of chain files: nd_cen.c callers are in nd_walk.c, nd_recs.c).
+- Every setter unit passes nd_rec_nr (nd_rec.c:399); core 0 runs it in nd_walk_state (nd_walk.c:390). reader, model, data, build fall only in S4-S7 (no row free of chain files: nd_cen.c callers are in nd_walk.c, nd_recs.c).
 - The F3 globals (conv_k4, dual_on, comb_set ...) have struct-field and parameter twins in 20+ files: never rename them by sed.
 - Core 0 never resets nd_ws (nd_state.c:11 static init only): nd_ds must not reset either.
 - fxslot_cap psochk (6ff72ad823): lk 5185 miss 26091 lkbad 0. Most decisions miss the table today. Keys come only from ND_PSO_DESC.
@@ -47,14 +47,8 @@ OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 
 - dschk copies nd_ds at rec_take of a command: every core 1 apply of a record goes after its nd_rec_* call.
 ## Console reports 2026-11-17 (build 6449 = main 60182a2edd, FACT, rule 1: code read only)
 - 60 FPS row: paged ws_FPS60MENU (9ef4f1fd8d): git revert of FSKIP2 1e7ddd7ea1 (row renamed to "Frame skip", pm_options.c:421 :675).
-- OPEN, page ws_OPTIONS not written: (1) bottom screen blank sometimes; (2) some Select menu option rows change nothing.
-  Facts read so far: bottom console init pm_gpu.c:1902 (consoleInit GFX_BOTTOM, window LOG_TOP), only after C3D_Init; C3D_Init failure path :1799.
-  Bottom draw: pm_gpu_hud_flush (pm_gpu_ui.c:155-195) returns while menu_on or !consoleInitialised. Menu draw pm_gpu_ui.c:54-74 (consoleClear at close).
-  Only gfxFlushBuffers call: pm_gpu.c:1925 (menu_grey_top path). The top swaps at pm_gpu.c:1973 and pm_main.c:90; no bottom swap call (grep).
-  Log levels: pm_log.c:353-383 (livelevel, disklevel, conlevel; conlevel off = no log text on the bottom, GUESS). Options defaults pm_options.c:14-18.
-  Rows: tab_ids pm_options.c:418-445, labels :639-690, values :692+, flips pm_options_flip :298-335 and the act switch near :784 and :886.
-  To do: list each row id, its pm_opt field and every reader of that field (grep), git log -S on the field names over 002498da73..main.
+- Option rows: ws_OPTIONS written (79a07c54a5). Its edit is done on branch OPTIONS (6efc8f900d, host speedx2 ok), not merged to main.
+- Bottom screen blank: BOTSCR merged (pm_log.c:905 cause).
 ## What to do first
-0. Write ws_OPTIONS from the OPEN block above (coordinator brief: switches prof and log profiles, GPOS1, NST hooks, TATTLEAR).
-1. Read design_nstate.md, plan_walker_delete.md and the ws_NST2* pages. Answer coder questions.
-2. Open work 2, then 3.
+1. Read plan_finish.md, design_nstate.md and the ws_NST2* pages. Answer coder questions.
+2. Write NDR0 when the NST2F gate passes (Open work 3). Then the S4 pages of plan_finish.md section 2 (NDR1-6, NCONV1).
