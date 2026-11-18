@@ -25,6 +25,7 @@ static int sv_log = 1, sv_live = 1, sv_disk = 1, sv_con = 1, sv_prof_disk = 0;
 static const char* const prof_name[3] = { "off", "prof", "phase" };
 static const char* const prof_label[3] = { "Off", "Prof", "Phase" };
 static int prof_row, sv_prof;
+static int seed_boot; /* Fixed Seed of this run (pm_os.c:55 reads it once) */
 /* CFG-1: where a run value came from, for the boot line (and the panel, CFG-2): F launch word or debug3ds.txt, I options.ini, D default.
  * ini_bits: the keys options.ini gave (1 log, 2 live, 4 disk, 8 con, 16 profmode). prof_src: the source of prof_row. */
 static int ini_bits;
@@ -252,6 +253,7 @@ void pm_options_init(void) {
              pm_opt.rep_rate, pm_opt.hud_ms, sv_live, sv_disk, sv_con, sv_log); /* OPTFIX: the saved values, as read from options.ini or the defaults */
     pm_log_switch("nofog", pm_opt.dbg_nofog); /* a debug word that the code reads each frame */
     { extern int pm_nofog; pm_nofog = pm_opt.dbg_nofog || pm_debug_has("nofog"); }
+    seed_boot = pm_opt.fixedseed;
     pm_log_switch("nolight", pm_opt.dbg_nolight);
     if (!have || from_txt || migrated) pm_options_write(); /* LOG5: a version 1 file is written as version 2 */
 }
@@ -423,8 +425,8 @@ static int tab_ids(int tab, int mode, int* ids) {
         ids[n++] = RW_DBG + 7; ids[n++] = RW_WIDE; ids[n++] = RW_FPS; /* Frame skip (option row 9), Resolution Mode, 60 FPS (MENUGEN order) */
         if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_EXIT; ids[n++] = RW_CLOSE; }
     } else if (tab == 1) {
-        ids[n++] = RW_DPAD; ids[n++] = RW_DZPAD; ids[n++] = RW_DZCS; ids[n++] = RW_RDELAY; ids[n++] = RW_RRATE;
-        for (i = 0; i < PM_NIN; i++) ids[n++] = RW_MAP + i;
+        ids[n++] = RW_DPAD; ids[n++] = RW_DZPAD; if (pm_new3ds) ids[n++] = RW_DZCS; ids[n++] = RW_RDELAY; ids[n++] = RW_RRATE;
+        for (i = 0; i < PM_NIN; i++) if (pm_new3ds || !(i == PM_IN_ZL || i == PM_IN_ZR || i >= PM_IN_CSUP)) ids[n++] = RW_MAP + i; /* O3DS: no ZL, ZR, C-Stick */
         ids[n++] = RW_RESET;
     } else if (tab == 2) { /* LAYOUT: Debug is a list of folders */
         ids[n++] = RW_WARPAREA; /* opens the Warp area folder */
@@ -505,7 +507,7 @@ int pm_battle_area_count(void); int pm_battle_area_rows(int a); int pm_battle_ar
 /* Set Stats: the Level row (setstat_k 3) is read only, the cursor skips it */
 int pm_optui_readonly(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < SETSTAT_N && setstat_k[row] == 3; }
 /* LOG5: the Logging page rows Live log, Log to disk, Console log grey while logging is off (Profiling is on or logging is off). Cursor skip and colour. */
-int pm_optui_grey(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 14 && row >= 1 && row <= 3 && !pm_opt.log; }
+int pm_optui_grey(int tab, int row) { return tab == PM_OPT_SUB && ((sub_kind == 14 && row >= 1 && row <= 3 && !pm_opt.log) || (sub_kind == 7 && (row == 1 || row == 2) && !pm_opt.dbg_hud)); } /* Stats, Position HUD draw only with HUD on (pm_main.c:844) */
 /* Set Stats: HP, FP, BP and Level draw in red when the computed level is above 27 */
 int pm_optui_red(int tab, int row) { return tab == PM_OPT_SUB && sub_kind == 2 && row >= 0 && row < 4 && pm_dbgg_level_over(); }
 /* MN6: the Warp area folder opens on a warning page (B warps on, any other key backs out). MN6 rest: the folder has two levels. Level 1 lists
@@ -732,6 +734,7 @@ const char* pm_optui_value(int tab, int row, int mode) {
         else { int h, t; pm_dbgg_count(id - RW_GIVE, &h, &t); snprintf(b, 16, "%d/%d", h, t); }
         return b;
     }
+    if (id == RW_DBG + 6 && pm_opt.fixedseed != seed_boot) return pm_opt.fixedseed ? "On at restart" : "Off at restart";
     if (id >= RW_DBG) return pm_options_get(id - RW_DBG + 2) ? "On" : "Off"; /* debug rows are option rows 2 to 12 */
     if (id >= RW_MAP) return pm_n64_name(pm_map[id - RW_MAP]);
     switch (id) {
