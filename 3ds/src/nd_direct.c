@@ -18,6 +18,7 @@
 #include "nd_tx.h"
 #include "nd_at.h"
 #include "nd_snap.h"
+#include "nd_fs.h"
 
 #ifndef pm_gpu_flush
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
@@ -161,7 +162,7 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
     int tw = 1, th = 1;
     const int xl = sx12(ulx * 4), yl = sx12(uly * 4), xh = sx12(lrx * 4), yh = sx12(lry * 4);
     nd_tex_bind_glyph(raster, pal, tlut, w, h);
-    pm_gbi_cur_op = G_TEXRECT;
+    pm_gbi_cur_op = ND_FS_RECT;
     gv_epoch++;
     off_screen_check();
     box_fold_sync();
@@ -345,16 +346,16 @@ void nd_direct_quad(uint32_t mtx, const void* vtx4) {
     const u32 t1 = (_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(0, 2, 3, 0)) & 0xffffffu;                            /* gSP1Triangle(0, 2, 3) */
     nd_dq_on = 1;
     gv_epoch++;
-    pm_gbi_cur_op = G_MTX;
+    pm_gbi_cur_op = ND_FS_MTX;
     load_mtx(wm, mtx, 0);
-    pm_gbi_cur_op = G_VTX;
+    pm_gbi_cur_op = ND_FS_VTX;
     nd_geom_vtx(wv, (u32)(uintptr_t)vtx4, NULL);
-    pm_gbi_cur_op = G_TRI1;
+    pm_gbi_cur_op = ND_FS_TRI1;
     tri_prep_ok = 0;
     draw_tri(t0);
     tri_prep_ok = 0;
     draw_tri(t1);
-    pm_gbi_cur_op = G_POPMTX;
+    pm_gbi_cur_op = ND_FS_POPMTX;
     gbi_popmtx(64u); /* gSPPopMatrix: w1 = 1 * 64 */
 }
 

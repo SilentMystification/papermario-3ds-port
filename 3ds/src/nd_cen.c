@@ -9,6 +9,7 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_fs.h"
 
 /* PG0 / PERF-GBI counters (fed in prof mode, read by the census below every GP_PERIOD frames) */
 unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 sync_combine calls, 6 sync_render calls */
@@ -74,7 +75,6 @@ void pm_gbi_end_frame(void) {
         frames = acc_t = acc_i = acc_c = acc_d = acc_o = acc_k = 0;
     }
     if (gp_on() && ++gp_frames == GP_PERIOD) { /* PERF-GBI: per frame average in 0.1 ms units (ticks / 26811), tick reads inflate the sections */
-        static const char* nm[8] = { "validity,off_screen,box_fold,comb_audit", "ensure_tile", "dual_bind", "reject,cull", "sync_render", "gpu_emit", "old path", "G_VTX" };
         char b[200]; int n = 0;
         for (int k = 0; k < 8; k++) n += snprintf(b + n, sizeof b - n, "%s %u ", k == 3 ? "early" : k == 0 ? "A" : k == 1 ? "ens" : k == 2 ? "dual" : k == 4 ? "sync" : k == 5 ? "emit" : k == 6 ? "old" : "gvtx", gp_acc[k] / 26811 / 300);
         for (int r = 0; r < 20; r++) { /* the twenty most expensive op codes: per frame time in 0.1 ms and count */
@@ -88,7 +88,6 @@ void pm_gbi_end_frame(void) {
         pm_gpu_gbiprof_report(GP_PERIOD);
         { extern void pm_debug_report(unsigned); pm_debug_report(GP_PERIOD); }
         { extern void pm_tex_prof_report(unsigned); pm_tex_prof_report(GP_PERIOD); }
-        (void)nm;
         memset(gp_acc, 0, sizeof gp_acc); gp_ntri = gp_frames = 0;
     }
     nd_mv_sp = 0; /* PT70: the RSP matrix stack starts empty in every task. A push without pop in the message draw leaked one level per frame, then the 10 level cap dropped the pad push of the blue pipe and its pop left the wrong matrix (the sunk pipe showed up while a text box waited) */
@@ -110,11 +109,11 @@ const char* pm_gbi_stats(void) { return stats_line; }
 /* PI2: batch class of the op that closes a batch. 0 TEX, 1 CC, 2 GEO, 3 RECT, 4 TRI, 5 other. */
 int pm_gbi_flush_class(void) {
     switch (pm_gbi_cur_op) {
-    case G_SETTIMG: case G_SETTILE: case G_SETTILESIZE: case G_LOADTILE: case G_LOADBLOCK: case G_LOADTLUT: case G_TEXTURE: return 0;
-    case G_SETCOMBINE: case G_SETPRIMCOLOR: case G_SETENVCOLOR: case G_SETOTHERMODE_L: case G_SETOTHERMODE_H: case G_SETFOGCOLOR: return 1;
-    case G_MTX: case G_POPMTX: case G_GEOMETRYMODE: case G_MOVEWORD: case G_MOVEMEM: return 2;
-    case G_TEXRECT: case G_TEXRECTFLIP: case G_FILLRECT: return 3;
-    case G_TRI1: case G_TRI2: return 4;
+    case ND_FS_TIMG: case ND_FS_TILE: case ND_FS_TILESIZE: case ND_FS_LOADTILE: case ND_FS_LOADBLOCK: case ND_FS_LOADTLUT: case ND_FS_TEXTURE: return 0;
+    case ND_FS_COMB: case ND_FS_PRIM: case ND_FS_ENV: case ND_FS_OML: case ND_FS_OMH: case ND_FS_FOG: return 1;
+    case ND_FS_MTX: case ND_FS_POPMTX: case ND_FS_GEOM: case ND_FS_MW: case ND_FS_MOVEMEM: return 2;
+    case ND_FS_RECT: return 3;
+    case ND_FS_TRI1: case ND_FS_TRI2: return 4;
     default: return 5;
     }
 }
@@ -130,7 +129,7 @@ void gv_streak_flush(void) {
     gv_streak = 0;
 }
 void gv_streak_op(unsigned op) {
-    if (op == G_TRI1 || op == G_TRI2) {
+    if (op == ND_FS_TRI1 || op == ND_FS_TRI2) {
         if (pm_ph_cen && !gv_run) { gv_run = 1; if (ph_pick()) { gv_streak_t0 = pm_ticks(); gv_streak = 1; } }
     } else
         gv_streak_flush();
@@ -144,7 +143,7 @@ void tex_streak_flush(void) {
     tex_streak = 0;
 }
 void tex_streak_op(unsigned op) {
-    if (op == G_SETTIMG || op == G_SETTILE || op == G_SETTILESIZE || op == G_LOADTILE || op == G_LOADBLOCK || op == G_LOADTLUT || op == G_TEXTURE ) {
+    if (op == ND_FS_TIMG || op == ND_FS_TILE || op == ND_FS_TILESIZE || op == ND_FS_LOADTILE || op == ND_FS_LOADBLOCK || op == ND_FS_LOADTLUT || op == ND_FS_TEXTURE) {
         if (pm_ph_cen && !tex_run) { tex_run = 1; if (ph_pick()) { tex_streak_t0 = pm_ticks(); tex_streak = 1; } }
     } else
         tex_streak_flush();

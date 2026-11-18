@@ -1,0 +1,6 @@
+LOOP DEL1D1 host rc 0, build rc 0, 3 s
+STAGE key-inputs 3 s STAGE gen 0 s --- build up to date (key 85e713d86f8a), skipping --- STAGE key 0 s 
+
+cmp entcape_kmr03_drec: no stored base of entcape_kmr03_drec at e626a8ab5. Run: bench.py base entcape_kmr03_drec 
+LOOP TIME host+build 3 s, run+cmp 18 s, total 21 s
+LOOP FAIL: cmp, read build3ds/out/loop_DEL1D1_cmp_<bench>.txt

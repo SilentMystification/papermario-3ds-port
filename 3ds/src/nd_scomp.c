@@ -60,7 +60,7 @@ int nd_scomp_analyse(NdSDef* d) {
         seen = 1;
         if (first == 32u) first = k;
         last = k;
-        d->last_op = nd_op_n64[id - ND_FS_BASE];
+        d->last_op = (uint8_t)id; /* DEL1D1: the unit id */
         if (unit_sync(w0)) { if (d->nsync >= 4u) ok = 0; else d->sync_k[d->nsync++] = (uint8_t)k; }
         switch (id) {
         case ND_FS_OMH: { const uint32_t m = nd_op_om_mask(a); d->omh_v = (d->omh_v & ~m) | (b & m); d->omh_m |= m; break; }
