@@ -1858,7 +1858,8 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
         rec.texOffsetY = texOffsetY;
         rec.dsdx = dsdx;
         rec.dtdy = dtdy;
-        nd_rec_napi(msg_glyph_run, &rec, sizeof rec / 8u);
+        nd_snap_mesh(); /* NDR3 */
+        nd_rec_napi_s(msg_glyph_run, &rec, sizeof rec / 8u);
         msg_glyph_feed((const uint32_t*)&rec);
     }
 

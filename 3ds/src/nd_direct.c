@@ -17,6 +17,7 @@
 #include "nd_gbi.h"
 #include "nd_tx.h"
 #include "nd_at.h"
+#include "nd_snap.h"
 
 #ifndef pm_gpu_flush
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
@@ -212,6 +213,7 @@ int nd_glyph_can(int texW) {
 static inline int sx12(int v) { v &= 0xfff; return (v & 0x800) ? v | ~0xfff : v; }
 
 void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ulx, int uly, int lrx, int lry, int s, int t, int dsdx_, int dtdy_) {
+    const unsigned char sn = nd_snap_arm; /* NDR3: the snap of this glyph */
     nd_dschk_dir = 1; /* NST2F */
     int tw = 1, th = 1;
     const int xl = sx12(ulx * 4), yl = sx12(uly * 4), xh = sx12(lrx * 4), yh = sx12(lry * 4);
@@ -220,7 +222,7 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
     gv_epoch++;
     off_screen_check();
     box_fold_sync();
-    sync_render();
+    if (sn) { nd_snapchk_tri(); nd_snap_render(); } else sync_render(); /* NDR3: the compare and combine, then the render state of the snap */
     gp3_t0_surv();
     ensure_tile(0);
     dual_bind();
