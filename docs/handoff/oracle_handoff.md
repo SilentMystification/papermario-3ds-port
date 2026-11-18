@@ -21,9 +21,11 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 ## Open work (in order)
 1. Answer coder questions (HWFIX1 first, NST1, NST3, NST2A-F). epbad: core 0 bumps gv_epoch but not nd_st_epoch at
    every model record (nd_walk.c:156); fix is ws_NST2B edit 7. Other prologues without nd_st_epoch (nd_walk.c:184 ENT) count once their unit feeds ds_ep.
-2. PSOFB psomiss (from PHASEE2): each gate bench (spot_mac01_drec, wscmb_pause_drec) has 1 psomiss entry whose combine inputs hold a
-   one-bit flag above 1 or below 0. The 4 builders (nd_comb.c:199, nd_model.c:209, pm_gpu.c:3925, nd_scomp.c:226) and the flag writers
-   write 0 or 1 (code read). After the PSOFB merge: read the 8 flag values in the PSOFB 2 commit text, find the writer, write a Haiku page.
+2. PSOFB psomiss: tex_on 2167585 = 0x211321 (f5d196a337 text, both benches). Trace (no cause, 2026-11-17): model input is bool (nd_model.c:335);
+   so nd_ws.tex_on. Only writers: set_texture nd_tex_set.c:223 (via nd_op_apply nd_set.c:172, nd_scomp.c:195, :248) and nd_recs.c:195 (u8).
+   Every NDO_TEXTURE encoder masks a to 0/1 (nd_op.h:89, nd_nr.h:15, nd_op.c:29). So a non-unit word with top byte 0x2A ran as a unit.
+   GUESS paths: stale def units nd_scomp.c:241-248 (ent_sdef nd_ent.c:213 points into a heap list), stale nd_cgfx_rng range (nd_recs.c:99).
+   OPEN: needs a user yes for one debug-log run (log unit pointer and pm_gbi_cur_op in set_texture when on > 1). The gate logs are gone.
 3. NDR0 (Sonnet, design section 7) after the NST2F gate data. Reads it needs: gv_epoch_enter nd_geom.c:203-228, sync_combine_work
    nd_comb.c:312-333 (leg_mode and comb_mode5 are decision inputs and outputs), sync_render nd_set.c:210, ensure_tile_slow nd_tex_set.c:335,
    box_fold_sync nd_comb.c:374, nd_mesh_* are VTX/TRI state-run units (nd_geo.c:29-37), not commands. Then NCONV1 (section 8), NREC1 (9).
