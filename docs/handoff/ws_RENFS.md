@@ -16,9 +16,11 @@ Designer: oracle FIN. One coder per row. Worktree build3ds/wt/<row>, branch <row
    Before (nd_val.c:30): `val_rec(NDO_TILESIZE, ((uls & 0xfffu) << 12) | (ult & 0xfffu), ...);`
    After: `val_rec(ND_FS_TILESIZE, ((uls & 0xfffu) << 12) | (ult & 0xfffu), ...);`
 2. Add `#include "nd_fs.h"` after the last #include of each file. Keep every existing #include (other files reach nd_op.h through them).
-3. A name that nd_fs.h does not define is a compile error: stop, send the error to the oracle (do not add names to nd_fs.h).
+3. Host seed scripts sed an NDO_ token of a renamed file. Rename the token in the script too (fix right): REN3 3ds/tests/host.d/hunit.sh:10
+   (`NDO_ENV, 0u` and `NDO_PRIM, 0u`), REN2 3ds/tests/host.d/ns3unit.sh:10 (`NDO_RECT_TEX |`). A seed that matches nothing makes the seed run pass and the script fail.
+4. A name that nd_fs.h does not define is a compile error: stop, send the error to the oracle (do not add names to nd_fs.h).
 ## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 1 Azahar start)
-1. Edits 1-2. `sh 3ds/tools/nd_host_test.sh` PASS. `python 3ds/tools/listcen.py > build3ds/out/<row>_listcen.txt`: reader lower than the merge-base by
+1. Edits 1-3. `sh 3ds/tools/nd_host_test.sh` PASS. `python 3ds/tools/listcen.py > build3ds/out/<row>_listcen.txt`: reader lower than the merge-base by
    the token count of the row's files (code only), every other `listcen total` line equal. Commit `<row> 1: ND_FS_ names in <files>`.
 2. bench.py base spot_mac01_drec (merge-base, not charged). rowloop --row <row> --bench spot_mac01_drec: LOOP PASS, byte-equal.
 ## Fix rights: the row's files; compile errors of the rename. A DIFF, a changed other total, a missing name: stop, send the output path to the oracle. Wait.
