@@ -254,16 +254,32 @@ void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the op 
 
 /* Off-screen or depth colour image (row S5PQUAD 2b): the walker's fill takes its own path (off_screen_check). The state of the kind and the
  * primitive colour as ops, then one fill rectangle (lower right exclusive, as passed). n = 4 ops (nd_walk_state counts ops). */
+/* NST2E: the fallback units of one fill record, written at *o. */
+static void nd_fill_emit(const NdFillRec* f, unsigned k, uint32_t** o) {
+    uint32_t* nrp = *o;
+    NDST_COMB(ND_NR_AT, kFillKind[k].cc.w0, kFillKind[k].cc.w1);
+    NDST_RM(ND_NR_AT, kFillKind[k].rm0, kFillKind[k].rm1);
+    NDVAL_PRIM(ND_NR_AT, 0, 0, (f->rgba >> 24) & 0xffu, (f->rgba >> 16) & 0xffu, (f->rgba >> 8) & 0xffu, f->rgba & 0xffu);
+    NDTX_FILL(ND_NR_AT, f->x0, f->y0, f->x1, f->y1);
+    *o = nrp;
+}
+
 static void nd_fill_walk(const NdFillRec* f, unsigned k) {
     static uint32_t buf[8];
     uint32_t* nrp = buf;
     static unsigned nfb;
     if (nfb++ < 16u) pm_log_d("fill fallback f%u", pm_frame_count());
-    NDST_COMB(ND_NR_AT, kFillKind[k].cc.w0, kFillKind[k].cc.w1);
-    NDST_RM(ND_NR_AT, kFillKind[k].rm0, kFillKind[k].rm1);
-    NDVAL_PRIM(ND_NR_AT, 0, 0, (f->rgba >> 24) & 0xffu, (f->rgba >> 16) & 0xffu, (f->rgba >> 8) & 0xffu, f->rgba & 0xffu);
-    NDTX_FILL(ND_NR_AT, f->x0, f->y0, f->x1, f->y1);
+    nd_fill_emit(f, k, &nrp);
     nd_nr_exec(buf, 4u);
+}
+
+/* NST2E: the units of one fill record feed core 1's nd_ds (record sites screen_overlays.c, battle/190B20.c). */
+void nd_fill_feed(const uint32_t* u) {
+    const NdFillRec* f = (const NdFillRec*)u;
+    uint32_t buf[8];
+    uint32_t* p = buf;
+    nd_fill_emit(f, f->kind & 3u, &p);
+    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
 }
 
 /* core 0: the 1-cycle fill of a rectangle, as the walker's fill (nd_rect.c nd_fillrect): primitive colour, lower right exclusive. */
@@ -291,6 +307,27 @@ void nd_fill_run(const uint32_t* u) {
 
 /* S5TRECT: the NDC_NAPI runner of one NdTRect (nd_api.h): a texture window and one texture rectangle. Direct when the window is valid and the walker
  * state lets a direct rectangle draw (nd_direct_ready == 1); else the same load and rectangle ops into a local list, walked with nd_walk_state. */
+/* NST2E: the fallback units of one texture rectangle record (load and rectangle), written at *o. */
+static void trect_emit(const NdTRect* r, uint32_t** o) {
+    uint32_t* nrp = *o;
+    switch (r->siz) {
+        case G_IM_SIZ_4b:
+            NDTX_LOAD_TILE_4B(ND_NR_AT, r->img, r->fmt, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        case G_IM_SIZ_8b:
+            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_8b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        case G_IM_SIZ_16b:
+            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_16b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+        default:
+            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_32b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
+            break;
+    }
+    NDTX_RECT_W(ND_NR_AT, r->w0, r->w1, r->hs, r->hd);
+    *o = nrp;
+}
+
 void nd_trect_run(const uint32_t* u) {
     static uint32_t buf[32];
     static unsigned nfb;
@@ -315,22 +352,16 @@ void nd_trect_run(const uint32_t* u) {
         }
     }
     if (nfb++ < 16u) pm_log_d("trect fallback f%u", pm_frame_count());
-    switch (r->siz) {
-        case G_IM_SIZ_4b:
-            NDTX_LOAD_TILE_4B(ND_NR_AT, r->img, r->fmt, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
-            break;
-        case G_IM_SIZ_8b:
-            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_8b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
-            break;
-        case G_IM_SIZ_16b:
-            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_16b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
-            break;
-        default:
-            NDTX_LOAD_TILE(ND_NR_AT, r->img, r->fmt, G_IM_SIZ_32b, r->width, r->height, r->uls, r->ult, r->lrs, r->lrt, 0, r->cms, r->cmt, r->masks, r->maskt, G_TX_NOLOD, G_TX_NOLOD);
-            break;
-    }
-    NDTX_RECT_W(ND_NR_AT, r->w0, r->w1, r->hs, r->hd);
+    trect_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+}
+
+/* NST2E: the units of one texture rectangle record feed core 1's nd_ds (record sites draw_img_util.c, msg.c, state_title_screen.c). */
+void nd_trect_feed(const uint32_t* u) {
+    uint32_t buf[32];
+    uint32_t* p = buf;
+    trect_emit((const NdTRect*)u, &p);
+    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
 }
 
 /* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by

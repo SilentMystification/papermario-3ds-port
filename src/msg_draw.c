@@ -1708,6 +1708,25 @@ _Static_assert(sizeof(NdGlyphRec) == 48, "NdGlyphRec: 6 stream units");
 
 unsigned pm_frame_count(void);
 void pm_log_evt(const char* fmt, ...);
+/* NST2E: the fallback units of one glyph record, written at *o. */
+static void msg_glyph_emit(const NdGlyphRec* r, uint32_t** o) {
+    uint32_t* nrp = *o;
+    if (r->tlut) {
+        NDTX_LOAD_TLUT16(ND_NR_AT, 0, r->pal);
+    }
+    if (r->texW >= 16 && r->texW % 16 == 0) {
+        NDTX_LOAD_BLOCK_4B(ND_NR_AT, r->raster, G_IM_FMT_CI, r->texW, r->texH, 0,
+                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    } else {
+        NDTX_LOAD_TILE_4B(ND_NR_AT, r->raster, G_IM_FMT_CI, r->texW, r->texH,
+                              0, 0, r->texW - 1, r->texH - 1, 0,
+                              G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    }
+    NDTX_RECT_TEX(ND_NR_AT, r->ulx * 4, r->uly * 4, r->lrx * 4, r->lry * 4, G_TX_RENDERTILE, r->texOffsetX, r->texOffsetY,
+                        r->dsdx, r->dtdy);
+    *o = nrp;
+}
+
 static void msg_glyph_run(const uint32_t* u) {
     const NdGlyphRec* r = (const NdGlyphRec*)u;
     uint32_t buf[48];
@@ -1724,20 +1743,16 @@ static void msg_glyph_run(const uint32_t* u) {
         return;
     }
     g_fb++;
-    if (r->tlut) {
-        NDTX_LOAD_TLUT16(ND_NR_AT, 0, r->pal);
-    }
-    if (r->texW >= 16 && r->texW % 16 == 0) {
-        NDTX_LOAD_BLOCK_4B(ND_NR_AT, r->raster, G_IM_FMT_CI, r->texW, r->texH, 0,
-                               G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-    } else {
-        NDTX_LOAD_TILE_4B(ND_NR_AT, r->raster, G_IM_FMT_CI, r->texW, r->texH,
-                              0, 0, r->texW - 1, r->texH - 1, 0,
-                              G_TX_WRAP, G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-    }
-    NDTX_RECT_TEX(ND_NR_AT, r->ulx * 4, r->uly * 4, r->lrx * 4, r->lry * 4, G_TX_RENDERTILE, r->texOffsetX, r->texOffsetY,
-                        r->dsdx, r->dtdy);
+    msg_glyph_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+}
+
+/* NST2E: the units of one glyph record feed core 1's nd_ds (record site msg_draw_char). */
+static void msg_glyph_feed(const uint32_t* u) {
+    uint32_t buf[48];
+    uint32_t* p = buf;
+    msg_glyph_emit((const NdGlyphRec*)u, &p);
+    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
 }
 
 void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 charIndex, s32 palette, s32 posX, s32 posY) {
@@ -1844,6 +1859,7 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
         rec.dsdx = dsdx;
         rec.dtdy = dtdy;
         nd_rec_napi(msg_glyph_run, &rec, sizeof rec / 8u);
+        msg_glyph_feed((const uint32_t*)&rec);
     }
 
 #if VERSION_IQUE

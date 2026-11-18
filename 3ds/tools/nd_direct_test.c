@@ -84,6 +84,7 @@ int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned f
 static uint32_t gx_log[16][2];
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) { (void)g; if (n_gx < 16) { gx_log[n_gx][0] = w0; gx_log[n_gx][1] = w1; } n_gx++; }
 void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
+void nd_ds_feed(const uint32_t* u, unsigned n) { (void)u; (void)n; } /* nd_rec.c is not linked here; NST2E feeds (nd_fill_feed, nd_trect_feed) */
 /* NSTREAM3: the native record runner of the direct fallbacks (nd_walk.c); the same count as the op walker */
 void nd_nr_exec(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void gp3_t0_surv(void) {}

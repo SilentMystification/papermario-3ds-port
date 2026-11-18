@@ -520,6 +520,7 @@ static void ttl_scis(NdTRect* t, s32 xl, s32 yl, s32 xh, s32 yh, s32 s, s32 tt, 
 
 static void ttl_run(NdTRect* t) {
     nd_rec_napi(nd_trect_run, t, sizeof *t / 8u);
+    nd_trect_feed((const uint32_t*)t);
 }
 
 void title_screen_draw_logo(f32 moveAlpha) {

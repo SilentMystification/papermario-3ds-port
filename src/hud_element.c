@@ -556,9 +556,46 @@ static void hud_rect_run(const uint32_t* u) {
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
 
+/* NST2E: the units of one HUD element record feed core 1's nd_ds (record site hud_element.c, core 1 only: the static buffer is not shared). */
+static void hud_rect_feed(const uint32_t* u) {
+    static uint32_t fb[1024];
+    uint32_t* p = fb;
+    hud_rect_emit((const NdHudRec*)u, &p, 0);
+    nd_ds_feed(fb, (unsigned)(p - fb) / 2u);
+}
+
 /* S5CHUDB (NATIVEAPI E1): one complex HUD quad of mode 2 (IA8): the matrix stack entry, the 4 vertices, the image and the state. */
 typedef struct NdCHudRec { const void* img; uint32_t mtx; const void* vtx; int32_t w, h; uint32_t flags, prim, pad; } NdCHudRec;
 _Static_assert(sizeof(NdCHudRec) == 32, "NdCHudRec: 4 units");
+/* NST2E: the fallback units of one complex HUD quad (the ops the old list ran), written at *o. */
+static void cplx_quad_emit(const NdCHudRec* r, uint32_t** o) {
+    uint32_t* nrp = *o;
+    const int filt = (r->flags & HUD_ELEMENT_FLAG_FILTER_TEX) != 0, aa = (r->flags & HUD_ELEMENT_FLAG_ANTIALIASING) != 0;
+    const int xlu = (r->flags & HUD_ELEMENT_FLAG_TRANSPARENT) != 0;
+    NDST_FILT(ND_NR_AT, filt ? G_TF_AVERAGE : G_TF_POINT);
+    NDXF_PUSH(ND_NR_AT, r->mtx, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    NDST_CC(ND_NR_AT, PM_CC_47, PM_CC_47);
+    NDVAL_PRIM(ND_NR_AT, 0, 0, r->prim >> 24, (r->prim >> 16) & 0xff, (r->prim >> 8) & 0xff, r->prim & 0xff);
+    if (!xlu) { if (!aa) { NDST_RM(ND_NR_AT, G_RM_TEX_EDGE, G_RM_TEX_EDGE2); } else { NDST_RM(ND_NR_AT, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2); } }
+    else { if (!aa) { NDST_RM(ND_NR_AT, G_RM_CLD_SURF, G_RM_CLD_SURF2); } else { NDST_RM(ND_NR_AT, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2); } }
+    NDTX_LOAD_BLOCK(ND_NR_AT, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
+                        G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
+    NDST_LUT(ND_NR_AT, G_TT_NONE);
+    NDGEO_VTX(ND_NR_AT, r->vtx, 4, 0);
+    NDGEO_TRI1(ND_NR_AT, 0, 1, 2, 0);
+    NDGEO_TRI1(ND_NR_AT, 0, 2, 3, 0);
+    NDXF_POP(ND_NR_AT);
+    *o = nrp;
+}
+
+/* NST2E: the units of one complex HUD quad feed core 1's nd_ds (record site hud_element.c). */
+static void cplx_quad_feed(const uint32_t* u) {
+    uint32_t buf[64];
+    uint32_t* p = buf;
+    cplx_quad_emit((const NdCHudRec*)u, &p);
+    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
+}
+
 __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
     static const u32 cw_47[2] = HUD_CW(PM_CC_47, PM_CC_47);
     static const unsigned wrap[4] = { G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMASK, G_TX_NOMASK };
@@ -591,19 +628,7 @@ __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
     {
         static uint32_t buf[64];
         uint32_t* nrp = buf;
-        NDST_FILT(ND_NR_AT, filt ? G_TF_AVERAGE : G_TF_POINT);
-        NDXF_PUSH(ND_NR_AT, r->mtx, G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-        NDST_CC(ND_NR_AT, PM_CC_47, PM_CC_47);
-        NDVAL_PRIM(ND_NR_AT, 0, 0, r->prim >> 24, (r->prim >> 16) & 0xff, (r->prim >> 8) & 0xff, r->prim & 0xff);
-        if (!xlu) { if (!aa) { NDST_RM(ND_NR_AT, G_RM_TEX_EDGE, G_RM_TEX_EDGE2); } else { NDST_RM(ND_NR_AT, G_RM_AA_TEX_EDGE, G_RM_AA_TEX_EDGE2); } }
-        else { if (!aa) { NDST_RM(ND_NR_AT, G_RM_CLD_SURF, G_RM_CLD_SURF2); } else { NDST_RM(ND_NR_AT, AA_EN | G_RM_CLD_SURF, AA_EN | G_RM_CLD_SURF2); } }
-        NDTX_LOAD_BLOCK(ND_NR_AT, r->img, G_IM_FMT_IA, G_IM_SIZ_8b, r->w, r->h, 0, G_TX_NOMIRROR | G_TX_WRAP, G_TX_NOMIRROR | G_TX_WRAP,
-                            G_TX_NOMASK, G_TX_NOMASK, G_TX_NOLOD, G_TX_NOLOD);
-        NDST_LUT(ND_NR_AT, G_TT_NONE);
-        NDGEO_VTX(ND_NR_AT, r->vtx, 4, 0);
-        NDGEO_TRI1(ND_NR_AT, 0, 1, 2, 0);
-        NDGEO_TRI1(ND_NR_AT, 0, 2, 3, 0);
-        NDXF_POP(ND_NR_AT);
+        cplx_quad_emit(r, &nrp);
         nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
     }
 }
@@ -848,6 +873,7 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
         hud_rect_emit(&rec, nullptr, 1);
     } else {
         nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc);
+        hud_rect_feed((const uint32_t*)&rec);
     }
 
 }
@@ -1889,6 +1915,7 @@ void render_complex_hud_element(HudElement* hudElement) {
                 rec.prim = ((u32)hudElement->tint.r << 24) | ((u32)hudElement->tint.g << 16) | ((u32)hudElement->tint.b << 8) |
                            (u32)hudElement->opacity;
                 nd_rec_napi(cplx_quad_run, &rec, sizeof rec / 8u);
+                cplx_quad_feed((const uint32_t*)&rec);
             } else
             {
                 nd_mesh_tri1(0, 1, 2, 0);
