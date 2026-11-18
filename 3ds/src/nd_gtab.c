@@ -106,9 +106,9 @@ static __attribute__((cold, noinline)) void entcap_nt(const void* l, uint32_t si
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap nt l %08x s %08x", a, site); }
 static const NdPsoDesc* dl_ent; /* ENTRY1: the entry of the nd_rec_dl_e call in progress (null: none) */
 static uint32_t dl_site; /* FXENT3: site | (k + 1) << 28 of nd_rec_dl_key, 0: none */
-void nd_rec_dl(const void* list) {
+void nd_rec_ntab(const void* list) {
     static const void* memo_l[8];
-    static const void* memo_t[8]; /* GKEY2: NdNDev* when memo_f bit 1, else NdGTab* */
+    static const void* memo_t[8]; /* the NdNDev* of the list */
     static unsigned memo_f[8], mi;
     const unsigned f = pm_frame_count();
     if (__builtin_expect(!gtr_seen, 0)) { gtr_seen = 1; gtr_next = f + 3u; } /* the first caller: one early line (a scene shorter than 300 frames) */
@@ -119,7 +119,6 @@ void nd_rec_dl(const void* list) {
     if (k == 8u) {
         const NdNDev* nt = nd_ntab_find(list); /* GKEY2: a list with a device entry runs from the entry */
         if (nt) { t = nt; fl = nt->fl | 2u; }
-        else { const NdGTab* g = nd_gtab_find(list); if (g) { t = g; fl = nd_gt_state_only((const uint32_t*)g->list); } }
         if (t) { memo_l[mi] = list; memo_t[mi] = t; memo_f[mi] = fl; mi = (mi + 1u) & 7u; }
     }
     if (!t) {
@@ -129,15 +128,15 @@ void nd_rec_dl(const void* list) {
         return;
     }
     gtr_tab++;
-    const int v2 = (fl & 2u) != 0; fl &= 1u;
+    fl &= 1u;
     const int ent = dl_ent || __builtin_expect(PMDL("entcap"), 0), ls = !fl;
     const uint32_t r6[6] = { (uint32_t)(uintptr_t)t, fl | (ls ? 2u : 0u), ent ? (dl_site ? dl_site : (uint32_t)(uintptr_t)__builtin_return_address(0)) : 0u, (uint32_t)(uintptr_t)dl_ent, 0u, 0u };
-    nd_rec_napi(v2 ? (dl_ent ? nd_ntab_rec_e : nd_ntab_rec) : (dl_ent ? nd_gtab_run_e : nd_gtab_run), r6, ls ? 3u : ent ? 2u : 1u); /* a drawing list holds its snap table at rec[4] */
+    nd_rec_napi(dl_ent ? nd_ntab_rec_e : nd_ntab_rec, r6, ls ? 3u : ent ? 2u : 1u); /* a drawing list holds its snap table at rec[4] */
     if (ls) nd_lsc_begin();
     nd_ds_list(&nd_ds, list, 0); /* NST2A: the list's state units follow its record */
     if (ls) nd_lsc_end();
 }
-void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_dl(list); dl_ent = NULL; }
-void nd_rec_dl_key(const void* list, unsigned k) { dl_site = (uint32_t)(uintptr_t)__builtin_return_address(0) | ((k & 15u) + 1u) << 28; nd_rec_dl(list); dl_site = 0; }
+void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_ntab(list); dl_ent = NULL; }
+void nd_rec_dl_key(const void* list, unsigned k) { dl_site = (uint32_t)(uintptr_t)__builtin_return_address(0) | ((k & 15u) + 1u) << 28; nd_rec_ntab(list); dl_site = 0; }
 void nd_rec_ndev(const NdNDev* e) { uint32_t rec[2u * ND_NDEV_REC_UNITS]; nd_ndev_pack(rec, e, (uint32_t)(uintptr_t)__builtin_return_address(0)); nd_rec_napi(nd_ndev_rec, rec, ND_NDEV_REC_UNITS); } /* NTABFIND: a copy (nd_gtab.h) */
 #endif

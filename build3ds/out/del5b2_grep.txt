@@ -1,0 +1,31 @@
+3ds/include/nd_ds.h:30:/* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an ND_FS_CALL unit of nd_rec_nr); see nd_ds.c. */
+3ds/include/nd_gtab.h:3: * writes one NdGTab per list into 3ds/src/nd_gfx_tab.c (generated, never committed). A table is the list in unit order as 8-byte ops: vertex
+3ds/include/nd_gtab.h:16:    NDG_DEF,     /* a = units, p = const NdGDef* (its units run as ops, NREC5) */
+3ds/include/nd_gtab.h:18:    NDG_CALL     /* a = 1 for the branch form (G_DL_NOPUSH), p = const NdGTab* (the callee) */
+3ds/include/nd_gtab.h:20:typedef struct NdGOp {
+3ds/include/nd_gtab.h:23:} NdGOp;
+3ds/include/nd_gtab.h:37:typedef struct NdGDef {
+3ds/include/nd_gtab.h:42:} NdGDef;
+3ds/include/nd_gtab.h:46:typedef struct NdGTab {
+3ds/include/nd_gtab.h:48:    const NdGOp* op;      /* nop ops, the last NDG_END */
+3ds/include/nd_gtab.h:51:} NdGTab;
+3ds/include/nd_gtab.h:55:    const NdGTab* tab;
+3ds/include/nd_gtab.h:57:extern NdGIdx nd_gtab_idx[]; /* generated: one entry per table; sorted by list address at the first nd_gtab_find */
+3ds/include/nd_gtab.h:61:const NdGTab* nd_gtab_find(const void* list);
+3ds/include/nd_gtab.h:63:/* A converted list by symbol: NDG_DECL(D_09001000_3583A0); then NDG(D_09001000_3583A0) is its const NdGTab*. */
+3ds/include/nd_gtab.h:64:#define NDG_DECL(sym) extern const NdGTab ndg_##sym
+3ds/include/nd_gtab.h:66:typedef const void* NdLst; /* FXTYPE: a list handle (NDN(x) or a list name); nd_draw_list, nd_rec_dl and gSPDisplayList take it */
+3ds/include/nd_gtab.h:77:/* S7RUN: the static list call from a table. nd_rec_dl(list) replaces gSPDisplayList(gMainGfxPos++, list) at a call site (push form). When the
+3ds/include/nd_gtab.h:78: * list has a table (nd_gtab_find, memo of the last 8 lookups) it records one NDC_NAPI record {nd_gtab_run, table, state-only flag}; else it writes
+3ds/include/nd_gtab.h:79: * the G_DL unit as the macro did (counted). Core 1. nd_gtab_run (nd_walk.c, core 0) draws the table: a state-only list (what rec_inline records in
+3ds/include/nd_gtab.h:81:void nd_rec_ntab(const void* list); /* DEL5B2: was nd_rec_dl */
+3ds/include/nd_lkey.h:18:/* A v1 table (NdGTab): the units of its list, as nd_lkey_units. */
+3ds/include/nd_lkey.h:19:static inline const uint32_t* nd_lkey_tab(const NdGTab* t, unsigned max, unsigned* n) {
+3ds/include/nd_snap.h:92:/* NCONV1D1, nd_snap.c and nd_snap_in.c: the snap table of a list (rec[4] of a drawing list, nd_rec_dl). */
+3ds/src/nd_gtab.c:20:const NdGTab* nd_gtab_find(const void* list) {
+3ds/src/nd_gtab.c:58:/* CONV2D2: nd_ntab_find (nd_gtab.h), core 0 only (nd_gtab_run). The same lookup as nd_gtab_find over the device index ndn_dev_idx. */
+3ds/src/nd_gtab.c:81:/* S7RUN: nd_rec_dl (nd_gtab.h). Core 1. A list that rec_inline (nd_rec.c) records in line (to its G_ENDDL fewer than 64 units, each a state op) is
+3ds/src/nd_gtab.c:93:extern unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops; /* nd_walk.c, core 0: the arms nd_gtab_run took */
+3ds/src/nd_walk.c:487: * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 4096 keys. */
+3ds/src/nd_walk.c:498:    if (ent) return; /* FXENT2: a call with a stated entry (nd_draw_list with an ND_PSO_DESC); ND_SELF and nd_rec_dl calls are logged */
+3ds/src/nd_walk.c:512:/* S7RUN (nd_gtab.h nd_rec_dl): the core 0 runner of one static list call from its table. rec[0] = the table, rec[1] = the state-only flag.
