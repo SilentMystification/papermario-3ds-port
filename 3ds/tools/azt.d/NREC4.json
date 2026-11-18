@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "fxp_snapchk",
+      "status": "unverified",
+      "subject": "NREC4 particle snaps: the 7 parts effects (effect_defs 0x1C, 0x38, 0x3D, 0x45, 0x5A, 0x70, 0x84) on mac_01 (pos 0 0 200), cold det start with the snapchk switch (no drec), no shots.",
+      "proves": "NREC4: the instance snap table of the particle runs gives the lsnap counters (lists, snaps, tmis) and the snapchk bad count of the parts draws.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=28,56,61,69,90,112,132 loglevel=debug det snapchk",
+      "until": "lsnap f600 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "lsnap",
+          "regex": "lsnap f600 "
+        }
+      ],
+      "reason": "NREC4: copy of fxp_drec with the snapchk switch in place of drec. Cap 30 s, deadline 25 s, until the lsnap line of frame 600."
+    }
+  ]
+}

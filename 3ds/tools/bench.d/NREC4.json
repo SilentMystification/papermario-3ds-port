@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "fxp_snapchk",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NREC4: lsnap and snapchk line counters of the particle parts effects (det cold start).",
+      "scenario": "fxp_snapchk",
+      "cap": 30,
+      "until": "lsnap f600 ",
+      "tags": [
+        "azahar",
+        "det",
+        "snapchk"
+      ],
+      "gates": []
+    }
+  ]
+}
