@@ -6,14 +6,14 @@
 - The user opens the netloader. The user's word "ready" is a fact. A probe, ping or send failure is never a console state.
 - `go.ps1 push` builds unless `-NoBuild`. A build runs only when build3ds/pm_3ds.3dsx is stale. Never start a push while a build is needed.
 
-## Order (the user's rule, 4 violations)
-1. Merge and build main (`sh 3ds/build.sh` as a background job, one command; wait for its notice). Check `build3ds/out/main_build*.done` or the 3dsx time.
-2. Gate: `python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt` prints `binchk OK`.
-3. Only now ask the console selector (AskUserQuestion, multi-select O3DS XL .131, N3DS .224, O3DS .170). Ask only when the build is ready at that instant.
-4. On the answer, push at once. Nothing else first. No merge, no build, no question.
+## Order (the user's rule, 4 violations on 2026-11-17)
+1. Merge and build main (`sh 3ds/build.sh` as ONE background job, run directly, not in a subshell with `&`; wait for its notice). The 3dsx time and `build3ds/out/main_build*.done` show it.
+2. Gate: `python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt` prints `binchk OK`. Key check: `PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh` equals `build3ds/build_key.txt`.
+3. Write ONE plain line to the user: `Build <commit> ready. Say the console.` No AskUserQuestion popup (the user rejects it). Never write that line before steps 1 and 2 are done.
+4. On the user's word (a console name, or `push`) run the command below at once. Nothing else first. Never push without that word: the auto-mode classifier denies it.
 
 ## Commands (PowerShell, from the repo root, run in the background)
-- Default push, game defaults, 75 s of live log: `powershell -NoProfile -File 3ds/go.ps1 push o -NoBuild -Seconds 75`
+- Default push, game defaults, 75 s of live log: `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.170 -NoBuild -Seconds 75`
 - Other consoles: `push n -NoBuild` (N3DS), `push o -ip 192.168.1.131 -NoBuild` (XL).
 - Fault finding (debug log, bottom screen shows info): add `-Profile log`.
 - Perf numbers (prof lines, bottom screen log OFF by design: conlevel=off): add `-Profile prof -GameDebug "warp=mac_01:0 pos=0:0:200"`.

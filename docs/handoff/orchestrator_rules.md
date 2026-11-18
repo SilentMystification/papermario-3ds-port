@@ -5,12 +5,12 @@ the old line is deleted. Never append a section. `sh 3ds/tools/rules_lint.sh` ch
 The Core block is printed every turn by the UserPromptSubmit hook (.claude/settings.json). Keep it short.
 
 <!-- CORE -->
-FACT/GUESS/OPEN on every number. Style: the global style hook. Details: docs/handoff/orchestrator_rules.md.
-EVERY TURN: 0 A user question or request gets its answer in THIS reply, before any hand-back, merge or agent work (user 2026-11-17: a status report took 3 asks). 1 ListAgents. Only status `running` holds a slot. A `completed` agent waits on its own build. 2 A hand-back MESSAGE arrives: read it, check the commit, merge (`sh 3ds/tools/merge_row.sh <row>`). An interim notice gets one line, no table. 3 Fewer than 3 coders running and a ready page: start a coder. All ready pages blocked: start the oracle for pages that share no file with the blocked ones. 4 Report only changes. 5 Object first if a directive looks wrong or costly. 6 Ask the push question only when the build of main is finished. 7 Never end a turn while a job or a blocked merge waits: a post-merge check sends NO notice, so read `postmerge_bg.sh --status` and use one wait call or ScheduleWakeup (user 2026-11-17: 6.5 h idle). A state the user reports is fact: never probe it, read the tool code. A console capture: same launch line in Azahar first.
+FACT/GUESS/OPEN on every number. ASD-STE100, 20 words or fewer per sentence IN THE FIRST DRAFT (a blocked draft is a double post). One reply per turn.
+EVERY TURN: 0 Read ALL user messages of this turn (they arrive mid-turn). Answer each, in order, in THIS reply, before any hand-back, merge or agent work. A state the user reports is fact: never doubt it. 1 Run `date` (a gap means a lost wakeup), ListAgents (only `running` holds a slot), `postmerge_bg.sh --status`. 2 Hand-back: read it, check the commit, merge (`sh 3ds/tools/merge_row.sh <row>`). A duplicate gets no reply. 3 QUEUE: every ready page gets a coder at once (3 coders, 2 oracles). Work never waits for an agent or a console check: only a merge may. 4 Report only changes. 5 Object first if a directive looks wrong or costly. 6 PUSH: when a build of main is ready (binchk OK, key matches) write ONE line: `Build <commit> ready. Say the console.` No AskUserQuestion. On the user's word run the push_runbook.md command at once (-ip, -NoBuild). Never push without that word. 7 Never end a turn while a job or merge waits: ScheduleWakeup 10 min. 8 A draw-path row needs the user's console check of the gated build before the next one merges.
 <!-- /CORE -->
 
 ## Roles
-- Orchestrator: launches agents, merges, reports, asks the user (AskUserQuestion, 2-4 options, recommended first). No game code, no debugging.
+- Orchestrator: launches agents, merges, reports, asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push). No game code, no debugging.
 - Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes one page at a time, commits each at once and messages the orchestrator, who starts a coder per page (3 coders always fed, user 2026-11-17). At most 2 at once.
 - Coders: implement and run ALL tests, and ask the oracle at the first failure (.claude/agents/coder.md). Haiku by default. Sonnet only with the user's yes. Never Opus.
 
@@ -19,7 +19,7 @@ EVERY TURN: 0 A user question or request gets its answer in THIS reply, before a
 - A coder prompt names the oracle id that wrote its page. The coder asks that oracle.
 - Resume a finished agent when its context helps. Start a fresh one when it does not. Oracle context limit is 500K. Past 250K, new work goes to a new agent and the old oracle takes only work that needs its context. The orchestrator decides which (user 2026-11-17).
 - Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. A purely mechanical edit (same change at many sites) may go in `ws_<id>.patch` (`git apply`).
-- A hand-back is one SubagentHandback message. No hand-back file.
+- A hand-back is one SubagentHandback message. No hand-back file. A coder cannot wait for an oracle reply: it ends its turn (a hand-back). Resume it with the reply (SendMessage) and tell it to finish the row.
 
 ## Goal and faults
 - Goal: remove the display list system (plan_endgame.md). Done only when `elfgate.py` prints `func 0 data 0 gfxnames 0` and all `listcen.py` totals are 0. Read totals from `sh 3ds/tools/epic_status.sh`. ASSETFREE, CIA and QTM stay parked.
@@ -33,10 +33,10 @@ EVERY TURN: 0 A user question or request gets its answer in THIS reply, before a
 4. Budget reset: run `run_azahar.ps1 -ResetBudget <row>` from the row worktree (azt.ps1 reads the worktree copy of test_budget.csv).
 
 ## Console
-- PUSH: docs/handoff/push_runbook.md is the one source (commands, order, failure table). PUSH ORDER (user 2026-11-17, 4th violation): build main, wait for the notice, `binchk` gate. Ask the console selector ONLY when that build is ready at that instant. On the answer, push at once: `powershell -NoProfile -File 3ds/go.ps1 push <o|n|a> -ip <addr> -NoBuild -Seconds 75`, and nothing else first. Never run the push command without -NoBuild (it builds). Always pass -ip (o .170, n .224, xl .131): the broadcast probe fails on this PC. The user says the console is ready: never doubt it, never read a probe failure as a console state. A merge does not rebuild main, so merges may go on during a push.
-- Push only when the user asks. Consoles: O3DS XL 192.168.1.131, N3DS 192.168.1.224, O3DS 192.168.1.170. Never test port 17491.
+- PUSH: docs/handoff/push_runbook.md is the one source (commands, order, failure table). Order: build main (background job), `binchk`, one plain line to the user, then on the user's word push at once with `-ip <addr> -NoBuild`. The skill command `go.ps1 push` builds unless told not to and has no -ip: use the runbook command. The user says the console is ready: never doubt it, never read a probe failure as a console state. A merge does not rebuild main.
+- Consoles: O3DS XL 192.168.1.131, N3DS 192.168.1.224, O3DS 192.168.1.170. Never test port 17491. Prof pushes use `-Profile prof -GameDebug "warp=mac_01:0 pos=0:0:200"` (the bottom screen log is off by design then).
 - A failed push: read `build3ds/out/push_<ip>_*.txt`, one line, stop. Pull logs with `pm_logrecv.py --ip <addr> --label <name>`, fallback `go.ps1 pull o|n -ip <ip>`.
 - The user's test list holds only unconfirmed items (`docs/handoff/verify_list.md`).
 
 ## Session
-- After about 150 turns write `docs/handoff/HANDOFF.md` and start a fresh session. On a stop request: launch nothing, let running agents finish, merge, update HANDOFF.md, report once.
+- A scheduled wakeup may not fire (2 hours lost on 2026-11-17): read `date` every turn. After about 150 turns write `docs/handoff/HANDOFF.md` and start a fresh session. On a stop request: launch nothing, let running agents finish, merge, update HANDOFF.md, report once.

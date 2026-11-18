@@ -18,8 +18,8 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    CAPTURE: before the user spends console time, run the same launch line once in Azahar:
    `python 3ds/tools/capture_check.py --row <id> --proof "<lines>" <push game words>`. Push only after CAPTURE CHECK OK. State
    each link in the hand-back (switch, sink, tool, proof line). Read the real command in the code, never its echo line.
-   PUSH: read docs/handoff/push_runbook.md first (one page: commands, order, failure table). `powershell -NoProfile -File 3ds/go.ps1 push <o|n> -NoBuild -Seconds 75` (adds -Profile prof and -GameDebug for a perf push). It uses the known console
-   address (no broadcast probe: it fails on this PC). The user's word that the console is ready is fact. A probe or send failure is not a console state: read the log.
+   PUSH (orchestrator, on the user's word only): docs/handoff/push_runbook.md is the one source. `powershell -NoProfile -File 3ds/go.ps1 push <o|n> -ip <addr> -NoBuild -Seconds 75`. No broadcast probe
+   (it fails on this PC). The user's word that the console is ready is fact. A probe or send failure is not a console state: read the log. Coders never touch the console.
 4. TOOL FAULTS STOP THE GATE: a base run that fails or hangs, an abnormal exit, a stale build, a shot copy failure, two runs
    that disagree. Hand back the exact output. Never skip a scene, change the base or reset the budget to pass. The orchestrator
    resets a task's budget once per designer correction (user 2026-11-12). Every compare is exact: one differing bit fails the
@@ -30,10 +30,9 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    the answer. Hand back only when the task is done, when only the user can decide, or after 90 minutes without a commit.
 6. WORK. One command per step: write a script, not many small commands (every command re-reads your whole context). Grep and
    read line ranges. Write tool output to build3ds/out/ of your own worktree and read the last 20 lines. Run builds and benches
-   in the foreground (timeout up to 600000 ms). Never poll (sleep, tail --pid, Monitor or ping loops as separate calls). A job
-   the harness moved to the background: wait in ONE foreground call of exactly this form:
-   `until test -f <done file>; do sleep 10; done` (timeout 590000), and repeat it. Never end your turn while your own job runs:
-   each stop wakes the orchestrator (user 2026-11-16). Stop every background task you start. Hand back with ONE
+   in the foreground (timeout up to 600000 ms). Never poll (loops and tail --pid are blocked by a hook). A job the harness moved to the
+   background: end your turn with the last line `waiting for <job>`. The harness notice wakes you (FACT: waiting in a loop is blocked, so
+   waiting inside a turn is not possible). Stop every background task you start. Hand back with ONE
    SubagentHandback message (commit hash, gate values, counter change) and one short last line. No hand-back file.
 7. CODE. Commit each finished piece (changed files only). No feature toggles, no stubs, no git push, no git stash. Claude
    attribution lines in commits are allowed (user 2026-11-12). Debug tools may stay. Untested code stays on a branch. Follow
