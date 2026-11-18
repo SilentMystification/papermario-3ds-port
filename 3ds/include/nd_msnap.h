@@ -15,6 +15,4 @@ _Static_assert(sizeof(NdMSnap) % 8u == 0u, "units");
 void nd_msnap_take(const NdDs* s, NdMSnap* m);
 unsigned nd_msnap_diff(const NdMSnap* a, const NdMSnap* b, const char** nm, int max, int* nb);
 void nd_msnap_rec(uint32_t* p, unsigned units);
-void nd_msnap_cmp(const uint32_t* q);
-void nd_msnap_tick(void);
 #endif

@@ -106,7 +106,6 @@ extern void pm_gpu_ndm_end(void);
 extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, const NdMKey* mk); /* S3N-4: the switch */
 extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
 extern int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo); /* MDL-5f; POND: nr */
-void nd_msnap_cmp(const uint32_t* q); /* NREC1A: nd_msnap.c */
 int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
 static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomodelnat") ? 1 : 0; return v; } /* MDL-5: switch nomodelnat, the walker geometry of every model record (the byte reference) */
 extern int mfr_on; extern unsigned mfr_idx; void pm_gpu_mfr_rec(uint32_t geo, int hit, int nat, unsigned idx, const NdMKey* mk); /* TIK19 debug (switch mfr) */
@@ -194,7 +193,6 @@ static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     if (fl & HD_FOGF) { fog_fm = d->fm; fog_fo = d->fo; }
 }
 static void hit_apply(const Gfx* q, const NdMEnt* e) {
-    extern unsigned char nd_dschk_hit; nd_dschk_hit = 1; /* NST2b: core 0 took a hit (nd_dschk.c adopts core 1 at the next command) */
     NdHitD dl, * d = &dl;
     if (e && q[13].words.w0 <= 8u) { d = nd_mc_hd(e); if (!d->fl) hit_delta(q, d); }
     else hit_delta(q, d);
@@ -248,7 +246,6 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
         pm_gpu_set_r13_t1(t1);
     }
     nd_msnap_use((const uint32_t*)q); /* NREC1B: model_draw reads this snap */
-    if (__builtin_expect(PMDL("snapchk"), 0)) nd_msnap_cmp((const uint32_t*)q); /* NREC1A: the core 1 model snap against the walker inputs of model_draw */
     /* MDL-5f: the walker order is record combine, render mode list, pre list (rec_apply), so a state-only pre list's SETCOMBINE and SETOTHERMODE
      * ops win over the record's words. The native draw gets them in the same order: its combine replaces cwp, the render mode list is copied
      * without its SETCOMBINE (when the pre list has one) and its SETOTHERMODE ops are followed by the pre list's ops, then ENDDL. */
