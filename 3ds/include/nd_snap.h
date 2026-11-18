@@ -67,6 +67,7 @@ void nd_snapchk_tri(void);
 void nd_tsnap_vtx(unsigned vt); /* NCONV2A, nd_snap.c, core 0: the vertex load tss of a snap triangle (snapchk only) */
 /* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */
 void nd_snapchk_rect(void);
+ void nd_snapchk_part(void); /* NREC4 */
 /* NDR2A, nd_snap.c, core 1: the snap of a direct draw: nd_ds with the pso words (nd_direct_bind order), prim and env. */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env);
 /* NDR2D, nd_snap.c, core 0: the decision of the live snap (the core 1 pso decision), NULL when no snap is live. */
