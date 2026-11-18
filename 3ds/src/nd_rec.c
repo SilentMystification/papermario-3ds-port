@@ -299,7 +299,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 1u, 0);
     p[1] = 0;
     memcpy(p + 2, r, sizeof r);
-    nd_ds_list(&nd_ds, list, 0); /* NST2C: the entity's list state on core 1 (core 0 runs it at ent_run or walk_call) */
+    nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0); nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at ent_run or walk_call) NREC2: the list snap table in header word 1 */
 }
 void nd_rec_ent(const void* rec) {
     rec_open();
@@ -677,6 +677,8 @@ __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_snapchk_tick(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
 __attribute__((weak)) void nd_msnap_tick(void) {} /* NREC1A */
+__attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
+__attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 unsigned char nd_snap_live __attribute__((weak)); /* NDR1C */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
