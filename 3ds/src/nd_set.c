@@ -207,6 +207,7 @@ static __attribute__((cold, noinline)) void sr_orb_log(unsigned m, const NdRende
                rs->zcmp, rs->zupd, rs->decal, rs->memb, rs->nocol, (int)0, (int)fogmix_on);
     }
 }
+NdRender nd_sr_rs; int nd_sr_mixk; unsigned nd_sr_mixc; /* NDR0F1: the last sync_render work (snapchk) */
 void sync_render(void) {
     unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
     if (sr_ok && sg == sr_sig) {
@@ -223,20 +224,26 @@ void sync_render(void) {
      * world to black this way. Other blenders are not touched. */
     {
         unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u, mixc;
-        if (nd_mix1(m, &mixc))
+        if (nd_mix1(m, &mixc)) {
             pm_gpu_set_mix(1, mixc);
+            nd_sr_mixk = 1; nd_sr_mixc = mixc; /* NDR0F1 */
+        }
         else if (!pm_nofog && p == 3u && a == 2u && mm == 0u && b == 0u) {
             /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
             pm_gpu_set_mix(2, (fogc & 0xffffff00u) | 0xffu);
+            nd_sr_mixk = 2; nd_sr_mixc = (fogc & 0xffffff00u) | 0xffu; /* NDR0F1 */
             fogmix_on = 1;
             goto mixed;
-        } else
+        } else {
             pm_gpu_set_mix(0, 0);
+            nd_sr_mixk = 0; nd_sr_mixc = 0; /* NDR0F1 */
+        }
         fogmix_on = 0;
     }
 mixed:
     NdRender rs;
     nd_render_state(nd_ws.omode_h, m, nd_img_role(0) == ROLE_DEPTH, &rs);
+    nd_sr_rs = rs; /* NDR0F1 */
     pm_gpu_set_nocolor(rs.nocol);
     if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
     pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);

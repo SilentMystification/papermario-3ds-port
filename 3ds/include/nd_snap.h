@@ -13,6 +13,9 @@ typedef struct NdSnapChk {
     int32_t role; uint32_t oml, geom, fogc, blendc, pad;
     NdCombOut o; /* NDR0E1: the coloured combine decision of core 1 */
     uint32_t pad2; /* NDR0E1: size to a multiple of 8 */
+    NdRender rs; /* NDR0F1: nd_render_state of the snapshot (core 1) */
+    int32_t mixk; uint32_t mixc; /* NDR0F1: nd_snap_mix of the snapshot (kind, colour) */
+    uint32_t pad3; /* NDR0F1: size to a multiple of 8 (the rs and mix words) */
 } NdSnapChk;
 _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
 
@@ -28,6 +31,11 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1);
 void nd_snap_mesh(void);
 /* nd_snap.c, core 0: the NDC_NAPI runner of the snapshot record; sets nd_snap_arm. */
 void nd_snapchk_run(const uint32_t* rec);
+/* NDR0F1, nd_snap_in.c: the mix of sync_render (nd_set.c) on the arguments: 1 colour mix, 2 fog shade alpha mix (col), 0 none (col 0). */
+int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned* col);
+/* NDR0F1, nd_snap.c, core 0: the compare of the render block and the mix with the last sync_render, at its triangle epoch (nd_geom.c). */
+void nd_snapchk_rnd(void);
+extern unsigned char nd_snap_rpend; /* NDR0F1: a triangle compare waits for its epoch (nd_snapchk_rnd) */
 /* nd_snap.c, core 0: the compare of the armed snapshot at a triangle draw (nd_geom.c). */
 void nd_snapchk_tri(void);
 /* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */

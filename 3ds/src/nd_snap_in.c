@@ -46,3 +46,19 @@ int nd_td_white(const NdTd* d) {
 void nd_snap_rnd(const NdDs* s, NdSnapChk* r) {
     r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc;
 }
+
+/* NDR0F1: the mix of sync_render (nd_set.c) on the arguments. Returns 1 with col = the colour mix of nd_mix1 (nd_set.c), 2 with col = the
+ * fog shade alpha mix (F08), 0 with col 0 (no mix). */
+int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned* col) {
+    unsigned p = (ol >> 30) & 3u, a = (ol >> 26) & 3u, m = (ol >> 22) & 3u, b = (ol >> 18) & 3u;
+    *col = 0;
+    if ((p == 2u || p == 3u) && a == 1u && m == 0u && b == 0u && !(p == 3u && nofog)) {
+        *col = ((p == 2u ? blendc : fogc) & 0xffffff00u) | (fogc & 0xffu);
+        return 1;
+    }
+    if (!nofog && p == 3u && a == 2u && m == 0u && b == 0u) {
+        *col = (fogc & 0xffffff00u) | 0xffu;
+        return 2;
+    }
+    return 0;
+}
