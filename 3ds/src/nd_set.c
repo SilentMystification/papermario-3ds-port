@@ -207,48 +207,41 @@ static __attribute__((cold, noinline)) void sr_orb_log(unsigned m, const NdRende
                rs->zcmp, rs->zupd, rs->decal, rs->memb, rs->nocol, (int)0, (int)fogmix_on);
     }
 }
-NdRender nd_sr_rs; int nd_sr_mixk; unsigned nd_sr_mixc; /* NDR0F1: the last sync_render work (snapchk) */
-void sync_render(void) {
-    unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
+int nd_sr_same(unsigned sg) { /* NDR0F2: 1 when the GPU state of signature sg is the one set (sync_render skip) */
     if (sr_ok && sg == sr_sig) {
         GP_SET(6, 1);
-        return;
+        return 1;
     }
-    sr_sig = sg;
-    sr_ok = 1;
     nd_ent_rfull += nd_ent_in;
     GP_SET(6, 0);
-    unsigned m = nd_ws.omode_l;
+    return 0;
+}
+void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, unsigned oml, unsigned sg) { /* NDR0F2: the GPU part of sync_render */
+    sr_sig = sg;
+    sr_ok = 1;
+    pm_gpu_set_mix(mixk, mixc); /* V06 / F08: mixk 1 colour mix, 2 fog shade alpha mix, 0 none */
+    fogmix_on = mixk == 2;
+    pm_gpu_set_nocolor(rs->nocol);
+    if (rs->set_memb) pm_gpu_set_memblend(rs->memb);
+    pm_gpu_set_render(rs->zcmp, rs->zupd, rs->blend, rs->atest, rs->decal);
+    pm_gpu_set_zmark(0, 0.f); /* MERLON: zmark lives one render sync; gv_epoch_enter turns it on after this for a depth-image model */
+    pm_gpu_dbg_mode(oml); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
+    if (oml == 0x00504B50u && PMDL("orbdbg")) sr_orb_log(oml, rs); /* FX1-2b: the render state the glow's draws get, once per frame. HCCUT3: cold */
+    pm_gpu_render_src(omh, oml, rs->depth);
+}
+void sync_render(void) {
+    const unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
+    if (nd_sr_same(sg)) return;
+    const unsigned m = nd_ws.omode_l, p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
     /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
      * colour alpha: (P * A + M * (1 - A)), P = BL or FOG, A = A_FOG, M = IN, B = 1MA. The room shroud (PM_RM_SHROUD) fades the
      * world to black this way. Other blenders are not touched. */
-    {
-        unsigned p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u, mixc;
-        if (nd_mix1(m, &mixc)) {
-            pm_gpu_set_mix(1, mixc);
-            nd_sr_mixk = 1; nd_sr_mixc = mixc; /* NDR0F1 */
-        }
-        else if (!pm_nofog && p == 3u && a == 2u && mm == 0u && b == 0u) {
-            /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
-            pm_gpu_set_mix(2, (fogc & 0xffffff00u) | 0xffu);
-            nd_sr_mixk = 2; nd_sr_mixc = (fogc & 0xffffff00u) | 0xffu; /* NDR0F1 */
-            fogmix_on = 1;
-            goto mixed;
-        } else {
-            pm_gpu_set_mix(0, 0);
-            nd_sr_mixk = 0; nd_sr_mixc = 0; /* NDR0F1 */
-        }
-        fogmix_on = 0;
+    unsigned mixc = 0; int mixk = 0; NdRender rs;
+    if (nd_mix1(m, &mixc)) mixk = 1;
+    else if (!pm_nofog && p == 3u && a == 2u && mm == 0u && b == 0u) {
+        /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
+        mixk = 2; mixc = (fogc & 0xffffff00u) | 0xffu;
     }
-mixed:
-    NdRender rs;
     nd_render_state(nd_ws.omode_h, m, nd_img_role(0) == ROLE_DEPTH, &rs);
-    nd_sr_rs = rs; /* NDR0F1 */
-    pm_gpu_set_nocolor(rs.nocol);
-    if (rs.set_memb) pm_gpu_set_memblend(rs.memb);
-    pm_gpu_set_render(rs.zcmp, rs.zupd, rs.blend, rs.atest, rs.decal);
-    pm_gpu_set_zmark(0, 0.f); /* MERLON: zmark lives one render sync; gv_epoch_enter turns it on after this for a depth-image model */
-    pm_gpu_dbg_mode(m); /* FX1-2b: orbdbg log of the glow blend, set after the flush of the old state */
-    if (m == 0x00504B50u && PMDL("orbdbg")) sr_orb_log(m, &rs); /* FX1-2b: the render state the glow's draws get, once per frame. HCCUT3: cold */
-    pm_gpu_render_src(nd_ws.omode_h, m, rs.depth);
+    nd_render_apply(&rs, mixk, mixc, nd_ws.omode_h, m, sg);
 }

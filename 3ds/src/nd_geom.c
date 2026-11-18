@@ -14,6 +14,7 @@
 __attribute__((weak)) void nd_snapchk_tri(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_geom.c */
 __attribute__((weak)) unsigned char nd_snap_rpend; /* NDR0F1: strong in nd_snap.c */
 __attribute__((weak)) void nd_snapchk_rnd(void) {} /* NDR0F1: strong in nd_snap.c */
+__attribute__((weak)) void nd_snap_render(void) { sync_render(); } /* NDR0F2: strong in nd_snap.c */
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -214,8 +215,8 @@ void gv_epoch_enter(void) {
             ensure_tile(nd_ws.use_t1 ? 1 : 0);
             dual_bind();
         }
-        sync_render();
-        if (nd_snap_rpend) nd_snapchk_rnd(); /* NDR0F1 */
+        if (nd_snap_rpend) nd_snap_render(); /* NDR0F2: the snap of this triangle */
+        else sync_render();
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
          * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.
          * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
