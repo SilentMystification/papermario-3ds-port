@@ -185,6 +185,7 @@ void nd_snapchk_rnd(void) {   /* NDR0F1: after sync_render of the triangle epoch
 /* NDR0G2: the bind compare of the armed snapshot at the triangle epoch: the bits of nd_snap_bdiff against the walker tile blocks of the open epoch. */
 void nd_snapchk_bind(void) {
     NdSnapBind w[2];
+    if (!PMDL("snapchk")) return; /* NDR0G2: the switch off returns */
     const unsigned m = nd_snap_bdiff(sc_wb(nd_ep_bs, w), sc_cur.b);
     sc_nb = 0;
     if (m & 1u) sc_add("b0td");
