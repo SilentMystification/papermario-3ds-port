@@ -3,6 +3,7 @@
 /* DEL3C2: the gbi macro redirect of every host compile (the gfx table converter TUs and the unit tests); nd_gbi.h includes this file when __arm__ is not defined.
  * The device helpers (ND_W0_CMB, ND_CMB_W, ND_W0_TR, ...) stay in nd_gbi.h. */
 #include "nd_gbi.h"
+#include "../nd_x.h" /* IMGFX2: ND_X0, ND_X1 of ND_GX, ND_GS */
 void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1);
 /* D9: the top-level packet of the redirected macros: gMainGfxPos at the start of a task (nd_gx_w takes each packet back). */
 Gfx* nd_rec_task(void);

@@ -11,6 +11,7 @@
 #include "nd.h"
 #include "ultra64.h"
 #include "nd_op.h"
+#include "nd_x.h" /* IMGFX2: ND_X0, ND_X1 */
 #include "gbi_custom.h"
 
 /* DEL3C3: moved from nd_op.h, the F3DEX2 op of each unit id (pm_gbi_cur_op, census). */
