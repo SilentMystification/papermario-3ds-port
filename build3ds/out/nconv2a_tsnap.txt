@@ -1,0 +1,24 @@
+#174 lsnap ent f35
+#206 snapchk bad f36 sl last 6
+#207 snapchk bad f36 sl last 6
+#211 snapchk bad f37 sl last 6
+#212 snapchk bad f37 sl last 6
+#217 snapchk bad f38 sl last 6
+#218 snapchk bad f38 sl last 6
+#220 snapchk bad f39 sl last 6
+#221 snapchk bad f39 sl last 6
+#286 snapchk f100 recs 536 cmp 1020 bad 107 fbad 107 miss 1020 wst 840
+#287 lsnap f100 lists 823 snaps 888 cmp 888 p1 888 bst 0 tmis 0 over 0
+#288 tsnap f100 cmp 1020 wtss 0 tris 0 vtss 0
+#314 snapchk f200 recs 1336 cmp 2589 bad 207 fbad 207 miss 2589 wst 2409
+#315 lsnap f200 lists 2092 snaps 2257 cmp 2257 p1 2257 bst 0 tmis 0 over 0
+#316 tsnap f200 cmp 2589 wtss 0 tris 0 vtss 0
+#350 snapchk f300 recs 2280 cmp 4125 bad 307 fbad 307 miss 4125 wst 3945
+#351 lsnap f300 lists 3292 snaps 3557 cmp 3557 p1 3557 bst 0 tmis 0 over 0
+#352 tsnap f300 cmp 4125 wtss 0 tris 0 vtss 0
+#372 snapchk f400 recs 5780 cmp 6425 bad 407 fbad 407 miss 6425 wst 6245
+#373 lsnap f400 lists 4492 snaps 4857 cmp 4857 p1 4857 bst 0 tmis 0 over 0
+#374 tsnap f400 cmp 6425 wtss 0 tris 0 vtss 0
+#524 snapchk f500 recs 9300 cmp 8821 bad 469 fbad 469 miss 8821 wst 8641
+#525 lsnap f500 lists 5768 snaps 6233 cmp 6233 p1 6233 bst 0 tmis 0 over 0
+#526 tsnap f500 cmp 8821 wtss 0 tris 10 vtss 0
