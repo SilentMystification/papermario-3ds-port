@@ -1,36 +1,40 @@
-# ws_NDR0G2 (Haiku): a mesh triangle binds its tiles from the snap blocks at its epoch (stage S4; counter: none of C1-C12)
-Designer: oracle FIN. WAIT: branch from main after the NDR0F2 and NDR0G1 merges (gv_epoch_enter lines of NDR0F2; NdSnapBind and sc_cur.b of NDR0G1).
-Worktree build3ds/wt/NDR0G2, branch NDR0G2. PM_ROW=NDR0G2 PM_LANE=NDR0G2.
-Edit only: 3ds/include/nd_snap.h, 3ds/src/nd_snap.c (new function at the end), 3ds/src/nd_tex_set.c, 3ds/src/nd_comb.c (dual_bind_load, dual_bind), 3ds/src/nd_geom.c (gv_epoch_enter, 1 weak line).
-## Facts (code read, main 497dc0e164; line numbers of main, find each by its text)
-- gv_epoch_enter (nd_geom.c:211-214) binds with `ensure_tile(nd_ws.use_t1 ? 1 : 0); dual_bind();` unless nd_dq_on.
-- The tile facts are read only in these functions: fb_prev_base (nd_tex_set.c:257-267), tile_bound (:291-293), fb_cand (:331-333), ensure_tile_slow (:335-385),
-  ensure_tile (:441-449), glyph_atlas_bound (:565-572), dual_bind_load and dual_bind (nd_comb.c:397-435). tile_texel (:295-328) is not a bind: it stays.
-- NDR0G1 gate (FACT, a063785172): b0td b1td b0tile bad 143 (nimgm) and 2361 (wscmb). Core 0 keeps stale tiles after model hits and direct draws (dschk hides it by adopt,
-  nd_dschk.c:61-95). The snap blocks are the unit truth. So this row changes binds there: GUESS drec DIFF. BLOCKED: the orchestrator decides the gate (expected-diff gate or not).
-## Edits
-1. nd_snap.h after NdSnapBind: `extern const NdSnapBind* nd_bsrc; /* NDR0G2: NULL = the walker tiles; else the 2 snap blocks (nd_snap_bind_run) */` and
-   ```
-   #define ND_BTD(n) (nd_bsrc ? &nd_bsrc[n].td : &nd_ws.td[n])                  /* NDR0G2: the bind source of tile n */
-   #define ND_BWR(n) (nd_bsrc ? nd_bsrc[n].wrap : nd_ws.tst1.tile_wrap[n])
-   #define ND_BSZ(n) (nd_bsrc ? nd_bsrc[n].sz : nd_ws.tst1.tile_sz[n])
-   #define ND_BSH(n) (nd_bsrc ? nd_bsrc[n].shift : nd_ws.tst1.tile_shift[n])
-   ```
-   Also `void nd_snap_bind_run(void); /* NDR0G2, nd_snap.c, core 0 */`.
-2. nd_tex_set.c: `#include "nd_snap.h"` after `#include "nd_api.h"`; `const NdSnapBind* nd_bsrc; /* NDR0G2 */` above fb_prev_base. nd_comb.c: `#include "nd_snap.h"` after `#include "nd_api.h"`.
-3. One mechanical sed per file, on the function ranges only (check each range start and end by the function names first; tile_texel stays):
-   `E='s/nd_ws\.td\[(n|0|1)\]\./ND_BTD(\1)->/g; s/nd_ws\.tst1\.tile_wrap\[(n|0|1)\]/ND_BWR(\1)/g; s/nd_ws\.tst1\.tile_sz\[(n|0|1)\]/ND_BSZ(\1)/g; s/nd_ws\.tst1\.tile_shift\[(n|0|1)\]/ND_BSH(\1)/g'`
-   `sed -i -E "257,293{$E}; 330,385{$E}; 441,449{$E}; 565,572{$E}" 3ds/src/nd_tex_set.c` and `sed -i -E "397,435{$E}" 3ds/src/nd_comb.c`.
-   Before (nd_tex_set.c:442): `if (nd_ws.td[n].valid && tile_bound(n) && !fb_cand(n)) {` After: `if (ND_BTD(n)->valid && tile_bound(n) && !fb_cand(n)) {`
-   Before (nd_comb.c:423): `... shift_mul(nd_ws.tst1.tile_shift[1][0]) / shift_mul(nd_ws.tst1.tile_shift[0][0]) ...` After: `... shift_mul(ND_BSH(1)[0]) / shift_mul(ND_BSH(0)[0]) ...`
-   Then read the 5 ranges: no `nd_ws.td[` and no `nd_ws.tst1.tile_wrap[`, `_sz[`, `_shift[` is left (tile_texel keeps its own).
-4. nd_snap.c at the end: `void nd_snap_bind_run(void) { nd_bsrc = sc_cur.b; ensure_tile(sc_cur.in.use_t1 ? 1 : 0); dual_bind(); nd_bsrc = NULL; } /* NDR0G2: the binds of the armed triangle */`
-5. nd_geom.c: weak line next to the NDR0F2 weak nd_snap_render: `__attribute__((weak)) void nd_snap_bind_run(void) { ensure_tile(nd_ws.use_t1 ? 1 : 0); dual_bind(); } /* NDR0G2 */`.
-   gv_epoch_enter, the 2 lines in `if (!nd_dq_on) {` become: `if (nd_snap_rpend) nd_snap_bind_run(); /* NDR0G2: the binds of the snap */` and `else { ensure_tile(nd_ws.use_t1 ? 1 : 0); dual_bind(); }`.
-## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 2 Azahar starts)
-1. Edits 1-5. `sh 3ds/tools/nd_host_test.sh` PASS (no new case: a source switch; the drec compare decides). Commit `NDR0G2 1: mesh binds from the snap blocks`.
-2. `python 3ds/tools/bench.py base nimgm_strip_drec,wscmb_pause_drec,spot_mac01_drec` (merge-base, not charged). `sh 3ds/tools/rowloop.sh --row NDR0G2 --bench nimgm_strip_drec,wscmb_pause_drec,spot_mac01_drec`: LOOP PASS, 3 byte-equal.
-3. `python 3ds/tools/bench.py run nimgm_strip_snapchk,wscmb_pause_snapchk --row NDR0G2 --why "NDR0G2 snapchk"`; `grep -a snapchk` of both logs > build3ds/out/ndr0g2_snapchk.txt. Pass: bad 0.
-Expected: byte-equal (FACT: the same values reach the same calls). A build after a partial shape cache: `PM_CACHE=off sh 3ds/build.sh`. Fix rights: the listed files; compile errors (a missing include, a const cast).
-A DIFF, a crash, a bad above 0: stop, commit the outputs, send the paths to the oracle with SendMessage. Wait.
-Stop: last commit `NDR0G2 2: gate. 3 benches byte-equal; snapchk bad <2>` deletes this page. One SubagentHandback.
+# ws_NDR0G2 (Haiku): a mesh triangle epoch binds and maps its tiles from its snap blocks (stage S4; counter: none of C1-C12; expected-diff gate, user 2026-11-18 option A)
+Designer: oracle FIN. Branch from main (NDR0F2 and NDR0G1 are merged). Worktree build3ds/wt/NDR0G2, branch NDR0G2. PM_ROW=NDR0G2 PM_LANE=NDR0G2.
+Edit only: 3ds/include/nd_snap.h, 3ds/src/nd_snap.c, 3ds/src/nd_snap_in.c, 3ds/tools/nd_snap_test.c, 3ds/src/nd_tex_set.c, 3ds/src/nd_comb.c, 3ds/src/nd_geom.c, 3ds/src/pm_gpu.c (2 lines).
+## Facts (main 136c960247; find each line by its text)
+- Producer: nd_snap_mesh (nd_snap.c:50) copies nd_ds.w.td and tst1 into r.b (nd_snap_bind, nd_snap_in.c:51-57). Core 0 skips tile units at model cache hits (nd_recs.c:198) and direct draws.
+- NDR0G1 data (FACT d4ab5e395e, fa1631e21c): snapchk bad 143 (nimgm) and 2361 (wscmb), all b0td b1td b0tile names: the walker tiles are stale there, the snap blocks are the unit truth.
+- Tile readers of a triangle epoch: nd_tex_set.c fb_prev_base :257-267, tile_bound :291-293, fb_cand :330-333, ensure_tile_slow :335-385, ensure_tile :441-449, glyph_atlas_bound :565-572;
+  nd_comb.c dual_bind_load to t1_fold_tri :397-487; nd_geom.c pm_gbi_gv_at :115, gv_epoch_enter :228. tile_texel (:295-328) stays. gv_params_calc (nd_geom.c:98) and t1_fold_tri run only in an open epoch. No host unit links nd_geom.c, nd_comb.c, nd_tex_set.c or nd_snap.c (FACT grep 3ds/tests/host.d). ndr0a.sh builds nd_snap_in.c with nd_snap_test.c.
+## Edits. Do the 3 seds first (line numbers of main), then the manual edits. Keep CRLF: use `sed -b -i -E` and the Edit tool, never plain `sed -i`.
+1. `E='s/nd_ws\.td\[([a-z0-9_]+)\]\./ND_BTD(\1)->/g; s/nd_ws\.tst1\.tile_wrap\[([a-z0-9_]+)\]/ND_BWR(\1)/g; s/nd_ws\.tst1\.tile_sz\[([a-z0-9_]+)\]/ND_BSZ(\1)/g; s/nd_ws\.tst1\.tile_shift\[([a-z0-9_]+)\]/ND_BSH(\1)/g'`
+   `sed -b -i -E "257,293{$E}; 330,385{$E}; 441,449{$E}; 565,572{$E}" 3ds/src/nd_tex_set.c; sed -b -i -E "397,487{$E}" 3ds/src/nd_comb.c; sed -b -i -E "115{$E}; 228{$E}" 3ds/src/nd_geom.c`
+   Check: `git diff --stat` gives 25, 15 and 2 changed lines (FACT dry run). `file` still says CRLF. Before (nd_comb.c:411) `!nd_ws.td[0].valid || !nd_ws.td[1].valid) return;` after `!ND_BTD(0)->valid || !ND_BTD(1)->valid) return;`.
+2. nd_snap.h after the NdSnapChk assert: `extern const NdSnapBind* nd_bsrc; /* NDR0G2: the tile words the bind and uv code read: NULL = the walker tiles */`, `extern const NdSnapBind* nd_ep_bs; /* NDR0G2: the blocks of the open epoch, NULL = walker */`,
+   `#define ND_BTD(n) (nd_bsrc ? &nd_bsrc[n].td : &nd_ws.td[n])`, `#define ND_BWR(n) (nd_bsrc ? nd_bsrc[n].wrap : nd_ws.tst1.tile_wrap[n])`, `#define ND_BSZ(n) (nd_bsrc ? nd_bsrc[n].sz : nd_ws.tst1.tile_sz[n])`, `#define ND_BSH(n) (nd_bsrc ? nd_bsrc[n].shift : nd_ws.tst1.tile_shift[n])`,
+   and prototypes `unsigned nd_snap_bdiff(const NdSnapBind* a, const NdSnapBind* b);` `int nd_snap_bnew(const NdSnapBind* e);` `const NdSnapBind* nd_snap_eb(void);` `void nd_snapchk_bind(void);` (one comment each).
+3. nd_snap_in.c (add `#include <stddef.h>`): `unsigned nd_snap_bdiff(a, b)`: for n 0..1: memcmp of td -> `m |= 1u << (2 * n)`; memcmp from wrap to the block end (`sizeof a[n] - offsetof(NdSnapBind, wrap)`) -> `m |= 2u << (2 * n)`.
+4. nd_tex_set.c: `#include "nd_snap.h"` after `#include "nd_api.h"`; `const NdSnapBind* nd_bsrc; /* NDR0G2 */` above fb_prev_base. nd_comb.c: `#include "nd_snap.h"` after `#include "nd_api.h"`;
+   in t1_fold_tri first line `nd_bsrc = nd_ep_bs; /* NDR0G2: the tile words of the open epoch */`, after its t1_fold call `nd_bsrc = NULL;`.
+5. nd_geom.c: `const NdSnapBind* nd_ep_bs; /* NDR0G2 */` below the weak lines. gv_params_calc: `pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o);` becomes `nd_bsrc = nd_ep_bs; pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); nd_bsrc = NULL;`.
+   gv_epoch_enter: after `ep_t1f = 0;` add `nd_ep_bs = nd_snap_rpend ? nd_snap_eb() : NULL; /* NDR0G2 */`; after `ep_fl = tri_flags();` add `nd_bsrc = nd_ep_bs;`; `if (nd_snap_rpend) nd_snap_render();` becomes
+   `if (nd_snap_rpend) { nd_snapchk_bind(); nd_snap_render(); }`; after the closing brace of `if (plan_active && cur_plan.uses_tex1) {...}` add `nd_bsrc = NULL; /* NDR0G2 */`.
+   draw_tri, above `nd_snap_rpend = nd_snap_arm;`: `if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */`.
+   In the next `if (nd_snap_arm) {` line, `nd_snap_rpend) nd_snapchk_rnd(); }` becomes `nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } }`.
+6. nd_snap.c core 0: `static NdSnapBind sc_eb[2]; static unsigned sc_wst, sc_bfr = ~0u;` `unsigned pm_frame_count(void); int pm_drec_now(void);`. Helper `sc_wb(e, w)`: return e, else fill w[0], w[1] with nd_snap_bind of nd_ws.td[n], &nd_ws.tst1, n and return w.
+   `nd_snap_bnew(e)`: `NdSnapBind w[2]; return nd_snap_bdiff(sc_wb(e, w), sc_cur.b) != 0u;`. `nd_snap_eb()`: memcpy sc_cur.b into sc_eb; `if (pm_drec_now() && pm_frame_count() != sc_bfr && nd_snap_bnew(NULL)) { sc_bfr = pm_frame_count(); pm_log_d("bindsnap f%u", sc_bfr); }`; return sc_eb.
+   Move the count and log block of nd_snapchk_rnd into `static void sc_count(const char* tag)` (format `"snapchk bad f%u %s%s"`, pm_frame_n, tag, names); rnd calls `sc_count("rnd");`.
+   `nd_snapchk_bind()`: return without PMDL("snapchk"); `sc_nb = 0;` m = nd_snap_bdiff(sc_wb(nd_ep_bs, w), sc_cur.b); bits 1, 2, 4, 8 add "b0td", "b0tile", "b1td", "b1tile"; `sc_count("bind");`.
+   sc_compare: the NDR0G1 line `{ NdSnapBind w; for (...) ... } /* NDR0G1 */` becomes `if (nd_snap_bnew(NULL)) sc_wst++; /* NDR0G2: stale walker tiles (data, not bad) */`. nd_snapchk_tick: append ` wst %u` with sc_wst.
+7. pm_gpu.c: after `static int drec_on;` add `int pm_drec_now(void) { return drec_on; } /* NDR0G2 */`. In drec_begin after the `drec_on = ...;` line: `if (drec_on) pm_log_d("drec frame %u seq %u", fr, drec_seq); /* NDR0G2 */`.
+8. nd_snap_test.c before `(void)nf;`: a block with 2 zero NdSnapBind pairs: bdiff 0; b[1].td.src = 0x2000 gives 4 (fault: want 8); then src back, b[0].shift[1] = 1 gives 2. `printf("ndr0g2 bdiff bad %d\n", db);`, bad += db.
+## Steps (output to build3ds/out/, read the last 20 lines; 1 build, 5 Azahar starts)
+1. `sh 3ds/tools/nd_host_test.sh > build3ds/out/ndr0g2_host.txt 2>&1`: PASS with `ndr0g2 bdiff bad 0` and `ndr0a seed ok`. Commit `NDR0G2 1: mesh epochs bind and map tiles from the snap blocks`.
+2. One call each: `python 3ds/tools/bench.py base <b>` and `sh 3ds/tools/rowloop.sh --row NDR0G2 --bench <b> --no-host` for b = nimgm_strip_drec, wscmb_pause_drec, spot_mac01_drec.
+   For a DIFF bench: `python 3ds/tools/drecsum.py <b> --row NDR0G2`, and `grep -a "bindsnap\|drec frame" build3ds/azt/logs/<b>.txt`. The frame of the first DIFF draw d: the last `drec frame <f> seq <s>` line with s <= d.
+3. One call each: `python 3ds/tools/bench.py run <s> --row NDR0G2 --why "NDR0G2 snapchk"` for s = nimgm_strip_snapchk, wscmb_pause_snapchk. `grep -a snapchk` of both logs > build3ds/out/ndr0g2_snapchk.txt.
+Gate (exact). Pass: host PASS. snapchk bad 0 in both runs. wst at the until line not above 143 (nimgm) and 2361 (wscmb). Each drec bench byte-equal, or DIFF with a `bindsnap f<n>` line for the frame of its first DIFF draw.
+Stop: a crash, bad above 0, wst above the cap, a DIFF frame with no bindsnap line, a tool fault. Commit the outputs, send the paths to the oracle with SendMessage, wait. Fix rights: the listed files, compile errors.
+Pitfalls: one host test at a time in a worktree (rowloop takes --no-host). PM_CACHE=off only as a prefix of one command, never exported. One bench per rowloop call. Each scene in its own call, no timeout option.
+Keep each file's line endings (CRLF). A snap record is about 640 bytes (GUESS) and the stream has 16 chunks of 32 KB per context (FACT nd_rec.c:30-31): never take a snap when the inputs stay the same.
+Hand-back: last commit `NDR0G2 2: gate. <bench equal or DIFF draw d frame f> each; snapchk bad <2>, wst <2>` deletes this page. One SubagentHandback: commit hash, per bench equal or (first DIFF draw, frame, bindsnap frames, drecsum line), snapchk bad, wst and recs per run.
