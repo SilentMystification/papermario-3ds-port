@@ -23,18 +23,18 @@ Designer: oracle FIN. WAIT: branch from main after the NDR1C merge (snap_take(in
    (nd_direct.c:131 does this to cur_plan), memcmp -> "dplan". Then `sc_count("dir");` (NDR0G2 helper: line `snapchk bad f<n> dir <names>`).
    `static unsigned sc_dir;` and append ` dir %u` with sc_dir to the 100-frame line of nd_snapchk_tick. nd_snap.h: declare nd_snap_pso and nd_snapchk_dir.
 3. nd_direct.c: `static void fill_pso(unsigned k, NdPsoN64* d)` = the 5 `d.` lines of nd_fill_run (:298-302) with `d->`; nd_fill_run calls `fill_pso(k, &d);`. New core 1 function:
-   `void nd_fill_rec(const NdFillRec* f) { NdPsoN64 d; fill_pso(f->kind & 3u, &d); nd_snap_pso(&d, f->rgba, nd_ds.w.envc); nd_rec_napi_s(nd_fill_run, f, 3u); nd_fill_feed((const uint32_t*)f); } /* NDR2A */`
+   New core 1 `void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_napi_s(run, rec, units); } /* NDR2A: snap and record of a direct draw */`,
+   `void nd_fill_rec(const NdFillRec* f) { NdPsoN64 d; fill_pso(f->kind & 3u, &d); nd_dir_rec(nd_fill_run, f, 3u, &d, f->rgba); nd_fill_feed((const uint32_t*)f); }` and core 0 `void nd_dir_drop(void) { nd_snap_arm = 0; nd_snap_live = 0; } /* NDR2A: a fallback walk never takes the pso snap (its tiles predate the record feed) */`; nd_fill_walk first line `nd_dir_drop();`.
    nd_direct_bind, first line: `const unsigned char sn = nd_snap_arm; nd_snap_arm = 0; /* NDR2A: the snap of a converted direct record */`. After `if (!d) return 0;` add `if (sn) nd_snapchk_dir(&d->out); /* NDR2A */`.
-4. nd_api.h after nd_fill_feed: `void nd_fill_rec(const NdFillRec* f); /* nd_direct.c, core 1, NDR2A: snap, record (nd_rec_napi_s) and feed of one fill */`.
+4. nd_api.h after nd_fill_feed: declare nd_fill_rec, nd_dir_rec (core 1) and nd_dir_drop (core 0), one comment each.
    nd_direct_test.c (it includes nd_direct.c and links no nd_snap.c, nd_rec.c, nd_ds.c; FACT nd_host_test.sh:238), after the nd_ds_feed_dir stub: `NdDs nd_ds;` and empty stubs
-   `void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units)`, `void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env)`, `void nd_snapchk_dir(const NdCombOut* w)` (each `(void)` its arguments).
+   `void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units)`, `void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env)`, `void nd_snapchk_dir(const NdCombOut* w)` (each `(void)` its arguments), and `unsigned char nd_snap_live;`.
 5. The 3 producer sites. Before: `nd_rec_napi(nd_fill_run, &rec, 3u);` + `nd_fill_feed((const uint32_t*)&rec);` After: `nd_fill_rec(&rec); /* NDR2A */` (190B20.c: `&q`).
 ## Steps (output to build3ds/out/, read the last 20 lines; 1 build, 5 Azahar starts)
 1. Edits 1-5. `sh 3ds/tools/nd_host_test.sh > build3ds/out/ndr2a_host.txt 2>&1`: PASS. `grep -c "nd_rec_napi(nd_fill_run" src/screen_overlays.c src/battle/190B20.c`: 0 each. Commit `NDR2A 1: fill records take a pso snap, snapchk dir`.
 2. One call each: `python 3ds/tools/bench.py base <b>` and `sh 3ds/tools/rowloop.sh --row NDR2A --bench <b> --no-host` for b = wscmb_pause_drec, axns_sam2_drec, curt_title_drec: byte-equal each.
 3. One call each: `python 3ds/tools/bench.py run <s> --row NDR2A --why "NDR2A snapchk dir"` for s = nimgm_strip_snapchk, wscmb_pause_snapchk. `grep -a snapchk` of both logs > build3ds/out/ndr2a_snapchk.txt.
-Gate (exact): host PASS, 3 benches byte-equal (FACT: the snap is a state op; core 0 still applies nd_pso_decide), snapchk bad 0, wst not above the NDR1C hand-back. Report the dir counts (0 is not a fault).
-Stop: a DIFF, a crash, a `dir` bad line, a tool fault: commit the outputs, send the paths to the oracle with SendMessage, wait. Fix rights: the listed files; compile errors.
+Gate (exact): host PASS, 3 benches byte-equal (FACT: the snap is a state op; core 0 still applies nd_pso_decide), snapchk bad 0, wst not above the NDR1C hand-back. Report the dir counts (0 is not a fault). Stop: a DIFF, a crash, a `dir` bad line, a tool fault: commit the outputs, send the paths to the oracle with SendMessage, wait. Fix rights: the listed files; compile errors.
 Pitfalls: one host test at a time in a worktree (rowloop takes --no-host). PM_CACHE=off only as a prefix of one command, never exported. One bench per rowloop call. Each scene in its own call, no timeout option.
 Keep each file's line endings (CRLF). A snap record is about 640 bytes (GUESS), the stream has 16 chunks of 32 KB per context (FACT nd_rec.c:30-31): the memo must stop a snap when the inputs stay the same.
 Hand-back: last commit `NDR2A 2: gate. 3 benches byte-equal; snapchk bad <2>, dir <2>` deletes this page. One SubagentHandback: commit hash, gate values, dir counts.
