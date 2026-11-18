@@ -66,6 +66,20 @@ int main(int argc, char** argv) {
         }
         printf("ndr0d fold bad %d\n", bad - before);
     }
+    { /* NDR0F1: the mix of sync_render (nd_snap_mix) on fixed colours: fogc 0x11223344, blendc 0x55667788 */
+        static const struct { unsigned ol; int nofog, kind; unsigned col; } mc[] = {
+            { 0x84000000u, 0, 1, 0x55667744u }, { 0xC4000000u, 0, 1, 0x11223344u }, { 0xC4000000u, 1, 0, 0u },
+            { 0xC8000000u, 0, 2, 0x112233ffu }, { 0xC8000000u, 1, 0, 0u }, { 0x00552078u, 0, 0, 0u } };
+        int mb = 0;
+        for (int i = 0; i < 6; i++) {
+            unsigned col = 99u;
+            int k = nd_snap_mix(mc[i].ol, 0x11223344u, 0x55667788u, mc[i].nofog, &col);
+            int want = (fault && i == 2) ? 1 : mc[i].kind;
+            if (k != want || col != mc[i].col) mb++;
+        }
+        bad += mb;
+        printf("ndr0f mix bad %d\n", mb);
+    }
     (void)nf;
     return bad ? 1 : 0;
 }

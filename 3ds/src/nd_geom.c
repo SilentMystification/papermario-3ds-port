@@ -12,6 +12,8 @@
 #include "nd.h"
 #include "nd_snap.h"
 __attribute__((weak)) void nd_snapchk_tri(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_geom.c */
+__attribute__((weak)) unsigned char nd_snap_rpend; /* NDR0F1: strong in nd_snap.c */
+__attribute__((weak)) void nd_snapchk_rnd(void) {} /* NDR0F1: strong in nd_snap.c */
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -213,6 +215,7 @@ void gv_epoch_enter(void) {
             dual_bind();
         }
         sync_render();
+        if (nd_snap_rpend) nd_snapchk_rnd(); /* NDR0F1 */
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
          * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.
          * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
@@ -339,9 +342,12 @@ void draw_tri(unsigned w) {
     idx[1] = i1;
     idx[2] = i2;
     if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
-    if (nd_snap_arm) nd_snapchk_tri(); /* NDR0A: the armed snapchk compare (nd_snap.c) */
+    nd_snap_rpend = nd_snap_arm; /* NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
+    if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) nd_snapchk_rnd(); } /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
-        if (vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx)) return;
+        const int done = vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx);
+        nd_snap_rpend = 0; /* NDR0F1B */
+        if (done) return;
     }
     /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
     tri_drop[(vert_ring[i0] == GV_NONE || vert_ring[i1] == GV_NONE || vert_ring[i2] == GV_NONE) ? 0 : 1]++;
