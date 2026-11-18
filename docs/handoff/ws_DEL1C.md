@@ -1,7 +1,7 @@
-# ws_DEL1C (Haiku): nd_dlc.c reads only ND_FS units (nd_fs.h ids). dlc_op and the raw gbi op arms go; the host test types its raw words. Counter: C8 reader nd_dlc.c 27 -> 0, total 387 -> 360 (FACT listcen e3d2f6523b). Gate: 2 drec byte-equal, the nd_dlc host lines equal the start commit.
-Designer: oracle DEL helper. Start commit main e3d2f6523b. No WAIT. Overlaps: none (no running row edits these files). Worktree build3ds/wt/DEL1C, branch DEL1C. PM_ROW=DEL1C PM_LANE=DEL1C.
+# ws_DEL1C (Haiku): nd_dlc.c reads only ND_FS units (nd_fs.h ids). dlc_op and the raw gbi op arms go; the host test types its raw words. Counter: C8 reader nd_dlc.c 27 -> 0, total 387 -> 360 (FACT listcen 3c2469a282). Gate: 2 drec byte-equal, the nd_dlc host lines equal the start commit.
+Designer: oracle DEL helper. Start commit main 3c2469a282. No WAIT. Overlaps: none (no running row edits these files). Worktree build3ds/wt/DEL1C, branch DEL1C. PM_ROW=DEL1C PM_LANE=DEL1C.
 Edit only (Edit tool, keep CRLF): 3ds/src/nd_dlc.c, 3ds/tools/nd_dlc_test.c.
-## Facts (code read, main e3d2f6523b)
+## Facts (code read, main 3c2469a282)
 - FACT every device and converter input of nd_dlc.c is typed: nd_ent.c (ND_FS units of k->fw), the .dlc build of nd_shape_conv.c (ND_X0 per word, nd_shape_conv.c:156), nd_seam_test.c:128 and mapconv_test.c:106 (NDO_END ends the words). Only nd_dlc_test.c feeds raw gbi words.
 - FACT ND_FS ids equal the NDO ids (nd_fs.h:1-3). dlc_op (nd_dlc.c:12-30) maps a typed id to the raw OP_ id, so each `case OP_x` has one typed id: VTX, TRI1, TRI2, GEOM (OP_GEOMETRYMODE), TIMG, TILE, TILESIZE, LOADBLOCK, LOADTILE, LOADTLUT, END (OP_ENDDL), ND_NOP_A (OP_NOOP).
 - FACT ent_known (nd_dlc.c:361-377) on a typed id after dlc_op is 1 exactly for ND_NOP_A, ND_FS_BASE..ND_FS_COMB and ND_FS_TIMG..ND_FS_MOVEMEM. `*bad` stays the typed id. tex_decode_n bad_op takes the FS id (only the texbad prof line logs it, nd_ent.c:43).

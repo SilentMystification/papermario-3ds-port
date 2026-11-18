@@ -482,10 +482,9 @@ int ent_draw(const Gfx* rec) {
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
-#define ENT_GBI(l_, n_) (nd_ent_gbi++, nd_ops_run((l_), (n_) >> 3, 1)) /* PERF2: the pieces of the flattened list keep the walker's sync state (D10b: the op executor) */
-static void ent_gap(NdSDef* d, const Gfx* l, u32 n) { /* S6E: a gap as a compiled range, with nd_ops_run's list start and end; only when every value unit precedes the statics (the op order) */
+static void ent_gap(NdSDef* d, const Gfx* l, u32 n) { /* S6E: a gap as a compiled range, with the list start and end of nd_ent_units; only when every value unit precedes the statics (the op order) */
     if (d && !d->st) d->st = nd_scomp_analyse(d) ? 1u : 2u;
-    ENT_GBI((void*)l, n * 8u);
+    nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)l, n); /* DEL1B */
     if (d && d->st == 1u && d->nv == d->pre) sr_ok = 0; /* NREC5: the render resync of the old compiled run */
 }
 /* HC8 step 7: the recompile of a changed entity (content hash), the interpreter run of one segment (the fallback loop) are cold: out of line. */
@@ -496,8 +495,8 @@ static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const G
 static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const EntSeg* e) {
     const Gfx* fw = k->fw;
     ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) ENT_GBI((void*)(fw + i), 8u);
-    if (e->op1 > e->op0) ENT_GBI((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
+    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + i), 1u); } /* DEL1B */
+    if (e->op1 > e->op0) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + e->op0), e->op1 - e->op0); } /* DEL1B */
 }
 int ent_run(const Gfx* l, EntKey* k, u32 segid) {
     const unsigned f = pm_frame_count();

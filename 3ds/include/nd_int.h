@@ -318,6 +318,7 @@ typedef struct { u32 a0, op0, op1, tri0, ntri; struct NdSDef* sd; u16 pc0, pcn; 
 enum { ENP_DEF, ENP_UNIT, ENP_SKIP };
 typedef struct { const void* p; u16 n; u8 kind; } EntPiece; /* S7ENT: ENP_DEF p = const NdGDef*, ENP_UNIT p = the unit (n 1), ENP_SKIP a no-op unit (not run) */
 int nd_ent_pieces(const EntPiece* p, unsigned n); /* nd_walk.c, core 0: run a gap as its table pieces; returns the defs run compiled */
+void nd_ent_units(const uint32_t* u, unsigned n); /* nd_walk.c, core 0 (DEL1B): n flat units of an entity list, the list start and end of nd_ops_run (keep 1) */
 typedef struct {
     u32 list, vb, nops, hash, fr, vlen, retry;
     const u8* vp;

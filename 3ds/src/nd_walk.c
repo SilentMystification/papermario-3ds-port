@@ -173,7 +173,6 @@ void nd_walk_spr(const Gfx* q) {
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
     if (sh) { extern unsigned char nd_snap_arm; nd_snap_arm = 0; /* NDR4: the native sprite took its snap */ return; }
-    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(q, 3u);
     { extern int nd_spr_walk; nd_spr_walk = 1; nd_ops_run(q + G_PM_SPR_WORDS, 2u, 1); nd_spr_walk = 0; } /* WALLSHADE */
 }
 static __attribute__((cold, noinline)) void ent_lsr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("lsnap ent f%u", pm_frame_count()); } } /* NREC2 */
@@ -191,7 +190,6 @@ void nd_walk_ent(const Gfx* q, unsigned words) {
     NDT_E(te, NDT_ENT);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
-    if (!drawn && words > G_PM_ENT_WORDS && __builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(q, 4u);
     if (!drawn && words > G_PM_ENT_WORDS) nd_ops_run(q + G_PM_ENT_WORDS, 1u, 1); /* D10c: its G_DL on the op executor (walk_call) */
     nd_lsr_end(); /* NREC2 */
 }
@@ -213,39 +211,6 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
 /* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
  * static list goes to the entity path (ent_gdl) or a compiled map shape (dlc_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_ops_run), inside a list nested. */
-/* DIRECT D11 lstcen (debug tool, switch lstcen=<frame>): the lists that run on the op executor as N64 words (a G_DL target that ent_gdl and
- * dlc_try refused, a model render mode or geometry list), per list address: kind, runs, ops, the ent key state. One table at that frame. */
-int nd_lc_frame = -2;
-static struct { const void* l; unsigned kind, runs, ops, st, why; } lc_tab[256];
-static unsigned lc_n, lc_done;
-static __attribute__((cold, noinline)) int lc_on(void) {
-    if (nd_lc_frame == -2) { char v[16]; nd_lc_frame = pm_debug_value("lstcen", v, sizeof v) ? atoi(v) : -1; }
-    return nd_lc_frame >= 0 && !lc_done;
-}
-__attribute__((cold, noinline)) void nd_lstcen(const void* l, unsigned kind) {
-    if (!lc_on()) return;
-    const unsigned f = pm_frame_count();
-    if (f + 1u < (unsigned)nd_lc_frame) return;
-    if (f > (unsigned)nd_lc_frame) {
-        lc_done = 1;
-        for (unsigned i = 0; i < lc_n; i++) pm_log_evt("lstcen %p kind %u runs %u ops %u st %u why %u", lc_tab[i].l, lc_tab[i].kind, lc_tab[i].runs, lc_tab[i].ops, lc_tab[i].st, lc_tab[i].why);
-        pm_log_evt("lstcen f%u done lists %u", f, lc_n);
-        return;
-    }
-    if (f + 1u == (unsigned)nd_lc_frame) return; /* one frame only: frame nd_lc_frame */
-    unsigned i = 0;
-    while (i < lc_n && (lc_tab[i].l != l || lc_tab[i].kind != kind)) i++;
-    if (i == lc_n) {
-        if (lc_n >= 256u) return;
-        lc_n++; lc_tab[i].l = l; lc_tab[i].kind = kind; lc_tab[i].runs = 0;
-        const Gfx* g = (const Gfx*)l; unsigned n = 0;
-        while (kind < 3u && n < 4096u && (g[n].words.w0 >> 24) != NDO_END) n++; /* HC4b: a typed table ends at NDO_END */
-        lc_tab[i].ops = n;
-        EntKey* k = ent_find((const Gfx*)l, 0);
-        lc_tab[i].st = k ? k->st + 1u : 0u; lc_tab[i].why = k ? k->why : 0u;
-    }
-    lc_tab[i].runs++;
-}
 static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     if (__builtin_expect(dbg & WD_C2, 0)) nd_c2_src(at);
     Gfx* next = (Gfx*)ptr_of(w1);
@@ -267,7 +232,6 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
         NDT_BD(td, dbg); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
         if (dh) return;
     }
-    if (__builtin_expect(nd_lc_frame != -1, 0) && !nt) nd_lstcen(next, ex_depth ? 2u : 1u);
     if (!ex_depth) { if (nt) nd_ops_run(nt->u, nt->nu, 1); else nd_ops_run(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
     else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_walk_state((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
@@ -451,6 +415,19 @@ void nd_ops_run(const void* l, unsigned n, int keep) {
     pm_walk_side--;
     gv_streak_flush();
     tex_streak_flush();
+    if (cen) ops_cen_end();
+}
+/* DEL1B: n flat units of an entity list (a gap, the loads and ops of a refused segment) with the list start and end of nd_ops_run (keep 1).
+ * ENT_GBI (nd_ent.c) ran them with nd_ops_run; the steps and their order are the same. */
+void nd_ent_units(const uint32_t* u, unsigned n) {
+    PM_WALK_OWN();
+    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & (WD_CEN | WD_C2), 0) && d == 0;
+    if (cen) ops_cen_begin(u);
+    gv_epoch++; dlc_on = 1; gp_prev_op = -1; /* GV1b, as nd_ops_run */
+    pm_walk_side++; ex_depth = d + 1;
+    nd_nr_exec(u, n);
+    ex_depth = d; pm_walk_side--;
+    gv_streak_flush(); tex_streak_flush();
     if (cen) ops_cen_end();
 }
 /* NATIVEAPI S4 (nd_api.h NdParts): the core 0 runner of a particle run. Per instance: the pre units on the walker, the list drawn natively
