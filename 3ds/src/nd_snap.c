@@ -225,10 +225,25 @@ void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed sna
     if (nd_sr_same(sg)) return;
     nd_render_apply(&sc_cur.rs, sc_cur.mixk, sc_cur.mixc, sc_cur.in.omode_h, sc_cur.oml, sg);
 }
+/* NCONV2B: the walker takes the combine and render inputs of the consumed snap (the 1:1 fields of comb_in_walker, nd_comb.c:200).
+ * sc_compare names each of these fields when it differs, so with no bad name the writes change nothing. geom and tss stay core 0 state. */
+static void sc_adopt(void) {
+    extern unsigned* const tst_f[16]; /* nd_comb.c:46 */
+    extern unsigned keyc, keys, conv_k4; /* nd_comb.c:24-25 */
+    extern int dual_on, box_prod, box_folded, comb_set, comb_alpha_shade; /* nd_comb.c:26-32 */
+    const NdCombIn* i = &sc_cur.in;
+    nd_ws.comb_w0 = i->w0; nd_ws.comb_w1 = i->w1; nd_ws.omode_h = i->omode_h; nd_ws.prim = i->prim; nd_ws.envc = i->env;
+    keyc = i->key_c; keys = i->key_s; conv_k4 = i->conv_k4;
+    for (int k = 0; k < 16; k++) *tst_f[k] = i->tst[k];
+    nd_ws.tex_on = i->tex_on; nd_ws.use_t1 = i->use_t1; dual_on = i->dual_on; box_prod = i->box_prod; box_folded = i->box_folded;
+    comb_set = i->comb_set; comb_alpha_shade = i->comb_alpha_shade;
+    nd_ws.omode_l = sc_cur.oml; fogc = sc_cur.fogc; blendc = sc_cur.blendc;
+}
 void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
     nd_snap_arm = 0;
     if (PMDL("snapchk")) sc_compare();
     nd_snap_comb();
+    sc_adopt(); /* NCONV2B */
 }
 void nd_tsnap_vtx(unsigned vt) { if (!PMDL("snapchk")) return; ts_vn++; if (vt != sc_cur.tss) ts_vb++; } /* NCONV2A */
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
