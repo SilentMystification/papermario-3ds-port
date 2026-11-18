@@ -18,6 +18,7 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
+#include "nd_fs.h"
 
 
 
@@ -117,8 +118,8 @@ u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
         u32 w0 = lu[2u * i], w1 = lu[2u * i + 1u];
         h = (h ^ w0) * 16777619u; h = (h ^ w1) * 16777619u;
         uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
-        if ((ut[0] >> 24) == NDO_END) return h;
-        if ((ut[0] >> 24) == NDO_CALL) {
+        if ((ut[0] >> 24) == ND_FS_END) return h;
+        if ((ut[0] >> 24) == ND_FS_CALL) {
             const Gfx* t = (const Gfx*)ptr_of(w1);
             if (t && is_host((u32)t) && depth < 5) h = ent_hash_walk(t, h, depth + 1);
             if (ut[0] & 1) return h;
@@ -139,8 +140,8 @@ int ent_flat(const Gfx* l, unsigned* n, int depth) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
         unsigned op = ut[0] >> 24;
-        if (op == NDO_END) return 1;
-        if (op == NDO_CALL) {
+        if (op == ND_FS_END) return 1;
+        if (op == ND_FS_CALL) {
             if (!ent_flat_call(w1, n, depth)) return 0; /* LKEY: a callee with a device entry (a moved list key) flattens from its units */
             if (ut[0] & 1) return 1;
             continue;
@@ -171,13 +172,13 @@ void ent_refcheck(const EntKey* k, const Gfx* l) {
     for (u32 i = 0; i < k->nops; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         unsigned op = ent_uid(w0, w1);
-        if (op == NDO_VTX) {
+        if (op == ND_FS_VTX) {
             unsigned n = (w0 >> 12) & 0xff, e = (w0 >> 1) & 0x7f, v0 = e >= n ? e - n : 0;
             const u8* src = (const u8*)ent_env_vtx(w1, n);
             if (v0 + n > 64) n = 64 - v0;
             for (unsigned t = 0; t < n; t++) slot[v0 + t] = src ? src + 16u * t : NULL;
-        } else if (op == NDO_TRI1 || op == NDO_TRI2) {
-            for (int t = 0; t < (op == NDO_TRI2 ? 2 : 1); t++, gt++) {
+        } else if (op == ND_FS_TRI1 || op == ND_FS_TRI2) {
+            for (int t = 0; t < (op == ND_FS_TRI2 ? 2 : 1); t++, gt++) {
                 u32 w = t ? w1 : w0;
                 int ix[3] = { (int)((w >> 16) & 0xff) / 2, (int)((w >> 8) & 0xff) / 2, (int)(w & 0xff) / 2 };
                 while (s + 1 < k->nseg && gt >= k->seg[s].tri0 + k->seg[s].ntri) s++;
@@ -239,10 +240,10 @@ static int ent_tdwalk(const NdGTab* t, unsigned* flat, int depth) {
     for (; k < nL; ) {
         const uint32_t w0 = L[2u * k];
         const unsigned id = w0 >> 24;
-        if (id == NDO_END) return 0;
+        if (id == ND_FS_END) return 0;
         if (w0 == ND_NOP_A) { ent_tpiece(*flat, 1u, ENP_SKIP, NULL); (*flat)++; k++; continue; }
         if (o->k == NDG_END) return 0;
-        if (id == NDO_CALL) {
+        if (id == ND_FS_CALL) {
             if (o->k != NDG_CALL || depth >= 5) return -1;
             const int r = ent_tdwalk((const NdGTab*)o->p, flat, depth + 1);
             if (r < 0) return r;
@@ -258,7 +259,7 @@ static int ent_tdwalk(const NdGTab* t, unsigned* flat, int depth) {
             continue;
         }
         ent_tpiece(*flat, 1u, ENP_UNIT, &L[2u * k]);
-        o += (id == NDO_TRI2) ? 2 : 1;
+        o += (id == ND_FS_TRI2) ? 2 : 1;
         (*flat)++; k++;
     }
     return (k == nL && nL < ND_DLC_MAXOPS) ? 0 : -1; /* LKEY: the end of the device units is the end unit */
@@ -279,8 +280,8 @@ void ent_compile(EntKey* k, const Gfx* l0) {
     const int fl = nt ? nd_ntab_flat(nt, ent_flat_buf, &nops, ND_DLC_MAXOPS, 0, ent_flat_call) : ent_flat(l0, &nops, 0);
     k->v2 = (u8)(nt && !ent_flat_w);
     if (!fl) { k->why = 5; return; }
-    ent_flat_buf[nops].words.w0 = NDO_W0(NDO_END, 0); ent_flat_buf[nops].words.w1 = 0;
-    if (!k->vb) { for (unsigned i = 0; i < nops; i++) if (ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1) == NDO_VTX) { u32 a = ent_flat_buf[i].words.w1; if (!is_host(a) && (a >> 24) > 0 && (a >> 24) < 16u) { k->useseg = 1; break; } } if (k->useseg) { k->why = 9; return; } }
+    ent_flat_buf[nops].words.w0 = ND_FS_W0(ND_FS_END, 0); ent_flat_buf[nops].words.w1 = 0;
+    if (!k->vb) { for (unsigned i = 0; i < nops; i++) if (ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1) == ND_FS_VTX) { u32 a = ent_flat_buf[i].words.w1; if (!is_host(a) && (a >> 24) > 0 && (a >> 24) < 16u) { k->useseg = 1; break; } } if (k->useseg) { k->why = 9; return; } }
     k->fw = (Gfx*)malloc((nops + 1u) * sizeof(Gfx));
     if (!k->fw) { k->why = 5; return; }
     memcpy(k->fw, ent_flat_buf, (nops + 1u) * sizeof(Gfx));
@@ -295,10 +296,10 @@ void ent_compile(EntKey* k, const Gfx* l0) {
      * damage_indicator D_09002150..80) stays on the walker: ent_run skips loads without triangles and clears the walker slots. */
     { unsigned lastv = 0, lastt = 0;
       for (unsigned i = 0; i < nops; i++) { unsigned op = ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1);
-          if (op == NDO_VTX) lastv = i + 1; else if (op == NDO_TRI1 || op == NDO_TRI2) lastt = i + 1; }
+          if (op == ND_FS_VTX) lastv = i + 1; else if (op == ND_FS_TRI1 || op == ND_FS_TRI2) lastt = i + 1; }
       if (ntri == 0 || lastv > lastt) { k->why = 8; return; } }
     if (k->vb || ent_heap_list(l0)) for (unsigned i = 0; i < nops; i++) { /* the vertex span of the vertex array: hashed once per frame */
-        if (ent_uid(l[i].words.w0, l[i].words.w1) != NDO_VTX) continue;
+        if (ent_uid(l[i].words.w0, l[i].words.w1) != ND_FS_VTX) continue;
         const u8* p = (const u8*)ptr_of(l[i].words.w1);
         unsigned n = (l[i].words.w0 >> 12) & 0xff;
         if (!p || !is_host((u32)p)) continue;
@@ -496,7 +497,7 @@ static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const G
 static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const EntSeg* e) {
     const Gfx* fw = k->fw;
     ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == NDO_VTX) ENT_GBI((void*)(fw + i), 8u);
+    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) ENT_GBI((void*)(fw + i), 8u);
     if (e->op1 > e->op0) ENT_GBI((void*)(fw + e->op0), (e->op1 - e->op0) * 8u);
 }
 int ent_run(const Gfx* l, EntKey* k, u32 segid) {
