@@ -1,0 +1,19 @@
+queue: position 1 of 1 waiting (lane 'DELCEN', speed normal, scenario phase_mac01_det, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario phase_mac01_det, row DELCEN, lane 'DELCEN', slot 1, cap 45 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.1 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 5s: matched 'fsplit f' (Azahar running; stopped by this run) warm kept; until at 4.5 s; end at 5.0 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: phase_mac01_det cap 45 until 4.5
+PASS  warp: #135 warp: mac_01 entry 0 (area 1 map 2) story -128 flag 0
+PASS  fsplit: #473 fsplit f324 logic 1.7 dl 4.0 gbi 7.7 flush 0.1 gwait 0.0 swap 0.4 audio 20.5 rest 0.7 wall 35.2 max 319.7 over50 2 svc 950.3 wm 143.0 max 143 tk 1.95 max 2
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELCEN\build3ds\azt\logs\phase_mac01_det.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town mac_01, Mario at pos 0 0 200, cold start with det and phase fsplit (no picture). The fsplit line carries gbi ms per window.
+SHOTS: 0 from this run
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELCEN\build3ds\lane-DELCEN\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1893003, build 6903, commit 0c8d178ed7
+  scene -                              windows   0 fps - ft -
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+bench phase_mac01_det: azt.ps1 exit 0. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl.
+rc=0
