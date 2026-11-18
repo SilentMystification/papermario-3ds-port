@@ -1,4 +1,4 @@
-# ws_NREC5 (Haiku): a compiled def inside a list or an entity gap runs as its units on core 0. nd_scomp_exec and nd_scomp_exec_own go. Counter: C11 elf_func -2 (GUESS: both names are in the ELF now). Data: fxops snapchk bad (GUESS: falls from 469).
+# ws_NREC5 (Haiku): a compiled def inside a list or an entity gap runs as its units on core 0. nd_scomp_exec and nd_scomp_exec_own go. Counter: C11 elf_func -2 (GUESS: both names are in the ELF now). Data: fxops snapchk bad, not higher than base (the sl names are NREC2B's fix, not this row).
 Designer: oracle NCONV2RA. Start from main (73359b439a). No WAIT: NREC4 edits nd_walk.c 457-530, this row edits nd_walk.c 581-632 and no NREC4 file else. Worktree build3ds/wt/NREC5, branch NREC5. PM_ROW=NREC5 PM_LANE=NREC5.
 Edit only (Edit tool, keep CRLF): 3ds/src/nd_scomp.c (347-359), 3ds/include/nd_scomp.h (42-43), 3ds/src/nd_walk.c (gt_ops, nd_ent_pieces), 3ds/src/nd_ent.c (ent_gap), 3ds/include/nd_gtab.h (line 16 comment).
 ## Facts (code read, main 73359b439a; find the quoted text, line numbers move)
@@ -6,7 +6,7 @@ Edit only (Edit tool, keep CRLF): 3ds/src/nd_scomp.c (347-359), 3ds/include/nd_s
 - FACT the compiled run (sc_exec, nd_scomp.c:260-266) ends with `sr_ok = 0` and `gv_epoch++`. Its combine decision is a cache per key (sc_decide :226, sc_replay :207 writes sl_const and sl_cc).
 - FACT the units of such a def run in def order with every value unit first (nv == pre), so the op path gives the same state order. Each unit run takes the walker decision (sync_combine) as the op path does.
 - FACT ENT_GBI (nd_ent.c:485) is nd_ops_run(l, n, 1): gv_epoch++, dlc_on = 1, the units, the streak flushes (nd_walk.c:436-452). The old compiled branch of ent_gap did the same plus sc_exec.
-- FACT fxops_snapchk base f500: bad 469, logged names "sl" at NDC_ENT. GUESS: sc_replay of an entity gap writes a stale sl_cc; the next snap draw applies its own combine (nd_snap_comb), so drec stays equal.
+- FACT the next snap draw applies its own combine (nd_snap_comb, nd_snap.c:233), so the combine of the op path does not reach a list draw. GUESS: drec stays equal.
 ## Edits
 1. nd_scomp.c. Replace `int nd_scomp_exec(...) {` to the end of `int nd_scomp_exec_own(...) { ... }` (lines 347-359, before `#endif`) with:
 ```c
