@@ -160,9 +160,7 @@ void nd_scomp_rec(NdSDef* d, const void* vv, unsigned nv) {
     p[1] = nv;
     memcpy(p + 2, v, nv * 8u);
     nd_rec_napi(nd_scomp_run, p, 1u + nv);
-#ifndef ND_SCOMP_HOST /* NST2C: the host builds link this file without nd_ds.c */
-    nd_ds_scomp(&nd_ds, (const uint32_t*)d->u, d->n, d->vmask, v, nv, nd_ds_unit);
-#endif
+    { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("scomp rec f%u", pm_frame_count()); } } /* DSDUP: a compiled record was taken */
     nd_ds_scomp(&nd_ds, (const uint32_t*)d->u, d->n, d->vmask, v, nv, nd_ds_unit); /* NST2C */
 }
 
