@@ -588,8 +588,8 @@ static void gt_ops(const NdGTab* t) {
         switch (o->k) {
         case NDG_DEF: {
             const NdGDef* g = (const NdGDef*)o->p;
-            if (g->d.nv == g->d.pre && nd_scomp_exec_own((NdSDef*)&g->d)) break; /* st is 1: no write to the table */
             nd_nr_exec((const uint32_t*)g->d.u, g->d.n);
+            if (g->d.nv == g->d.pre && nd_scomp_ok((NdSDef*)&g->d)) { gv_epoch++; sr_ok = 0; } /* NREC5: the cut and render resync of the old compiled run (sc_exec); st is 1: no write to the table */
             break;
         }
         case NDG_UNIT: nd_nr_exec((const uint32_t*)o->p, 1u); break;
@@ -625,8 +625,8 @@ int nd_ent_pieces(const EntPiece* p, unsigned n) {
     for (unsigned i = 0; i < n; i++) {
         if (p[i].kind == ENP_DEF) {
             const NdGDef* g = (const NdGDef*)p[i].p;
-            if (g->d.nv == g->d.pre && nd_scomp_exec_own((NdSDef*)&g->d)) { sc++; continue; }
             nd_nr_exec((const uint32_t*)g->d.u, g->d.n);
+            if (g->d.nv == g->d.pre && nd_scomp_ok((NdSDef*)&g->d)) { gv_epoch++; sr_ok = 0; } /* NREC5 */
         } else if (p[i].kind == ENP_UNIT) nd_nr_exec((const uint32_t*)p[i].p, 1u);
     }
     ex_depth = d;

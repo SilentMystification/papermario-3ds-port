@@ -344,17 +344,9 @@ static void sc_go(const NdSDef* d, const uint32_t* v) {
     if (__builtin_expect(sc_chk, 0)) s6_run(d, v); else sc_exec(d, v);
 }
 void nd_scomp_run(const uint32_t* rec) { sc_go((const NdSDef*)(uintptr_t)rec[0], rec + 2); }
-int nd_scomp_exec(NdSDef* d, const uint32_t* v, unsigned nv) {
+/* NREC5, core 0: 1 when the compiler takes d (st 1). The callers run the units of d and keep the cut and the render resync of the old compiled run (sc_exec). */
+int nd_scomp_ok(NdSDef* d) {
     if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;
-    if (d->st != 1u || nv != d->nv) return 0;
-    sc_go(d, v);
-    return 1;
-}
-int nd_scomp_exec_own(NdSDef* d) {
-    uint32_t v[2u * 32u]; const uint32_t* u = (const uint32_t*)d->u; unsigned j = 0;
-    if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;
-    if (d->st != 1u) return 0;
-    for (unsigned k = 0; k < d->n; k++) if (d->vmask >> k & 1u) { v[2u * j] = u[2u * k]; v[2u * j + 1u] = u[2u * k + 1u]; j++; }
-    return nd_scomp_exec(d, v, j);
+    return d->st == 1u;
 }
 #endif

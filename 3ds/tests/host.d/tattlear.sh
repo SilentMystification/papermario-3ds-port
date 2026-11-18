@@ -2,7 +2,7 @@
 # TATTLEAR: the tattle camera view in wide. set_cam_viewport and pm_wide_x3d (src/cam_main.c) are extracted into $N/ext.c and run
 # by 3ds/tests/tattlear/tattlear_test.c. Prints `tattlear ok 7`. Seeded fault: the `* 8 / 5` of the tattle view changed to `* 2`
 # must print `tattlear FAIL` first.
-F="-m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -msse2 -mfpmath=sse -ffp-contract=off"
+F="-m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -msse2 -mfpmath=sse -ffp-contract=off"
 N=/tmp/tattlear; rm -rf $N $N/seed; mkdir -p $N/seed
 printf '#define NAMESPACE t
 #include "common.h"

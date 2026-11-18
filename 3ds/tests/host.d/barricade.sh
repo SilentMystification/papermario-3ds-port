@@ -2,7 +2,7 @@
 # BARRICADE: the map shape list walkers (barricade.c DetermineSphericalSize, GetFirstTriangleNormal.inc.c) read u32 unit pairs.
 # The real functions are extracted into $N/ext.c and run on hand-built lists (3ds/tests/maplist/maplist_test.c).
 # Prints `barricade ok 2`. Seeded fault: the unit step of both walkers changed to 4 words must print `barricade FAIL` first.
-F="-m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -msse2 -mfpmath=sse -ffp-contract=off"
+F="-m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -msse2 -mfpmath=sse -ffp-contract=off"
 N=/tmp/barricade; rm -rf $N $N/seed; mkdir -p $N/seed
 printf '#define NAMESPACE t
 #include "common.h"

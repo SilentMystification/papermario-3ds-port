@@ -17,6 +17,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)
 HEADERS = [
     "include/PR/gbi.h",
     "include/gbi_custom.h",
+    "3ds/tools/gbi_inc/PR/gbi.h",
     "include/PR/gs2dex.h",
     "3ds/include/nd_gbi.h",
 ]
