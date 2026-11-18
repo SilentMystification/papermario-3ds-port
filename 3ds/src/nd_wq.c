@@ -26,8 +26,6 @@ int pm_walk_side;
 int pm_c2own = -1;
 unsigned pm_walk_frame; /* the frame number of the entry the walker runs */
 extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
-extern int nd_c2_on; /* nd_c2haz.c */
-void nd_c2_push(void);
 
 /* The queue: power-of-two ring, free-running head (next to run) and tail (next free). 40 bytes an entry, 2.5 KB. */
 #define WQ_N 64u
@@ -150,7 +148,6 @@ static void wq_frame_run(void* a) { pm_frame_walk((const PmFrame*)a); __sync_syn
 void pm_wq_frame(const PmFrame* f) {
     if (pm_wq_on_logic()) {
         if (wq_fr_walked != wq_fr_push) wq_block(c_walked, NULL, WQB_ALL); /* depth 1: the frame before is walked first */
-        if (nd_c2_on > 0) nd_c2_push(); /* CORE2C-3: the census check point of the threaded walk */
         wq_fr_push++;
         wq_put(wq_frame_run, f, sizeof *f);
         return;
