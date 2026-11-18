@@ -33,7 +33,7 @@ EVERY TURN: 1 ListAgents. Only status `running` holds a slot. A `completed` agen
 4. Budget reset: run `run_azahar.ps1 -ResetBudget <row>` from the row worktree (azt.ps1 reads the worktree copy of test_budget.csv).
 
 ## Console
-- PUSH ORDER: merge, build main, wait for the notice, `binchk` gate (`docs/handoff/push_strings.txt`, edited in place at each merge), THEN ask the console selector, then push with `--no-build`.
+- PUSH ORDER: merge, build main, wait for the notice, `binchk` gate (`docs/handoff/push_strings.txt`, edited in place at each merge), THEN write build3ds/out/push_pending.txt (the built commit; merge_row.sh refuses while it exists), THEN ask the console selector, then push with `--no-build` and no other step in between. Remove the file after the push is sent. The skill command `go.ps1 push` builds unless told not to.
 - Push only when the user asks. Consoles: O3DS XL 192.168.1.131, N3DS 192.168.1.224, O3DS 192.168.1.170. Never test port 17491.
 - A failed push: read `build3ds/out/push_<ip>_*.txt`, one line, stop. Pull logs with `pm_logrecv.py --ip <addr> --label <name>`, fallback `go.ps1 pull o|n -ip <ip>`.
 - The user's test list holds only unconfirmed items (`docs/handoff/verify_list.md`).

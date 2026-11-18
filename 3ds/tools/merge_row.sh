@@ -5,7 +5,7 @@
 # Exit: 0 merged (summary printed); 2 refused (main dirty, branch missing, not on main); 3 conflict other than the row
 # file and runs.jsonl (or merge-tree failed); 4 conflict marker line added on the branch; 5 merge failed and aborted (or
 # runs commit failed); 6 branch kept (not merged, or still checked out); 7 merged, but the post-merge check was not queued;
-# 8 refused: the post-merge check of main failed (build3ds/out/postmerge_FAIL.txt, POSTASYNC).
+# 8 refused: the post-merge check of main failed (build3ds/out/postmerge_FAIL.txt, POSTASYNC). 9 refused: a push is pending (push_pending.txt).
 # WT_GC: a wt_gc.sh replacement read by the host test (run as: sh "$WT_GC" --apply --only <row>).
 # POSTMERGE_BG: a postmerge_bg.sh path read by the host test (run as: sh "$POSTMERGE_BG" --queue <commit>).
 set -u
@@ -33,6 +33,11 @@ fi
 # 1. refuse
 if [ -n "$(git status --porcelain)" ]; then
     echo "merge_row: refused: main folder has uncommitted or untracked files" >&2; exit 2
+fi
+# PUSHPEND (user 2026-11-17): a merge between the build of main and the push makes the push rebuild. The file build3ds/out/push_pending.txt
+# (the built commit, written before the console question, removed after the push is sent) stops the merge lane.
+if [ -f build3ds/out/push_pending.txt ]; then
+    echo "merge_row: refused: a push is pending (build3ds/out/push_pending.txt: $(head -1 build3ds/out/push_pending.txt)). Send the push, then rm that file." >&2; exit 9
 fi
 # POSTASYNC: a failed post-merge check stops the merge lane until a full check passes on a newer main commit (postmerge_bg.sh)
 if [ -f build3ds/out/postmerge_FAIL.txt ]; then
