@@ -71,5 +71,5 @@ Off the path: NDR1-6, NCONV2, NREC3, NREC5 (they must merge before DEL3A). GUESS
 | K8 | S9GATE | end | G10, G11 (FACT plan_endgame.md:100) |
 - A failed check: push the row tips of the stage by halves (GUESS 3 pushes for 7 rows) to name the row.
 ## 5. Decisions open for the user
-- UD4: the miss path at the end. HWFIX1 runs nd_comb_core on a miss (FACT oracle_handoff.md:9). decide, decide_miss (nd_decide.c:172,
-  :214) are model names: DEL2A renames them on core 1 or the user picks the fixed fallback. Needed before DEL2A.
+- UD4 (answered): keep nd_comb_core on core 1 for a miss. DEL2A renames decide and decide_miss (nd_decide.c:172, :214) on core 1.
+  Sonnet rows NDR0, NCONV1 and NREC1: standing yes.
