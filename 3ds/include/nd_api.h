@@ -84,6 +84,7 @@ uint32_t nd_direct_env(void);                  /* core 0: the walker's environme
  * translucent. nd_fill_run (nd_direct.c, core 0) states the combine and render mode of the kind and fills. */
 typedef struct { int32_t x0, y0, x1, y1; uint32_t rgba, kind; } NdFillRec;
 void nd_fill_run(const uint32_t* u); /* nd_direct.c, core 0: the NDC_NAPI runner of an NdFillRec */
+void nd_fill_feed(const uint32_t* u); /* nd_direct.c, core 1: the units of an NdFillRec feed nd_ds (NST2E) */
 
 /* S5TRECT: one texture window load plus one texture rectangle (the rect words as gbi.h writes them). 13 units (104 bytes on 32-bit: 2 pointers,
  * 23 words, fill and pad). nd_trect_run (nd_direct.c, core 0) is the NDC_NAPI runner. */
@@ -95,6 +96,8 @@ typedef struct NdTRect {
 } NdTRect;
 _Static_assert(sizeof(NdTRect) % 8 == 0 && sizeof(NdTRect) == 104, "NdTRect: 13 whole 8-byte units");
 void nd_trect_run(const uint32_t* u);
+void nd_trect_feed(const uint32_t* u); /* nd_direct.c, core 1: the units of an NdTRect feed nd_ds (NST2E) */
+void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c, core 1 (NST2E) */
 
 #endif
 

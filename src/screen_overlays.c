@@ -68,6 +68,16 @@ typedef struct {
     { ND_W0_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1), ND_W1_CMB(a0, b0, c0, d0, Aa0, Ab0, Ac0, Ad0, a1, b1, c1, d1, Aa1, Ab1, Ac1, Ad1) }
 #define TST_CW(a, b) TST_CW_(a, b)
 
+/* NST2E: the fallback units of one transition stencil record, written at *o. */
+static void tsten_emit(const NdTStenRec* r, uint32_t** o) {
+    uint32_t* nrp = *o;
+    const int full = (int)(r->full_and_id & 1u);
+    if (full) NDST_CC(ND_NR_AT, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
+    NDVAL_PRIM(ND_NR_AT, 0, 0, (int)(r->prim >> 24), (int)((r->prim >> 16) & 0xFFu), (int)((r->prim >> 8) & 0xFFu), (int)(r->prim & 0xFFu));
+    NDTX_RECT_W(ND_NR_AT, r->w0, r->w1, r->hs, r->hd);
+    *o = nrp;
+}
+
 /* core 0: the transition stencil rectangle. Direct when the tile 0 window of the image and the walker state allow it (the pso is the
  * combine of PM_CC_3A, or PM_CC_PRIM_FULL_ALPHA when full, with the stencil render mode); else the old ops run (combine, prim colour, rectangle). */
 void pm_tsten_run(const uint32_t* u) {
@@ -109,10 +119,16 @@ void pm_tsten_run(const uint32_t* u) {
     }
     if (ok) return;
 
-    if (full) NDST_CC(ND_NR_AT, PM_CC_PRIM_FULL_ALPHA, PM_CC_PRIM_FULL_ALPHA);
-    NDVAL_PRIM(ND_NR_AT, 0, 0, (int)(r->prim >> 24), (int)((r->prim >> 16) & 0xFFu), (int)((r->prim >> 8) & 0xFFu), (int)(r->prim & 0xFFu));
-    NDTX_RECT_W(ND_NR_AT, r->w0, r->w1, r->hs, r->hd);
+    tsten_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+}
+
+/* NST2E: the units of one transition stencil record feed core 1's nd_ds (record site screen_render_util.c). */
+void pm_tsten_feed(const uint32_t* u) {
+    uint32_t buf[16];
+    uint32_t* p = buf;
+    tsten_emit((const NdTStenRec*)u, &p);
+    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
 }
 
 void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* overlay) {
@@ -152,6 +168,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
                 const NdFillRec rec = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress,
                                         progress == 255.0f ? 1u : 0u };
                 nd_rec_napi(nd_fill_run, &rec, 3u);
+                nd_fill_feed((const uint32_t*)&rec);
             }
             return;
         case OVERLAY_VIEWPORT_COLOR:
@@ -161,6 +178,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
                 const NdFillRec rec = { vx, vy, vx + camera->viewportW, vy + camera->viewportH,
                                         ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress, progress == 255.0f ? 1u : 0u };
                 nd_rec_napi(nd_fill_run, &rec, 3u);
+                nd_fill_feed((const uint32_t*)&rec);
             }
             return;
     }
