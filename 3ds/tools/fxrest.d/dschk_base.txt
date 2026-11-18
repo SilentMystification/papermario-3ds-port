@@ -1,34 +1,190 @@
-#276 dschk f100 cmds 10554 bad 0 epbad 967 fbad 0 adopt 5791 adiff 23861
-#301 dschk f200 cmds 27392 bad 0 epbad 2436 fbad 0 adopt 15291 adiff 62991
-#246 dschk f100 cmds 13567 bad 0 epbad 2549 fbad 0 adopt 6239 adiff 26907
-#431 dschk f200 cmds 34954 bad 0 epbad 16822 fbad 0 adopt 19186 adiff 51889
-#10 switches bootid=fc99a07688 warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det dschk turbo
-#271 dschk f100 cmds 8486 bad 0 epbad 856 fbad 0 adopt 2453 adiff 10836
-#334 dschk f200 cmds 19417 bad 0 epbad 2659 fbad 0 adopt 6261 adiff 31521
-#373 dschk f300 cmds 29883 bad 0 epbad 6776 fbad 0 adopt 11789 adiff 61946
-#386 dschk f400 cmds 40583 bad 0 epbad 11076 fbad 0 adopt 17489 adiff 92746
-#277 dschk f100 cmds 10554 bad 0 epbad 967 fbad 0 adopt 5791 adiff 23861
-#302 dschk f200 cmds 27392 bad 0 epbad 2436 fbad 0 adopt 15291 adiff 62991
-#337 dschk f300 cmds 44128 bad 0 epbad 3938 fbad 0 adopt 24904 adiff 102944
-#356 dschk f400 cmds 61628 bad 0 epbad 7138 fbad 0 adopt 36404 adiff 157044
-#401 dschk f500 cmds 79674 bad 0 epbad 10414 fbad 0 adopt 47904 adiff 211144
-#452 dschk f600 cmds 97390 bad 0 epbad 13824 fbad 0 adopt 59404 adiff 265244
-#488 dschk f700 cmds 115219 bad 0 epbad 17086 fbad 0 adopt 70904 adiff 319344
-#540 dschk f800 cmds 132807 bad 0 epbad 20368 fbad 0 adopt 82404 adiff 373444
-#595 dschk f900 cmds 150539 bad 0 epbad 23694 fbad 0 adopt 93904 adiff 427544
-#632 dschk f1000 cmds 168154 bad 0 epbad 26951 fbad 0 adopt 105404 adiff 481644
-#679 dschk f1100 cmds 185946 bad 0 epbad 30240 fbad 0 adopt 116904 adiff 535744
-#732 dschk f1200 cmds 203818 bad 0 epbad 33466 fbad 0 adopt 128404 adiff 589844
-#773 dschk f1300 cmds 221790 bad 0 epbad 36750 fbad 0 adopt 139904 adiff 643944
-#813 dschk f1400 cmds 239628 bad 0 epbad 40040 fbad 0 adopt 151404 adiff 698044
-#857 dschk f1500 cmds 257814 bad 0 epbad 43324 fbad 0 adopt 162904 adiff 752144
-#969 dschk f1600 cmds 276650 bad 0 epbad 46968 fbad 0 adopt 174204 adiff 804754
-#1022 dschk f1700 cmds 294655 bad 0 epbad 49716 fbad 0 adopt 185144 adiff 854682
-#1108 dschk f1800 cmds 312743 bad 0 epbad 52988 fbad 0 adopt 196644 adiff 908782
-#1145 dschk f1900 cmds 330475 bad 0 epbad 56342 fbad 0 adopt 208144 adiff 962882
-#1183 dschk f2000 cmds 348081 bad 0 epbad 59646 fbad 0 adopt 219644 adiff 1016982
-#1222 dschk f2100 cmds 365925 bad 0 epbad 62958 fbad 0 adopt 231144 adiff 1071082
-#1257 dschk f2200 cmds 383665 bad 0 epbad 66210 fbad 0 adopt 242644 adiff 1125182
-#1292 dschk end f2292 cmds 400186 bad 0 epbad 69184 fbad 0 adopt 253224 adiff 1174954
-#1293 dschk lg hw 119 over 0
-#1295 dschk f2300 cmds 401587 bad 0 epbad 69440 fbad 0 adopt 254144 adiff 1179282
+#10 switches bootid=584d158fac warp=mac_01:0 pos=0:0:200 loglevel=debug det dschk
+#156 dschk epbad f35 k 1012b
+#173 dschk epbad f35 k 2022d
+#174 dschk epbad f35 k 2022d
+#175 dschk epbad f35 k 2022d
+#176 dschk epbad f35 k 2022d
+#184 dschk epbad f35 k 10130
+#185 dschk epbad f35 k 10130
+#186 dschk epbad f35 k 10130
+#187 dschk epbad f35 k 10130
+#188 dschk epbad f35 k 10130
+#189 dschk epbad f35 k 10130
+#190 dschk epbad f35 k 10130
+#199 dschk epbad f35 k 1012a
+#202 dschk epbad f35 k 1033e
+#204 dschk epbad f35 k 10120
+#207 dschk epbad f35 k 2012d
+#292 dschk epsrc f100 1012b=107 2022d=260 10130=327 1012a=129 1033e=116 10120=14 2012d=2 20123=12
+#293 dschk epsrc f100 other 0
+#294 dschk f100 cmds 10554 bad 0 epbad 967 fbad 0 adopt 5791 adiff 23861
+#319 dschk epsrc f200 1012b=276 2022d=660 10130=827 1012a=329 1033e=316 10120=14 2012d=2 20123=12
+#320 dschk epsrc f200 other 0
+#321 dschk f200 cmds 27392 bad 0 epbad 2436 fbad 0 adopt 15291 adiff 62991
+#10 switches bootid=7de2bb324a preset=toad padscript=wait80,START*3,wait100 loglevel=debug det dschk
+#157 dschk epbad f37 k 1012b
+#170 dschk epbad f37 k 2022d
+#171 dschk epbad f37 k 2022d
+#172 dschk epbad f37 k 2022d
+#173 dschk epbad f37 k 2022d
+#174 dschk epbad f37 k 2022d
+#175 dschk epbad f37 k 2022d
+#176 dschk epbad f37 k 2022d
+#177 dschk epbad f37 k 2022d
+#178 dschk epbad f37 k 2022d
+#179 dschk epbad f37 k 2022d
+#180 dschk epbad f37 k 2022d
+#181 dschk epbad f37 k 2022d
+#182 dschk epbad f37 k 2022d
+#183 dschk epbad f37 k 2022d
+#184 dschk epbad f37 k 2022d
+#262 dschk epsrc f100 1012b=60 2022d=1080 10120=74 10130=1214 1033e=107 2012d=2 20123=12
+#263 dschk epsrc f100 other 0
+#264 dschk f100 cmds 13567 bad 0 epbad 2549 fbad 0 adopt 6239 adiff 26907
+#449 dschk epsrc f200 1012b=258 2022d=1080 10120=74 10130=1224 1033e=2364 2012d=2 20123=12 20220=862
+#450 dschk epsrc f200 20121=662 20130=10284
+#451 dschk epsrc f200 other 0
+#452 dschk f200 cmds 34954 bad 0 epbad 16822 fbad 0 adopt 19186 adiff 51889
+#10 switches bootid=3d3519f37c warp=kmr_03:0 story=ch0_toad_town battle=BTL_SAM2_FORMATION_00:BTL_SAM2_STAGE_05 battlef=100 loglevel=debug fixedseed fs1off det dschk turbo
+#163 dschk epbad f39 k 10130
+#188 dschk epbad f39 k 10121
+#195 dschk epbad f39 k 10130
+#197 dschk epbad f39 k 10130
+#198 dschk epbad f39 k 10130
+#199 dschk epbad f39 k 10130
+#200 dschk epbad f39 k 10130
+#201 dschk epbad f39 k 10130
+#202 dschk epbad f39 k 10130
+#203 dschk epbad f39 k 10130
+#204 dschk epbad f39 k 10130
+#206 dschk epbad f39 k 10130
+#209 dschk epbad f39 k 1033e
+#211 dschk epbad f39 k 10120
+#214 dschk epbad f39 k 2012d
+#229 dschk epbad f40 k 10130
+#287 dschk epsrc f100 10130=649 10121=52 1033e=108 10120=14 2012d=2 20123=12 1012b=19
+#288 dschk epsrc f100 other 0
+#289 dschk f100 cmds 8486 bad 0 epbad 856 fbad 0 adopt 2453 adiff 10836
+#352 dschk epsrc f200 10130=1234 10121=105 1033e=257 10120=54 2012d=35 20123=12 1012b=104 20121=301
+#353 dschk epsrc f200 20220=516 2022d=41
+#354 dschk epsrc f200 other 0
+#355 dschk f200 cmds 19417 bad 0 epbad 2659 fbad 0 adopt 6261 adiff 31521
+#394 dschk epsrc f300 10130=1234 10121=105 1033e=807 10120=154 2012d=35 20123=12 1012b=304 20121=1181
+#395 dschk epsrc f300 20220=2166 2022d=141 20120=274 10127=93 20130=270
+#396 dschk epsrc f300 other 0
+#397 dschk f300 cmds 29883 bad 0 epbad 6776 fbad 0 adopt 11789 adiff 61946
+#410 dschk epsrc f400 10130=1234 10121=105 1033e=1407 10120=254 2012d=35 20123=12 1012b=504 20121=2081
+#411 dschk epsrc f400 20220=3866 2022d=241 20120=574 10127=193 20130=570
+#412 dschk epsrc f400 other 0
+#413 dschk f400 cmds 40583 bad 0 epbad 11076 fbad 0 adopt 17489 adiff 92746
+#157 dschk epbad f35 k 1012b
+#174 dschk epbad f35 k 2022d
+#175 dschk epbad f35 k 2022d
+#176 dschk epbad f35 k 2022d
+#177 dschk epbad f35 k 2022d
+#185 dschk epbad f35 k 10130
+#186 dschk epbad f35 k 10130
+#187 dschk epbad f35 k 10130
+#188 dschk epbad f35 k 10130
+#189 dschk epbad f35 k 10130
+#190 dschk epbad f35 k 10130
+#191 dschk epbad f35 k 10130
+#200 dschk epbad f35 k 1012a
+#203 dschk epbad f35 k 1033e
+#205 dschk epbad f35 k 10120
+#208 dschk epbad f35 k 2012d
+#293 dschk epsrc f100 1012b=107 2022d=260 10130=327 1012a=129 1033e=116 10120=14 2012d=2 20123=12
+#294 dschk epsrc f100 other 0
+#295 dschk f100 cmds 10554 bad 0 epbad 967 fbad 0 adopt 5791 adiff 23861
+#320 dschk epsrc f200 1012b=276 2022d=660 10130=827 1012a=329 1033e=316 10120=14 2012d=2 20123=12
+#321 dschk epsrc f200 other 0
+#322 dschk f200 cmds 27392 bad 0 epbad 2436 fbad 0 adopt 15291 adiff 62991
+#357 dschk epsrc f300 1012b=376 2022d=1060 10130=1327 1012a=529 1033e=511 10120=14 2012d=2 20123=12
+#358 dschk epsrc f300 20220=70 20121=37
+#359 dschk epsrc f300 other 0
+#360 dschk f300 cmds 44128 bad 0 epbad 3938 fbad 0 adopt 24904 adiff 102944
+#379 dschk epsrc f400 1012b=476 2022d=1460 10130=1827 1012a=729 1033e=611 10120=14 2012d=2 20123=12
+#380 dschk epsrc f400 20220=1270 20121=737
+#381 dschk epsrc f400 other 0
+#382 dschk f400 cmds 61628 bad 0 epbad 7138 fbad 0 adopt 36404 adiff 157044
+#427 dschk epsrc f500 1012b=625 2022d=1860 10130=2327 1012a=929 1033e=711 10120=41 2012d=2 20123=12
+#428 dschk epsrc f500 20220=2470 20121=1437
+#429 dschk epsrc f500 other 0
+#430 dschk f500 cmds 79674 bad 0 epbad 10414 fbad 0 adopt 47904 adiff 211144
+#481 dschk epsrc f600 1012b=731 2022d=2260 10130=2979 1012a=1129 1033e=811 10120=41 2012d=2 20123=12
+#482 dschk epsrc f600 20220=3670 20121=2137 1012d=52
+#483 dschk epsrc f600 other 0
+#484 dschk f600 cmds 97390 bad 0 epbad 13824 fbad 0 adopt 59404 adiff 265244
+#520 dschk epsrc f700 1012b=893 2022d=2660 10130=3479 1012a=1329 1033e=911 10120=41 2012d=2 20123=12
+#521 dschk epsrc f700 20220=4870 20121=2837 1012d=52
+#522 dschk epsrc f700 other 0
+#523 dschk f700 cmds 115219 bad 0 epbad 17086 fbad 0 adopt 70904 adiff 319344
+#575 dschk epsrc f800 1012b=999 2022d=3060 10130=3979 1012a=1529 1033e=1011 10120=41 2012d=2 20123=12
+#576 dschk epsrc f800 20220=6070 20121=3537 1012d=90 10121=38
+#577 dschk epsrc f800 other 0
+#578 dschk f800 cmds 132807 bad 0 epbad 20368 fbad 0 adopt 82404 adiff 373444
+#633 dschk epsrc f900 1012b=1149 2022d=3460 10130=4479 1012a=1729 1033e=1149 10120=41 2012d=2 20123=12
+#634 dschk epsrc f900 20220=7270 20121=4237 1012d=90 10121=38 10122=38
+#635 dschk epsrc f900 other 0
+#636 dschk f900 cmds 150539 bad 0 epbad 23694 fbad 0 adopt 93904 adiff 427544
+#673 dschk epsrc f1000 1012b=1306 2022d=3860 10130=4979 1012a=1929 1033e=1249 10120=41 2012d=2 20123=12
+#674 dschk epsrc f1000 20220=8470 20121=4937 1012d=90 10121=38 10122=38
+#675 dschk epsrc f1000 other 0
+#676 dschk f1000 cmds 168154 bad 0 epbad 26951 fbad 0 adopt 105404 adiff 481644
+#723 dschk epsrc f1100 1012b=1495 2022d=4260 10130=5479 1012a=2129 1033e=1349 10120=41 2012d=2 20123=12
+#724 dschk epsrc f1100 20220=9670 20121=5637 1012d=90 10121=38 10122=38
+#725 dschk epsrc f1100 other 0
+#726 dschk f1100 cmds 185946 bad 0 epbad 30240 fbad 0 adopt 116904 adiff 535744
+#779 dschk epsrc f1200 1012b=1621 2022d=4660 10130=5979 1012a=2299 1033e=1449 10120=71 2012d=2 20123=12
+#780 dschk epsrc f1200 20220=10870 20121=6337 1012d=90 10121=38 10122=38
+#781 dschk epsrc f1200 other 0
+#782 dschk f1200 cmds 203818 bad 0 epbad 33466 fbad 0 adopt 128404 adiff 589844
+#823 dschk epsrc f1300 1012b=1769 2022d=5060 10130=6497 1012a=2499 1033e=1567 10120=71 2012d=2 20123=12
+#824 dschk epsrc f1300 20220=12070 20121=7037 1012d=90 10121=38 10122=38
+#825 dschk epsrc f1300 other 0
+#826 dschk f1300 cmds 221790 bad 0 epbad 36750 fbad 0 adopt 139904 adiff 643944
+#866 dschk epsrc f1400 1012b=1919 2022d=5460 10130=7017 1012a=2699 1033e=1687 10120=71 2012d=2 20123=12
+#867 dschk epsrc f1400 20220=13270 20121=7737 1012d=90 10121=38 10122=38
+#868 dschk epsrc f1400 other 0
+#869 dschk f1400 cmds 239628 bad 0 epbad 40040 fbad 0 adopt 151404 adiff 698044
+#913 dschk epsrc f1500 1012b=2103 2022d=5860 10130=7517 1012a=2899 1033e=1787 10120=71 2012d=2 20123=12
+#914 dschk epsrc f1500 20220=14470 20121=8437 1012d=90 10121=38 10122=38
+#915 dschk epsrc f1500 other 0
+#916 dschk f1500 cmds 257814 bad 0 epbad 43324 fbad 0 adopt 162904 adiff 752144
+#1028 dschk epsrc f1600 1012b=2219 2022d=6260 10130=8027 1012a=3089 1033e=2505 10120=71 2012d=2 20123=12
+#1029 dschk epsrc f1600 20220=15550 20121=9067 1012d=90 10121=38 10122=38
+#1030 dschk epsrc f1600 other 0
+#1031 dschk f1600 cmds 276650 bad 0 epbad 46968 fbad 0 adopt 174204 adiff 804754
+#1084 dschk epsrc f1700 1012b=2371 2022d=6660 10130=8555 1012a=3261 1033e=2633 10120=71 2012d=2 20123=12
+#1085 dschk epsrc f1700 20220=16414 20121=9571 1012d=90 10121=38 10122=38
+#1086 dschk epsrc f1700 other 0
+#1087 dschk f1700 cmds 294655 bad 0 epbad 49716 fbad 0 adopt 185144 adiff 854682
+#1173 dschk epsrc f1800 1012b=2543 2022d=7060 10130=9055 1012a=3461 1033e=2733 10120=71 2012d=2 20123=12
+#1174 dschk epsrc f1800 20220=17614 20121=10271 1012d=90 10121=38 10122=38
+#1175 dschk epsrc f1800 other 0
+#1176 dschk f1800 cmds 312743 bad 0 epbad 52988 fbad 0 adopt 196644 adiff 908782
+#1213 dschk epsrc f1900 1012b=2721 2022d=7460 10130=9593 1012a=3661 1033e=2871 10120=71 2012d=2 20123=12
+#1214 dschk epsrc f1900 20220=18814 20121=10971 1012d=90 10121=38 10122=38
+#1215 dschk epsrc f1900 other 0
+#1216 dschk f1900 cmds 330475 bad 0 epbad 56342 fbad 0 adopt 208144 adiff 962882
+#1254 dschk epsrc f2000 1012b=2891 2022d=7860 10130=10093 1012a=3861 1033e=2985 10120=71 2012d=2 20123=12
+#1255 dschk epsrc f2000 20220=20014 20121=11671 1012d=90 10121=58 10122=38
+#1256 dschk epsrc f2000 other 0
+#1257 dschk f2000 cmds 348081 bad 0 epbad 59646 fbad 0 adopt 219644 adiff 1016982
+#1296 dschk epsrc f2100 1012b=3079 2022d=8260 10130=10593 1012a=4061 1033e=3109 10120=71 2012d=2 20123=12
+#1297 dschk epsrc f2100 20220=21214 20121=12371 1012d=90 10121=58 10122=38
+#1298 dschk epsrc f2100 other 0
+#1299 dschk f2100 cmds 365925 bad 0 epbad 62958 fbad 0 adopt 231144 adiff 1071082
+#1334 dschk epsrc f2200 1012b=3231 2022d=8660 10130=11093 1012a=4261 1033e=3209 10120=71 2012d=2 20123=12
+#1335 dschk epsrc f2200 20220=22414 20121=13071 1012d=90 10121=58 10122=38
+#1336 dschk epsrc f2200 other 0
+#1337 dschk f2200 cmds 383665 bad 0 epbad 66210 fbad 0 adopt 242644 adiff 1125182
+#1372 dschk epsrc f2292 1012b=3353 2022d=9028 10130=11553 1012a=4445 1033e=3301 10120=71 2012d=2 20123=12
+#1373 dschk epsrc f2292 20220=23518 20121=13715 1012d=90 10121=58 10122=38
+#1374 dschk epsrc f2292 other 0
+#1375 dschk end f2292 cmds 400186 bad 0 epbad 69184 fbad 0 adopt 253224 adiff 1174954
+#1376 dschk lg hw 119 over 0
+#1378 dschk epsrc f2300 1012b=3361 2022d=9060 10130=11593 1012a=4461 1033e=3309 10120=71 2012d=2 20123=12
+#1379 dschk epsrc f2300 20220=23614 20121=13771 1012d=90 10121=58 10122=38
+#1380 dschk epsrc f2300 other 0
+#1381 dschk f2300 cmds 401587 bad 0 epbad 69440 fbad 0 adopt 254144 adiff 1179282

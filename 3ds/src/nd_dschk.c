@@ -12,6 +12,7 @@
 #include "pm_port.h"
 
 extern unsigned nd_st_epoch; /* nd_walk.c: the state epoch count, reset here at each command */
+extern unsigned nd_st_why; /* nd_walk.c: the source of the first epoch raise (NST2H) */
 extern unsigned pm_frame_n;  /* pm_main.c: the logic step counter */
 extern unsigned conv_k4, keyc, keys; /* nd_comb.c, nd_set.c: the core 0 setter globals of NdDs */
 extern int dual_on, box_prod, comb_set, comb_alpha_shade;
@@ -94,11 +95,25 @@ static void adopt_count(const NdDs* c) {
     dk_adiff += (unsigned)nd_ds_cmp(c, &m, NULL, 0);
     dk_adopt++;
 }
+static uint32_t ek_key[32], ek_n[32]; static unsigned ek_used, ek_other, ek_nlog;
+static void ep_note(uint32_t key) {   /* NST2H: one epbad command, key = side << 16 | site or rule << 8 | unit id */
+    if (ek_nlog < 16u) { ek_nlog++; pm_log_evt("dschk epbad f%u k %x", pm_frame_n, (unsigned)key); }
+    for (unsigned i = 0; i < ek_used; i++) if (ek_key[i] == key) { ek_n[i]++; return; }
+    if (ek_used < 32u) { ek_key[ek_used] = key; ek_n[ek_used++] = 1u; } else ek_other++;
+}
+static void ep_print(void) {   /* NST2H: the counts by key, 8 per line, then the overflow */
+    char s[256]; unsigned k = 0; s[0] = 0;
+    for (unsigned i = 0; i < ek_used; i++) {
+        k += (unsigned)snprintf(s + k, sizeof s - k, " %x=%u", (unsigned)ek_key[i], (unsigned)ek_n[i]);
+        if ((i & 7u) == 7u || i + 1u == ek_used) { pm_log_evt("dschk epsrc f%u%s", pm_frame_n, s); k = 0; s[0] = 0; }
+    }
+    pm_log_evt("dschk epsrc f%u other %u", pm_frame_n, ek_other);
+}
 /* rec: the NdDs copy of core 1, then its ep word at word sizeof(NdDs) / 4 (nd_rec.c ds_rec). */
 void nd_dschk_run(const uint32_t* rec) {
     if (nd_ds_rpl) return; /* NST2D: core 1 took this copy inside a range */
     const NdDs* theirs = (const NdDs*)(const void*)rec;
-    const unsigned ep = rec[sizeof(NdDs) / 4u];
+    const unsigned epw = rec[sizeof(NdDs) / 4u], ep = epw & 1u;
     const char* bad[8];
     char names[192];
     NdDs mine;
@@ -119,10 +134,11 @@ void nd_dschk_run(const uint32_t* rec) {
             pm_log_evt("dschk bad f%u%s", pm_frame_n, names);
         }
     }
-    if ((nd_st_epoch != 0) != (ep != 0)) dk_epbad++;
-    nd_st_epoch = 0;
+    if ((nd_st_epoch != 0) != (ep != 0)) { dk_epbad++; ep_note(nd_st_epoch ? (0x10000u | (nd_st_why & 0xffffu)) : (0x20000u | ((epw >> 8) & 0xffffu))); }
+    nd_st_epoch = 0; nd_st_why = 0;
     if (pm_frame_n / 100 != dk_bucket) {
         dk_bucket = pm_frame_n / 100;
+        ep_print();
         pm_log_evt("dschk f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff);
     }
 }
@@ -130,6 +146,7 @@ void nd_dschk_run(const uint32_t* rec) {
 /* pm_fxtest.c: the end line at fxtest done (dschk switch only). */
 void nd_dschk_end(void) {
     if (!pm_debug_has("dschk")) return;
+    ep_print();
     pm_log_evt("dschk end f%u cmds %u bad %u epbad %u fbad %u adopt %u adiff %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad, dk_adopt, dk_adiff);
     pm_log_evt("dschk lg hw %u over %u", nd_ds_lg_hw, nd_ds_lg_over); /* NST2D */
 }
