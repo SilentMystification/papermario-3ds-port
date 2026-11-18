@@ -164,6 +164,32 @@ int main(int argc, char** argv) {
         bad += (int)yb; nf += (int)yf;
 #undef C4
     }
+    /* NST2D: the unit log. Case 1: range A..B replays the PRIM X logged between its marks (PRIM Y after the close is not logged).
+     * Case 2: a sub save, ENV E, restore: envc back. fault: the range runs B..A (no replay). */
+    {
+        static uint32_t mA, mB;
+        unsigned rf = 0, rb = 0;
+#define C5(name, got, want) do { rf++; if ((unsigned long)(got) != (unsigned long)(want)) { rb++; printf("nst2d BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
+        nd_ds_lg_reset();
+        nd_ds_mark(&mA);
+        nd_ds_lg_open();
+        nd_ds_apply(&nd_ds, NDO_W0(NDO_PRIM, 5), 0xAAAAu);
+        nd_ds_mark(&mB);
+        nd_ds_lg_close();
+        nd_ds_apply(&nd_ds, NDO_W0(NDO_PRIM, 9), 0xBBBBu);
+        if (fault) nd_ds_range(&nd_ds, &mB, &mA);
+        else nd_ds_range(&nd_ds, &mA, &mB);
+        C5("range prim", s->w.prim, 0xAAAAu);
+        nd_ds_apply(&nd_ds, NDO_W0(NDO_ENV, 0), 0x5555u);
+        nd_ds_sub_save();
+        nd_ds_apply(&nd_ds, NDO_W0(NDO_ENV, 0), 0x1234u);
+        C5("sub env", s->w.envc, 0x1234u);
+        nd_ds_sub_restore();
+        C5("restore env", s->w.envc, 0x5555u);
+        printf("nst2d cases 2 bad %u\n", rb);
+        bad += (int)rb; nf += (int)rf;
+#undef C5
+    }
     printf("nst2c fields %d bad %d\n", nf, bad);
     printf("nst1 fields %d bad %d\n", nf, bad);
     return bad ? 1 : 0;

@@ -38,6 +38,17 @@ void nd_ds_feed(const uint32_t* u, unsigned n);
 void nd_ds_parts(NdDs* s, const uint32_t* u, NdDsUnitFn unit);
 /* NST2C: the units of a compiled def (rec_ops order: value units from v, syncs skipped). */
 void nd_ds_scomp(NdDs* s, const uint32_t* du, unsigned n, uint32_t vmask, const uint32_t* v, unsigned nv, NdDsUnitFn unit);
+/* NST2D: the unit log (nd_ds.c). lg_reset at the frame start; open/close bracket a range; mark records a range bound; sub_save and
+ * sub_restore hold the state across a sub; range replays the units between two marks into s (b NULL: the next mark). */
+void nd_ds_lg_reset(void);
+void nd_ds_lg_open(void);
+void nd_ds_lg_close(void);
+void nd_ds_mark(const uint32_t* pos);
+void nd_ds_sub_save(void);
+void nd_ds_sub_restore(void);
+void nd_ds_range(NdDs* s, const uint32_t* a, const uint32_t* b);
+extern unsigned nd_ds_lg_over, nd_ds_lg_hw; /* NST2D: units dropped (log full, bad bound), log high water */
+extern unsigned nd_ds_rpl;                  /* NST2D: range replay depth */
 /* NST3 dschk: the count of differing fields of two NdDs copies (draw-time fields zeroed first); the first max names into bad. */
 int nd_ds_cmp(const NdDs* a, const NdDs* b, const char** bad, int max);
 #endif

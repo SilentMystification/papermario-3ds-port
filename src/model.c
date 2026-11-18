@@ -4155,11 +4155,17 @@ static void bat1_sort_runs(s32* sorted, s32 n, RenderTask* taskList) {
 
 /* S3G-3, DIRECT D1: a floor reflection range (plan_direct.md section 4). The task draws once in place, then the frame stream replays its
  * commands (NDC_CALL) between the flip and the projection matrix. The N64 order was: the range skipped in place, called twice by G_DL. */
+/* nd_ds.c */
+void nd_ds_lg_open(void);
+void nd_ds_lg_close(void);
 static const uint32_t* nd_range_begin(void) {
-    return nd_rec_mark();
+    const uint32_t* a = nd_rec_mark();
+    nd_ds_lg_open();
+    return a;
 }
 static void nd_range_repeat(const uint32_t* start, Mtx* flipMtx, Mtx* projMtx) {
     const uint32_t* end = nd_rec_mark();
+    nd_ds_lg_close();
     nd_xf_push(flipMtx, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_PROJECTION);
     nd_rec_call(start, end);
     nd_xf_push(projMtx, G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);

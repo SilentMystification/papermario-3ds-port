@@ -4,6 +4,7 @@
  * writes, the tex_shaded0 record m1). The initial values are those of nd_ws (nd_state.c), the global initializers and pm_gbi_init
  * (geom G_SHADE | G_SHADING_SMOOTH). Pure C: the host test builds it with stubs for is_host, pm_wide and tex_win_s25. */
 #include <stdint.h>
+#include <stdlib.h>
 #include <string.h>
 #include "nd_ds.h"
 #include "nd_gtab.h"
@@ -268,7 +269,44 @@ static unsigned ds_movemem(NdDs* s, u32 w0, u32 w1) {
     return ch;
 }
 
+/* NST2D: the unit log. Core 1 units applied to nd_ds while a range is open (lg_dep) are logged; a range replay (nd_ds_range) applies the
+ * logged units between two marks. A chunk = 4096 units (32 KB). */
+static uint32_t* lg_ch[8];
+static unsigned lg_n, lg_dep, lg_nmk, sv_n;
+static NdDs sv[4];
+unsigned nd_ds_lg_over, nd_ds_lg_hw;
+unsigned nd_ds_rpl; /* NST2D: depth of range replays (nd_rec.c stream_run, nd_walk.c nd_range_run); core 1 skips its dschk copy inside one */
+static struct { const uint32_t* pos; unsigned i; } lg_mk[1024];
+static void lg_put(uint32_t k, uint32_t v) {
+    const unsigned c = lg_n >> 12;
+    if (c >= 8u || (!lg_ch[c] && !(lg_ch[c] = (uint32_t*)malloc(4096u * 8u)))) { nd_ds_lg_over++; return; }
+    lg_ch[c][2u * (lg_n & 4095u)] = k;
+    lg_ch[c][2u * (lg_n & 4095u) + 1u] = v;
+    if (++lg_n > nd_ds_lg_hw) nd_ds_lg_hw = lg_n;
+}
+void nd_ds_lg_reset(void) { lg_n = lg_dep = lg_nmk = sv_n = 0; }
+void nd_ds_lg_open(void) { lg_dep++; }
+void nd_ds_lg_close(void) { if (lg_dep) lg_dep--; }
+void nd_ds_mark(const uint32_t* pos) {
+    if (lg_nmk < 1024u) { lg_mk[lg_nmk].pos = pos; lg_mk[lg_nmk++].i = lg_n; }
+    else nd_ds_lg_over++;
+}
+void nd_ds_sub_save(void) { if (sv_n < 4u) sv[sv_n] = nd_ds; sv_n++; }
+void nd_ds_sub_restore(void) { if (sv_n && --sv_n < 4u) nd_ds = sv[sv_n]; }
+/* replay from mark a to mark b (b NULL: the next mark) */
+void nd_ds_range(NdDs* s, const uint32_t* a, const uint32_t* b) {
+    int ia = -1, ib = -1;
+    if (a == b) return;
+    for (int j = (int)lg_nmk - 1; j >= 0; j--) if (lg_mk[j].pos == a) { ia = j; break; }
+    if (ia >= 0 && !b) ib = ia + 1 < (int)lg_nmk ? ia + 1 : -1;
+    else if (ia >= 0) for (int j = (int)lg_nmk - 1; j > ia; j--) if (lg_mk[j].pos == b) { ib = j; break; }
+    if (ib < 0) { nd_ds_lg_over++; return; }
+    for (unsigned i = lg_mk[ia].i, e = lg_mk[ib].i; i < e; i++)
+        nd_ds_apply(s, lg_ch[i >> 12][2u * (i & 4095u)], lg_ch[i >> 12][2u * (i & 4095u) + 1u]);
+}
+
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
+    if (lg_dep && s == &nd_ds) lg_put(k, v);
     const u32 a = k & 0xffffffu, b = v;
     unsigned ch = 0;
     switch (k >> 24) {
@@ -371,8 +409,10 @@ void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, N
     for (unsigned k = 0; k < nrm; k++) unit(s, rm[2 * k], rm[2 * k + 1]);
     if (f & 32u) { T(NDO_OML, NDO_A_RENDERMODE, (uint32_t)(PM_RM_SHROUD) | q[15]); T(NDO_FOG, 0, q[8]); if (f & 16u) T(NDO_BLEND, 0, q[14]); FOGP(q[11]); }
     else if (f & 2u) { T(NDO_FOG, 0, q[8]); FOGP(q[11]); }
+    if (q[22]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[22], NULL); /* NST2D: custom gfx pre (R11, nd_range_run) */
     if (q[18]) nd_ds_apply(s, q[18], q[19]);
     if (q[20]) nd_ds_apply(s, q[20], q[21]);
+    if (q[23]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[23], NULL); /* NST2D: custom gfx post */
 }
 #undef T
 #undef FOGP

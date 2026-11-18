@@ -1,4 +1,4 @@
-14:#10 switches bootid=a1845411db warp=mac_01:0 pos=0:0:200 loglevel=debug det dschk
+14:#10 switches bootid=cdfd24f540 warp=mac_01:0 pos=0:0:200 loglevel=debug det dschk
 134:#131 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 135:#132 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 142:#139 dschk bad f3 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
@@ -7,36 +7,37 @@
 145:#142 dschk bad f5 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 146:#143 dschk bad f7 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 147:#144 dschk bad f7 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-224:#222 dschk f100 cmds 10554 bad 10554 epbad 1922 fbad 63413
-250:#247 dschk f200 cmds 27392 bad 27392 epbad 5291 fbad 159785
-134:#133 dschk bad f1 omode_h om_kh tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-135:#134 dschk bad f1 omode_h om_kh tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-142:#141 dschk bad f3 omode_h fill om_kh timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec
-143:#142 dschk bad f3 omode_h fill om_kh timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec
-144:#143 dschk bad f5 omode_h omode_l fill om_kh om_kl timg tst1.timg_fmt tst1.timg_siz
-145:#144 dschk bad f5 omode_h omode_l fill om_kh om_kl timg tst1.timg_fmt tst1.timg_siz
-146:#145 dschk bad f7 omode_h omode_l fill om_kh om_kl timg tst1.timg_fmt tst1.timg_siz
-147:#146 dschk bad f7 omode_h omode_l fill om_kh om_kl timg tst1.timg_fmt tst1.timg_siz
-324:#324 dschk f100 cmds 10554 bad 10554 epbad 1922 fbad 83469
-349:#348 dschk f200 cmds 27392 bad 27392 epbad 5291 fbad 213517
-385:#383 dschk f300 cmds 44128 bad 44128 epbad 8479 fbad 340506
-404:#402 dschk f400 cmds 61628 bad 61628 epbad 9779 fbad 459206
-448:#445 dschk f500 cmds 79674 bad 79674 epbad 11155 fbad 580090
-500:#496 dschk f600 cmds 97390 bad 97390 epbad 12665 fbad 699654
-536:#532 dschk f700 cmds 115219 bad 115219 epbad 14027 fbad 819670
-589:#584 dschk f800 cmds 132807 bad 132807 epbad 15409 fbad 938722
-645:#639 dschk f900 cmds 150539 bad 150539 epbad 16835 fbad 1058350
-683:#676 dschk f1000 cmds 168154 bad 168154 epbad 18192 fbad 1177510
-729:#722 dschk f1100 cmds 185946 bad 185946 epbad 19581 fbad 1297378
-783:#775 dschk f1200 cmds 203818 bad 203818 epbad 20907 fbad 1417566
-824:#815 dschk f1300 cmds 221997 bad 221997 epbad 22291 fbad 1539254
-864:#855 dschk f1400 cmds 240075 bad 240075 epbad 23681 fbad 1660535
-909:#899 dschk f1500 cmds 258261 bad 258261 epbad 25065 fbad 1781979
-980:#969 dschk f1600 cmds 277097 bad 277097 epbad 27170 fbad 1906265
-1025:#1014 dschk f1700 cmds 295102 bad 295102 epbad 29082 fbad 2014946
-1132:#1120 dschk f1800 cmds 313190 bad 313190 epbad 30454 fbad 2117910
-1170:#1157 dschk f1900 cmds 331068 bad 331068 epbad 31908 fbad 2220720
-1208:#1195 dschk f2000 cmds 348674 bad 348674 epbad 33312 fbad 2322238
-1248:#1234 dschk f2100 cmds 366518 bad 366518 epbad 34724 fbad 2424470
-1284:#1269 dschk f2200 cmds 384258 bad 384258 epbad 36076 fbad 2526390
-1319:#1304 dschk end f2292 cmds 400779 bad 400779 epbad 37302 fbad 2620756
+224:#222 dschk f100 cmds 10554 bad 10554 epbad 1922 fbad 45269
+250:#247 dschk f200 cmds 27392 bad 27392 epbad 5291 fbad 113103
+135:#132 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
+136:#133 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
+143:#140 dschk bad f3 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
+144:#141 dschk bad f3 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
+145:#142 dschk bad f5 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
+146:#143 dschk bad f5 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
+147:#144 dschk bad f7 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
+148:#145 dschk bad f7 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
+225:#223 dschk f100 cmds 10554 bad 10554 epbad 1922 fbad 45635
+251:#248 dschk f200 cmds 27392 bad 27392 epbad 5291 fbad 113469
+278:#274 dschk f300 cmds 44128 bad 44128 epbad 8479 fbad 179969
+297:#293 dschk f400 cmds 61628 bad 61628 epbad 9779 fbad 263469
+338:#333 dschk f500 cmds 79674 bad 79674 epbad 11155 fbad 348061
+382:#376 dschk f600 cmds 97390 bad 97390 epbad 12665 fbad 431993
+414:#408 dschk f700 cmds 115219 bad 115219 epbad 14027 fbad 516151
+456:#449 dschk f800 cmds 132807 bad 132807 epbad 15409 fbad 599827
+498:#490 dschk f900 cmds 150539 bad 150539 epbad 16835 fbad 683791
+529:#520 dschk f1000 cmds 168154 bad 168154 epbad 18192 fbad 767521
+570:#561 dschk f1100 cmds 185946 bad 185946 epbad 19581 fbad 851605
+617:#607 dschk f1200 cmds 203818 bad 203818 epbad 20907 fbad 935849
+651:#640 dschk f1300 cmds 221790 bad 221790 epbad 22291 fbad 1020293
+688:#677 dschk f1400 cmds 239628 bad 239628 epbad 23681 fbad 1104469
+733:#721 dschk f1500 cmds 257814 bad 257814 epbad 25065 fbad 1189341
+792:#779 dschk f1600 cmds 276650 bad 276650 epbad 27189 fbad 1277641
+836:#823 dschk f1700 cmds 294655 bad 294655 epbad 29101 fbad 1368117
+992:#978 dschk f1800 cmds 312743 bad 312743 epbad 30473 fbad 1452793
+1037:#1022 dschk f1900 cmds 330475 bad 330475 epbad 31927 fbad 1536757
+1078:#1063 dschk f2000 cmds 348081 bad 348081 epbad 33331 fbad 1620469
+1120:#1104 dschk f2100 cmds 365925 bad 365925 epbad 34743 fbad 1704657
+1158:#1141 dschk f2200 cmds 383665 bad 383665 epbad 36095 fbad 1788637
+1197:#1180 dschk end f2292 cmds 400186 bad 400186 epbad 37321 fbad 1866298
+1198:#1181 dschk lg hw 119 over 0

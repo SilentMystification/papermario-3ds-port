@@ -54,6 +54,7 @@ static void hit_adopt(const NdDs* c) {
 }
 /* rec: the NdDs copy of core 1, then its ep word at word sizeof(NdDs) / 4 (nd_rec.c ds_rec). */
 void nd_dschk_run(const uint32_t* rec) {
+    if (nd_ds_rpl) return; /* NST2D: core 1 took this copy inside a range */
     const NdDs* theirs = (const NdDs*)(const void*)rec;
     const unsigned ep = rec[sizeof(NdDs) / 4u];
     const char* bad[8];
@@ -86,4 +87,5 @@ void nd_dschk_run(const uint32_t* rec) {
 void nd_dschk_end(void) {
     if (!pm_debug_has("dschk")) return;
     pm_log_evt("dschk end f%u cmds %u bad %u epbad %u fbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad);
+    pm_log_evt("dschk lg hw %u over %u", nd_ds_lg_hw, nd_ds_lg_over); /* NST2D */
 }

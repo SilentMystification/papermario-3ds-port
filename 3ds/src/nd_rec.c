@@ -170,6 +170,7 @@ static void rec_ctx_check(void) {
     task_head = NULL;
     st_hdr = NULL;
     sh_all();
+    nd_ds_lg_reset();
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
 /* NST3 dschk (design_nstate.md section 6): ds_ep is the batch bit before the next command, ds_sclost the scalar-lost bit, ds_in
@@ -519,6 +520,7 @@ const uint32_t* nd_rec_mark(void) {
     rec_open();
     st_hdr = NULL; /* a range bound closes the state run: the range starts or ends at a command header */
     sh_all(); /* HC4b: a range replays elsewhere */
+    nd_ds_mark(wp); /* NST2D: a range bound of the unit log */
     return wp;
 }
 void nd_rec_call(const uint32_t* a, const uint32_t* b) {
@@ -529,6 +531,7 @@ void nd_rec_call(const uint32_t* a, const uint32_t* b) {
     p[1] = (uint32_t)(uintptr_t)a;
     p[2] = (uint32_t)(uintptr_t)b;
     p[3] = 0;
+    nd_ds_range(&nd_ds, a, b); /* NST2D: the range units into the core 1 state */
 }
 static __attribute__((cold, noinline)) void data_bad(unsigned bytes) {
     pm_log_e("ndc: inline data of %u bytes (most %u)", bytes, (CH_WORDS - 4u) * 4u);
@@ -549,10 +552,12 @@ void nd_sub_open(NdSub* s) {
     s->br[0] = NDC_HDR(NDC_JUMP, 0, 0);
     s->br[1] = 0;
     s->a = nd_rec_mark();
+    nd_ds_sub_save(); nd_ds_lg_open(); /* NST2D */
 }
 void nd_sub_close(NdSub* s) {
     s->b = nd_rec_mark();
     s->br[1] = (uint32_t)(uintptr_t)s->b;
+    nd_ds_lg_close(); nd_ds_sub_restore(); /* NST2D */
 }
 void nd_sub_call(const NdSub* s) { nd_rec_call(s->a, s->b); }
 /* D10a: the end of a custom gfx range (build_custom_gfx): the replay of a range (nd_range_run) stops at its NDC_END. */
@@ -561,6 +566,7 @@ void nd_rec_end(void) {
     uint32_t* e = rec_take(2);
     e[0] = NDC_HDR(NDC_END, 0, 0);
     e[1] = 0;
+    nd_ds_mark(wp); /* NST2D: the range end bound */
 }
 /* D10a: the ops of a static list (a custom gfx list that a map script set, SetCustomGfx) recorded as commands, as the walker would run the
  * list: the syncs dropped, a texture rectangle as NDC_TEXRECT, a branch followed, a push G_DL kept as a state op (walk_call at replay), the
@@ -644,7 +650,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
         case NDC_TEXRECT: nd_texrect_run(p); break;
         case NDC_NAPI: ((NdNapiRun)(uintptr_t)p[1])(p + 2); break;
-        case NDC_CALL: stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); break;
+        case NDC_CALL: nd_ds_rpl++; stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); nd_ds_rpl--; break;
         default: run_bad(h, p); return;
         }
         p += 2u + 2u * ((h >> 16) & 0xffu);
