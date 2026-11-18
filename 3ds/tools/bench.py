@@ -2054,9 +2054,17 @@ def base_check_cold(a, root, live, random):
         print("cachecheck basebin %s: base lock held after 40 min" % commit[:9])
         return 6
     os.environ["PM_CACHE"] = "off"
+    same = False
+    gone = False  # BBRACE: a parallel run may remove the entry after bb.get; that is not a cache fault
     try:
         rc, _bn = scratch_build(commit, gitdir, scratch, lane, a.row)
-        same = rc == 0 and src3dsx.exists() and bb.sha1_file(src3dsx) == bb.sha1_file(ent / "pm_3ds.3dsx")
+        if not (ent / "pm_3ds.3dsx").is_file():
+            gone = True
+        else:
+            try:
+                same = rc == 0 and src3dsx.exists() and bb.sha1_file(src3dsx) == bb.sha1_file(ent / "pm_3ds.3dsx")
+            except FileNotFoundError:
+                gone = True
     finally:
         os.environ.pop("PM_CACHE", None)
         shutil.rmtree(scratch, ignore_errors=True)
@@ -2066,6 +2074,9 @@ def base_check_cold(a, root, live, random):
             lk.unlink()
         except OSError:
             pass
+    if gone:
+        print("cachecheck basebin %s: entry removed by a parallel run, skipped" % commit[:9])
+        return 0
     if not same:
         print("CACHECHECK FAIL basebin %s: a cold build differs from the entry (build.sh exit %d), entry removed" % (commit[:9], rc))
         shutil.rmtree(ent, ignore_errors=True)
