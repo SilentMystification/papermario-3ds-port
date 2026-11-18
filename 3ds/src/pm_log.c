@@ -535,6 +535,7 @@ void pm_log_console_ready(void) {
     LightLock_Unlock(&con_lock);
     LightEvent_Signal(&ev_sink); /* U3: one header draw, also when the queue is off at boot */
 }
+void pm_log_sink_kick(void) { if (con_up) LightEvent_Signal(&ev_sink); } /* BOTSCR: bottom screen work (HUD, footer, menu close) wakes the sink */
 static LightEvent ev_wake, ev_started, ev_flushed, ev_quiet;
 static volatile int io_drain_req;
 static void wake_writer(void) { if (writer_th) LightEvent_Signal(&ev_wake); }
