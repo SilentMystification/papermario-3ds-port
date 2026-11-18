@@ -1,7 +1,7 @@
 #!/bin/sh
 # VCOPY: the unit copy of mdl_local_gfx_update_vtx_pointers (extracted from src/model.c) equals the words of the old path, and nd_vcopy_dev (nd_vcopy.h)
 # counts the units and triangles of the copy. Prints `vcopy ok <n>`. Seeded fault: the triangle count of NDO_TRI2 changed to 1 must print FAIL.
-F="-m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
+F="-m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I src -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
 N=/tmp/vcopy; rm -rf $N $N/seed; mkdir -p $N/seed
 tr -d '\r' < src/model.c | awk '/^void mdl_local_gfx_update_vtx_pointers/ {on=1} on {print} on && /^}/ {exit}' > $N/ext_body.c
 printf '#include "common.h"

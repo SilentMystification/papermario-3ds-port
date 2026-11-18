@@ -2,7 +2,7 @@
 # GCONVW: the own-TU split of gen_gfx_syms.py. The fixture (3ds/tests/gconvw/w.c, namespace tw) gives one TU file; it must equal
 # exp_tu0.c (written by hand). GCONVSPLIT: a TU file is gconv_tu_<source path, other characters as _>.c. CR bytes are dropped first: the generator and the checkout differ in line endings on Windows (mechanical fix, FXREST1). The seeded fault (DEF without the N(x) form) must differ. The TU object needs the gconv_sym section.
 F="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
-INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -I ."
+INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I 3ds/tools/gbi_inc -I include -I src -I assets/us -I ver/us/build/include -I ."
 rm -rf /tmp/gcw && mkdir -p /tmp/gcw/f
 python3 3ds/tools/gen_gfx_syms.py /tmp/gcw/gconv_in.c 3ds/tests/gconvw/w.c > /tmp/gcw/tus.txt || { echo "gconvw FAIL gen"; exit 1; }
 TU=gconv_tu_3ds_tests_gconvw_w_c.c # GCONVSPLIT: the TU name of 3ds/tests/gconvw/w.c

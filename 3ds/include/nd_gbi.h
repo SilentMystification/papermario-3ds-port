@@ -232,4 +232,11 @@ Gfx* nd_rec_task(void);
               _SHIFTL(((t) - (((yl) < 0) ? (((s16)(dtdy) < 0) ? (MAX((((s16)(yl) * (s16)(dtdy)) >> 7), 0)) \
                                                               : (MIN((((s16)(yl) * (s16)(dtdy)) >> 7), 0))) : 0)), 0, 16))); \
       gImmp1(pkt, G_RDPHALF_2, (_SHIFTL((dsdx), 16, 16) | _SHIFTL((dtdy), 0, 16))); }
+/* DEL4D12: the derived forms of the device fallback (nd_walk.c pm_gbi_fallback); the other gbi macros are in 3ds/tools/gbi_inc/PR/gbi.h (host only) */
+#undef gDPSetCycleType
+#define gDPSetCycleType(pkt, type) gSPSetOtherMode(pkt, G_SETOTHERMODE_H, G_MDSFT_CYCLETYPE, 2, type)
+#undef gDPSetFillColor
+#define gDPSetFillColor(pkt, d) gDPSetColor(pkt, G_SETFILLCOLOR, (d))
+#undef gSPMatrix
+#define gSPMatrix(pkt, m, p) gDma2p((pkt), G_MTX, (m), sizeof(Mtx), (p) ^ G_MTX_PUSH, 0)
 #endif

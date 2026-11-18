@@ -10,8 +10,8 @@ OUTC=$1
 T=${2:-/tmp/gconv}
 mkdir -p "$T"
 DEF="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
-TINC="-I 3ds/tools -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include" # the nd_host order
-INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -I ."
+TINC="-I 3ds/tools -I 3ds/tools/gbi_inc -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include" # the nd_host order
+INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I 3ds/tools/gbi_inc -I include -I src -I assets/us -I ver/us/build/include -I ."
 # GFXINC: the TU files go to one fixed folder (/tmp/gct, the container's own /tmp), so every caller compiles the same paths and
 # shares the object cache entries (the key holds the source path). $T gets the joined object gconv_in.o as before.
 TD=/tmp/gct; rm -rf "$TD"; mkdir -p "$TD"

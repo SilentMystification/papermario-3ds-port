@@ -3,7 +3,7 @@
 # Steps: the converter (bin mode: assets/us/mapfs/geom/*_shape.bin, the decode of the ROM assets) writes the .nds, .seam and .dlc files; mapconv_test loads each
 # section with the dlcp_* code of 3ds/src/nd_shape.c (cut out here, the device code itself) and compares. Prints "mapconv ok <n>". Seeded fault: one index byte of one
 # section changed in the loaded file must print FAIL. Runs in the nd_host_test.sh docker block (cwd /work, gcc -m32, set -e).
-FL="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
+FL="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include"
 FP="-msse2 -mfpmath=sse -ffp-contract=off"
 mc=/tmp/mapconv
 rm -rf $mc

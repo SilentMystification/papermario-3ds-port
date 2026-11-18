@@ -11,7 +11,7 @@ shift
 if [ -z "$OUT" ] || [ $# -eq 0 ]; then echo "usage: ppcmp.sh <outdir> <file>..." >&2; exit 2; fi
 mkdir -p "$ROOT/$OUT" || exit 2
 DEF="-DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL"
-INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -I ."
+INC="-I 3ds/tools/gconv_inc -I 3ds/tools -I 3ds/include -I 3ds/stub_include -I 3ds/tools/gbi_inc -I include -I src -I assets/us -I ver/us/build/include -I ."
 MSYS_NO_PATHCONV=1 docker run --rm -v "$ROOT:/w" -v "$AR/assets:/ar/assets:ro" -v "$AR/ver/us/build:/ar/ver/us/build:ro" -w /work pm3ds-host:1 sh -c '
   out=$1; shift
   mkdir -p "/w/$out" || exit 2
