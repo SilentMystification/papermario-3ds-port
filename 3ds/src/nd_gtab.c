@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include "nd_gtab.h"
 #include "nd_op.h"
+#include "nd_ds.h"
 
 static int gt_sorted;
 static int gt_cmp(const void* a, const void* b) { /* SORTQ: the keys are unique (one entry per list): the order equals the old insertion sort */
@@ -130,9 +131,10 @@ void nd_rec_dl(const void* list) {
     }
     gtr_tab++;
     const int v2 = (fl & 2u) != 0; fl &= 1u;
-    if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (dl_site ? dl_site : (uint32_t)(uintptr_t)__builtin_return_address(0)), (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(v2 ? (dl_ent ? nd_ntab_rec_e : nd_ntab_rec) : (dl_ent ? nd_gtab_run_e : nd_gtab_run), r4, 2u); nd_rec_scl(v2 ? ((const NdNDev*)t)->ntri : ((const NdGTab*)t)->ntri); return; }
+    if (dl_ent || __builtin_expect(PMDL("entcap"), 0)) { const uint32_t r4[4] = { (uint32_t)(uintptr_t)t, fl, (dl_site ? dl_site : (uint32_t)(uintptr_t)__builtin_return_address(0)), (uint32_t)(uintptr_t)dl_ent }; nd_rec_napi(v2 ? (dl_ent ? nd_ntab_rec_e : nd_ntab_rec) : (dl_ent ? nd_gtab_run_e : nd_gtab_run), r4, 2u); nd_ds_list(&nd_ds, list, 0); nd_rec_scl(v2 ? ((const NdNDev*)t)->ntri : ((const NdGTab*)t)->ntri); return; }
     const uint32_t rec[2] = { (uint32_t)(uintptr_t)t, fl };
     nd_rec_napi(v2 ? nd_ntab_rec : nd_gtab_run, rec, 1u);
+    nd_ds_list(&nd_ds, list, 0); /* NST2A: the list's state units follow its record */
     nd_rec_scl(v2 ? ((const NdNDev*)t)->ntri : ((const NdGTab*)t)->ntri);
 }
 void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_dl(list); dl_ent = NULL; }

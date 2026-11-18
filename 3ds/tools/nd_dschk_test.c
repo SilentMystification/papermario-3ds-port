@@ -4,10 +4,14 @@
 #include <stdio.h>
 #include <string.h>
 #include "nd_ds.h"
+#include "nd_gtab.h"
 
 int pm_wide;
 int is_host(u32 p) { return p >= 0x00100000u; }
 void tex_win_s25(int* a, int* b, int* c, int* d, unsigned e, unsigned f, unsigned g, unsigned h) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; }
+/* NST2A: nd_ds.c calls the table lookups (no table in this test). */
+const NdNDev* nd_ntab_find(const void* list) { (void)list; return NULL; }
+const NdGTab* nd_gtab_find(const void* list) { (void)list; return NULL; }
 
 int main(void) {
     const char* bad[4];

@@ -22,6 +22,7 @@ extern int8_t lk[2][3];
 extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
 
 static unsigned dk_cmds, dk_bad, dk_epbad, dk_nlog, dk_bucket;
+static unsigned dk_fbad; /* NST2A: the sum of the differing fields over all commands */
 
 /* The core 0 side of NdDs: nd_ws, then the globals of the setters (the same values the NdDs fields hold on core 1). */
 static void dschk_fill(NdDs* d) {
@@ -48,6 +49,7 @@ void nd_dschk_run(const uint32_t* rec) {
     dschk_fill(&mine);
     dk_cmds++;
     const int nb = nd_ds_cmp(theirs, &mine, bad, 8);
+    dk_fbad += (unsigned)nb;
     if (nb) {
         dk_bad++;
         if (dk_nlog < 8) {
@@ -62,12 +64,12 @@ void nd_dschk_run(const uint32_t* rec) {
     nd_st_epoch = 0;
     if (pm_frame_n / 100 != dk_bucket) {
         dk_bucket = pm_frame_n / 100;
-        pm_log_evt("dschk f%u cmds %u bad %u epbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad);
+        pm_log_evt("dschk f%u cmds %u bad %u epbad %u fbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad);
     }
 }
 
 /* pm_fxtest.c: the end line at fxtest done (dschk switch only). */
 void nd_dschk_end(void) {
     if (!pm_debug_has("dschk")) return;
-    pm_log_evt("dschk end f%u cmds %u bad %u epbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad);
+    pm_log_evt("dschk end f%u cmds %u bad %u epbad %u fbad %u", pm_frame_n, dk_cmds, dk_bad, dk_epbad, dk_fbad);
 }

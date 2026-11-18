@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include <string.h>
 #include "nd_ds.h"
+#include "nd_gtab.h"
 #include "nd_ops.h"
 #include "nd_op.h"
 #include "nd_dual.h"
@@ -296,16 +297,93 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
     return ch;
 }
 
+/* NST2A nd_ds_list (design_nstate.md section 5, NST2a). Applies the state units of a static list to nd_ds in the order core 0 runs them:
+ * a v2 table its units nt->u (nu pairs); a v1 table its ops in gt_ops order (NDG_DEF d.u, NDG_UNIT, NDG_CALL); any other list its typed
+ * pairs to NDO_END (at most DS_LIST_MAX). A call unit recurses at depth + 1 (ND_LIST_DEPTH 12, nd_walk.c); a call with w0 bit 0 (the
+ * branch form) ends the list that holds it. */
+#define DS_LIST_MAX 200000u
+#define DS_LIST_DEPTH 12u
+static void ds_list_at(NdDs* s, uint32_t w, unsigned depth);
+static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth);
+/* n pairs of u; raw: stop at NDO_END (the list end of a typed list). */
+static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int raw) {
+    for (unsigned i = 0; i < n; i++) {
+        const uint32_t w0 = u[2u * i], w1 = u[2u * i + 1u];
+        if (raw && (w0 >> 24) == NDO_END) return;
+        if ((w0 >> 24) == NDO_CALL) {
+            ds_list_at(s, w1, depth + 1u);
+            if (w0 & 1u) return;
+        } else {
+            nd_ds_apply(s, w0, w1);
+        }
+    }
+}
+static void ds_list_at(NdDs* s, uint32_t w, unsigned depth) {
+    if (depth >= DS_LIST_DEPTH) return;
+    const void* l = ds_ptr(s, w);
+    if (!l) return;
+    const NdNDev* nt = nd_ntab_find(l);
+    if (nt) { ds_pairs(s, nt->u, nt->nu, depth, 0); return; }
+    const NdGTab* g = nd_gtab_find(l);
+    if (g) { ds_gtab(s, g, depth); return; }
+    ds_pairs(s, (const uint32_t*)l, DS_LIST_MAX, depth, 1);
+}
+static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth) {
+    if (depth >= DS_LIST_DEPTH) return;
+    for (const NdGOp* o = t->op;; o++) {
+        switch (o->k) {
+        case NDG_DEF: { const NdGDef* g = (const NdGDef*)o->p; ds_pairs(s, (const uint32_t*)g->d.u, g->d.n, depth, 0); break; }
+        case NDG_UNIT: ds_pairs(s, (const uint32_t*)o->p, 1u, depth, 0); break;
+        case NDG_CALL:
+            ds_gtab(s, (const NdGTab*)o->p, depth + 1u);
+            if (o->a & 1u) return; /* a branch ends the list that holds it */
+            break;
+        case NDG_VTX: case NDG_TRI: break; /* no state */
+        default: return; /* NDG_END */
+        }
+    }
+}
+/* nd_rec_dl (nd_gtab.c) and nd_rec_nr (nd_rec.c, an NDO_CALL unit with depth 1). l: a host address or a segment address. */
+void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(uintptr_t)l, (unsigned)depth); }
+
 /* NST3 dschk compare (design_nstate.md section 3). The draw-time fields are zeroed in both copies first: core 0 writes them at draw
  * time (td[], tile_x0/y0, tile_fx/fy, cur_tile) and sync_render writes fogmix_on. The table names every other field of NdDs (the
  * NdWs fields one by one, tst1 and tm as blocks). Returns the count of differing fields; the first max names go to bad. */
 typedef struct { const char* name; unsigned off, size; } NdDsField;
 #define DSF(nm, f) { nm, offsetof(NdDs, f), sizeof(((NdDs*)0)->f) }
 #define DSW(f) { #f, offsetof(NdDs, w.f), sizeof(((NdDs*)0)->w.f) }
+#define DST(f) { "tst1." #f, offsetof(NdDs, w.tst1.f), sizeof(((NdDs*)0)->w.tst1.f) } /* NST2A: one entry per NdTst member */
 static const NdDsField ds_fields[] = {
     DSW(geom), DSW(omode_h), DSW(omode_l), DSW(prim), DSW(envc), DSW(fill), DSW(prim_z), DSW(om_kh), DSW(om_kl), DSW(prim_lod),
     DSW(tex_on), DSW(timg), DSW(tlut), DSW(tlut_n), DSW(tex_ss), DSW(tex_ts), DSW(segbase), DSW(comb_w0), DSW(comb_w1), DSW(use_t1),
-    DSW(tst1),
+    DST(timg_fmt),
+    DST(timg_siz),
+    DST(timg_stride),
+    DST(ldrec),
+    DST(blk),
+    DST(tile_tmem),
+    DST(tile_pal),
+    DST(tile_sz),
+    DST(comb2_a),
+    DST(comb2_b),
+    DST(comb2_c),
+    DST(comb2_d),
+    DST(comb2_aa),
+    DST(comb2_ab),
+    DST(comb2_ac),
+    DST(comb2_ad),
+    DST(comb_aa),
+    DST(comb_ab),
+    DST(comb_ac),
+    DST(comb_ad),
+    DST(tile_wrap),
+    DST(tile_shift),
+    DST(tile_fmt),
+    DST(tile_siz),
+    DST(comb_a),
+    DST(comb_b),
+    DST(comb_c),
+    DST(comb_d),
     DSF("conv_k4", conv_k4), DSF("keyc", keyc), DSF("keys", keys), DSF("dual_on", dual_on), DSF("box_prod", box_prod),
     DSF("comb_set", comb_set), DSF("comb_alpha_shade", comb_alpha_shade), DSF("sci_x0", sci_x0), DSF("sci_y0", sci_y0),
     DSF("sci_x1", sci_x1), DSF("sci_y1", sci_y1), DSF("fog_fm", fog_fm), DSF("fog_fo", fog_fo), DSF("fogc", fogc),
