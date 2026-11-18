@@ -139,10 +139,14 @@ himg $HIMGID
 rom $ROMSHA
 $(gc_inputs 3ds/tools/nd_shape_conv.c 3ds/tools/yay0_test.c 3ds/src/nd_seam.c 3ds/src/nd_dlc.c 3ds/src/nd_yay0.c 3ds/include 3ds/stub_include include)"
     printf '%s' "$(printf '%s' "$want" | sha1sum | cut -c1-40)" > "$OUT/shape_key.txt" # the content key of the romfs shapes, in every cache mode (build key, 3dsx re-make)
-    if gc_get_dir shape "$want" "$OUT/romfs/shape" "$OUT/shape_entry.txt"; then echo "gen_shapes: cache hit"; return 0; fi
+    if [ -n "$PM_KEY_ONLY" ] && [ "${PM_CACHE:-on}" != check ]; then return 0; fi # SHAPECACHE: the key needs shape_key.txt only
+    if gc_get_dir shape "$want" "$OUT/romfs/shape" "$OUT/shape_entry.txt" && [ "$(ls "$OUT/romfs/shape" | grep -c '\.nds$')" -ge 400 ]; then echo "gen_shapes: cache hit"; return 0; fi
+    rm -rf "$(gc_dir shape "$want")" # SHAPECACHE: a partial entry goes; the miss path makes it again
     rm -rf "$OUT/romfs/shape" "$OUT/shape_entry.txt" # the old files can be hard links of a cache entry: a run writes new files
     mkdir -p "$OUT/romfs/shape"
-    MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c "$SH_CMD" || { echo "gen_shapes failed" >&2; exit 1; }
+    so=$(MSYS_NO_PATHCONV=1 docker run --rm --memory "${PM_BUILD_MEM:-4g}" -v "$w:/w:ro" -v "$od:/out" -v "$rd/baserom.z64:/ar/ver/us/baserom.z64:ro" -w /tmp pm3ds-host:1 sh -c "$SH_CMD") || { echo "gen_shapes failed" >&2; exit 1; }; printf '%s\n' "$so"
+    n=$(printf '%s\n' "$so" | sed -n 's/^shapeconv maps \([0-9]*\) .*/\1/p'); [ -n "$PM_SHAPE_SEED" ] && n=$((n + 1)) # SHAPECACHE seed
+    c=$(ls "$OUT/romfs/shape" | grep -c '\.nds$' || true); if [ -z "$n" ] || [ "$c" != "$n" ]; then echo "gen_shapes: $c .nds files, the converter wrote $n maps" >&2; rm -rf "$OUT/romfs/shape" "$OUT/shape_entry.txt"; exit 1; fi
     gc_put_dir shape "$want" "$OUT/romfs/shape" "$OUT/shape_entry.txt" || true
 }
 gen_shapes >&2 # PUSHKEY
