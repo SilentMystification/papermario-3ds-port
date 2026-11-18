@@ -68,8 +68,8 @@ void nd_snapchk_tri(void);
 void nd_snapchk_rect(void);
 /* NDR2A, nd_snap.c, core 1: the snap of a direct draw: nd_ds with the pso words (nd_direct_bind order), prim and env. */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env);
-/* NDR2A, nd_snap.c, core 0: the armed pso snap against the decision of nd_direct_bind (log tag dir). */
-void nd_snapchk_dir(const NdCombOut* w);
+/* NDR2D, nd_snap.c, core 0: the decision of the live snap (the core 1 pso decision), NULL when no snap is live. */
+const NdCombOut* nd_snap_dir_o(void);
 /* NDR1C, nd_snap.c, core 1: the snap of a texture rectangle (nd_rec_texrect); zcol of nd_rect.c:236 from the target. */
 void nd_snap_rect(void);
 /* NDR1C, nd_snap.c, core 0: 1 while the rectangle run has a live snap (a command clears it). */

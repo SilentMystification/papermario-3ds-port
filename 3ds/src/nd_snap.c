@@ -235,30 +235,14 @@ void nd_snap_rlog(void) {
     }
 }
 void nd_snapchk_rect(void) { nd_snap_arm = 0; if (PMDL("snapchk")) sc_compare(); }   /* NDR0E2: a texture rectangle: compare only */
-static unsigned sc_dir; /* NDR2A: direct draws compared (the pso snap of a fill record against nd_direct_bind) */
-void nd_snapchk_dir(const NdCombOut* w) { /* NDR2A, core 0: the armed pso snap against the decision nd_direct_bind made */
-    if (!PMDL("snapchk")) return;
-    const NdCombOut* o = &sc_cur.o;
-    sc_dir++;
-    sc_nb = 0;
-    if (o->leg != w->leg || o->mode5 != w->mode5 || o->pat != w->pat || o->plan_on != w->plan_on) sc_add("dleg");
-    if (o->use != w->use || o->cyc != w->cyc || o->dual != w->dual) sc_add("dls");
-    if (o->cc_on != w->cc_on || o->env_on != w->env_on) sc_add("dcc");
-    if (o->plan_on && w->plan_on) {
-        PmPlan x = o->plan, y = w->plan;
-        pm_comb_colours(&x, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
-        pm_comb_colours(&y, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
-        if (memcmp(&x, &y, sizeof x)) sc_add("dplan");
-    }
-    sc_count("dir");
-}
+const NdCombOut* nd_snap_dir_o(void) { return nd_snap_live ? &sc_cur.o : NULL; } /* NDR2D: the decision of the live snap */
 
 /* NDR0A: the 100-frame counter line, once per frame stream end (nd_rec.c stream_run NDC_END); behind PMDL. */
 void nd_snapchk_tick(void) {
     if (!PMDL("snapchk")) return;
     if (pm_frame_n / 100 != sc_bucket) {
         sc_bucket = pm_frame_n / 100;
-        pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u dir %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst, sc_dir);
+        pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
     }
 }
 /* NDR4: the snap of a sprite record (pm_gpu_spr_build reads it). core 0. */

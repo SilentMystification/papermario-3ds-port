@@ -68,8 +68,6 @@ int nd_tex_bind_desc(const NdBindDesc* d, int n); /* nd_tex_set.c, core 0: bind 
 int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned fmt, unsigned siz, const unsigned wrap[4], int ldx, int ldy, int ldw, int ldh,
                     int uls, int ult, int lrs, int lrt, const void* pal, int pal_n); /* nd_tex_set.c: tile 0 after a gDPLoadTextureTile (tex_win0); 0 = not valid */
 
-typedef struct NdDec NdDec; /* nd_direct.c: the combine decision of one pso under the walker inputs */
-const NdDec* nd_pso_decide(NdPso id);          /* core 0: the decision of pso id (made once per distinct inputs, cold); NULL when the walker state decides it */
 int nd_direct_ready(void);                     /* core 0: 1 when the walker state lets a direct rectangle draw (main colour image, no shaded sprite, no off-screen tile 1); else -1 role, -2 colour image, -3 shaded sprite, -4 tile 1 target */
 int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env); /* core 0: the state of pso id for the next rectangles; 0 = not stated (nothing changed, run the old path) */
 int nd_direct_tex(const NdBindDesc* d);        /* core 0: tile 0 = d; the walker's set_tilesize bookkeeping and the bind */

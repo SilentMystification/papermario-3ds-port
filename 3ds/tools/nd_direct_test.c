@@ -89,7 +89,8 @@ void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); } /* NST2
 NdDs nd_ds; /* NDR2A: nd_dir_prim1 and nd_dir_rec read it */
 void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { (void)run; (void)rec; (void)units; }
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { (void)p; (void)prim; (void)env; }
-void nd_snapchk_dir(const NdCombOut* w) { (void)w; }
+static int snap_none; static NdCombOut snap_o;
+const NdCombOut* nd_snap_dir_o(void) { NdCombIn in; if (snap_none) return NULL; comb_in_walker(&in); nd_comb_decide(&in, &snap_o); return &snap_o; } /* NDR2D: the decision core 1 would snap */
 unsigned char nd_snap_live; /* NDR2A */
 unsigned char nd_dschk_dir; /* NST2F: nd_dschk.c is not linked here; nd_direct.c sets it */ /* nd_rec.c is not linked here; NST2E feeds (nd_fill_feed, nd_trect_feed) */
 /* NSTREAM3: the native record runner of the direct fallbacks (nd_walk.c); the same count as the op walker */
@@ -124,32 +125,15 @@ int main(void) {
     NdPsoN64 pl = { 0xfc000002u, 0u, 0x00504340u, 0u, 0u };
     NdPsoN64 cc = { 0xfc000003u, 0u, 0x00504340u, 0u, 0u };
     NdPso ia, ib, it1, ipl, icc;
-    const NdDec *da, *da2, *db;
     memset(&nd_ws, 0, sizeof nd_ws);
     nd_ws.omode_l = 0x5u;
     comb_set = 1;
     ia = nd_pso_n64(&a); ib = nd_pso_n64(&b);
     CHECK(ia != ib);
-    /* the pso cache: the same id gives the same decision and runs nd_comb_decide once; two descriptions are two entries */
-    da = nd_pso_decide(ia);
-    da2 = nd_pso_decide(ia);
-    CHECK(da && da == da2);
-    CHECK(n_decide == 1);
-    db = nd_pso_decide(ib);
-    CHECK(db && db != da);
-    CHECK(n_decide == 2);
-    CHECK(nd_pso_decide(ia) == da && nd_pso_decide(ib) == db);
-    CHECK(n_decide == 2);
-    /* other inputs (the cycle type the pso runs under) make the decision again */
-    nd_ws.omode_h = 1u << G_MDSFT_CYCLETYPE;
-    CHECK(nd_pso_decide(ia) == da && n_decide == 3);
-    CHECK(da->out.cyc == 1);
-    nd_ws.omode_h = 0;
-    /* a decision that reads tile 1 is not statable */
     it1 = nd_pso_n64(&t1);
-    CHECK(nd_pso_decide(it1) == NULL);
     n_prim = n_setcomb = 0;
     CHECK(nd_direct_bind(it1, 0x01020304u, 0u) == 0);
+    snap_none = 1; CHECK(nd_direct_bind(ia, 1u, 2u) == 0); snap_none = 0; /* NDR2D: no live snap: the record walks */
     /* a bind: the other mode as the stream sets it (the render mode replaces bits 3 to 31, bits 0 to 2 stay), the combine words, the primitive colour */
     nd_ws.omode_h = 0; n_filter = 0;
     CHECK(nd_direct_bind(ia, 0xff804020u, 0x55u) == 1);
