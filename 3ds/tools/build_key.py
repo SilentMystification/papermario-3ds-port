@@ -230,21 +230,23 @@ def img_ids():
 
 
 def gt_k0(lines, himg, ahash):
-    paths = [p for p in rk_paths(lines, E["GT_IN"].split()) if p != "3ds/include/texkey_patch.h"]
+    # BUILDO: no generator output and no pm_build.h in the tar: they exist in some trees only (a scratch tree of a base commit
+    # has none), so the path list and K0 would differ. gen_gfx_tab.sh reads none of them (trace); a read would fail the step.
+    paths = [p for p in rk_paths(lines, E["GT_IN"].split()) if p not in GC_EXCL and p != "3ds/include/texkey_patch.h"]
     write_lines(OUT + "/rk_gfx_tab_paths.txt", paths)
-    return "gfx_tab v4\ncmd %s\nhimg %s\nassets %s\nrk %s\npaths %s" % (
+    return "gfx_tab v5\ncmd %s\nhimg %s\nassets %s\nrk %s\npaths %s" % (
         E["GT_CMD"], himg, ahash, rk_id(), sha1b(("".join(p + "\n" for p in paths)).encode("utf-8", "surrogateescape")))
 
 
 def pt_k0(lines, idm, himg, ahash):
-    paths = [p for p in rk_paths(lines, E["PT_IN"].split()) if p not in ("3ds/src/nd_pso_tab.c", "3ds/include/texkey_patch.h")]
+    paths = [p for p in rk_paths(lines, E["PT_IN"].split()) if p not in ("3ds/src/nd_pso_tab.c", "3ds/include/pm_build.h", "3ds/include/texkey_patch.h")]
     write_lines(OUT + "/rk_pso_tab_paths.txt", paths)
     r = subprocess.run(["git", "-c", "core.quotepath=off", "grep", "-a", "--untracked", "--no-exclude-standard", "-lF", "ND_PSO_DESC", "--", "src", "3ds/src"],
                        capture_output=True)
     pset = set(paths)
     scan = csort(p for p in r.stdout.decode("utf-8", "surrogateescape").splitlines() if p.endswith(".c") and p in pset)
     write_lines(OUT + "/rk_pso_tab_scan.txt", scan)
-    return "pso_tab v4\ncmd %s\nhimg %s\nassets %s\nrk %s\ngfxtab %s %s\npaths %s\nscan\n%s" % (
+    return "pso_tab v5\ncmd %s\nhimg %s\nassets %s\nrk %s\ngfxtab %s %s\npaths %s\nscan\n%s" % (
         E["PT_CMD"], himg, ahash, rk_id(), sha1f("3ds/src/nd_gfx_tab.c"), sha1f("3ds/src/nd_ntab_descs.c"),
         sha1b(("".join(p + "\n" for p in paths)).encode("utf-8", "surrogateescape")), rk_ids(idm, scan))
 

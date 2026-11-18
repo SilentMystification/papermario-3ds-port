@@ -26,7 +26,8 @@ Run listcen for fresh numbers.
 5. After REN5-8 and MREN: no rename row is left. Files with NDO_ that stay: none outside the deleted set (nd_op.h, nd_set.c, nd_walk.c,
    nd_dlc.c, nd_shape.c, nd_tex_set.c, nd_gtab.c, nd_mtx_set.c 1, nd_geo.c REN5). Comment-only NDO_ in nd_int.h, nd_target.c, nd_scomp.h, nd_gtab.h, nd_api.h.
 ## Facts that cost time
-- A crash at map load: read last_log.txt for `shape load fail` and count the lane romfs/shape files before any code theory.
+- A crash at map load: read last_log.txt for `shape load fail`, then check the shape entry (volume pm3ds-shape /sh/<lane shape_key.txt>,
+  `sha1sum -c out.sha1` in it) before any code theory. Build stages, keys and tool rules: docs/handoff/build_pipeline.md (BUILDO).
 - Core 1 (logic thread, pm_logic.c) runs at the same time as core 0 (walker). Det runs are serial: a race does not show in a bench.
   Shared statics of a core 1 call need a lock or a per-core copy (NDR0D: pm_comb.c build statics, nd_decide.c table).
 - Every setter unit passes nd_rec_nr (nd_rec.c:419); core 0 runs it in nd_walk_state (nd_walk.c:394).
