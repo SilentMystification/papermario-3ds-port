@@ -174,36 +174,10 @@ static void rec_ctx_check(void) {
     nd_ds_lg_reset();
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
-/* NST3 dschk (design_nstate.md section 6): ds_ep is the batch bit before the next command, ds_in
- * guards the dschk record itself (its nested rec_take). ds_rec holds the NdDs copy and the ep word (8-byte units). */
-static uint8_t ds_ep, ds_in;
-static uint32_t ds_epw; /* NST2H: rule << 8 | unit id of the first ep rule since the last dschk record */
-unsigned char nd_cmd_last; /* NST2I: the op of the last command core 0 ran (not a state run, not the dschk record) */
-uint32_t nd_cmd_run; /* NST2K: the runner of the last NDC_NAPI command core 0 ran, else 0 */
-#define DS_EP(r, i) do { if (!ds_ep) ds_epw = (uint32_t)(r) << 8 | ((i) & 0xffu); ds_ep = 1; } while (0)
-extern unsigned nd_st_epoch; /* nd_walk.c, core 0 */
-void nd_dschk_run(const uint32_t* rec) __attribute__((weak)); /* nd_dschk.c, core 0. Weak (NST3 mechanical fix): the host units that link
- * nd_rec.c do not link nd_dschk.c; the call is behind PMDL("dschk"), never true on host. */
-enum { DS_REC_W = (sizeof(NdDs) / 4u + 2u) & ~1u };
-_Static_assert(DS_REC_W / 2u <= 255u, "dschk record units");
-static uint32_t ds_rec[DS_REC_W] __attribute__((aligned(8)));
 static int st_take; /* HC4b: rec_take of a state op (the shadow stays) */
 static uint32_t* rec_take(unsigned n) {
     st_hdr = NULL; /* any record closes the open state run (nd_rec_nr reopens its own) */
     if (!st_take) sh_all(); /* HC4b: any other command resets the shadow */
-    if (!st_take) { /* NST3: the dschk record before a command */
-        if (!ds_in && PMDL("dschk")) {
-            ds_in = 1;
-            memset(ds_rec, 0, sizeof ds_rec);
-            memcpy(ds_rec, &nd_ds, sizeof nd_ds);
-            ds_rec[sizeof nd_ds / 4u] = ds_ep ? (1u | ds_epw << 8) : 0u;
-            nd_rec_napi(nd_dschk_run, ds_rec, DS_REC_W / 2u);
-            ds_in = 0;
-            ds_ep = 0;
-            ds_epw = 0;
-            DS_EP(9, 0); /* NST2I: core 0 runs every command with a gv_epoch cut; the key names the quiet ones */
-        }
-    }
     if (wp + n > wend) {
         NdChain* c = &chain[rec_ctx];
         uint32_t* j = wp;
@@ -249,10 +223,7 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
 /* NST2b: one typed unit into the core 1 state (nd_ds_apply), its ND_FS_CALL list (depth 1) and the NST3 ep rule. The model record
  * (nd_rec_model) and the stream units (nd_rec_nr) both call it. */
 void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
-    const int lost = s->sc_lost, dirty = s->sc_dirty; /* NST2J: before the unit */
-    const unsigned ch = nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
-    if ((w0 >> 24) == ND_FS_CALL) nd_ds_list(s, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
-    { const unsigned r = nd_ds_ep_rule(w0, ch, lost, dirty); if (r) DS_EP(r, w0 >> 24); } /* NST3 ep rule (design section 6); NCONV2C: nd_ds.c */
+    nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
 }
 void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak below */
 void nd_rec_model(const void* rec, unsigned words) {
@@ -265,7 +236,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
     { uint32_t* j = p + 2u + 2u * (G_PM_REC_WORDS + keep); j[0] = NDC_HDR(NDC_JUMP, 0, 0); j[1] = (uint32_t)(uintptr_t)(j + 2u + 2u * ND_MSNAP_U); } /* NREC1B */
-    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */ DS_EP(4, 0); /* NST2B 1b: a model record is a state change for the ep bit */
+    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
 void nd_snap_mesh(void); /* NDR4: strong in nd_snap.c */
@@ -483,7 +454,6 @@ static int rec_inline(uint32_t a) {
         if (k == 3u) break;
         if (!k) return 0;
     }
-    DS_EP(5, 0); /* NST3: the list marker ends a batch */
     { static const uint32_t lst[2] = { ND_FS_W0(ND_FS_MISC, ND_FS_MISC_LST << 16), 0 }; rec_op_t(lst); }
     for (unsigned i = 0; i < n; i++) if (st_kind(w[2u * i]) == 1u) nd_rec_nr(w[2u * i], w[2u * i + 1u]);
     return 1;
@@ -662,9 +632,7 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
 }
 __attribute__((weak)) void nd_snap_mesh(void) {} /* NDR0E2: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
-__attribute__((weak)) void nd_snapchk_tick(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
-__attribute__((weak)) void nd_msnap_tick(void) {} /* NREC1A */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
 __attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
 __attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */
@@ -686,9 +654,8 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         const uint32_t h = p[0];
         nd_stream_cur = p;
         { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && op != NDC_SPR && (op != NDC_NAPI || (p[1] != (uint32_t)(uintptr_t)nd_nr_run && !(h & 1u)))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */
-        { const unsigned op = h >> 24; if (op != NDC_JUMP && !(op == NDC_NAPI && (p[1] == (uint32_t)(uintptr_t)nd_nr_run || p[1] == (uint32_t)(uintptr_t)nd_dschk_run))) { nd_cmd_last = (uint8_t)op; nd_cmd_run = op == NDC_NAPI ? p[1] : 0u; } } /* NST2I, NST2K */
         switch (h >> 24) {
-        case NDC_END: nd_msnap_tick(); nd_snapchk_tick(); return; /* NDR0A: the snapchk frame line (nd_snap.c) */
+        case NDC_END: return;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
         case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
         case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;

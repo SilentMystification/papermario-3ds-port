@@ -37,8 +37,6 @@ unsigned nd_snap_bdiff(const NdSnapBind* a, const NdSnapBind* b);
 int nd_snap_bnew(const NdSnapBind* e);
 /* NDR0G2, nd_snap.c, core 0: the blocks of the armed snapshot for the open epoch (a copy kept until the next epoch). */
 const NdSnapBind* nd_snap_eb(void);
-/* NDR0G2, nd_snap.c, core 0: the bind compare of the armed snapshot at the triangle epoch (nd_geom.c gv_epoch_enter). */
-void nd_snapchk_bind(void);
 
 /* nd_snap_in.c: the combine inputs of an NdDs (leg and pat are the walker's leg and box_pat of the snapshot). */
 void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in);
@@ -50,24 +48,17 @@ void nd_snap_bind(const NdTd* td, const NdTst* t, int n, NdSnapBind* o);
 int nd_td_white(const NdTd* d);
 /* nd_snap.c, core 1: the target record of set_cimg (w0 = siz << 12 | width - 1, w1 = the address; nd_target_beginw). */
 void nd_snap_tgt(uint32_t w0, uint32_t w1);
-/* nd_snap.c, core 1: the snapshot of the triangle about to be recorded (PMDL("snapchk") only). */
+/* nd_snap.c, core 1: the snapshot of the triangle about to be recorded. */
 void nd_snap_mesh(void);
 /* nd_snap.c, core 0: the NDC_NAPI runner of the snapshot record; sets nd_snap_arm. */
 void nd_snapchk_run(const uint32_t* rec);
 /* NDR0F1, nd_snap_in.c: the mix of sync_render (nd_set.c) on the arguments: 1 colour mix, 2 fog shade alpha mix (col), 0 none (col 0). */
 int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned* col);
-/* NDR0F1, nd_snap.c, core 0: the compare of the render block and the mix with the walker decision, at its triangle epoch (nd_geom.c).
- * NDR0F2: called by nd_snap_render and by draw_tri (no new epoch). */
-void nd_snapchk_rnd(void);
 /* NDR0F2, nd_snap.c, core 0: the render state and mix of a triangle from its armed snapshot (nd_geom.c gv_epoch_enter); the GPU state if the epoch changed. */
 void nd_snap_render(void);
-extern unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snapchk_rnd */
+extern unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snap_render */
 /* nd_snap.c, core 0: the compare of the armed snapshot at a triangle draw (nd_geom.c). */
 void nd_snapchk_tri(void);
-void nd_tsnap_vtx(unsigned vt); /* NCONV2A, nd_snap.c, core 0: the vertex load tss of a snap triangle (snapchk only) */
-/* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */
-void nd_snapchk_rect(void);
- void nd_snapchk_part(void); /* NREC4 */
 /* NDR2A, nd_snap.c, core 1: the snap of a direct draw: nd_ds with the pso words (nd_direct_bind order), prim and env. */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env);
 /* NDR2D, nd_snap.c, core 0: the decision of the live snap (the core 1 pso decision), NULL when no snap is live. */
@@ -82,8 +73,6 @@ const NdSnapBind* nd_snap_cur_b(void);
 void nd_snap_comb(void);
 /* NDR1C, nd_snap.c, core 0: the drec log line `rectsnap f<n>` for a rectangle whose snap differs from the walker. */
 void nd_snap_rlog(void);
-/* nd_snap.c, core 0: the 100-frame counter line (PMDL("snapchk")), called at each frame stream end (nd_rec.c). */
-void nd_snapchk_tick(void);
 /* nd_rec.c: the count of the commands of every kind (the snapshot is taken when it changes). */
 unsigned nd_rec_cmds(void);
 /* nd_rec.c clears it at each command but the snapshot run; nd_snap.c sets it. */
@@ -92,12 +81,11 @@ int nd_snap_spr(uint32_t o[9]); /* NDR4, nd_snap.c, core 0: the snap words of a 
 /* NCONV1D1, nd_snap.c and nd_snap_in.c: the snap table of a list (rec[4] of a drawing list, nd_rec_dl). */
 #define ND_LS_HDR(n) ((8u + 4u * (n) + 7u) & ~7u)
 extern unsigned char nd_ls_on, nd_lsc_on; extern unsigned nd_ls_ord;
-void nd_lsr_begin(const uint32_t* b); void nd_lsr_end(void); void nd_lsr_tri(unsigned ord); void nd_lsr_seg(unsigned ord); void nd_lsc_unit(uint32_t w0); void nd_lsr_bst(void); void nd_lsc_tris(unsigned n);
+void nd_lsr_begin(const uint32_t* b); void nd_lsr_end(void); void nd_lsr_tri(unsigned ord); void nd_lsr_seg(unsigned ord); void nd_lsc_unit(uint32_t w0); void nd_lsc_tris(unsigned n);
 unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #define ND_LS_EP 0x80000000u /* NCONV2C: a core 0 cut comes before this range start */
 #define ND_LS_DUP 0x40000000u /* NCONV2C: the range repeats the snap before it; core 0 does not arm it */
 #define ND_LS_ORD(f) ((f) & 0x3fffffffu)
-void nd_lsr_noep(void); extern unsigned nd_lsr_rect; /* NCONV2C */
 #define ND_LS_DSB ((((unsigned)sizeof(NdDs)) + 7u) & ~7u) /* NCONV2D: the core 1 end state after the snaps of a list table */
 void nd_lsr_geo(void);
 #endif

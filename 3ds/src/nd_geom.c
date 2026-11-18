@@ -13,7 +13,6 @@
 #include "nd_snap.h"
 __attribute__((weak)) void nd_snapchk_tri(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_geom.c */
 __attribute__((weak)) unsigned char nd_snap_rpend; /* NDR0F1: strong in nd_snap.c */
-__attribute__((weak)) void nd_snapchk_rnd(void) {} /* NDR0F1: strong in nd_snap.c */
 __attribute__((weak)) void nd_snap_render(void) { sync_render(); } /* NDR0F2: strong in nd_snap.c */
 const NdSnapBind* nd_ep_bs; /* NDR0G2: the blocks of the open epoch (nd_snap_eb), NULL = walker */
 #include "pm_tex.h"
@@ -218,7 +217,7 @@ void gv_epoch_enter(void) {
             ensure_tile(nd_ws.use_t1 ? 1 : 0);
             dual_bind();
         }
-        if (nd_snap_rpend) { nd_snapchk_bind(); nd_snap_render(); } /* NDR0F2: the snap of this triangle */
+        if (nd_snap_rpend) nd_snap_render(); /* NDR0F2: the snap of this triangle */
         else sync_render();
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
          * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.
@@ -351,11 +350,10 @@ void draw_tri(unsigned w) {
     if (nd_ls_on) nd_lsr_tri(nd_ls_ord - 1u);
     if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */
     nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NCONV1D2: a list triangle binds from its range snap. NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
-    if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } } /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
-    if (nd_snap_rpend) nd_tsnap_vtx(vert_tss[i0]); /* NCONV2A: the load tss of this snap triangle */
+    if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch) nd_snap_rpend = 0; } /* DEL3A: the bind and rnd compares are deleted */ /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
         const int done = vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx);
-        nd_snap_rpend = 0; /* NDR0F1B */ if (nd_ls_on) nd_lsr_bst(); /* NCONV1D2 */
+        nd_snap_rpend = 0; /* NDR0F1B */ /* NCONV1D2 */
         if (done) return;
     }
     /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
@@ -403,9 +401,9 @@ int nd_part_draw(const NdNDev* t) {
             if (nd_ls_on) { nd_ls_ord++; nd_lsr_tri(nd_ls_ord - 1u); } /* NREC4: the instance snap */
             const unsigned char sn = nd_ls_on && nd_snap_arm;
             if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;
-            nd_snap_rpend = nd_ls_on; if (sn) { nd_snapchk_part(); if (ep_epoch == gv_epoch && nd_snap_rpend) { nd_snapchk_bind(); nd_snapchk_rnd(); } }
+            nd_snap_rpend = nd_ls_on; if (sn) { nd_snap_arm = 0; if (ep_epoch == gv_epoch) nd_snap_rpend = 0; }
             if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
-            nd_snap_rpend = 0; if (nd_ls_on) nd_lsr_bst(); /* NREC4 */
+            nd_snap_rpend = 0; /* NREC4 */
             if (ep_why >= 0) { gv_fb[ep_why]++; tri_drop[1]++; n_drop++; continue; }
             if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); continue; }
             if (ep_pepoch != gv_epoch || ep_ptss != tss) {

@@ -138,15 +138,13 @@ static unsigned rec_case(unsigned dbg, const Gfx* q) {
     NDT_E(tr, NDT_REC);
     return n;
 }
-extern unsigned nd_st_epoch; /* NST3, defined below: raised by the model record prologue (NST2B) */
-extern unsigned nd_st_why; /* NST2H, defined below: the source of the first nd_st_epoch raise */
 /* DIRECT D1: NDC_MODEL of the frame stream (nd_rec.c), with the walker's op prologue of G_PM_REC (gv_epoch, the census op hook). D10a: the
  * only model record path (no list holds a record). */
 void nd_walk_rec_model(const Gfx* q) {
     const unsigned dbg = pm_walk_dbg;
     dlc_on = 1;
     pm_gbi_cur_op = G_PM_REC;
-    gv_epoch++; if (!nd_st_epoch) nd_st_why = 4u << 8; nd_st_epoch++; /* GV1b, as the walker's prologue of G_PM_REC; NST2B */
+    gv_epoch++; /* GV1b, as the walker's prologue of G_PM_REC; NST2B */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, q, 0, G_PM_REC, q->words.w0, q->words.w1);
     rec_case(dbg, q);
@@ -233,13 +231,11 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
-unsigned nd_st_epoch; /* NST3: the state epoch count (raised with gv_epoch by the state ops); dschk reads and resets it */
-unsigned nd_st_why; /* NST2H: site << 8 | unit id of the first nd_st_epoch raise since the last dschk record */
 static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     if (nd_op_same(u)) return;
     const unsigned id = u[0] >> 24, op = id == NDO_RARE ? 0u : nd_op_n64[id - NDO_BASE];
     pm_gbi_cur_op = op;
-    gv_epoch++; if (!nd_st_epoch) nd_st_why = 1u << 8 | id; nd_st_epoch++; /* GV1b; NST2H source */
+    gv_epoch++; /* GV1b; NST2H source */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     nd_op_apply(u);
@@ -252,7 +248,7 @@ static __attribute__((noinline)) void op_geo(unsigned dbg, const uint32_t* u, co
     const u32 a = u[0] & 0xffffffu, b = u[1];
     if (id == NDO_MOVEMEM) {
         if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
-        gv_epoch++; if (!nd_st_epoch) nd_st_why = 2u << 8 | id; nd_st_epoch++; /* GV1b; NST2H source */
+        gv_epoch++; /* GV1b; NST2H source */
     }
     pm_gbi_cur_op = op;
     int fp = 0;
@@ -294,7 +290,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
         op = misc_n64[sub < 5u ? sub : 0u];
     }
     pm_gbi_cur_op = op;
-    if (id != NDO_CALL && op != G_MODIFYVTX) { gv_epoch++; if (!nd_st_epoch) nd_st_why = 3u << 8 | id; nd_st_epoch++; } /* GV1b; NST2H source */
+    if (id != NDO_CALL && op != G_MODIFYVTX) { gv_epoch++; } /* GV1b; NST2H source */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
     switch (id) {
@@ -303,7 +299,7 @@ static __attribute__((noinline)) unsigned op_ctl(unsigned dbg, const uint32_t* u
         if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
         break;
     case NDO_RECT:
-        if (nd_ls_on) nd_lsr_rect++; /* NCONV2C */
+        
         if (!(b & NDO_RECT_TEX)) nd_fillrect(a, b);
         else if (at + 4 < e) { nd_texrect(a, b & 0x07ffffffu, at[3], at[5]); r = 2; } /* D10b: the op and its two RDPHALF units */
         break;
@@ -415,7 +411,7 @@ void nd_parts_run(const uint32_t* u) {
     if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); nd_lsr_noep(); /* NREC4; NCONV2C: a parts run keeps its units */
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4; NCONV2C: a parts run keeps its units */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
@@ -465,7 +461,7 @@ void nd_parts_run_v(const uint32_t* u) {
     const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
     const unsigned dbg = pm_walk_dbg;
     pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); nd_lsr_noep(); /* NREC4; NCONV2C: a parts run keeps its units */
+    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4; NCONV2C: a parts run keeps its units */
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
@@ -755,5 +751,4 @@ void pm_gbi_fallback(void) {
         ready = 1;
     }
     nd_ops_run(dl, ND_LIST_MAX, 0);
-    { extern unsigned char nd_dschk_fb; nd_dschk_fb = 1; }
 }
