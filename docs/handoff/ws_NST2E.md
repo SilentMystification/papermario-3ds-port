@@ -1,5 +1,5 @@
 # ws_NST2E (Haiku): the units of the 6 direct-draw runners feed nd_ds (stage S3; counter: dschk fbad not higher)
-Designer: oracle NSTO. WAIT: branch from main after the NST2D merge. Worktree build3ds/wt/NST2E, branch NST2E. PM_ROW=NST2E PM_LANE=NST2E.
+Designer: oracle NSTO. WAIT: branch from branch NST2D at its gate commit (plan_finish.md section 4; facts checked on NST2D b1975eb0c6). Worktree build3ds/wt/NST2E, branch NST2E. PM_ROW=NST2E PM_LANE=NST2E.
 Edit only: src/hud_element.c, src/msg_draw.c, src/screen_overlays.c, src/screen_render_util.c, src/battle/190B20.c, src/draw_img_util.c,
 src/msg.c, src/state_title_screen.c (1 line each in the last 5), 3ds/src/nd_direct.c, 3ds/include/nd_api.h, 3ds/tools/fxrest.d/dschk_base.txt.
 ## Facts (code read, main 7ea18ce89e)

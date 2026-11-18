@@ -1,5 +1,5 @@
 # ws_NST2F (Haiku): dschk end of S3: adopt after direct draws, box fold, shaded sprite dual_on (counter: dschk bad 0, epbad 0)
-Designer: oracle NSTO. WAIT: branch from main after the NST2E merge. Worktree build3ds/wt/NST2F, branch NST2F. PM_ROW=NST2F PM_LANE=NST2F.
+Designer: oracle NSTO. WAIT: branch from branch NST2E at its gate commit (plan_finish.md section 4; facts checked on NST2D b1975eb0c6). Worktree build3ds/wt/NST2F, branch NST2F. PM_ROW=NST2F PM_LANE=NST2F.
 Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_dschk.c, 3ds/src/nd_direct.c (2 lines), 3ds/tools/nd_ds_test.c,
 3ds/tests/host.d/nst1.sh, 3ds/tools/fxrest.d/dschk_base.txt.
 ## Facts (code read, main db26d2894d)
