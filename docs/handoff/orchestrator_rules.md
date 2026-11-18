@@ -11,7 +11,7 @@ EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply, b
 
 ## Roles
 - Orchestrator: launches agents, merges, reports, asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push). No game code, no debugging.
-- Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes one page at a time, commits each at once and messages the orchestrator, who starts a coder per page (3 coders always fed). At most 2 at once.
+- Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes one page at a time, commits each at once and messages the orchestrator, who starts a coder per page (coders always fed, no hard limit). At most 2 at once.
 - Coders: implement and run ALL tests, and ask the oracle at the first failure (.claude/agents/coder.md). Haiku by default. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
