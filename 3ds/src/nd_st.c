@@ -56,7 +56,7 @@ void nd_pso_combkey(unsigned t) {
     nd_nr(ND_NR_OM(1, G_MDSFT_COMBKEY, 1), (unsigned)(t));
 }
 void nd_pso_som(unsigned cmd, unsigned sft, unsigned len, unsigned data) {
-    nd_nr(ND_NR_OM((cmd) == G_SETOTHERMODE_H, sft, len), (unsigned int)(data));
+    nd_nr(ND_NR_OM((cmd) == ND_SOM_H, sft, len), (unsigned int)(data));
 }
 void nd_pso_geom_set(unsigned w) {
     nd_nr(ND_NR_GEOM(0), (u32)(w));

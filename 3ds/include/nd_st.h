@@ -6,6 +6,7 @@
 #define ND_ST_H
 #include <stdint.h>
 #include "nd_gbi.h"
+#define ND_SOM_H 0xe3u /* DEL3C2: G_SETOTHERMODE_H of gbi.h, the high word value of the cmd argument of nd_pso_som */
 
 void nd_pso_comb(uint32_t w0, uint32_t w1);
 /* GFXPOS7: one typed unit as ND_CMB_W or ND_CMB_NOP stores it (nd_gbi.h; draw_box.c gBoxCombineModes, the window styles). The no-op unit

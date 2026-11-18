@@ -35,7 +35,7 @@
 /* PBUF: the push call of a list (gSPDisplayList): the unit nd_gx_w gives for G_DL with G_DL_PUSH */
 #define NDCTL_CALL(O, l) O(ND_OP_CALL_W0, (uint32_t)(uintptr_t)(l))
 /* GPOSREST: a G_PM_ND mark (gbi_custom.h kinds splash, grab hold, gutter, sprite shade; arg 0 to 255): the unit nd_gx_w gives for gPmNd*(gMainGfxPos++, arg) */
-#define NDCTL_ND(O, kind, arg) O(ND_X0(ND_W0_PMND((kind), (uint32_t)(arg) & 0xffu), 0u), ND_X1(ND_W0_PMND((kind), (uint32_t)(arg) & 0xffu), 0u))
+#define NDCTL_ND(O, kind, arg) O(ND_FS_W0(ND_FS_MISC, (uint32_t)ND_FS_MISC_ND << 16 | ((uint32_t)(kind) & 0xffu) << 8 | ((uint32_t)(arg) & 0xffu)), 0u) /* DEL3C2: the unit of the G_PM_ND word */
 #define nd_mark(kind, arg) NDCTL_ND(nd_nr, kind, arg)
 
 #define NDGEO_VTX(O, v, n, v0) O(ND_NR_VTX(n, v0), (uint32_t)(uintptr_t)(v))

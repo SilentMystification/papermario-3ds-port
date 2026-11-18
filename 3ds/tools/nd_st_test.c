@@ -15,6 +15,7 @@
 #include "nd_cmd.h"
 #include "nd_gbi.h"
 #include "nd_st.h"
+_Static_assert(ND_SOM_H == G_SETOTHERMODE_H, "ND_SOM_H");
 
 /* the redirect target of the macro form: gMainGfxPos is the top-level packet pointer (nd_gbi.h D9) */
 Gfx* gMainGfxPos;
