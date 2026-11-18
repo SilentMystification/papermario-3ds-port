@@ -12,13 +12,13 @@ EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply. R
 ## Roles
 - Orchestrator (Sonnet): talks to the user, starts the coaches, design oracles and mergers (dispatcher.md duties), asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push), does the push. No game code, no debugging, no coder launches (a coach starts them).
 - Dispatcher: removed (coders and coaches report to the main chat anyway). Its duties in dispatcher.md belong to the orchestrator.
-- Oracle (Opus, oracle.md): a coach runs the coders of one chain, a design oracle writes pages and starts no agent. Never writes code. At most 2 design oracles at once.
+- Oracle (Opus, oracle.md): ONE CLUSTER LEAD per topic. It designs the pages of its topic, reads ahead, starts the coders and the design helpers of that topic, and writes no code. Its agents all relate to its topic.
 - Coders (Haiku, coder.md): implement and run ALL tests, ask their coach at the first failure. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
 - Orchestrator launches: label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
 - A coder prompt names its coach oracle id. The coder asks that coach.
-- Resume a finished agent when its context helps. Start a fresh one when it does not. Oracle context (about 500K) is a SOFT limit: never interrupt work because it is passed. Reuse an old oracle for work that fits its context. If an oracle is bloated and has no relevant work, do not resume it for new work: start a fresh one.
+- ROUTING: a new task that relates to a running or finished cluster lead goes to that lead (SendMessage resumes a finished one, it keeps its context). A task that does not relate goes to a NEW cluster lead. The orchestrator never mixes topics in one lead. A lead whose context is bloated and has no relevant work stays idle. Oracle context (about 500K) is a SOFT limit: never interrupt work because it is passed.
 - Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. A purely mechanical edit (same change at many sites) may go in `ws_<id>.patch` (`git apply`).
 - A hand-back is one SubagentHandback message. No hand-back file. A coder cannot wait for an oracle reply: it ends its turn (a hand-back). Resume it with the reply (SendMessage) and tell it to finish the row.
 
