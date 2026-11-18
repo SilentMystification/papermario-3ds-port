@@ -8,6 +8,7 @@
 #include "nd_op.h"
 #include "nd_ds.h"
 
+#ifdef ND_SCOMP_HOST /* DEL5B3: the v1 index is host only */
 static int gt_sorted;
 static int gt_cmp(const void* a, const void* b) { /* SORTQ: the keys are unique (one entry per list): the order equals the old insertion sort */
     const uintptr_t x = (uintptr_t)((const NdGIdx*)a)->list, y = (uintptr_t)((const NdGIdx*)b)->list;
@@ -28,6 +29,7 @@ const NdGTab* nd_gtab_find(const void* list) {
     }
     return 0;
 }
+#endif
 /* EMIT4: the flat words of a v2 list from its unit copy (e->u, e->nu): a call unit is the callee's flat words through call, the others copy */
 int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)) {
     for (unsigned i = 0; i < e->nu; i++) {
@@ -76,7 +78,11 @@ const NdNDev* nd_ntab_find(const void* list) {
     }
     return 0;
 }
-void nd_tab_init(void) { if (!gt_sorted) gt_sort(); if (!nt_sorted) nt_sort(); } /* GKEY2 calls it before the logic thread starts */
+void nd_tab_init(void) { /* GKEY2 calls it before the logic thread starts; DEL5B3: the v1 sort on the host only */
+#ifdef ND_SCOMP_HOST
+    if (!gt_sorted) gt_sort();
+#endif
+    if (!nt_sorted) nt_sort(); }
 #ifndef ND_SCOMP_HOST
 /* S7RUN: nd_rec_dl (nd_gtab.h). Core 1. A list that rec_inline (nd_rec.c) records in line (to its G_ENDDL fewer than 64 units, each a state op) is
  * flagged state-only: the runner then does what G_PM_LST and the state run did, with no ent_gdl or dlc_try call. Memo of the last 8 lookups. */
