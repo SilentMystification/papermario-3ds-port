@@ -333,6 +333,17 @@ void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
     p[1] = (uint32_t)(uintptr_t)run;
     memcpy(p + 2, rec, units * 8u);
 }
+static unsigned ndc_snapc; /* NDR3: the records of nd_rec_napi_s (not a command of the snap memo) */
+void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { /* NDR3: as nd_rec_napi; the runner takes the armed snap */
+    if (units == 0u || units > 255u) napi_bad(units);
+    rec_open();
+    uint32_t* p = rec_take(2u + 2u * units);
+    ndc_n[NDC_NAPI]++;
+    ndc_snapc++;
+    p[0] = NDC_HDR(NDC_NAPI, units, 1);
+    p[1] = (uint32_t)(uintptr_t)run;
+    memcpy(p + 2, rec, units * 8u);
+}
 /* NDR5: a transform record is taken as a state op: the shadow stays, no dschk record, nd_ds.sc_lost stays (rec_take :188-201) */
 void nd_rec_xf(NdNapiRun run, const uint32_t* rec) {
     st_take = 1;
@@ -647,7 +658,7 @@ void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* sw, unsigned* kb) {
     *kb = (hw_units * 4u + 1023u) >> 10;
 }
 /* NDR0A: the commands of every kind since the start (nd_snap_mesh takes a new snapshot when it changes). */
-unsigned nd_rec_cmds(void) { return ndc_n[NDC_MODEL] + ndc_n[NDC_SPR] + ndc_n[NDC_ENT] + ndc_n[NDC_TEXRECT] + ndc_n[NDC_NAPI] + ndc_n[NDC_CALL]; }
+unsigned nd_rec_cmds(void) { return ndc_n[NDC_MODEL] + ndc_n[NDC_SPR] + ndc_n[NDC_ENT] + ndc_n[NDC_NAPI] - ndc_snapc + ndc_n[NDC_CALL]; }
 
 static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* p) {
     static int n;
@@ -671,7 +682,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         if (p == stop) return;
         const uint32_t h = p[0];
         nd_stream_cur = p;
-        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && (op != NDC_NAPI || p[1] != (uint32_t)(uintptr_t)nd_nr_run)) nd_snap_arm = 0; } /* NDR0A: a command but the native runs disarms the snapchk */
+        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && (op != NDC_NAPI || (p[1] != (uint32_t)(uintptr_t)nd_nr_run && !(h & 1u)))) nd_snap_arm = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */
         { const unsigned op = h >> 24; if (op != NDC_JUMP && !(op == NDC_NAPI && (p[1] == (uint32_t)(uintptr_t)nd_nr_run || p[1] == (uint32_t)(uintptr_t)nd_dschk_run))) { nd_cmd_last = (uint8_t)op; nd_cmd_run = op == NDC_NAPI ? p[1] : 0u; } } /* NST2I, NST2K */
         switch (h >> 24) {
         case NDC_END: nd_snapchk_tick(); return; /* NDR0A: the snapchk frame line (nd_snap.c) */
