@@ -34,5 +34,5 @@ static int psooff_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("pso
 - No cmp against the merge-base: a miss changes the draw (expected, the fix). Commit 1 `HWFIX1 1: pso miss runs nd_comb_core again`.
 ## Fix rights: only the files above. A duplicate symbol, a host FAIL, a drec DIFF or a missing SHOTS line: stop, send the path to DIAG1.
 ## Console check (user, after merge): intro stage, shadows, walk dust, heart box, signs, Z spin, start menu grid and the menu switch,
-  kkj_12 Mario. Each one shows its texture.
+  kkj_12 Mario, top screen HUD yellow (hud_element.c:530 -> nd_direct.c:49 -> nd_comb.c:294). Each one shows its texture and colour.
 ## Stop: last commit `HWFIX1 2: gate. hwfix1 ok 3, fxslot_drec = hwfix1_psooff drec byte-equal` deletes this page. One SubagentHandback.
