@@ -1,0 +1,10 @@
+#276 msnap f100 cmp 260 nos 1 bad 0 wst 43 genv 0
+#277 snapchk f100 recs 536 cmp 370 bad 0 fbad 0 miss 370 wst 300
+#303 msnap f200 cmp 260 nos 1 bad 0 wst 43 genv 0
+#304 snapchk f200 recs 1336 cmp 939 bad 0 fbad 0 miss 939 wst 869
+#338 msnap f300 cmp 260 nos 1 bad 0 wst 43 genv 0
+#339 snapchk f300 recs 2280 cmp 1475 bad 0 fbad 0 miss 1475 wst 1405
+#359 msnap f400 cmp 260 nos 1 bad 0 wst 43 genv 0
+#360 snapchk f400 recs 5780 cmp 2775 bad 0 fbad 0 miss 2775 wst 2705
+#510 msnap f500 cmp 260 nos 1 bad 0 wst 43 genv 0
+#511 snapchk f500 recs 9300 cmp 4171 bad 0 fbad 0 miss 4171 wst 4101

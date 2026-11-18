@@ -1,0 +1,260 @@
+texkey_bake: cache hit
+gen_shapes: cache hit
+gen_gfx_tab: cache hit
+gen_pso_tab: cache hit
+STAGE key-inputs 2 s
+STAGE gen 1 s
+STAGE key 0 s
+buildslot: slot 1 taken
+STAGE slot-wait 1 s
+sync: 5 changed, 0 deleted (workspace ws1)
+STAGE asset-check 0 s
+STAGE romfs 0 s
+STAGE sync 0 s
+-- Configuring done (0.1s)
+-- Generating done (0.2s)
+-- Build files have been written to: /work/build
+STAGE configure 1 s
+[0/2] Re-checking globbed directories...
+[1/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_direct.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_direct.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[2/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_rect.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_rect.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[3/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_comb.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_comb.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_comb.c:20:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[4/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_ent.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_ent.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_ent.c:21:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[5/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_snap_in.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/src/nd_snap_in.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[6/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_geom.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_geom.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_geom.c:21:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[7/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_shape.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_shape.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_shape.c:17:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[8/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_snap.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_snap.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[9/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_tex_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/src/nd_tex_set.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_tex_set.c:11:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[10/16] Building C object CMakeFiles/pm_3ds.dir/src/nd_walk.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_walk.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_walk.c:15:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[11/16] Building C object CMakeFiles/pm_3ds.dir/src/pm_wdog.o
+[12/16] Building C object CMakeFiles/pm_3ds.dir/src/pm_options.o
+[13/16] Building C object CMakeFiles/pm_3ds.dir/src/pm_main.o
+[14/16] Linking C executable pm_3ds.elf
+[15/16] Generating pm_3ds.smdh
+[16/16] Building 3DSX executable target pm_3ds_3dsx
+STAGE compile-link 5 s
+STAGE copy-out 1 s
+memcheck: static 21776 margin 210 device o3ds_xl OVER
+  sum KB: commit 65536 - static 21776 - loader 8 - linear 14208 - soc 128 - leave 3458 - rom_need 25747 = margin 210 (safety 256; commit_kb measured, loader_kb measured)
+  sections KB: .text 3335 .rodata 556 .data 8795 .bss 9079
+  largest .data/.bss:
+       3010 KB  .bss                                     heaps3.o
+        468 KB  .bss                                     heaps.o
+        416 KB  .bss                                     texture_memory.o
+        368 KB  .bss.mc_keyw                             nd_model.o
+        257 KB  .bss.D_80164000                          main_loop.o
+        256 KB  .bss.gBackgroundImage                    pm_buffers.o
+        256 KB  .bss.slots                               pm_log.o
+        256 KB  .bss.ring                                pm_log.o
+        256 KB  .bss.gMapShapeData                       pm_map.o
+        224 KB  .bss.D_80200000                          pm_map.o
+memcheck: OVER on o3ds_xl: margin 210 KB is below the 256 KB safety. Below 0 KB the ROM does not fit in applet mode ("Not enough memory for the ROM").
+hotset: detached, its line goes to build3ds/lane-base_cae4acb8a/hotset_line.txt
+STAGE tail 2 s
+LIST: 2 scenarios, one kept slot, warm restart between them: spot_mac01_drec, spot_mac01_drec
+LIST: start spot_mac01_drec at 14:32:22
+queue: position 1 of 1 waiting (lane 'base_cae4acb8a', speed normal, scenario spot_mac01_drec, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario spot_mac01_drec, row BASECACHE, lane 'base_cae4acb8a', slot 1, cap 35 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 4s: matched 'drec f\d+ draws \d+ bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.5 s; end at 3.9 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: spot_mac01_drec cap 35 until 3.5
+PASS  prof on: #15 prof=1 log=off
+PASS  drec: #121 drec f201 draws 170 bytes 277942
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC1A\build3ds\azt\logs\spot_mac01_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC1A\build3ds\azt\shots\spot_mac01_drec\base_cae4acb8a\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC1A\build3ds\lane-base_cae4acb8a\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1835929, build 6832, commit cae4acb8a9dd9bedadfe6725230c54762bcdaaa9
+  scene -                              windows   0 fps - ft -
+LIST: spot_mac01_drec rc 0, wall 13.5 s
+LIST: start spot_mac01_drec at 14:32:35
+queue: position 1 of 1 waiting (lane 'base_cae4acb8a', speed normal, scenario spot_mac01_drec, want slot 1)
+queue: granted slot 1 after 12.7 s (position 1 at enqueue)
+AZT: scenario spot_mac01_drec, row BASECACHE, lane 'base_cae4acb8a', slot 1, cap 35 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 43296 warm
+run: rc 0: slot1: stopped after 4s: matched 'drec f\d+ draws \d+ bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.4 s; end at 3.9 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 12.7 s; slot 1; shot files 0 of 0 full
+cap high: spot_mac01_drec cap 35 until 3.4
+PASS  prof on: #15 prof=1 log=off
+PASS  drec: #121 drec f201 draws 170 bytes 277942
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC1A\build3ds\azt\logs\spot_mac01_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC1A\build3ds\azt\shots\spot_mac01_drec\base_cae4acb8a\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NREC1A\build3ds\lane-base_cae4acb8a\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1836756, build 6832, commit cae4acb8a9dd9bedadfe6725230c54762bcdaaa9
+  scene -                              windows   0 fps - ft -
+LIST: spot_mac01_drec rc 0, wall 24.7 s
+LIST DONE: wall 38.2 s. spot_mac01_drec rc 0 13.5 s; spot_mac01_drec rc 0 24.7 s
+base spot_mac01_drec at cae4acb8a: not stored. One base build of that commit (lane base_cae4acb8a), then the runs.
+base cae4acb8a: build stored in basebin (entry 7240219e22597b0b)
+list of 2 benches on one kept slot: spot_mac01_drec, spot_mac01_drec
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.
+base spot_mac01_drec at cae4acb8a: two runs equal, stored 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\cae4acb8a9dd9bedadfe6725230c54762bcdaaa9\spot_mac01_drec
