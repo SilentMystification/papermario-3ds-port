@@ -9,14 +9,9 @@ Edit only: 3ds/src/nd_walk.c (pm_gbi_fallback, 3 lines). The NST2B and NST2D bra
   pm_f255 (pm_gpu.c:1725) and t_blk0 (pm_dspaud.c:52, a system tick) as units. The tick top byte changes per run: 0x39 MTX in one run,
   0x2D COMB and 0x2C RARE (key_s 0x100, sticky) in another. That gives the two drec variants of wscmb_pause_drec (base 86b4a069).
 ## Edit
-1. nd_walk.c pm_gbi_fallback: after `gSPEndDisplayList(g++);` (:798), before `ready = 1;`, add:
-   ```
-        for (unsigned i = 0; i < 8u; i++) { /* FALLBK: type the raw words (ND_X0, ND_X1 of nd_op.h), so the run ends at NDO_END */
-            const u32 w0 = dl[i].words.w0, w1 = dl[i].words.w1;
-            dl[i].words.w0 = ND_X0(w0, w1); dl[i].words.w1 = ND_X1(w0, w1);
-        }
-   ```
-   Example of the same shape: nd_gbi.h:18 `ND_GX(pkt, w0, w1)` passes `ND_X0(_nd0, _nd1), ND_X1(_nd0, _nd1)`.
+1. (round 1: a loop that reads `.words.w0` raises the lkey census of nd_walk.c to 12, listed 11) nd_walk.c: after `#include "nd_lkey.h"`
+   (:21) add `#include "nd_gbi.h" /* FALLBK: pm_gbi_fallback's macros write typed units (nd_gx_w, nd_rec.c:487) */`. No loop.
+   pm_gbi_fallback (:791-798) is the only gbi macro user in nd_walk.c. nd_gx_w writes the typed unit into a list that is not gMainGfxPos.
 2. Do not change the list content or the call at :801.
 ## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 tool build, 4 Azahar starts)
 1. Edit 1. `sh 3ds/tools/nd_host_test.sh > build3ds/out/fallbk_host.txt`: PASS as on main. Commit `FALLBK 1: typed boot fallback list`.
