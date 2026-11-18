@@ -9,11 +9,12 @@
 #include "nd_nr.h"
 #include "nd_at.h"
 #include "nd_val.h"
+#include "nd_fs.h"
 
 #define VAL_COL(r, g, b, a) (((uint32_t)(r) & 0xffu) << 24 | ((uint32_t)(g) & 0xffu) << 16 | ((uint32_t)(b) & 0xffu) << 8 | ((uint32_t)(a) & 0xffu))
 
 static void val_rec(uint32_t id, uint32_t a, uint32_t b) {
-    nd_nr(NDO_W0(id, a), b);
+    nd_nr(ND_FS_W0(id, a), b);
 }
 
 void nd_val_prim(unsigned minlod, unsigned lodfrac, unsigned r, unsigned g, unsigned b, unsigned a) {
@@ -24,8 +25,8 @@ void nd_val_env(unsigned r, unsigned g, unsigned b, unsigned a) {
 }
 void nd_val_seg(unsigned seg, uint32_t base) {
     /* the typed form of G_MOVEWORD G_MW_SEGMENT at offset seg * 4 (ND_MW_A); a segment above 15 is not a segment op and is dropped like the macro's */
-    if (seg < 16u) val_rec(NDO_MW, ((uint32_t)NDO_MW_SEG << 16) | seg, base);
+    if (seg < 16u) val_rec(ND_FS_MW, ((uint32_t)ND_FS_MW_SEG << 16) | seg, base);
 }
 void nd_val_tile_size(unsigned tile, unsigned uls, unsigned ult, unsigned lrs, unsigned lrt) {
-    val_rec(NDO_TILESIZE, ((uls & 0xfffu) << 12) | (ult & 0xfffu), ((tile & 7u) << 24) | ((lrs & 0xfffu) << 12) | (lrt & 0xfffu));
+    val_rec(ND_FS_TILESIZE, ((uls & 0xfffu) << 12) | (ult & 0xfffu), ((tile & 7u) << 24) | ((lrs & 0xfffu) << 12) | (lrt & 0xfffu));
 }

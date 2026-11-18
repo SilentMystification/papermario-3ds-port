@@ -10,6 +10,7 @@
 #include "nd_nr.h"
 #include "nd_at.h"
 #include "nd_st.h"
+#include "nd_fs.h"
 
 void nd_pso_comb(uint32_t w0, uint32_t w1) {
     NDST_COMB(nd_nr, w0, w1);
@@ -69,7 +70,7 @@ void nd_tex_on(unsigned s, unsigned t, unsigned level, unsigned tile, unsigned o
     nd_nr(ND_NR_TEXON(on), ND_NR_HL(s, t));
 }
 void nd_pso_scis(unsigned mode, float ulx, float uly, float lrx, float lry) {
-    nd_nr(NDO_W0(NDO_SCISSOR, ND_NR_XY12((int)((float)(ulx) * 4.0F), (int)((float)(uly) * 4.0F))),
+    nd_nr(ND_FS_W0(ND_FS_SCISSOR, ND_NR_XY12((int)((float)(ulx) * 4.0F), (int)((float)(uly) * 4.0F))),
           ND_NR_XY12((int)((float)(lrx) * 4.0F), (int)((float)(lry) * 4.0F)));
     (void)mode;
 }
