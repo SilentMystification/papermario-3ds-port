@@ -10,9 +10,9 @@ Run listcen for fresh numbers.
 ## Merged on main: NST1, NST3, NST2A-H, FALLBK, NDR0A-E1, NDR5, NCONV1A, REN1-REN7, MREN, PSOFB, HWFIX1, BOTSCR, BBRACE.
 ## Pages on main (oracle FIN)
 - Running: NDR0F1, NST2J (a41cc4d4d4 crashes in Azahar at map model lookup; no code path from the diff; clean rebuild asked).
-  Ready: NDR0E3. Waiting: REN8 (NST2J), NDR1B (NDR0E3 bad 0 + NDR0F1), NDR0F2/G (NDR0F1 data), NST2K (NST2J).
+  Running: NDR1B (75024c7929, rect compare after box_fold_sync + snap combine). Waiting: REN8 (NST2J), NST2K (NST2J), NDR0F2/G (NDR0F1 data).
 - NDR0E2 data (FACT 4df41cf45a): rect snapchk bad 486 = fold names (rect compares before box_fold_sync). NST2I: epbad all 2090a (rule 9, NAPI).
-- NDR0F1 risk: sc_compare at a rect sets nd_snap_rpend; a later epoch without a new snap compares the rect snap (rnd names = check this first).
+- Two oracles write pages: read `git log -5 -- docs/handoff` and `ls docs/handoff` before a page (NDR0E3 was a duplicate of NDR1B, dropped a6cd9f0033).
 - NST2H keys (FACT, a06c9a7b4c): spot 10130 2022d 1033e 1012a 1012b; wscmb 20130 1033e 10130 2022d 20220; axns and fxchk_a 20220 20121 10130.
 - NDR5 gap (answered): no row. load_mtx guards the source itself (nd_mtx_set.c:134 mtx_bad); gbi_cold_bad_mtx is a warning with list context.
 ## Open work (in order)

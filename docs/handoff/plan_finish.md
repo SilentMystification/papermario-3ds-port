@@ -35,8 +35,8 @@ Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them
 | W14 | DEL4D1-2: gDP/gSP/gsDP/gsSP definitions and Gfx prototypes to 3ds/tools/gconv_inc (FACT gen_gfx_tab.sh:14): gbi.h; gbi_custom.h. DEL4D34 (gs2dex.h, gt.h, sp.h, gu.h: unused Gfx declarations, gt.h deleted) has no blocker: page now | W13 (DEL4D34 none) | 2 | one header per row |
 | W15 | S9GATE: listcen all 0, elfgate 0 0 0, the full drec set, then the user's end checks (section 5) | W14 | 1 | - |
 Width now (main cbdf65c35f): merged NDR0E2 (snapchk bad 486 at texture rectangles: fold timing), NST2I (epbad all key 2090a: quiet NAPI commands), DEL4D34.
-Running: NDR0F1, NST2J (Azahar crash at a41cc4d4d4: clean rebuild asked). Ready: NDR0E3 (nd_rect.c, rect compare after box_fold_sync). Waiting: REN8 (after NST2J);
-NDR1B texrect apply (after NDR0E3 bad 0 and NDR0F1: nd_snap.c); NDR0F2, NDR0G (from NDR0F1 data); NST2K dschk names the NAPI runner of a 2090a key (after NST2J).
+Running: NDR0F1, NST2J (Azahar crash at a41cc4d4d4: clean rebuild asked). Running: NDR1B (rect compare after box_fold_sync, then the snap combine). Waiting: REN8 (after NST2J);
+NDR0F2, NDR0G (from NDR0F1 data); NST2K (page: dschk keys a quiet native command by its runner address; after NST2J).
 Critical path: NDR0F1 -> NDR0F2/NDR0G -> W5. W5 rows (NDR1-4, NCONV1D) need the full mesh snap run (combine, render, binds).
 W10 DEL3A6 is done by REN6; DEL2A and DEL2C keep no rename part (MREN).
 ## 4. Sonnet rows split into Haiku rows, and rows Haiku cannot do
