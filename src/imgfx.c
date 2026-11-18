@@ -1218,7 +1218,7 @@ void imgfx_mesh_make_grid(ImgFXState* state) {
     state->lastVtxIdx = imgfx_vtxCount - 1;
 }
 
-/* NIMGM: the device entry of a typed heap list: its units in place (nu = the units before NDO_END). ntri is the triangle count: not zero, so the
+/* NIMGM: the device entry of a typed heap list: its units in place (nu = the units before ND_FS_END). ntri is the triangle count: not zero, so the
  * walker takes ent_gdl for the list as walk_call did for a heap list without an entry (gt_run: !(nt && !nt->ntri)); dlc_try refuses a heap list in both paths. */
 static void imgfx_make_dev(NdNDev* d, uint32_t* buf, unsigned n) {
     const uint32_t* u = (const uint32_t*)buf;
@@ -1227,12 +1227,12 @@ static void imgfx_make_dev(NdNDev* d, uint32_t* buf, unsigned n) {
 
     for (i = 0; i < n; i++) {
         const uint32_t op = u[2 * i] >> 24;
-        if (op == NDO_END) {
+        if (op == ND_FS_END) {
             break;
         }
-        if (op == NDO_TRI1) {
+        if (op == ND_FS_TRI1) {
             ntri += 1;
-        } else if (op == NDO_TRI2) {
+        } else if (op == ND_FS_TRI2) {
             ntri += 2;
         }
     }

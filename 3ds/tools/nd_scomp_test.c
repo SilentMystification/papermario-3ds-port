@@ -16,63 +16,63 @@ static void check(const char* what, int ok) {
 #define OM_A(sft, len) ((uint32_t)(sft) | (uint32_t)(len) << 8)
 /* cam_main-like: viewport (value), clear geometry, texture off, cycle type, scissor (value), combine SHADE, render mode, matrix (value) */
 static const uint32_t cam_u[] = {
-    NDO_W0(NDO_MOVEMEM, G_MV_VIEWPORT), 0,
-    NDO_W0(NDO_SCISSOR, 0), 0,
-    NDO_W0(NDO_GEOM, ~(uint32_t)(G_SHADE | G_LIGHTING)), 0,
-    NDO_W0(NDO_TEXTURE, 0), 0,
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_MOVEMEM, G_MV_VIEWPORT), 0,
+    ND_FS_W0(ND_FS_SCISSOR, 0), 0,
+    ND_FS_W0(ND_FS_GEOM, ~(uint32_t)(G_SHADE | G_LIGHTING)), 0,
+    ND_FS_W0(ND_FS_TEXTURE, 0), 0,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
     ND_NOP_A, 0,
-    NDO_W0(NDO_COMB, 0xfffe7e), 0xfffffbfdu,
-    NDO_W0(NDO_OML, OM_A(3, 29)), 0x0f0a4000u,
-    NDO_W0(NDO_MW, NDO_MW_NONE << 16), 0,
-    NDO_W0(NDO_MTX, 0x07), 0,
+    ND_FS_W0(ND_FS_COMB, 0xfffe7e), 0xfffffbfdu,
+    ND_FS_W0(ND_FS_OML, OM_A(3, 29)), 0x0f0a4000u,
+    ND_FS_W0(ND_FS_MW, ND_FS_MW_NONE << 16), 0,
+    ND_FS_W0(ND_FS_MTX, 0x07), 0,
 };
 /* status_icons-like: scissor (value), cycle type, texture on, alpha compare; no combine */
 static const uint32_t ico_u[] = {
-    NDO_W0(NDO_SCISSOR, 0), 0,
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
-    NDO_W0(NDO_OML, OM_A(0, 2)), 0,
-    NDO_W0(NDO_TEXTURE, 1), 0xffffffffu,
+    ND_FS_W0(ND_FS_SCISSOR, 0), 0,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_OML, OM_A(0, 2)), 0,
+    ND_FS_W0(ND_FS_TEXTURE, 1), 0xffffffffu,
 };
 static const uint32_t bad_u[] = {
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
-    NDO_W0(NDO_VTX, 0), 0,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_VTX, 0), 0,
 };
 /* SCOMP0: primitive colour before the first static unit (a value unit, ordered before the static writes) */
 static const uint32_t pre_u[] = {
-    NDO_W0(NDO_PRIM, 0), 0x11223344u,
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_PRIM, 0), 0x11223344u,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
 };
 /* SCOMP0: primitive colour between two static units: refused */
 static const uint32_t mid_u[] = {
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
-    NDO_W0(NDO_PRIM, 0), 0x11223344u,
-    NDO_W0(NDO_OML, OM_A(0, 2)), 0,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_PRIM, 0), 0x11223344u,
+    ND_FS_W0(ND_FS_OML, OM_A(0, 2)), 0,
 };
 /* S6VORD: a scissor (class 2 value) between two static units: refused */
 static const uint32_t mid2_u[] = {
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
-    NDO_W0(NDO_SCISSOR, 0), 0,
-    NDO_W0(NDO_OML, OM_A(0, 2)), 0,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_SCISSOR, 0), 0,
+    ND_FS_W0(ND_FS_OML, OM_A(0, 2)), 0,
 };
 /* S6VORD: MW none is a no-op (dropped); the matrix after it is a value unit before the first static */
 static const uint32_t mwn_u[] = {
-    NDO_W0(NDO_MW, NDO_MW_NONE << 16), 0,
-    NDO_W0(NDO_MTX, 0x07), 0,
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_MW, ND_FS_MW_NONE << 16), 0,
+    ND_FS_W0(ND_FS_MTX, 0x07), 0,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
 };
 /* S6SYNC: the render mode list form {OML, OMH cycle, GEOM, GEOM}: one sync unit (the cycle), index 1 */
 static const uint32_t rml_u[] = {
-    NDO_W0(NDO_OML, OM_A(0, 2)), 0,
-    NDO_W0(NDO_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
-    NDO_W0(NDO_GEOM, ~(uint32_t)G_CULL_BOTH), 0,
-    NDO_W0(NDO_GEOM, ~(uint32_t)0), G_ZBUFFER,
+    ND_FS_W0(ND_FS_OML, OM_A(0, 2)), 0,
+    ND_FS_W0(ND_FS_OMH, OM_A(G_MDSFT_CYCLETYPE, 2)), G_CYC_1CYCLE,
+    ND_FS_W0(ND_FS_GEOM, ~(uint32_t)G_CULL_BOTH), 0,
+    ND_FS_W0(ND_FS_GEOM, ~(uint32_t)0), G_ZBUFFER,
 };
 /* SCOMP0: texture setters after the last static unit: value units, after the combine */
 static const uint32_t tex_u[] = {
-    NDO_W0(NDO_COMB, 0xfffe7e), 0xfffffbfdu,
-    NDO_W0(NDO_TIMG, 0), 0,
-    NDO_W0(NDO_TILE, 0), 0,
+    ND_FS_W0(ND_FS_COMB, 0xfffe7e), 0xfffffbfdu,
+    ND_FS_W0(ND_FS_TIMG, 0), 0,
+    ND_FS_W0(ND_FS_TILE, 0), 0,
 };
 static void base_in(NdCombIn* in) {
     memset(in, 0, sizeof *in);

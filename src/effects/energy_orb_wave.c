@@ -261,7 +261,7 @@ void energy_orb_wave_appendGfx(void* effect) {
             n += snprintf(orbBuf + n, sizeof orbBuf - n, "orbdbg f%u prim %d %d %d a %d dl", (unsigned)pm_frame_count(),
                           (int)data->unk_20, (int)data->unk_24, (int)data->unk_28, (int)unk_2C);
             for (unsigned k = 0; k < gn && n < 560; k++) {
-                if ((gu[2u * k] >> 24) == NDO_END) break; /* HC4e2b: stop at the typed end (NDO_END) of the unit */
+                if ((gu[2u * k] >> 24) == ND_FS_END) break; /* HC4e2b: stop at the typed end (ND_FS_END) of the unit */
                 n += snprintf(orbBuf + n, sizeof orbBuf - n, " %02x:%06x:%08x", (unsigned)(gu[2u * k] >> 24),
                               (unsigned)(gu[2u * k] & 0xFFFFFF), (unsigned)gu[2u * k + 1u]);
             }

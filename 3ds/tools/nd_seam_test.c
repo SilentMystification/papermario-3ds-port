@@ -204,7 +204,7 @@ static int compile_soup(const NdSeamTab* t, NdSeamTab* out, int use_tp) {
         if (!L->ok) continue;
         const uint8_t* p = (const uint8_t*)(uintptr_t)L->addr;
         unsigned i;
-        for (i = 0; i < ND_DLC_MAXOPS; i++) { memcpy(&lw[2 * i], p + 8 * i, 8); if ((lw[2 * i] >> 24) == 0xDF || (lw[2 * i] >> 24) == NDO_END) break; }
+        for (i = 0; i < ND_DLC_MAXOPS; i++) { memcpy(&lw[2 * i], p + 8 * i, 8); if ((lw[2 * i] >> 24) == 0xDF || (lw[2 * i] >> 24) == ND_FS_END) break; }
         NdDlcEnv env; memset(&env, 0, sizeof env); env.vtx = c_vtx;
         if (use_tp && L->cnt) { env.tp = t->tp + L->first; env.ntp = L->cnt; }
         NdObj o;
@@ -263,12 +263,12 @@ static void tedges(const NdSeamTab* t, const float o[16]) {
             uint32_t w0, w1; memcpy(&w0, p + 8 * i, 4); memcpy(&w1, p + 8 * i + 4, 4);
             { uint32_t t[2]; t[0] = w0; t[1] = w1; w0 = t[0]; w1 = t[1]; } /* HC4f3: the typed unit */
             unsigned op = w0 >> 24;
-            if (op == NDO_END) break;
-            if (op == NDO_VTX) {
+            if (op == ND_FS_END) break;
+            if (op == ND_FS_VTX) {
                 unsigned n = (w0 >> 12) & 0xFF, v0n = (w0 >> 1) & 0x7F, v0 = v0n >= n ? v0n - n : 0;
                 for (unsigned k = 0; k < n && v0 + k < 64; k++) { const int16_t* s = (const int16_t*)(uintptr_t)(w1 + 16u * k); for (int q = 0; q < 3; q++) pos[v0 + k][q] = s[q] + L->t[q]; }
-            } else if (op == NDO_TRI1 || op == NDO_TRI2) {
-                for (int tt = 0; tt < (op == NDO_TRI2 ? 2 : 1); tt++) {
+            } else if (op == ND_FS_TRI1 || op == ND_FS_TRI2) {
+                for (int tt = 0; tt < (op == ND_FS_TRI2 ? 2 : 1); tt++) {
                     uint32_t ww = tt ? w1 : w0;
                     unsigned ix[3] = { ((ww >> 16) & 0xFF) / 2, ((ww >> 8) & 0xFF) / 2, (ww & 0xFF) / 2 };
                     while (e < end && t->tp[e].tri == ord) {

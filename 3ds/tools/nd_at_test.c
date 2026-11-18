@@ -153,7 +153,7 @@ static int run_shape(const Shape* s) {
             const uint32_t w0 = g->words.w0, w1 = g->words.w1;
             if (keep) keep--;
             else if (w0 == ND_NOP_A) continue;
-            else if ((w0 >> 24) == NDO_RECT && (w1 & NDO_RECT_TEX)) keep = 2u;
+            else if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) keep = 2u;
             ua[2u * na] = w0;
             ua[2u * na + 1u] = w1;
             na++;

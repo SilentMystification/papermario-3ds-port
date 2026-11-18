@@ -111,7 +111,7 @@ Gfx* nd_rec_task(void);
 #define gDPLoadTLUTCmd(pkt, tile, count) ND_GX(pkt, _SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10))
 #undef gsDPLoadTLUTCmd
 #define gsDPLoadTLUTCmd(tile, count) ND_GS(_SHIFTL(G_LOADTLUT, 24, 8), _SHIFTL((tile), 24, 3) | _SHIFTL((count), 14, 10))
-/* HC4e3 group 3 (geometry, control, sync, rectangle and G_PM ops). A sync, G_SPNOOP, G_NOOP and a RDPHALF word are the typed no-op unit (NDO_MISC). */
+/* HC4e3 group 3 (geometry, control, sync, rectangle and G_PM ops). A sync, G_SPNOOP, G_NOOP and a RDPHALF word are the typed no-op unit (ND_FS_MISC). */
 #define ND_W0_NP(cmd) _SHIFTL(cmd, 24, 8)
 #undef gDPNoParam
 #define gDPNoParam(pkt, cmd) ND_GX(pkt, ND_W0_NP(cmd), 0)
@@ -164,7 +164,7 @@ Gfx* nd_rec_task(void);
 #undef gsSP2Triangles
 #define gsSP2Triangles(v00, v01, v02, flag0, v10, v11, v12, flag1) \
     ND_GS(_SHIFTL(G_TRI2, 24, 8) | __gsSP1Triangle_w1f(v00, v01, v02, flag0), __gsSP1Triangle_w1f(v10, v11, v12, flag1))
-/* The list end: NDO_END (a top-level one is dropped by nd_gx_w: NDC_END ends the task or range). */
+/* The list end: ND_FS_END (a top-level one is dropped by nd_gx_w: NDC_END ends the task or range). */
 #undef gSPEndDisplayList
 #define gSPEndDisplayList(pkt) ND_GX(pkt, _SHIFTL(G_ENDDL, 24, 8), 0)
 #undef gsSPEndDisplayList
@@ -183,7 +183,7 @@ Gfx* nd_rec_task(void);
 #define gPmNdSprShade(pkt, on) ND_GX(pkt, ND_W0_PMND(G_PM_ND_SPRSHADE, (on) ? 1u : 0u), 0)
 #undef gPmNdGutter
 #define gPmNdGutter(pkt, a) ND_GX(pkt, ND_W0_PMND(G_PM_ND_GUTTER, (u32)(a) & 0xffu), 0) /* PAUSEOPEN: through nd_gx_w (the ND recorder); the gbi_custom.h form writes the word raw and the walker never sees it */
-/* The texture rectangle: the rectangle unit (NDO_RECT with NDO_RECT_TEX), then the two RDPHALF no-op units (their b: s, t and dsdx, dtdy), as gbi.h writes the words. */
+/* The texture rectangle: the rectangle unit (ND_FS_RECT with ND_FS_RECT_TEX), then the two RDPHALF no-op units (their b: s, t and dsdx, dtdy), as gbi.h writes the words. */
 #undef gSPTextureRectangle
 #define gSPTextureRectangle(pkt, xl, yl, xh, yh, tile, s, t, dsdx, dtdy) \
     { ND_GX(pkt, ND_W0_TR(G_TEXRECT, xh, yh), ND_W1_TR(tile, xl, yl)); \

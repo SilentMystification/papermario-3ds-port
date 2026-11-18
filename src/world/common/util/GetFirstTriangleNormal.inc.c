@@ -1,10 +1,10 @@
 #include "common.h"
 
-#define GFTN_END NDO_END
-#define GFTN_DL NDO_CALL
-#define GFTN_VTX NDO_VTX
-#define GFTN_TRI1 NDO_TRI1
-#define GFTN_TRI2 NDO_TRI2
+#define GFTN_END ND_FS_END
+#define GFTN_DL ND_FS_CALL
+#define GFTN_VTX ND_FS_VTX
+#define GFTN_TRI1 ND_FS_TRI1
+#define GFTN_TRI2 ND_FS_TRI2
 
 static Vtx_t* N(TriNormVertexBuffer)[32]; // unk length
 

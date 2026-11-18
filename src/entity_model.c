@@ -262,8 +262,8 @@ static u32 ent_vtx_range(const void* dl, s32 seg) {
     for (unsigned k = 0; k < n; k++) {
         const u32 w0 = u[2u * k], w1 = u[2u * k + 1u];
         const u32 op = w0 >> 24;
-        if (op == (u32)NDO_END) break;
-        if (op == (u32)NDO_VTX && (w1 >> 24) == ((u32)seg & 0xffu)) {
+        if (op == (u32)ND_FS_END) break;
+        if (op == (u32)ND_FS_VTX && (w1 >> 24) == ((u32)seg & 0xffu)) {
             const u32 end = (w1 & 0xffffffu) + (((w0 >> 12) & 0xffu) * 16u);
             if (end > range) range = end;
         }
@@ -305,12 +305,12 @@ static void entcheck_draw(const u32* rec, const EntityModel* model) { /* DIRECT 
             uint32_t t[2];
             t[0] = qu[2 * k]; t[1] = qu[2 * k + 1];
             const u32 op = t[0] >> 24;
-            if (op == (u32)NDO_END) break;
-            if (op == (u32)NDO_CALL) dlm |= 2u;
-            else if (op == (u32)NDO_TIMG || op == (u32)NDO_LOADBLOCK || op == (u32)NDO_LOADTLUT || op == (u32)NDO_TILE || op == (u32)NDO_TILESIZE ||
-                     op == (u32)NDO_LOADTILE || op == (u32)NDO_TEXTURE) dlm |= 1u;
-            else if (!(op == (u32)NDO_VTX || op == (u32)NDO_TRI1 || op == (u32)NDO_TRI2 || op == (u32)NDO_GEOM || (op == (u32)NDO_MISC && t[0] == ND_NOP_A) ||
-                       op == (u32)NDO_COMB || op == (u32)NDO_OMH || op == (u32)NDO_MW))
+            if (op == (u32)ND_FS_END) break;
+            if (op == (u32)ND_FS_CALL) dlm |= 2u;
+            else if (op == (u32)ND_FS_TIMG || op == (u32)ND_FS_LOADBLOCK || op == (u32)ND_FS_LOADTLUT || op == (u32)ND_FS_TILE || op == (u32)ND_FS_TILESIZE ||
+                     op == (u32)ND_FS_LOADTILE || op == (u32)ND_FS_TEXTURE) dlm |= 1u;
+            else if (!(op == (u32)ND_FS_VTX || op == (u32)ND_FS_TRI1 || op == (u32)ND_FS_TRI2 || op == (u32)ND_FS_GEOM || (op == (u32)ND_FS_MISC && t[0] == ND_NOP_A) ||
+                       op == (u32)ND_FS_COMB || op == (u32)ND_FS_OMH || op == (u32)ND_FS_MW))
                 dlm |= 4u;
         }
         if (model->vertexArray != nullptr) cls = 1;

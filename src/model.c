@@ -1544,7 +1544,7 @@ static void load_texture_header_at(u32 romOffset, TextureHeader* out) {
     pm_tex_header_native(out);
 }
 
-static const uint32_t pm_tex_unloaded[2] = { NDO_W0(NDO_END, 0), 0 }; /* HC4c: a typed bind list (nd_op.h): one END unit */
+static const uint32_t pm_tex_unloaded[2] = { ND_FS_W0(ND_FS_END, 0), 0 }; /* HC4c: a typed bind list (nd_op.h): one END unit */
 
 void load_texture_impl(u32 romOffset, TextureHandle* handle, TextureHeader* header, s32 mainSize, s32 mainPalSize, s32 auxSize, s32 auxPalSize) {
     uint32_t* nrp; /* NMDL0: the bind list is written here, NdNr units (nd_nr.h) */
@@ -3638,14 +3638,14 @@ void mdl_local_gfx_update_vtx_pointers(const void* nodeDlist, Vtx *baseVtx, uint
     do { /* HC4e2b: the copy takes the typed unit (ND_X0/ND_X1 of the word; a typed word stays) */
         w0 = src[0];
         w1 = (Vtx*)(uintptr_t)src[1];
-        if (w0 >> 0x18 == NDO_VTX) {
+        if (w0 >> 0x18 == ND_FS_VTX) {
             w1 = arg3 + (w1 - baseVtx);
         }
         arg2[0] = w0;
         arg2[1] = (u32)w1;
         src += 2;
         arg2 += 2;
-    } while (w0 >> 0x18 != NDO_END);
+    } while (w0 >> 0x18 != ND_FS_END);
 }
 
 void mdl_local_gfx_copy_vertices(Vtx* src, s32 num, Vtx* dest) {
@@ -3769,10 +3769,10 @@ void mdl_project_tex_coords(s32 modelID, const void* outGfx, Matrix4f arg2, Vtx*
 
     while (true) {
         cmd = dlist[0] >> 0x18; tempVert = (Vtx*)(uintptr_t)dlist[1]; /* HC4e3 */
-        if (cmd == NDO_END) {
+        if (cmd == ND_FS_END) {
             break;
         }
-        if (cmd == NDO_VTX) {
+        if (cmd == ND_FS_VTX) {
             baseVtx = tempVert;
             break;
         }

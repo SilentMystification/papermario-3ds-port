@@ -24,7 +24,7 @@ int main(void) {
         const uint32_t* o = (const uint32_t*)old_ModelRenderModes[i];
         const NdNDev* e = nd_rm_dev[i];
         unsigned k = 0;
-        while ((o[2u * k] >> 24) != NDO_END) k++;
+        while ((o[2u * k] >> 24) != ND_FS_END) k++;
         if (!e || e->nu != k || memcmp(o, e->u, 8u * k)) { printf("modelrm FAIL entry %u: %u old units, %u new\n", i, k, e ? e->nu : 0u); bad++; continue; }
         nent++;
     }

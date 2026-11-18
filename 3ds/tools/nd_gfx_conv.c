@@ -27,7 +27,7 @@ static const GSym* sym_of(uintptr_t p, int kind, unsigned* off) {
 #ifndef CIMG_UNIT
 #define CIMG_UNIT 1 /* FLTGT: fltgt.sh builds a copy with -DCIMG_UNIT=0 and expects the unsup line back */
 #endif
-static int is_draw(unsigned id) { return id == NDO_VTX || id == NDO_TRI1 || id == NDO_TRI2 || id == NDO_CALL || id == NDO_END; }
+static int is_draw(unsigned id) { return id == ND_FS_VTX || id == ND_FS_TRI1 || id == ND_FS_TRI2 || id == ND_FS_CALL || id == ND_FS_END; }
 
 /* The inherited inputs of def d (design note 6): the nd_scomp_key groups it does not set before its decision. */
 static uint32_t def_inherit(const NdSDef* d) {
@@ -42,8 +42,8 @@ static uint32_t def_inherit(const NdSDef* d) {
     int prim = 0, env = 0;
     for (unsigned k = 0; k < first; k++) {
         if (!(d->vmask >> k & 1u)) continue;
-        if ((u[2u * k] >> 24) == NDO_PRIM) prim = 1;
-        if ((u[2u * k] >> 24) == NDO_ENV) env = 1;
+        if ((u[2u * k] >> 24) == ND_FS_PRIM) prim = 1;
+        if ((u[2u * k] >> 24) == ND_FS_ENV) env = 1;
     }
     const uint32_t cyc = 3u << G_MDSFT_CYCLETYPE;
     if (!d->has_comb) m |= NDG_IN_COMB;
@@ -58,7 +58,7 @@ typedef struct { NdGOp op; unsigned k, n; const GSym* s; unsigned off; NdSDef d;
 static Op ops[4096];
 static unsigned n_lists, n_parts, n_defs, n_ops, n_bad;
 
-/* GSET: per gconv_sym index, the v1 table has NDG_F_PARTS; the call edges of the set (caller and callee indices, every NDO_CALL with a symbol) */
+/* GSET: per gconv_sym index, the v1 table has NDG_F_PARTS; the call edges of the set (caller and callee indices, every ND_FS_CALL with a symbol) */
 #define GS_MAXSYM 8192u
 #define GS_MAXED 16384u
 static unsigned char g_parts[GS_MAXSYM];
@@ -80,9 +80,9 @@ static void conv(const GSym* g) {
         const unsigned id = w0 >> 24;
         if (w0 == ND_NOP_A) { k++; continue; }
         if (is_draw(id)) {
-            if (id == NDO_END) { o->op.k = NDG_END; no++; k_end = k; break; }
-            if (id == NDO_TRI1 || id == NDO_TRI2) {
-                for (int t = 0; t <= (id == NDO_TRI2); t++) {
+            if (id == ND_FS_END) { o->op.k = NDG_END; no++; k_end = k; break; }
+            if (id == ND_FS_TRI1 || id == ND_FS_TRI2) {
+                for (int t = 0; t <= (id == ND_FS_TRI2); t++) {
                     const uint32_t w = t ? w1 : (w0 & 0xffffffu);
                     Op* q = &ops[no++];
                     memset(q, 0, sizeof *q);
@@ -93,7 +93,7 @@ static void conv(const GSym* g) {
                 k++;
                 continue;
             }
-            if (id == NDO_VTX) {
+            if (id == ND_FS_VTX) {
                 const unsigned n = (w0 >> 12) & 0xffu, e = (w0 >> 1) & 0x7fu;
                 o->s = sym_of(w1, GS_VTX, &o->off);
                 if (o->s && n <= e) { o->op.k = NDG_VTX; o->op.a = (uint8_t)n; o->op.b = (uint8_t)(e - n); nvtx += n; }
@@ -101,7 +101,7 @@ static void conv(const GSym* g) {
                 no++; k++;
                 continue;
             }
-            /* NDO_CALL: a list of the set at its start */
+            /* ND_FS_CALL: a list of the set at its start */
             o->s = sym_of(w1, GS_GFX, &o->off);
             if (o->s && g_n_ed < GS_MAXED) { g_ed_from[g_n_ed] = ci; g_ed_to[g_n_ed] = (unsigned)(o->s - gconv_sym); g_n_ed++; }
             if (o->s && o->off == 0u) { o->op.k = NDG_CALL; o->op.a = (uint8_t)((w0 & 0xffffffu) == 1u); }
@@ -219,7 +219,7 @@ typedef struct {
     char unsup[160];
     int inh; char inh_groups[64], inh_first[160];
     unsigned mesh; /* MESH1: a VTX unit into a Vec3s symbol (animator.c reads the units) */
-    unsigned lit; /* LIT1: the walk saw a light unit (NDO_MOVEMEM of a Lights1 symbol) */
+    unsigned lit; /* LIT1: the walk saw a light unit (ND_FS_MOVEMEM of a Lights1 symbol) */
     uint32_t uw[2u * V2_MAXOPS]; char ue[V2_MAXOPS][160]; unsigned nu; /* the depth-0 typed units (CONV2D): words, and the address text (ue[i][0] == 0: no address) */
     unsigned nk; /* CONV2D2: words to the stop */
     char nm[96]; unsigned entry; /* CONV2C2: table name, NdNTab.entry (0 none, else desc id + 1) */
@@ -244,9 +244,9 @@ static void v2_unsup(const char* what, unsigned k) {
 }
 static const char* v2_opname(unsigned id) {
     switch (id) {
-    case NDO_VTX: return "VTX"; case NDO_TRI1: return "TRI1"; case NDO_TRI2: return "TRI2"; case NDO_MOVEMEM: return "MOVEMEM"; case NDO_MW: return "MOVEWORD";
-    case NDO_RARE: return "RARE (convert or key)"; case NDO_RECT: return "RECT"; case NDO_SCISSOR: return "SCISSOR"; case NDO_FILL: return "FILLCOLOR";
-    case NDO_PRIMZ: return "PRIMDEPTH"; case NDO_MISC: return "MISC"; default: return "op";
+    case ND_FS_VTX: return "VTX"; case ND_FS_TRI1: return "TRI1"; case ND_FS_TRI2: return "TRI2"; case ND_FS_MOVEMEM: return "MOVEMEM"; case ND_FS_MW: return "MOVEWORD";
+    case ND_FS_RARE: return "RARE (convert or key)"; case ND_FS_RECT: return "RECT"; case ND_FS_SCISSOR: return "SCISSOR"; case ND_FS_FILL: return "FILLCOLOR";
+    case ND_FS_PRIMZ: return "PRIMDEPTH"; case ND_FS_MISC: return "MISC"; default: return "op";
     }
 }
 /* the address expression of an address inside a symbol of the kind: NAME + byte offset */
@@ -436,12 +436,12 @@ static void v2_unit_add(unsigned k, unsigned id, uint32_t w0, uint32_t w1) {
     cx->ue[i][0] = 0;
     if (w0 == ND_NOP_A) { if ((w1 >> 24) >= 16u) v2_unsup("no-op unit with an address", k); return; } /* EMIT4: the NOPs stay in the unit copy */
     int kind = -1;
-    if (id == NDO_VTX) kind = GS_VTX;
-    else if (id == NDO_TIMG) kind = GS_IMG;
-    else if (id == NDO_CALL) kind = GS_GFX;
-    else if (id == NDO_MTX) kind = GS_MTX;
-    else if (id == NDO_MOVEMEM) kind = (w0 & 0xffu) == G_MV_VIEWPORT ? GS_VP : GS_LIT; /* THEATVP: a viewport unit names a Vp */
-    else if (CIMG_UNIT && id == NDO_MISC && ((w0 >> 16) & 0xffu) == NDO_MISC_CIMG) kind = GS_IMG; /* FLTGT: a colour image unit names its image (the flame targets) */
+    if (id == ND_FS_VTX) kind = GS_VTX;
+    else if (id == ND_FS_TIMG) kind = GS_IMG;
+    else if (id == ND_FS_CALL) kind = GS_GFX;
+    else if (id == ND_FS_MTX) kind = GS_MTX;
+    else if (id == ND_FS_MOVEMEM) kind = (w0 & 0xffu) == G_MV_VIEWPORT ? GS_VP : GS_LIT; /* THEATVP: a viewport unit names a Vp */
+    else if (CIMG_UNIT && id == ND_FS_MISC && ((w0 >> 16) & 0xffu) == ND_FS_MISC_CIMG) kind = GS_IMG; /* FLTGT: a colour image unit names its image (the flame targets) */
     if (kind < 0 || !(w1 && (w1 >> 24) >= 16u)) return;
     if (kind == GS_MTX || kind == GS_LIT || kind == GS_VP) { /* an Mtx, a Lights1 or a Vp is not an array: its address is the object itself */
         unsigned off = 0;
@@ -470,9 +470,9 @@ static void v2_units_top(const GSym* g) {
     for (unsigned k = 0; k < nu; k++) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
         const unsigned id = w0 >> 24;
-        if (id == NDO_END) { cx->nk = k; break; }
+        if (id == ND_FS_END) { cx->nk = k; break; }
         v2_unit_add(k, id, w0, w1);
-        if (id == NDO_CALL && (w0 & 1u)) { cx->nk = k + 1u; break; }
+        if (id == ND_FS_CALL && (w0 & 1u)) { cx->nk = k + 1u; break; }
     }
 }
 
@@ -486,17 +486,17 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         const unsigned id = w0 >> 24;
         if (w0 == ND_NOP_A) continue;
         switch (id) {
-        case NDO_END: return 0;
-        case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); s->omh = (s->omh & ~m) | (w1 & m); s->omh_set |= m; break; }
-        case NDO_OML: { const uint32_t m = nd_op_om_mask(a); s->oml = (s->oml & ~m) | (w1 & m); break; }
-        case NDO_GEOM: s->geom = (s->geom & a) | w1; break;
-        case NDO_TEXTURE: s->tex_on = a & 1u; s->has_tex = 1; break;
-        case NDO_COMB: s->cw0 = NDO_COMB_W0(a); s->cw1 = w1; s->has_comb = 1; break;
-        case NDO_PRIM: s->plod = a & 0xffffu; v2_state_op(NDN_COL, 0, a & 0xffffu, w1, NULL); break;
-        case NDO_ENV: v2_state_op(NDN_COL, 1, 0, w1, NULL); break;
-        case NDO_FOG: v2_state_op(NDN_COL, 2, 0, w1, NULL); break;
-        case NDO_BLEND: v2_state_op(NDN_COL, 3, 0, w1, NULL); break;
-        case NDO_MTX: /* a segmented address stays a value (an input of the caller); a host address of a matrix object has no symbol in the map: no v2 form */
+        case ND_FS_END: return 0;
+        case ND_FS_OMH: { const uint32_t m = nd_op_om_mask(a); s->omh = (s->omh & ~m) | (w1 & m); s->omh_set |= m; break; }
+        case ND_FS_OML: { const uint32_t m = nd_op_om_mask(a); s->oml = (s->oml & ~m) | (w1 & m); break; }
+        case ND_FS_GEOM: s->geom = (s->geom & a) | w1; break;
+        case ND_FS_TEXTURE: s->tex_on = a & 1u; s->has_tex = 1; break;
+        case ND_FS_COMB: s->cw0 = ND_FS_COMB_W0(a); s->cw1 = w1; s->has_comb = 1; break;
+        case ND_FS_PRIM: s->plod = a & 0xffffu; v2_state_op(NDN_COL, 0, a & 0xffffu, w1, NULL); break;
+        case ND_FS_ENV: v2_state_op(NDN_COL, 1, 0, w1, NULL); break;
+        case ND_FS_FOG: v2_state_op(NDN_COL, 2, 0, w1, NULL); break;
+        case ND_FS_BLEND: v2_state_op(NDN_COL, 3, 0, w1, NULL); break;
+        case ND_FS_MTX: /* a segmented address stays a value (an input of the caller); a host address of a matrix object has no symbol in the map: no v2 form */
             if ((w1 >> 24) >= 16u) {
                 unsigned moff = 0;
                 const GSym* ms = sym_of(w1, GS_MTX, &moff);
@@ -508,12 +508,12 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             }
             v2_state_op(NDN_XF, a & 0xffu, 0, w1, NULL);
             break;
-        case NDO_POPMTX: v2_state_op(NDN_XF, 0xffu, 0, w1, NULL); break;
-        case NDO_MW:
-            if ((a >> 16) == NDO_MW_NUMLIGHT) { v2_flush(); v2_push(NDN_LIT, 1, 0, a, NULL, w1); } /* FXLT: the light count */
-            else if ((a >> 16) != NDO_MW_NONE) v2_unsup(v2_opname(id), k);
+        case ND_FS_POPMTX: v2_state_op(NDN_XF, 0xffu, 0, w1, NULL); break;
+        case ND_FS_MW:
+            if ((a >> 16) == ND_FS_MW_NUMLIGHT) { v2_flush(); v2_push(NDN_LIT, 1, 0, a, NULL, w1); } /* FXLT: the light count */
+            else if ((a >> 16) != ND_FS_MW_NONE) v2_unsup(v2_opname(id), k);
             break;
-        case NDO_MOVEMEM: { /* LIT1: a light of a Lights1 symbol; FXLT: one NDN_LIT op (p = the light) */
+        case ND_FS_MOVEMEM: { /* LIT1: a light of a Lights1 symbol; FXLT: one NDN_LIT op (p = the light) */
             if ((a & 0xffu) == G_MV_VIEWPORT && sym_of(w1, GS_VP, &(unsigned){0})) break; /* THEATVP: a unit only, no v2 op (nd_ntab_run runs the units) */
             unsigned loff;
             const GSym* ls = (a & 0xffu) == G_MV_LIGHT ? sym_of(w1, GS_LIT, &loff) : NULL;
@@ -524,20 +524,20 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             cx->lit = 1;
             break;
         }
-        case NDO_RARE: /* FXOPS: the convert and key words are desc state (set_rare, nd_set.c:148); the unit runs on the device */
-            if (a == NDO_RARE_CONV) s->conv_k4 = (w1 >> 9) & 0xffu;
-            else if (a == NDO_RARE_KEYR) { s->key_c = (s->key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); s->key_s = (s->key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
+        case ND_FS_RARE: /* FXOPS: the convert and key words are desc state (set_rare, nd_set.c:148); the unit runs on the device */
+            if (a == ND_FS_RARE_CONV) s->conv_k4 = (w1 >> 9) & 0xffu;
+            else if (a == ND_FS_RARE_KEYR) { s->key_c = (s->key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); s->key_s = (s->key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
             else { s->key_c = (s->key_c & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8); s->key_s = (s->key_s & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8); }
             break;
-        case NDO_FILL: case NDO_SCISSOR: case NDO_RECT: /* FXOPS: a unit only, no v2 op (nd_ntab_run runs the units, nd_walk.c:600; a texture RECT keeps its 2 NOP units) */
+        case ND_FS_FILL: case ND_FS_SCISSOR: case ND_FS_RECT: /* FXOPS: a unit only, no v2 op (nd_ntab_run runs the units, nd_walk.c:600; a texture RECT keeps its 2 NOP units) */
             break;
-        case NDO_PRIMZ: /* FXLIT: a unit only, no v2 op (a value: set_primdepth runs on the device; the depth source is other mode L, in the desc) */
+        case ND_FS_PRIMZ: /* FXLIT: a unit only, no v2 op (a value: set_primdepth runs on the device; the depth source is other mode L, in the desc) */
             break;
-        case NDO_MISC:
-            if (CIMG_UNIT && (a >> 16) == NDO_MISC_CIMG) break; /* FLTGT: a unit only, no v2 op (nd_ntab_run runs it: nd_cimg_set, nd_walk.c:346) */
+        case ND_FS_MISC:
+            if (CIMG_UNIT && (a >> 16) == ND_FS_MISC_CIMG) break; /* FLTGT: a unit only, no v2 op (nd_ntab_run runs it: nd_cimg_set, nd_walk.c:346) */
             v2_unsup(v2_opname(id), k);
             break;
-        case NDO_TIMG: {
+        case ND_FS_TIMG: {
             unsigned off;
             s->timg = (const void*)(uintptr_t)w1;
             s->timg_ok = !w1 || sym_of(w1, GS_IMG, &off) != NULL;
@@ -546,22 +546,22 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             s->m.ld_valid = 0;
             break;
         }
-        case NDO_TILE: {
+        case ND_FS_TILE: {
             const unsigned wr[4] = { (w1 >> 8) & 3u, (w1 >> 18) & 3u, (w1 >> 4) & 15u, (w1 >> 14) & 15u };
             v2_set_tile(s, (w1 >> 24) & 7u, (a >> 21) & 7u, (a >> 19) & 3u, a & 0x1ffu, (w1 >> 20) & 15u, wr, w1 & 15u, (w1 >> 10) & 15u);
             break;
         }
-        case NDO_LOADBLOCK: v2_loadblock(s, (w1 >> 24) & 7u, (w1 >> 12) & 0xfffu); break;
-        case NDO_LOADTILE: v2_loadtile(s, (w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
-        case NDO_LOADTLUT: {
+        case ND_FS_LOADBLOCK: v2_loadblock(s, (w1 >> 24) & 7u, (w1 >> 12) & 0xfffu); break;
+        case ND_FS_LOADTILE: v2_loadtile(s, (w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
+        case ND_FS_LOADTLUT: {
             const unsigned tile = (w1 >> 24) & 7u, cnt = (w1 >> 14) & 0x3ffu;
             s->tlut = s->timg; s->tlut_n = (int)cnt + 1;
             const unsigned slot = (s->t.tile_tmem[tile] - 256u) >> 4;
             if (slot < 16u) s->m.tlut_pal[slot] = s->timg;
             break;
         }
-        case NDO_TILESIZE: v2_tilesize(s, k, (w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
-        case NDO_VTX: {
+        case ND_FS_TILESIZE: v2_tilesize(s, k, (w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
+        case ND_FS_VTX: {
             const unsigned n = (a >> 12) & 0xffu, e = (a >> 1) & 0x7fu;
             unsigned off;
             const GSym* vs = sym_of(w1, GS_VTX, &off);
@@ -579,12 +579,12 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             v2_seg_add(&o);
             break;
         }
-        case NDO_TRI1: case NDO_TRI2: {
+        case ND_FS_TRI1: case ND_FS_TRI2: {
             v2_inherit_check(k, g, id);
             NdVsOp o;
             memset(&o, 0, sizeof o);
-            o.kind = id == NDO_TRI1 ? ND_VS_TRI1 : ND_VS_TRI2;
-            for (int t = 0; t <= (id == NDO_TRI2); t++) {
+            o.kind = id == ND_FS_TRI1 ? ND_VS_TRI1 : ND_VS_TRI2;
+            for (int t = 0; t <= (id == ND_FS_TRI2); t++) {
                 const uint32_t w = t ? w1 : a;
                 o.s[3 * t] = (uint8_t)(((w >> 16) & 0xffu) >> 1); o.s[3 * t + 1] = (uint8_t)(((w >> 8) & 0xffu) >> 1); o.s[3 * t + 2] = (uint8_t)((w & 0xffu) >> 1);
             }
@@ -625,7 +625,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
             cx->seg_tri = 1;
             break;
         }
-        case NDO_CALL: {
+        case ND_FS_CALL: {
             unsigned off;
             const GSym* cs = sym_of(w1, GS_GFX, &off);
             /* device list depth 12 (ND_LIST_DEPTH, nd_walk.c:181): the converter follows 11 levels */
@@ -772,9 +772,9 @@ static unsigned v2_state_only(const uint32_t* l) {
         const unsigned op = w0 >> 24;
         unsigned k;
         if (!nd_op_typed(op)) k = 0u;
-        else if (op == NDO_END) k = 3u;
-        else if (op == NDO_MISC) k = (w0 & 0xffffffu) == (NDO_MISC_NOP << 16) ? 2u : 0u;
-        else k = (op <= NDO_COMB || nd_op_tex(op) || (op >= NDO_MTX && op <= NDO_MOVEMEM)) ? 1u : 0u;
+        else if (op == ND_FS_END) k = 3u;
+        else if (op == ND_FS_MISC) k = (w0 & 0xffffffu) == (ND_FS_MISC_NOP << 16) ? 2u : 0u;
+        else k = (op <= ND_FS_COMB || nd_op_tex(op) || (op >= ND_FS_MTX && op <= ND_FS_MOVEMEM)) ? 1u : 0u;
         if (k == 3u) return 1u;
         if (!k) return 0u;
     }

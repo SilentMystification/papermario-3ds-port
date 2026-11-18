@@ -148,7 +148,7 @@ int main(void) {
     }
     run_one(n_cyc, &b);
     if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 0) || b.w[1] != (uint32_t)(uintptr_t)nd_nr_run || b.nu != 2u
-        || b.u[0] != NDO_W0(NDO_OMH, G_MDSFT_CYCLETYPE | 2u << 8) || b.u[1] != G_CYC_1CYCLE) { printf("stunit FAIL run\n"); return 1; }
+        || b.u[0] != ND_FS_W0(ND_FS_OMH, G_MDSFT_CYCLETYPE | 2u << 8) || b.u[1] != G_CYC_1CYCLE) { printf("stunit FAIL run\n"); return 1; }
     printf("stunit ok %u/%u\n", ok, n);
     return 0;
 }
