@@ -6,7 +6,8 @@ State: main 27f33ea1da, 2026-11-18 (NCONV1D2 and NREC1A merged). Counters FACT (
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
 - User 2026-11-17: at most 5 parallel Haiku coders. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0. No console check until the end.
 - User 2026-11-18 option A: NDR0G2 and NDR1C have an expected-diff gate (the correct bind from the snap, not the stale walker bind). Other rows stay byte-equal.
-## Chain NCONV coach: coders afc7b34e8d19be862 (NCONV1D1), aeaed982632fdec55 (NCONV1D2), both done.
+## Chain NCONV coach: coders afc7b34e8d19be862 (NCONV1D1), aeaed982632fdec55 (NCONV1D2), a5b6acc6b4c73a61b (NCONV2A), all done. NCONV2A GATED ce1e571699: fxops f500 tsnap cmp 8821 wtss 0 tris 10 vtss 0, snapchk bad 469 = base 4d10b0ebb5.
+## FAULT on main (NREC2): fxops_snapchk f500 snapchk bad 469 name "sl" at NDC_ENT (last 6), on entity list ranges. NREC2 gated on entcape only. sl = nd_snap.c:176. sl_const writers nd_comb.c:313, nd_scomp.c:210, :305. Base log: build3ds/basecache/4d10b0ebb5.../fxops_snapchk/run.log.
 ## Merged on main: NST1, NST3, NST2A-K, FALLBK, NDR0A-F, NDR0G1-2, NDR1B-C, NDR2A-C, NDR3, NDR4, NDR5, NCONV1A, NCONV1D1, NCONV1D2, NREC1A, NDR2D, REN1-8, MREN, PSOFB, DEL4D34, BUILDO.
 ## Chain NDR: done (coach a28bf24a1ad35b1c8). No NDR page is left. Snapchk data at the end (FACT NDR2D): nimgm f400 recs 14138 cmp 6286 wst 870; wscmb f200 recs 18047 cmp 13482 wst 12060.
 ## Open work (in order)
@@ -25,6 +26,7 @@ State: main 27f33ea1da, 2026-11-18 (NCONV1D2 and NREC1A merged). Counters FACT (
    NREC5 (scomp combine bind) waits for NCONV2D: the compiled defs write core 0 state that later walker draws read.
 ## Facts that cost time
 - The Bash default timeout is 120 s. nd_host_test.sh runs longer and goes to the background: pages say `timeout: 600000` (FACT NDR2B, NDR2C). `bench.py run` does not build: a page says `PM_LANE=<id> sh 3ds/build.sh` first (FACT NDR0G2 STALE BUILD exit 5).
+- A SendMessage to a coder that handed back resumes it. Never also start a fresh coder on the same worktree (FACT NCONV2A: 2 writers).
 - Git Bash `sed -i` writes LF and turns a CRLF file into a whole-file diff (FACT dry run 2026-11-18). Pages say `sed -b -i` or the Edit tool.
 - drec_cmp (bench.py:1658) names only the first DIFF draw. drec.txt has `frame` lines only with a step above 1 (pm_gpu.c:605); NDR0G2 logs `drec frame <f> seq <s>`.
 - No host unit links nd_geom.c, nd_comb.c, nd_tex_set.c, nd_snap.c, nd_rect.c. nd_direct_test.c includes nd_direct.c (stubs there and in nd_snap_link_stub.c).
