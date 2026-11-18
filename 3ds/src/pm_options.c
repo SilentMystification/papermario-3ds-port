@@ -11,14 +11,14 @@
 int pm_debug_value(const char* key, char* out, unsigned n);
 int pm_debug_mode(const char* key); /* CFG-1, pm_log.c: -1 absent, 0 off, 1 on */
 
-/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, live, disk and con levels warn, fixedseed off, dpad_mode multi, dz_pad 15, dz_cs 0, rep_delay 500, rep_rate 200, hud_ms 1000, pos_hud off, poslog off, esc_mode hbmenu. */
+/* Designated initializers: a value cannot move to the next field when a field is added. Defaults: fps60 off, wide off, dbg_hud on, dbg_stats, dbg_nofog, dbg_nolight, o3ds_z off, log on, live, disk and con levels warn, fixedseed off, dpad_mode multi, dz_pad 15, dz_cs 0, rep_delay 500, rep_rate 200, fskip on, hud_ms 1000, pos_hud off, poslog off, esc_mode hbmenu. */
 PmOpt pm_opt = {
     .fps60 = 0, .wide = 0, .dbg_hud = 1, .dbg_stats = 0, .dbg_nofog = 0, .dbg_nolight = 0, .o3ds_z = 0,
     .log = 1, .livelevel = 1, .disklevel = 1, .conlevel = 1, .prof_disk = 0, .fixedseed = 0, .dpad_mode = 0,
-    .dz_pad = 15, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .hud_ms = 1000, .pos_hud = 0, .poslog = 0, .esc_mode = 0,
+    .dz_pad = 15, .dz_cs = 0, .rep_delay = 500, .rep_rate = 200, .fskip = 1, .hud_ms = 1000, .pos_hud = 0, .poslog = 0, .esc_mode = 0,
 };
 /* Fails the build when PmOpt gains or loses a field without this initializer being updated. */
-_Static_assert(sizeof(PmOpt) == 22 * sizeof(int), "PmOpt field count changed: update pm_opt above");
+_Static_assert(sizeof(PmOpt) == 23 * sizeof(int), "PmOpt field count changed: update pm_opt above");
 /* ARG1, LOG5: the saved logging values (options.ini, or the defaults). pm_opt holds the values of this run (a launch argument may differ). */
 static int sv_log = 1, sv_live = 1, sv_disk = 1, sv_con = 1, sv_prof_disk = 0;
 /* PROFROW: the Profiling row. Modes 0 off, 1 prof, 2 phase (the index of prof_name). prof_row is this run, sv_prof the saved value (options.ini profmode=). */
@@ -94,6 +94,7 @@ static int* opt_field(const char* key) {
     if (!strcmp(key, "nolight")) return &pm_opt.dbg_nolight;
     if (!strcmp(key, "o3dsz")) return &pm_opt.o3ds_z;
     if (!strcmp(key, "fixedseed")) return &pm_opt.fixedseed;
+    if (!strcmp(key, "fskip")) return &pm_opt.fskip;
     if (!strcmp(key, "poshud")) return &pm_opt.pos_hud;
     if (!strcmp(key, "poslog")) return &pm_opt.poslog; /* MN7 rest */
     return NULL;
@@ -106,8 +107,8 @@ void pm_options_write(void) {
         pm_log_e("options: cannot write options.tmp");
         return;
     }
-    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=2\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog_on=%d\nlive_level=%d\ndisk_level=%d\ncon_level=%d\nprof_disk=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nhudint=%d\nposhud=%d\nposlog=%d\nescmode=%s\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
-            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_live, sv_disk, sv_con, sv_prof_disk, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.hud_ms, pm_opt.pos_hud, pm_opt.poslog, esc_name[pm_opt.esc_mode], prof_name[sv_prof]);
+    fprintf(f, "; Paper Mario 3DS port settings (key=value)\nversion=2\nfps60=%d\nwide=%d\nhud=%d\nstats=%d\nnofog=%d\nnolight=%d\no3dsz=%d\nlog_on=%d\nlive_level=%d\ndisk_level=%d\ncon_level=%d\nprof_disk=%d\nfixedseed=%d\ndpad_mode=%s\ndz_pad=%d\ndz_cs=%d\nrep_delay=%d\nrep_rate=%d\nfskip=%d\nhudint=%d\nposhud=%d\nposlog=%d\nescmode=%s\nprofmode=%s\n",pm_opt.fps60, pm_opt.wide, pm_opt.dbg_hud,
+            pm_opt.dbg_stats, pm_opt.dbg_nofog, pm_opt.dbg_nolight, pm_opt.o3ds_z, sv_log, sv_live, sv_disk, sv_con, sv_prof_disk, pm_opt.fixedseed, dpad_name[pm_opt.dpad_mode], pm_opt.dz_pad, pm_opt.dz_cs, pm_opt.rep_delay, pm_opt.rep_rate, pm_opt.fskip, pm_opt.hud_ms, pm_opt.pos_hud, pm_opt.poslog, esc_name[pm_opt.esc_mode], prof_name[sv_prof]);
     for (int i = 0; i < PM_NIN; i++) if (pm_map[i] != map_def[i]) fprintf(f, "map.%s=%s\n", pm_in_name[i], pm_n64_name(pm_map[i]));
     if (fclose(f) != 0) {
         pm_log_e("options: write of options.tmp failed");
@@ -203,7 +204,6 @@ void pm_options_init(void) {
                 else pm_opt.hud_ms = (int)v;
                 continue;
             }
-            if (!strcmp(line, "fskip")) continue; /* FSKIP2: the old Frame skip boolean (fskip=0|1) is ignored; the Frame skip row is fps60 */
             fld = opt_field(line);
             v = strtol(eq + 1, &end, 10);
             if (!fld || end == eq + 1 || *end || v < 0 || v > (fld == &pm_opt.fps60 ? 2 : 1)) { /* FSKIP: fps60 is 0, 1 or 2 */
@@ -286,6 +286,7 @@ void pm_options_prof_boot(void) {
 
 int pm_options_get(int row) {
     if (row == 8) return pm_opt.fixedseed;
+    if (row == 9) return pm_opt.fskip; /* FS1: frame skip */
     if (row == 10) return pm_opt.pos_hud; /* POSHUD */
     if (row == 12) return pm_opt.poslog; /* MN7 rest: Position log combo */
     int* f = row == 0 ? &pm_opt.fps60 : row == 1 ? &pm_opt.wide : row == 2 ? &pm_opt.dbg_hud : row == 3 ? &pm_opt.dbg_stats
@@ -308,6 +309,7 @@ void pm_options_flip(int row) {
         pm_log("options: live row 1 value %d (%s)", pm_opt.wide, res_name());
         return;
     }
+    if (row == 9) { pm_opt.fskip = !pm_opt.fskip; pm_fskip_set(pm_opt.fskip); changed = 1; return; }
     if (row == 10) { pm_opt.pos_hud = !pm_opt.pos_hud; changed = 1; return; } /* POSHUD: the Debug tab row 8 */
     if (row == 12) { pm_opt.poslog = !pm_opt.poslog; changed = 1; return; } /* MN7 rest: the combo logs a position line */
     if (row == 0) { /* FSKIP: Off, On, Dynamic. On and Dynamic both run the interpolation; the mode is read at each drawn step */
@@ -385,7 +387,7 @@ void pm_dbgg_count(int g, int* have, int* total); void pm_dbgg_give(int g); int 
 static const char* const give_lbl[3] = { "Enable partners", "All badges", "All key items" };
 static const char* const stat_lbl[8] = { "Max HP", "Max FP", "BP", "Level", "Coins", "Star points", "Star pieces", "Fortress keys" };
 const char* const pm_lvl_name[5] = { "Error", "Warn", "Info", "Debug", "Off" }; /* Off: only the console level (conlevel 4) */
-static const char* const dbg_lbl[11] = { "HUD", "Stats", "Disable Fog", "Disable Light", "", "", "Fixed Seed", "", "Position HUD", "", "Position log combo" }; /* LOG5: rows 4, 5 and 9 are on the Logging page */
+static const char* const dbg_lbl[11] = { "HUD", "Stats", "Disable Fog", "Disable Light", "", "", "Fixed Seed", "Frame skip", "Position HUD", "", "Position log combo" }; /* LOG5: rows 4, 5 and 9 are on the Logging page */
 /* LOG5: the Logging page (sub kind 14). Row 0 Logging (pm_opt.log), rows 1 to 3 Live log, Log to disk, Console log (-1 off .. 3 debug).
  * Logging and Profiling are one choice (U2): Logging on turns Profiling off here, and Profiling on turns logging off (prof_set). */
 void pm_options_touch(void);
@@ -418,7 +420,7 @@ static void log_level_set(int id, int v) {
 static int tab_ids(int tab, int mode, int* ids) {
     int n = 0, i;
     if (tab == 0) {
-        ids[n++] = RW_FPS; ids[n++] = RW_WIDE; /* FSKIP2: Frame skip (option row 0: Off, On, Dynamic), Resolution Mode (MENUGEN order) */
+        ids[n++] = RW_DBG + 7; ids[n++] = RW_WIDE; ids[n++] = RW_FPS; /* Frame skip (option row 9), Resolution Mode, 60 FPS (MENUGEN order) */
         if (mode) { ids[n++] = RW_TITLE; ids[n++] = RW_EXIT; ids[n++] = RW_CLOSE; }
     } else if (tab == 1) {
         ids[n++] = RW_DPAD; ids[n++] = RW_DZPAD; ids[n++] = RW_DZCS; ids[n++] = RW_RDELAY; ids[n++] = RW_RRATE;
@@ -672,7 +674,7 @@ const char* pm_optui_label(int tab, int row, int mode) {
     if (id >= RW_DBG) return dbg_lbl[id - RW_DBG];
     if (id >= RW_MAP) return pm_in_name[id - RW_MAP];
     switch (id) {
-        case RW_FPS: return "Frame skip";
+        case RW_FPS: return "60 FPS";
         case RW_WIDE: return "Resolution Mode";
         case RW_TITLE: return "Return to Title Screen";
         case RW_CLOSE: return "Close game";
