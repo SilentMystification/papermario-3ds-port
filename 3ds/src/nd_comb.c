@@ -179,6 +179,7 @@ void scm_store(unsigned sg) {
 }
 
 void scm_replay(const ScMemo* m) {
+    sl_const = m->cc_on; sl_env = m->env_on; if (m->cc_on) sl_cc = m->cc; /* NREC2B: a memo hit leaves sl_* as nd_comb_apply does (snapchk sl) */
     if (m->cc_on) pm_gpu_set_const(m->cc);
     if (m->env_on) pm_gpu_set_env(nd_ws.envc);
     leg_mode = m->leg; comb_mode5 = m->mode5; box_pat = m->pat;

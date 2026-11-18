@@ -25,7 +25,7 @@
 int nd_dq_on; /* S5CHUDA: a direct quad is drawing (nd_direct_quad .. nd_direct_end); read by gv_epoch_enter */
 void ens_clear(void);                              /* nd_tex_set.c */
 void nd_sr_forget(void);                           /* nd_set.c */
-extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame; /* nd_comb.c: the decision the last sync_combine made (diagnostics, the memo) */
+extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame; /* nd_comb.c: the decision the last sync_combine made (diagnostics, the memo) */ extern int sl_const, sl_env; extern unsigned sl_cc; /* NREC2B */
 void pm_tex_set_filter(int linear);                  /* pm_tex.c */
 extern PmPlan cur_plan;                            /* nd_comb.c */
 
@@ -67,6 +67,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
         unsigned cc = 0;
         leg_mode = o->leg; comb_mode5 = o->mode5; box_pat = o->pat; plan_active = o->plan_on;
         ls_use = o->use; ls_why = o->why; ls_cyc = o->cyc; ls_dual = o->dual; ls_frame = rm_frame;
+        sl_const = o->cc_on; sl_env = o->env_on; if (o->cc_on) sl_cc = o->cc; /* NREC2B: as nd_comb_apply */
         if (o->cc_on) {
             if (!const_rgb_tex_alpha(&cc)) cc = o->cc;
             pm_gpu_set_const(cc);
