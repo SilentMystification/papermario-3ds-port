@@ -13,6 +13,14 @@
 #include "nd_op.h"
 #include "gbi_custom.h"
 
+/* DEL3C3: moved from nd_op.h, the F3DEX2 op of each unit id (pm_gbi_cur_op, census). */
+static const uint8_t nd_op_n64[ND_FS_END_ - ND_FS_BASE] = {
+    G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR, G_SETBLENDCOLOR,
+    G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* ND_FS_RARE: the sub-op names it */, G_SETCOMBINE,
+    G_ENDDL /* ND_FS_END */, G_SPNOOP /* ND_FS_DROP */, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT,
+    G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX, G_MOVEMEM, G_DL, G_FILLRECT, 0 /* ND_FS_MISC: the sub-op names it */
+};
+
 uint32_t f32tof24(float vf) {
     union { float f; uint32_t i; } v;
     v.f = vf;
@@ -52,82 +60,82 @@ static void apply(const uint32_t* w, unsigned n) {
 /* The F3DEX2 othermode word of a typed othermode op (the inverse of nd_op_xlate). */
 static uint32_t nd_op_om_word(const uint32_t u[2]) {
     const unsigned a = u[0] & 0xffffffu, sft = a & 0xffu, len = (a >> 8) & 0xffu;
-    const unsigned op = (u[0] >> 24) == NDO_OMH ? G_SETOTHERMODE_H : G_SETOTHERMODE_L;
+    const unsigned op = (u[0] >> 24) == ND_FS_OMH ? G_SETOTHERMODE_H : G_SETOTHERMODE_L;
     return ((uint32_t)op << 24) | (((32u - sft - len) & 0xffu) << 8) | ((len - 1u) & 0xffu);
 }
 
 /* HC4a: the typed op format (nd_op.h): ids free of the F3DEX2 and G_PM_* ops, the translation of each scalar op, the othermode inverse. */
 static void op_test(void) {
-    for (unsigned id = NDO_BASE; id < NDO_END_; id++) {
+    for (unsigned id = ND_FS_BASE; id < ND_FS_END_; id++) {
         CHECK(!(id >= 0x01 && id <= 0x07) && !(id >= 0x0d && id <= 0x13) && id < 0xd7, "typed id %02x collides", id);
-        if (id != NDO_RARE && id != NDO_MISC) CHECK(nd_op_n64[id - NDO_BASE] >= 0xd7 || (nd_op_geo(id) && nd_op_n64[id - NDO_BASE] >= 0x01 && nd_op_n64[id - NDO_BASE] <= 0x07),
+        if (id != ND_FS_RARE && id != ND_FS_MISC) CHECK(nd_op_n64[id - ND_FS_BASE] >= 0xd7 || (nd_op_geo(id) && nd_op_n64[id - ND_FS_BASE] >= 0x01 && nd_op_n64[id - ND_FS_BASE] <= 0x07),
                                   "typed id %02x has no F3DEX2 op", id);
     }
     Gfx g[16]; uint32_t t[2];
     gDPSetCycleType(&g[0], G_CYC_2CYCLE);
-    CHECK(nd_op_xlate(g[0].words.w0, g[0].words.w1, t) && (t[0] >> 24) == NDO_OMH && t[1] == g[0].words.w1, "cycle type");
+    CHECK(nd_op_xlate(g[0].words.w0, g[0].words.w1, t) && (t[0] >> 24) == ND_FS_OMH && t[1] == g[0].words.w1, "cycle type");
     CHECK(nd_op_om_mask(t[0] & 0xffffffu) == (3u << G_MDSFT_CYCLETYPE), "cycle type mask %08x", nd_op_om_mask(t[0] & 0xffffffu));
     CHECK(nd_op_om_word(t) == g[0].words.w0, "othermode H inverse %08x %08x", nd_op_om_word(t), g[0].words.w0);
     gDPSetRenderMode(&g[1], G_RM_AA_ZB_OPA_SURF, G_RM_AA_ZB_OPA_SURF2);
-    CHECK(nd_op_xlate(g[1].words.w0, g[1].words.w1, t) && (t[0] >> 24) == NDO_OML && nd_op_om_word(t) == g[1].words.w0, "render mode");
+    CHECK(nd_op_xlate(g[1].words.w0, g[1].words.w1, t) && (t[0] >> 24) == ND_FS_OML && nd_op_om_word(t) == g[1].words.w0, "render mode");
     CHECK(nd_op_om_mask(t[0] & 0xffffffu) == 0xfffffff8u, "render mode mask %08x", nd_op_om_mask(t[0] & 0xffffffu));
     gSPSetOtherMode(&g[2], G_SETOTHERMODE_L, 0, 32, 0x12345678);
     CHECK(nd_op_xlate(g[2].words.w0, g[2].words.w1, t) && nd_op_om_mask(t[0] & 0xffffffu) == 0xffffffffu, "othermode 32 bits");
     gSPGeometryMode(&g[3], G_LIGHTING, G_ZBUFFER | G_SHADE);
-    CHECK(nd_op_xlate(g[3].words.w0, g[3].words.w1, t) && (t[0] >> 24) == NDO_GEOM && (t[0] & 0xffffffu) == (g[3].words.w0 & 0xffffffu) &&
+    CHECK(nd_op_xlate(g[3].words.w0, g[3].words.w1, t) && (t[0] >> 24) == ND_FS_GEOM && (t[0] & 0xffffffu) == (g[3].words.w0 & 0xffffffu) &&
           t[1] == g[3].words.w1, "geometry mode");
     gDPSetPrimColor(&g[4], 3, 200, 1, 2, 3, 4);
-    CHECK(nd_op_xlate(g[4].words.w0, g[4].words.w1, t) && (t[0] >> 24) == NDO_PRIM && (t[0] & 0xffffffu) == (g[4].words.w0 & 0xffffu) &&
+    CHECK(nd_op_xlate(g[4].words.w0, g[4].words.w1, t) && (t[0] >> 24) == ND_FS_PRIM && (t[0] & 0xffffffu) == (g[4].words.w0 & 0xffffu) &&
           t[1] == 0x01020304u, "prim colour");
     gSPTexture(&g[5], 0x8000, 0x4000, 0, G_TX_RENDERTILE, G_ON);
-    CHECK(nd_op_xlate(g[5].words.w0, g[5].words.w1, t) && (t[0] >> 24) == NDO_TEXTURE && (t[0] & 0xffffffu) == 1u && t[1] == 0x80004000u, "texture");
+    CHECK(nd_op_xlate(g[5].words.w0, g[5].words.w1, t) && (t[0] >> 24) == ND_FS_TEXTURE && (t[0] & 0xffffffu) == 1u && t[1] == 0x80004000u, "texture");
     gSPSegment(&g[6], 5, 0x00123450);
-    CHECK(nd_op_xlate(g[6].words.w0, g[6].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_SEG << 16 | 5u) && t[1] == 0x00123450u, "segment");
+    CHECK(nd_op_xlate(g[6].words.w0, g[6].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MW, ND_FS_MW_SEG << 16 | 5u) && t[1] == 0x00123450u, "segment");
     gSPFogPosition(&g[7], 900, 1000);
-    CHECK(nd_op_xlate(g[7].words.w0, g[7].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_FOG << 16), "fog position");
+    CHECK(nd_op_xlate(g[7].words.w0, g[7].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MW, ND_FS_MW_FOG << 16), "fog position");
     gSPNumLights(&g[8], NUMLIGHTS_2);
-    CHECK(nd_op_xlate(g[8].words.w0, g[8].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_NUMLIGHT << 16) && t[1] == g[8].words.w1, "light count");
+    CHECK(nd_op_xlate(g[8].words.w0, g[8].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MW, ND_FS_MW_NUMLIGHT << 16) && t[1] == g[8].words.w1, "light count");
     gMoveWd(&g[9], G_MW_LIGHTCOL, G_MWO_aLIGHT_3, 0x11223300);
-    CHECK(nd_op_xlate(g[9].words.w0, g[9].words.w1, t) && t[0] == NDO_W0(NDO_MW, NDO_MW_LIGHTCOL << 16 | 2u), "light colour %08x", t[0]);
+    CHECK(nd_op_xlate(g[9].words.w0, g[9].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MW, ND_FS_MW_LIGHTCOL << 16 | 2u), "light colour %08x", t[0]);
     gDPSetScissor(&g[10], G_SC_NON_INTERLACE, 10, 20, 300, 220);
-    CHECK(nd_op_xlate(g[10].words.w0, g[10].words.w1, t) && (t[0] >> 24) == NDO_SCISSOR && (t[0] & 0xffffffu) == (g[10].words.w0 & 0xffffffu) &&
+    CHECK(nd_op_xlate(g[10].words.w0, g[10].words.w1, t) && (t[0] >> 24) == ND_FS_SCISSOR && (t[0] & 0xffffffu) == (g[10].words.w0 & 0xffffffu) &&
           t[1] == (g[10].words.w1 & 0xffffffu), "scissor");
     gDPSetEnvColor(&g[11], 9, 8, 7, 6);
-    CHECK(nd_op_xlate(g[11].words.w0, g[11].words.w1, t) && t[0] == NDO_W0(NDO_ENV, 0) && t[1] == 0x09080706u, "env colour");
+    CHECK(nd_op_xlate(g[11].words.w0, g[11].words.w1, t) && t[0] == ND_FS_W0(ND_FS_ENV, 0) && t[1] == 0x09080706u, "env colour");
     gSPDisplayList(&g[12], (Gfx*)0x00200000);
-    CHECK(nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == ND_OP_CALL_W0 && t[1] == g[12].words.w1 && nd_op_ctl(NDO_CALL), "list call (HC4d2)");
+    CHECK(nd_op_xlate(g[12].words.w0, g[12].words.w1, t) && t[0] == ND_OP_CALL_W0 && t[1] == g[12].words.w1 && nd_op_ctl(ND_FS_CALL), "list call (HC4d2)");
     {   /* HC4d2: the control ops: branch, rectangles, the misc sub-ops; the producer encoders give the units of the words */
         Gfx c[9]; static Vtx cv[4];
         gSPBranchList(&c[0], (Gfx*)0x00200000);
-        CHECK(nd_op_xlate(c[0].words.w0, c[0].words.w1, t) && t[0] == NDO_W0(NDO_CALL, 1) && t[1] == 0x00200000u, "branch");
+        CHECK(nd_op_xlate(c[0].words.w0, c[0].words.w1, t) && t[0] == ND_FS_W0(ND_FS_CALL, 1) && t[1] == 0x00200000u, "branch");
         gDPFillRectangle(&c[1], 10, 20, 300, 220);
-        CHECK(nd_op_xlate(c[1].words.w0, c[1].words.w1, t) && (t[0] >> 24) == NDO_RECT && (t[0] & 0xffffffu) == (c[1].words.w0 & 0xffffffu) &&
-              t[1] == c[1].words.w1 && !(t[1] & NDO_RECT_TEX), "fill rectangle");
+        CHECK(nd_op_xlate(c[1].words.w0, c[1].words.w1, t) && (t[0] >> 24) == ND_FS_RECT && (t[0] & 0xffffffu) == (c[1].words.w0 & 0xffffffu) &&
+              t[1] == c[1].words.w1 && !(t[1] & ND_FS_RECT_TEX), "fill rectangle");
         { Gfx* cp = &c[2]; gSPTextureRectangle(cp++, 40, 80, 400, 600, 3, 0, 0, 1024, 1024); }
         CHECK(nd_op_xlate(c[2].words.w0, c[2].words.w1, t) && (t[0] & 0xffffffu) == (c[2].words.w0 & 0xffffffu) &&
-              t[1] == (NDO_RECT_TEX | c[2].words.w1), "texture rectangle");
-        CHECK(nd_op_xlate(c[3].words.w0, c[3].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16) && t[1] == c[3].words.w1, "rdphalf 1");
+              t[1] == (ND_FS_RECT_TEX | c[2].words.w1), "texture rectangle");
+        CHECK(nd_op_xlate(c[3].words.w0, c[3].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16) && t[1] == c[3].words.w1, "rdphalf 1");
         gPmNdSplash(&c[5], 1);
-        CHECK(nd_op_xlate(c[5].words.w0, c[5].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_ND << 16 | G_PM_ND_SPLASH << 8 | 1u), "splash");
+        CHECK(nd_op_xlate(c[5].words.w0, c[5].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_ND << 16 | G_PM_ND_SPLASH << 8 | 1u), "splash");
         gDPSetColorImage(&c[6], G_IM_FMT_RGBA, G_IM_SIZ_16b, 320, 0x00300000);
-        CHECK(nd_op_xlate(c[6].words.w0, c[6].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_CIMG << 16 | G_IM_SIZ_16b << 12 | 319u) &&
+        CHECK(nd_op_xlate(c[6].words.w0, c[6].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_CIMG << 16 | G_IM_SIZ_16b << 12 | 319u) &&
               t[1] == 0x00300000u, "colour image");
         gSPModifyVertex(&c[7], 5, G_MWO_POINT_XYSCREEN, 0x12345678);
-        CHECK(nd_op_xlate(c[7].words.w0, c[7].words.w1, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_MODVTX << 16 | G_MWO_POINT_XYSCREEN << 8 | 5u),
+        CHECK(nd_op_xlate(c[7].words.w0, c[7].words.w1, t) && t[0] == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_MODVTX << 16 | G_MWO_POINT_XYSCREEN << 8 | 5u),
               "modify vertex %08x", t[0]);
         gSPVertex(&c[8], cv, 4, 0);
         CHECK(nd_op_xlate(c[8].words.w0, c[8].words.w1, t) && t[0] == ND_OP_VTX_W0(4, 0), "sprite vertex encoder");
         gSP2Triangles(&c[8], 0, 2, 1, 0, 0, 3, 2, 0);
-        CHECK(nd_op_xlate(c[8].words.w0, c[8].words.w1, t) && t[0] == NDO_W0(NDO_TRI2, ND_OP_TRI_A(0, 2, 1)) && t[1] == ND_OP_TRI_A(0, 3, 2),
+        CHECK(nd_op_xlate(c[8].words.w0, c[8].words.w1, t) && t[0] == ND_FS_W0(ND_FS_TRI2, ND_OP_TRI_A(0, 2, 1)) && t[1] == ND_OP_TRI_A(0, 3, 2),
               "sprite triangle encoder");
         c[0].words.w0 = (uint32_t)G_PM_LST << 24;
-        CHECK(nd_op_xlate(c[0].words.w0, 0, t) && t[0] == NDO_W0(NDO_MISC, NDO_MISC_LST << 16), "in-line list start");
+        CHECK(nd_op_xlate(c[0].words.w0, 0, t) && t[0] == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_LST << 16), "in-line list start");
     }
     gDPSetCombineMode(&g[13], G_CC_SHADE, G_CC_SHADE);
-    CHECK(nd_op_xlate(g[13].words.w0, g[13].words.w1, t) && (t[0] >> 24) == NDO_COMB && NDO_COMB_W0(t[0]) == g[13].words.w0 &&
+    CHECK(nd_op_xlate(g[13].words.w0, g[13].words.w1, t) && (t[0] >> 24) == ND_FS_COMB && ND_FS_COMB_W0(t[0]) == g[13].words.w0 &&
           t[1] == g[13].words.w1, "combine (HC4b)");
     gDPSetRenderMode(&g[14], G_RM_FOG_SHADE_A, G_RM_AA_ZB_OPA_SURF2);
-    CHECK(nd_op_xlate(g[14].words.w0, g[14].words.w1, t) && t[0] == NDO_W0(NDO_OML, NDO_A_RENDERMODE) && t[1] == g[14].words.w1,
+    CHECK(nd_op_xlate(g[14].words.w0, g[14].words.w1, t) && t[0] == ND_FS_W0(ND_FS_OML, ND_FS_A_RENDERMODE) && t[1] == g[14].words.w1,
           "render mode a field %08x", t[0]);
     gDPPipeSync(&g[15]);
     CHECK(!nd_op_xlate(g[15].words.w0, g[15].words.w1, t), "sync stays a word");
@@ -141,10 +149,10 @@ static void op_test(void) {
         gSPMatrix(&h[3], &mm, G_MTX_MODELVIEW | G_MTX_MUL | G_MTX_PUSH);
         gSPPopMatrix(&h[4], G_MTX_MODELVIEW);
         gSPLight(&h[5], &ll.l[0], 1);
-        static const unsigned gid[6] = { NDO_VTX, NDO_TRI1, NDO_TRI2, NDO_MTX, NDO_POPMTX, NDO_MOVEMEM };
+        static const unsigned gid[6] = { ND_FS_VTX, ND_FS_TRI1, ND_FS_TRI2, ND_FS_MTX, ND_FS_POPMTX, ND_FS_MOVEMEM };
         for (unsigned i = 0; i < 6; i++)
             CHECK(nd_op_xlate(h[i].words.w0, h[i].words.w1, t) && (t[0] >> 24) == gid[i] && nd_op_geo(gid[i]) && (t[0] & 0xffffffu) == (h[i].words.w0 & 0xffffffu) &&
-                  t[1] == h[i].words.w1 && nd_op_n64[gid[i] - NDO_BASE] == (h[i].words.w0 >> 24), "geometry op %u", i);
+                  t[1] == h[i].words.w1 && nd_op_n64[gid[i] - ND_FS_BASE] == (h[i].words.w0 >> 24), "geometry op %u", i);
         CHECK((((u32)sizeof(Light) - 1u) / 8u << 19 | ((1u * 24u + 24u) / 8u) << 8 | G_MV_LIGHT) == (h[5].words.w0 & 0xffffffu), "rec_lights light 1 field");
     }
 }
@@ -163,7 +171,7 @@ static void nd_x_test(void) {
     unsigned f0 = fails, n_x = 0;
     uint32_t s = 0x9E3779B9u;
 #define HC4E1_RND() (s = s * 1664525u + 1013904223u)
-    CHECK(kx[0] == NDO_W0(NDO_MW, NDO_MW_LIGHTCOL << 16 | 2u) && kx[1] == 0x5566u, "static ND_X units %08x %08x", kx[0], kx[1]);
+    CHECK(kx[0] == ND_FS_W0(ND_FS_MW, ND_FS_MW_LIGHTCOL << 16 | 2u) && kx[1] == 0x5566u, "static ND_X units %08x %08x", kx[0], kx[1]);
     for (unsigned k = 0; k < sizeof xl / sizeof xl[0]; k++) {
         for (unsigned i = 0; i < 8; i++) {
             const uint32_t w0 = (uint32_t)xl[k] << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
@@ -177,17 +185,17 @@ static void nd_x_test(void) {
     for (unsigned k = 0; k < sizeof spec / sizeof spec[0]; k++) {
         for (unsigned i = 0; i < 8; i++) {
             const uint32_t w0 = (uint32_t)spec[k] << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
-            CHECK(ND_X0(w0, w1) == NDO_W0(NDO_MISC, NDO_MISC_NOP << 16) && ND_X1(w0, w1) == w1, "ND_X sync %02x", spec[k]);
+            CHECK(ND_X0(w0, w1) == ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16) && ND_X1(w0, w1) == w1, "ND_X sync %02x", spec[k]);
             n_x++;
         }
     }
     for (unsigned i = 0; i < 8; i++) {
         const uint32_t w0 = (uint32_t)G_ENDDL << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
-        CHECK(ND_X0(w0, w1) == NDO_W0(NDO_END, 0) && ND_X1(w0, w1) == 0u, "ND_X ENDDL");
+        CHECK(ND_X0(w0, w1) == ND_FS_W0(ND_FS_END, 0) && ND_X1(w0, w1) == 0u, "ND_X ENDDL");
         n_x++;
     }
-    for (unsigned i = 0; i < 8; i++) {  /* a typed unit (NDO_TILE) and an unknown op (0x08): both stay */
-        const uint32_t ids[2] = { NDO_TILE, 0x08u };
+    for (unsigned i = 0; i < 8; i++) {  /* a typed unit (ND_FS_TILE) and an unknown op (0x08): both stay */
+        const uint32_t ids[2] = { ND_FS_TILE, 0x08u };
         for (unsigned j = 0; j < 2; j++) {
             const uint32_t w0 = ids[j] << 24 | (HC4E1_RND() & 0xffffffu), w1 = HC4E1_RND();
             uint32_t t[2] = { 0, 0 };

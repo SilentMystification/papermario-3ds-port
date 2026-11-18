@@ -27,7 +27,7 @@ static void oth(unsigned* p, unsigned op, unsigned sft, unsigned len, unsigned v
 static void typ(unsigned* L, unsigned n) {
     for (unsigned i = 0; i < n; i++) {
         uint32_t t[2];
-        if ((L[2 * i] >> 24) == OP_ENDDL) { L[2 * i] = NDO_W0(NDO_END, 0); L[2 * i + 1] = 0; continue; }
+        if ((L[2 * i] >> 24) == OP_ENDDL) { L[2 * i] = ND_FS_W0(ND_FS_END, 0); L[2 * i + 1] = 0; continue; }
         nd_op_xlate(L[2 * i], L[2 * i + 1], t);
         L[2 * i] = t[0]; L[2 * i + 1] = t[1];
     }

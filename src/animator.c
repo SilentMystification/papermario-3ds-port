@@ -867,7 +867,7 @@ void appendGfx_animator_node(ModelAnimator* animator, AnimatorNode* node, Matrix
             u32 nu = mesh != nullptr ? (u32)mesh->nu : 0;
 
             if (mesh == nullptr) {
-                while ((units[2 * nu] >> 24) != NDO_END) {
+                while ((units[2 * nu] >> 24) != ND_FS_END) {
                     nu++;
                 }
             }

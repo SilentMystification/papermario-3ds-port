@@ -30,22 +30,22 @@ static int tri_ok(uint32_t t, unsigned n) {
     return ((t >> 16) & 0xffu) >> 1 < n && ((t >> 8) & 0xffu) >> 1 < n && (t & 0xffu) >> 1 < n;
 }
 static int parts_ok(const uint32_t* l) {
-    if ((l[0] >> 24) != NDO_VTX) return 0;
+    if ((l[0] >> 24) != ND_FS_VTX) return 0;
     const unsigned n = (l[0] >> 12) & 0xffu;
     if (n < 1u || n > 64u || ((l[0] >> 1) & 0x7fu) != n) return 0;
     unsigned have = n;
     for (unsigned k = 1u; k <= 64u; k++) {
         const uint32_t w0 = l[2u * k], w1 = l[2u * k + 1u];
-        if ((w0 >> 24) == NDO_END) return 1;
+        if ((w0 >> 24) == ND_FS_END) return 1;
         if (w0 == ND_NOP_A) continue;
-        if ((w0 >> 24) == NDO_VTX) {
+        if ((w0 >> 24) == ND_FS_VTX) {
             const unsigned n2 = (w0 >> 12) & 0xffu, e2 = (w0 >> 1) & 0x7fu;
             if (n2 < 1u || e2 > 64u || n2 > e2 || e2 - n2 > have) return 0;
             if (e2 > have) have = e2;
             continue;
         }
-        if ((w0 >> 24) == NDO_TRI1) { if (!tri_ok(w0 & 0xffffffu, have)) return 0; continue; }
-        if ((w0 >> 24) == NDO_TRI2) { if (!tri_ok(w0 & 0xffffffu, have) || !tri_ok(w1, have)) return 0; continue; }
+        if ((w0 >> 24) == ND_FS_TRI1) { if (!tri_ok(w0 & 0xffffffu, have)) return 0; continue; }
+        if ((w0 >> 24) == ND_FS_TRI2) { if (!tri_ok(w0 & 0xffffffu, have) || !tri_ok(w1, have)) return 0; continue; }
         return 0;
     }
     return 0;
@@ -56,22 +56,22 @@ static int old_walk(const uint32_t* u, Draw* d, unsigned* nd, unsigned* tot) {
     const unsigned n = (u[0] >> 12) & 0xffu;
     if (!mapped_vtx(u[1]) || n < 1u || n > 64u) return -1;
     *tot = n;
-    for (const uint32_t* q = u + 2; (q[0] >> 24) != NDO_END; q += 2) {
-        if ((q[0] >> 24) != NDO_VTX) continue;
+    for (const uint32_t* q = u + 2; (q[0] >> 24) != ND_FS_END; q += 2) {
+        if ((q[0] >> 24) != ND_FS_VTX) continue;
         const unsigned n2 = (q[0] >> 12) & 0xffu;
         if (!mapped_vtx(q[1]) || n2 < 1u || n2 > 64u) return -1;
         *tot += n2;
     }
     unsigned m = 0;
     d[m].is_tri = 0; d[m].src = u[1]; d[m].n = n; d[m].v0 = 0; m++;
-    for (const uint32_t* q = u + 2; (q[0] >> 24) != NDO_END; q += 2) {
+    for (const uint32_t* q = u + 2; (q[0] >> 24) != ND_FS_END; q += 2) {
         if (q[0] == ND_NOP_A) continue;
-        if ((q[0] >> 24) == NDO_VTX) {
+        if ((q[0] >> 24) == ND_FS_VTX) {
             const unsigned n2 = (q[0] >> 12) & 0xffu, v0 = ((q[0] >> 1) & 0x7fu) - n2;
             d[m].is_tri = 0; d[m].src = q[1]; d[m].n = n2; d[m].v0 = v0; m++;
             continue;
         }
-        const int two = (q[0] >> 24) == NDO_TRI2;
+        const int two = (q[0] >> 24) == ND_FS_TRI2;
         for (int t = 0; t <= two; t++) {
             const uint32_t w = t ? q[1] : (q[0] & 0xffffffu);
             d[m].is_tri = 1; d[m].t[0] = ((w >> 16) & 0xffu) >> 1; d[m].t[1] = ((w >> 8) & 0xffu) >> 1; d[m].t[2] = (w & 0xffu) >> 1; m++;
@@ -88,7 +88,7 @@ static uint32_t inherit_rule(const NdSDef* d) { /* design note 6 */
     for (unsigned k = 0; k < d->n; k++) if (u[2u * k] != ND_NOP_A && !(d->vmask >> k & 1u)) { first = k; break; }
     int prim = 0, env = 0;
     for (unsigned k = 0; k < first; k++)
-        if (d->vmask >> k & 1u) { prim |= (u[2u * k] >> 24) == NDO_PRIM; env |= (u[2u * k] >> 24) == NDO_ENV; }
+        if (d->vmask >> k & 1u) { prim |= (u[2u * k] >> 24) == ND_FS_PRIM; env |= (u[2u * k] >> 24) == ND_FS_ENV; }
     const uint32_t cyc = 3u << G_MDSFT_CYCLETYPE;
     if (!d->has_comb) m |= NDG_IN_COMB;
     if ((d->omh_m & cyc) != cyc) m |= NDG_IN_CYC;
@@ -109,7 +109,7 @@ static void check_tab(const char* name, const NdGTab* t, unsigned nu) {
         if (k < nu && L[2u * k] == ND_NOP_A) { k++; continue; } /* a def never starts with a sync (the tool skips it first) */
         if (o->k == NDG_END) {
             if (i != t->nop - 1u) fail("END is not the last op", k);
-            if (k < nu && (L[2u * k] >> 24) != NDO_END) fail("END op on another unit", k);
+            if (k < nu && (L[2u * k] >> 24) != ND_FS_END) fail("END op on another unit", k);
             ended = 1; i++; break;
         }
         if (k >= nu) { fail("op after the list end", k); return; }
@@ -129,7 +129,7 @@ static void check_tab(const char* name, const NdGTab* t, unsigned nu) {
             if (g->ctx != (NDG_CTX_T1V | NDG_CTX_DUAL | NDG_CTX_VPRIM)) fail("def ctx", k);
             for (unsigned j = 0; j < g->d.n; j++) {
                 const unsigned jd = L[2u * (k + j)] >> 24;
-                if (jd == NDO_VTX || jd == NDO_TRI1 || jd == NDO_TRI2 || jd == NDO_CALL || jd == NDO_END) fail("draw unit inside a def", k + j);
+                if (jd == ND_FS_VTX || jd == ND_FS_TRI1 || jd == ND_FS_TRI2 || jd == ND_FS_CALL || jd == ND_FS_END) fail("draw unit inside a def", k + j);
             }
             printf("gtab def %s+%u n %u inherit 0x%02x ctx 0x%x\n", name, k, g->d.n, g->inherit, g->ctx);
             n_defs++;
@@ -141,12 +141,12 @@ static void check_tab(const char* name, const NdGTab* t, unsigned nu) {
             k++; i++;
             break;
         case NDG_VTX:
-            if (id != NDO_VTX || (uint32_t)(uintptr_t)o->p != w1 || o->a != ((w0 >> 12) & 0xffu) || o->a + o->b != ((w0 >> 1) & 0x7fu)) fail("vertex load", k);
+            if (id != ND_FS_VTX || (uint32_t)(uintptr_t)o->p != w1 || o->a != ((w0 >> 12) & 0xffu) || o->a + o->b != ((w0 >> 1) & 0x7fu)) fail("vertex load", k);
             nvtx += o->a; k++; i++;
             break;
         case NDG_TRI:
-            if (id != NDO_TRI1 && id != NDO_TRI2) { fail("triangle op on another unit", k); k++; i++; break; }
-            for (int s = 0; s <= (id == NDO_TRI2); s++, i++) {
+            if (id != ND_FS_TRI1 && id != ND_FS_TRI2) { fail("triangle op on another unit", k); k++; i++; break; }
+            for (int s = 0; s <= (id == ND_FS_TRI2); s++, i++) {
                 const uint32_t w = s ? w1 : (w0 & 0xffffffu);
                 const NdGOp* q = &t->op[i];
                 if (i >= t->nop || q->k != NDG_TRI || q->a != ((w >> 16) & 0xffu) >> 1 || q->b != ((w >> 8) & 0xffu) >> 1 || q->c != (w & 0xffu) >> 1) fail("triangle", k);
@@ -155,7 +155,7 @@ static void check_tab(const char* name, const NdGTab* t, unsigned nu) {
             k++;
             break;
         case NDG_CALL:
-            if (id != NDO_CALL || ((const NdGTab*)o->p)->list != (const uint32_t*)(uintptr_t)w1 || o->a != ((w0 & 0xffffffu) == 1u)) fail("call", k);
+            if (id != ND_FS_CALL || ((const NdGTab*)o->p)->list != (const uint32_t*)(uintptr_t)w1 || o->a != ((w0 & 0xffffffu) == 1u)) fail("call", k);
             k++; i++;
             break;
         default: fail("unknown op", k); k++; i++; break;
@@ -313,33 +313,33 @@ static void m_tilesize(unsigned tile, int uls, int ult, int lrs, int lrt) {
 static void m_unit(const uint32_t* u) {
     const uint32_t w0 = u[0], w1 = u[1], a = w0 & 0xffffffu;
     switch (w0 >> 24) {
-    case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); ms.omh = (ms.omh & ~m) | (w1 & m); break; }
-    case NDO_OML: { const uint32_t m = nd_op_om_mask(a); ms.oml = (ms.oml & ~m) | (w1 & m); break; }
-    case NDO_GEOM: ms.geom = (ms.geom & a) | w1; break;
-    case NDO_TEXTURE: ms.tex_on = a & 1u; break;
-    case NDO_COMB: ms.cw0 = NDO_COMB_W0(a); ms.cw1 = w1; ms.has_comb = 1; break;
-    case NDO_PRIM: ms.plod = a & 0xffffu; m_col(0, a & 0xffffu, w1); break;
-    case NDO_ENV: m_col(1, 0, w1); break;
-    case NDO_FOG: m_col(2, 0, w1); break;
-    case NDO_BLEND: m_col(3, 0, w1); break;
-    case NDO_MTX: m_xf(a & 0xffu, w1); break;
-    case NDO_POPMTX: m_xf(0xffu, w1); break;
-    case NDO_RARE: /* FXOPS: the convert and key words (set_rare, nd_set.c:148) */
-        if (a == NDO_RARE_CONV) ms.conv_k4 = (w1 >> 9) & 0xffu;
-        else if (a == NDO_RARE_KEYR) { ms.key_c = (ms.key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); ms.key_s = (ms.key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
+    case ND_FS_OMH: { const uint32_t m = nd_op_om_mask(a); ms.omh = (ms.omh & ~m) | (w1 & m); break; }
+    case ND_FS_OML: { const uint32_t m = nd_op_om_mask(a); ms.oml = (ms.oml & ~m) | (w1 & m); break; }
+    case ND_FS_GEOM: ms.geom = (ms.geom & a) | w1; break;
+    case ND_FS_TEXTURE: ms.tex_on = a & 1u; break;
+    case ND_FS_COMB: ms.cw0 = ND_FS_COMB_W0(a); ms.cw1 = w1; ms.has_comb = 1; break;
+    case ND_FS_PRIM: ms.plod = a & 0xffffu; m_col(0, a & 0xffffu, w1); break;
+    case ND_FS_ENV: m_col(1, 0, w1); break;
+    case ND_FS_FOG: m_col(2, 0, w1); break;
+    case ND_FS_BLEND: m_col(3, 0, w1); break;
+    case ND_FS_MTX: m_xf(a & 0xffu, w1); break;
+    case ND_FS_POPMTX: m_xf(0xffu, w1); break;
+    case ND_FS_RARE: /* FXOPS: the convert and key words (set_rare, nd_set.c:148) */
+        if (a == ND_FS_RARE_CONV) ms.conv_k4 = (w1 >> 9) & 0xffu;
+        else if (a == ND_FS_RARE_KEYR) { ms.key_c = (ms.key_c & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24); ms.key_s = (ms.key_s & 0x00ffffffu) | ((w1 & 0xffu) << 24); }
         else { ms.key_c = (ms.key_c & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8); ms.key_s = (ms.key_s & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8); }
         break;
-    case NDO_TIMG:
+    case ND_FS_TIMG:
         ms.timg = (const void*)(uintptr_t)w1; ms.t.timg_fmt = (a >> 21) & 7u; ms.t.timg_siz = (a >> 19) & 3u; ms.t.timg_stride = (int)(a & 0xfffu) + 1; ms.m.ld_valid = 0; ms.timg_set = 1;
         break;
-    case NDO_TILE: {
+    case ND_FS_TILE: {
         const unsigned tile = (w1 >> 24) & 7u;
         ms.t.tile_fmt[tile] = (a >> 21) & 7u; ms.t.tile_siz[tile] = (a >> 19) & 3u; ms.t.tile_tmem[tile] = a & 0x1ffu; ms.t.tile_pal[tile] = (w1 >> 20) & 15u;
         ms.t.tile_wrap[tile][0] = (w1 >> 8) & 3u; ms.t.tile_wrap[tile][1] = (w1 >> 18) & 3u; ms.t.tile_wrap[tile][2] = (w1 >> 4) & 15u; ms.t.tile_wrap[tile][3] = (w1 >> 14) & 15u;
         ms.t.tile_shift[tile][0] = w1 & 15u; ms.t.tile_shift[tile][1] = (w1 >> 10) & 15u;
         break;
     }
-    case NDO_LOADBLOCK: {
+    case ND_FS_LOADBLOCK: {
         const unsigned tile = (w1 >> 24) & 7u, tm = ms.t.tile_tmem[tile], texels = (w1 >> 12) & 0xfffu;
         const unsigned words = ((texels + 1u) << ms.t.tile_siz[tile]) >> 4;
         for (unsigned k = 0; k < 4; k++)
@@ -350,7 +350,7 @@ static void m_unit(const uint32_t* u) {
         ms.t.blk[k].tmem = tm; ms.t.blk[k].img = ms.timg; ms.t.blk[k].bytes = ((texels + 1u) << ms.t.tile_siz[tile]) >> 1;
         break;
     }
-    case NDO_LOADTILE: {
+    case ND_FS_LOADTILE: {
         const unsigned tile = (w1 >> 24) & 7u;
         const int uls = (int)((a >> 12) & 0xfffu), ult = (int)(a & 0xfffu), lrs = (int)((w1 >> 12) & 0xfffu), lrt = (int)(w1 & 0xfffu);
         ms.m.ld_valid = 1; ms.m.ld_x = uls >> 2; ms.m.ld_y = ult >> 2; ms.m.ld_h = ((lrt - ult) >> 2) + 1; ms.m.ld_w = ((lrs - uls) >> 2) + 1;
@@ -361,21 +361,21 @@ static void m_unit(const uint32_t* u) {
         ms.t.ldrec[k].tmem = tm; ms.t.ldrec[k].img = ms.timg; ms.t.ldrec[k].stride = ms.t.timg_stride; ms.t.ldrec[k].x = uls >> 2; ms.t.ldrec[k].y = ult >> 2;
         break;
     }
-    case NDO_LOADTLUT: {
+    case ND_FS_LOADTLUT: {
         const unsigned tile = (w1 >> 24) & 7u, slot = (ms.t.tile_tmem[tile] - 256u) >> 4;
         ms.tlut = ms.timg; ms.tlut_n = (int)((w1 >> 14) & 0x3ffu) + 1;
         if (slot < 16u) ms.m.tlut_pal[slot] = ms.timg;
         break;
     }
-    case NDO_TILESIZE: m_tilesize((w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
-    case NDO_MOVEMEM: if ((a & 0xffu) == G_MV_LIGHT) m_col(16u, a, w1); break; /* FXLT: NDN_LIT a 0 */
-    case NDO_MW: if ((a >> 16) == NDO_MW_NUMLIGHT) m_col(17u, a, w1); break; /* FXLT: NDN_LIT a 1 */
+    case ND_FS_TILESIZE: m_tilesize((w1 >> 24) & 7u, (int)((a >> 12) & 0xfffu), (int)(a & 0xfffu), (int)((w1 >> 12) & 0xfffu), (int)(w1 & 0xfffu)); break;
+    case ND_FS_MOVEMEM: if ((a & 0xffu) == G_MV_LIGHT) m_col(16u, a, w1); break; /* FXLT: NDN_LIT a 0 */
+    case ND_FS_MW: if ((a >> 16) == ND_FS_MW_NUMLIGHT) m_col(17u, a, w1); break; /* FXLT: NDN_LIT a 1 */
     default: break; /* no-op units; a list with another unit has no v2 table */
     }
 }
 static int m_isstatic(uint32_t w0) {
     const unsigned id = w0 >> 24;
-    return id == NDO_OMH || id == NDO_OML || id == NDO_GEOM || id == NDO_TEXTURE || id == NDO_COMB;
+    return id == ND_FS_OMH || id == ND_FS_OML || id == ND_FS_GEOM || id == ND_FS_TEXTURE || id == ND_FS_COMB;
 }
 static void m_tri(unsigned a, unsigned b, unsigned c) {
     if (nmtri >= EVMAX) { m_over = 1; return; }
@@ -507,7 +507,7 @@ static int pso_same(const NdPsoDesc* a, const NdPsoDesc* b) {
 /* GSET3: the unit word of a call. A call into a moved list is written as its device key (nd_gfx_conv.c: &ndd_<callee>), so the
  * expected word is the device entry of the callee table; any other call keeps the host address w1. 0 when the moved callee has no table. */
 static uint32_t v2_unit_w1(uint32_t w0, uint32_t w1) {
-    if ((w0 >> 24) != NDO_CALL) return w1;
+    if ((w0 >> 24) != ND_FS_CALL) return w1;
     for (unsigned s = 0; s < gconv_nsym; s++) {
         if (gconv_sym[s].kind != GS_GFX || (uintptr_t)gconv_sym[s].addr != (uintptr_t)w1) continue;
         if (!gconv_sym[s].moved) return w1;
@@ -529,11 +529,11 @@ static void v2_units(const NdNTab* t, const char* name) {
     unsigned n = 0;
     for (unsigned k = 0; k < nl; k++) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
-        if ((w0 >> 24) == NDO_END) break;
+        if ((w0 >> 24) == ND_FS_END) break;
         if (n >= u->b) { v2_fail("unit stream", name, n); return; }
         if (U[2u * n] != w0 || U[2u * n + 1u] != v2_unit_w1(w0, w1)) { v2_fail("unit stream", name, n); return; }
         n++;
-        if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) break;
+        if ((w0 >> 24) == ND_FS_CALL && (w0 & 1u)) break;
     }
     if (n != u->b) v2_fail("unit stream count", name, n);
 }
@@ -555,8 +555,8 @@ static void v2_dev(const NdNTab* t, const char* name, int fault, unsigned n) {
     for (unsigned k = 0; k < nl; k++) {
         const uint32_t w0 = L[2u * k];
         if (w0 == ND_NOP_A) continue;
-        if ((w0 >> 24) == NDO_END) { ks = k; break; }
-        if ((w0 >> 24) == NDO_CALL && (w0 & 1u)) { ks = k + 1u; break; }
+        if ((w0 >> 24) == ND_FS_END) { ks = k; break; }
+        if ((w0 >> 24) == ND_FS_CALL && (w0 & 1u)) { ks = k + 1u; break; }
     }
     /* the units: the list itself, or for a moved list the ndnu of the entry's own (first) table */
     unsigned first = n;
@@ -583,8 +583,8 @@ static unsigned f_nl(const GSym* s) { return (unsigned)(((uintptr_t)s->end - (ui
 static int f_list(const uint32_t* l, unsigned nl, uint32_t* o, unsigned* n, int depth) {
     for (unsigned i = 0; i < nl && i < ND_DLC_MAXOPS; i++) {
         const uint32_t w0 = l[2u * i], w1 = l[2u * i + 1u];
-        if ((w0 >> 24) == NDO_END) return 1;
-        if ((w0 >> 24) == NDO_CALL) {
+        if ((w0 >> 24) == ND_FS_END) return 1;
+        if ((w0 >> 24) == ND_FS_CALL) {
             const GSym* s = f_sym(w1);
             if (!s || depth >= 5 || !f_list((const uint32_t*)s->addr, f_nl(s), o, n, depth + 1)) return 0;
             if (w0 & 1u) return 1;
@@ -634,8 +634,8 @@ static int v2_mesh(const void* list) {
     const unsigned nl = (unsigned)(((uintptr_t)g->end - (uintptr_t)g->addr) / 8u);
     for (unsigned k = 0; k < nl; k++) {
         const uint32_t w0 = L[2u * k], w1 = L[2u * k + 1u];
-        if ((w0 >> 24) == NDO_END) break;
-        if ((w0 >> 24) != NDO_VTX) continue;
+        if ((w0 >> 24) == ND_FS_END) break;
+        if ((w0 >> 24) != ND_FS_VTX) continue;
         for (unsigned s = 0; s < gconv_nsym; s++)
             if (gconv_sym[s].kind == GS_V3S && (uintptr_t)w1 >= (uintptr_t)gconv_sym[s].addr && (uintptr_t)w1 < (uintptr_t)gconv_sym[s].end) return 1;
     }

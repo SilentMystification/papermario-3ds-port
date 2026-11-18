@@ -125,7 +125,7 @@ typedef struct ModelTreeInfo {
 } ModelTreeInfo; // size = 0x04
 
 typedef struct TextureHandle {
-    /* 0x00 */ const uint32_t* gfx; // NMDL0: NdNr units (nd_nr.h), the NDO_END unit last
+    /* 0x00 */ const uint32_t* gfx; // NMDL0: NdNr units (nd_nr.h), the ND_FS_END unit last
     /* 0x04 */ TextureHeader header;
     /* 0x34 */ IMG_PTR raster;
     /* 0x38 */ PAL_PTR palette;

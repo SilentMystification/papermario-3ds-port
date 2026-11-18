@@ -26,7 +26,7 @@ static int run_case(int k) {
     const uint32_t w1 = k == 0 ? (uint32_t)(uintptr_t)pos : k == 1 ? 0x0A000000u : (uint32_t)(uintptr_t)va;
     const void* base = k == 1 ? (const void*)pos : NULL;
     const Vtx* vtab = k == 2 ? NULL : vl;
-    const uint32_t units[6] = { ND_OP_VTX_W0(3, 0), w1, NDO_W0(NDO_END, 0), 0x5A5A5A5Au, ND_OP_VTX_W0(5, 3), w1 };
+    const uint32_t units[6] = { ND_OP_VTX_W0(3, 0), w1, ND_FS_W0(ND_FS_END, 0), 0x5A5A5A5Au, ND_OP_VTX_W0(5, 3), w1 };
     NdMesh* m = (NdMesh*)(void*)buf;
     Vtx ref[8];
 

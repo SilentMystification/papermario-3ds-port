@@ -2,9 +2,9 @@
 #include "model.h"
 #include "effects.h"
 
-#define BAR_DL NDO_CALL
-#define BAR_VTX NDO_VTX
-#define BAR_END NDO_END
+#define BAR_DL ND_FS_CALL
+#define BAR_VTX ND_FS_VTX
+#define BAR_END ND_FS_END
 
 s32 N(BarricadeModels)[] = {
     MODEL_t2, MODEL_t3, MODEL_t4, MODEL_t5,

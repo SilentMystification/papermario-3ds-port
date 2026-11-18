@@ -1,4 +1,4 @@
-/* nd_fs.h: the field-set ids of the typed unit (core 1 names). Same values and order as the unit ids in nd_op.h (NDO_*), so
+/* nd_fs.h: the field-set ids of the typed unit (core 1 names). Same values and order as the unit ids in nd_op.h (ND_FS_*), so
  * the setters and the field readers can name a field by its set id. A field set names the state a unit writes, not the gbi op.
  * The ids are 0x20 + k (k < 32). Host-built (nd_fs_test.c). */
 #ifndef ND_FS_H

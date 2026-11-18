@@ -329,7 +329,7 @@ void spr_appendGfx_component_flat(
                                     * HC4d2 (W5): written as typed ops (nd_op.h), no word */
         spr_geo_out[0] = ND_OP_VTX_W0(4, 0);
         spr_geo_out[1] = (u32)(uintptr_t)vertices;
-        spr_geo_out[2] = NDO_W0(NDO_TRI2, ND_OP_TRI_A(0, 2, 1));
+        spr_geo_out[2] = ND_FS_W0(ND_FS_TRI2, ND_OP_TRI_A(0, 2, 1));
         spr_geo_out[3] = ND_OP_TRI_A(0, 3, 2);
         return;
     }

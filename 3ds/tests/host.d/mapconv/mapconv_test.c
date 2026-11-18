@@ -103,7 +103,7 @@ static int do_map(const char* nm, int seed) {
         for (nops = 0; nops < ND_DLC_MAXOPS && loff + 8u * (nops + 1u) <= size; nops++) {
             const u8* p = g_shape + loff + 8u * nops;
             words[2 * nops] = seam_le32(p); words[2 * nops + 1] = seam_le32(p + 4);
-            if ((words[2 * nops] >> 24) == NDO_END) break;
+            if ((words[2 * nops] >> 24) == ND_FS_END) break;
         }
         noend = nops >= ND_DLC_MAXOPS || loff + 8u * (nops + 1u) > size;
         for (var = 0; var < 2; var++) {

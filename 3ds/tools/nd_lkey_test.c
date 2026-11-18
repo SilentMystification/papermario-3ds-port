@@ -5,16 +5,16 @@
 
 #define A 0x00100000u
 /* the device units of a moved list: VTX, TRI2, NOP (nu 3). The 4th unit stands for the next array in rodata (a far VTX): never read. */
-static const uint32_t mu[] = { ND_OP_VTX_W0(4, 0), A, NDO_W0(NDO_TRI2, 0), 0, ND_NOP_A, 0, ND_OP_VTX_W0(8, 0), 0x00be0000u };
+static const uint32_t mu[] = { ND_OP_VTX_W0(4, 0), A, ND_FS_W0(ND_FS_TRI2, 0), 0, ND_NOP_A, 0, ND_OP_VTX_W0(8, 0), 0x00be0000u };
 static const NdNDev md = { &md, 0u, mu, 3u, 2u };
 /* a plain list: VTX, END */
-static const uint32_t pl[] = { ND_OP_VTX_W0(3, 0), A, NDO_W0(NDO_END, 0), 0 };
+static const uint32_t pl[] = { ND_OP_VTX_W0(3, 0), A, ND_FS_W0(ND_FS_END, 0), 0 };
 
-static unsigned vtx_count(const uint32_t* u, unsigned n) { /* the reader form of ent_vtx_range: stop at n or at NDO_END */
+static unsigned vtx_count(const uint32_t* u, unsigned n) { /* the reader form of ent_vtx_range: stop at n or at ND_FS_END */
     unsigned v = 0;
     for (unsigned k = 0; k < n; k++) {
-        if ((u[2u * k] >> 24) == NDO_END) break;
-        if ((u[2u * k] >> 24) == NDO_VTX) v++;
+        if ((u[2u * k] >> 24) == ND_FS_END) break;
+        if ((u[2u * k] >> 24) == ND_FS_VTX) v++;
     }
     return v;
 }
@@ -35,7 +35,7 @@ int main(void) {
     u = nd_lkey_tab(&tp, 4096u, &n);
     if (u != pl || n != 4096u) { printf("lkey FAIL case 4\n"); return 1; }
     u = nd_lkey_end(&md, &md, buf, 8u);
-    if (u != buf || buf[0] != mu[0] || buf[4] != ND_NOP_A || (buf[6] >> 24) != NDO_END || vtx_count(u, 8u) != 1u) { printf("lkey FAIL case 5\n"); return 1; }
+    if (u != buf || buf[0] != mu[0] || buf[4] != ND_NOP_A || (buf[6] >> 24) != ND_FS_END || vtx_count(u, 8u) != 1u) { printf("lkey FAIL case 5\n"); return 1; }
     u = nd_lkey_end(pl, 0, buf, 8u);
     if (u != pl) { printf("lkey FAIL case 6\n"); return 1; }
     printf("lkey ok\n");

@@ -8,10 +8,10 @@
 void t_DetermineSphericalSize(const void*, s32*);
 void t_GetFirstTriangleNormal(const void*, f32*, f32*, f32*);
 
-#define VTXW0(n) (((uint32_t)NDO_VTX << 24) | ((n) << 12) | ((n) << 1))
-#define CALLW0 ((uint32_t)NDO_CALL << 24)
-#define ENDW0 ((uint32_t)NDO_END << 24)
-#define TRI1W0 ((uint32_t)NDO_TRI1 << 24)
+#define VTXW0(n) (((uint32_t)ND_FS_VTX << 24) | ((n) << 12) | ((n) << 1))
+#define CALLW0 ((uint32_t)ND_FS_CALL << 24)
+#define ENDW0 ((uint32_t)ND_FS_END << 24)
+#define TRI1W0 ((uint32_t)ND_FS_TRI1 << 24)
 #define ADDR(p) ((uint32_t)(uintptr_t)(p))
 
 static Vtx va, vb, vc;

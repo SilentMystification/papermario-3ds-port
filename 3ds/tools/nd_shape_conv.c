@@ -515,7 +515,7 @@ static void write_dlc(const NdSeamTab* t, const u8* buf, u32 size, u32 base, con
         for (nops = 0; nops < ND_DLC_MAXOPS && off + 8u * (nops + 1u) <= size; nops++) {
             const u8* p = buf + off + 8u * nops;
             words[2 * nops] = le32(p); words[2 * nops + 1] = le32(p + 4);
-            if ((words[2 * nops] >> 24) == NDO_END) break;
+            if ((words[2 * nops] >> 24) == ND_FS_END) break;
         }
         noend = nops >= ND_DLC_MAXOPS || off + 8u * (nops + 1u) > size; /* no end word: the compile refuses it (NDR_LONG) */
         for (v = 0; v < 2; v++) {
