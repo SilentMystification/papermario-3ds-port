@@ -1,4 +1,4 @@
-14:#10 switches bootid=c024106f1f warp=mac_01:0 pos=0:0:200 loglevel=debug det dschk
+14:#10 switches bootid=d84e2f9c1e warp=mac_01:0 pos=0:0:200 loglevel=debug det dschk
 134:#131 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 135:#132 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 142:#139 dschk bad f3 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
@@ -7,8 +7,8 @@
 145:#142 dschk bad f5 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 146:#143 dschk bad f7 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 147:#144 dschk bad f7 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
-224:#222 dschk f100 cmds 10554 bad 10554 epbad 967 fbad 34307
-250:#247 dschk f200 cmds 27392 bad 27392 epbad 2436 fbad 84821
+279:#277 dschk f100 cmds 10554 bad 10554 epbad 967 fbad 11536 adopt 5773 adiff 26689
+304:#301 dschk f200 cmds 27392 bad 27392 epbad 2436 fbad 28374 adopt 15273 adiff 70519
 135:#132 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 136:#133 dschk bad f1 tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.tile_sz
 143:#140 dschk bad f3 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
@@ -17,28 +17,28 @@
 146:#143 dschk bad f5 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
 147:#144 dschk bad f7 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
 148:#145 dschk bad f7 fill timg tst1.timg_fmt tst1.timg_siz tst1.timg_stride tst1.ldrec tst1.blk tst1.tile_tmem
-225:#223 dschk f100 cmds 10554 bad 10554 epbad 967 fbad 34673
-251:#248 dschk f200 cmds 27392 bad 27392 epbad 2436 fbad 85187
-278:#274 dschk f300 cmds 44128 bad 44128 epbad 3938 fbad 136136
-297:#293 dschk f400 cmds 61628 bad 61628 epbad 7138 fbad 196536
-338:#333 dschk f500 cmds 79674 bad 79674 epbad 10414 fbad 258028
-382:#376 dschk f600 cmds 97390 bad 97390 epbad 13824 fbad 318860
-414:#408 dschk f700 cmds 115219 bad 115219 epbad 17086 fbad 379918
-456:#449 dschk f800 cmds 132807 bad 132807 epbad 20368 fbad 440494
-498:#490 dschk f900 cmds 150539 bad 150539 epbad 23694 fbad 501358
-529:#520 dschk f1000 cmds 168154 bad 168154 epbad 26951 fbad 561988
-570:#561 dschk f1100 cmds 185946 bad 185946 epbad 30240 fbad 622972
-617:#607 dschk f1200 cmds 203818 bad 203818 epbad 33466 fbad 684116
-651:#640 dschk f1300 cmds 221790 bad 221790 epbad 36750 fbad 745460
-688:#677 dschk f1400 cmds 239628 bad 239628 epbad 40040 fbad 806536
-733:#721 dschk f1500 cmds 257814 bad 257814 epbad 43324 fbad 868308
-792:#779 dschk f1600 cmds 276650 bad 276650 epbad 46968 fbad 929262
-836:#823 dschk f1700 cmds 294655 bad 294655 epbad 49716 fbad 984734
-992:#978 dschk f1800 cmds 312743 bad 312743 epbad 52988 fbad 1046310
-1037:#1022 dschk f1900 cmds 330475 bad 330475 epbad 56342 fbad 1107174
-1078:#1063 dschk f2000 cmds 348081 bad 348081 epbad 59646 fbad 1167786
-1120:#1104 dschk f2100 cmds 365925 bad 365925 epbad 62958 fbad 1228874
-1158:#1141 dschk f2200 cmds 383665 bad 383665 epbad 66210 fbad 1289754
-1197:#1180 dschk end f2292 cmds 400186 bad 400186 epbad 69184 fbad 1346162
-1198:#1181 dschk lg hw 119 over 0
-1201:#1183 dschk f2300 cmds 401587 bad 401587 epbad 69440 fbad 1350998
+280:#278 dschk f100 cmds 10554 bad 10554 epbad 967 fbad 11902 adopt 5773 adiff 26689
+305:#302 dschk f200 cmds 27392 bad 27392 epbad 2436 fbad 28740 adopt 15273 adiff 70519
+341:#337 dschk f300 cmds 44128 bad 43399 epbad 3938 fbad 44747 adopt 24886 adiff 114699
+360:#356 dschk f400 cmds 61628 bad 43399 epbad 7138 fbad 44747 adopt 36386 adiff 162099
+404:#399 dschk f500 cmds 79674 bad 43399 epbad 10414 fbad 44747 adopt 47886 adiff 209499
+456:#450 dschk f600 cmds 97390 bad 43399 epbad 13824 fbad 44747 adopt 59386 adiff 256899
+492:#486 dschk f700 cmds 115219 bad 43399 epbad 17086 fbad 44747 adopt 70886 adiff 304299
+545:#538 dschk f800 cmds 132807 bad 43399 epbad 20368 fbad 44747 adopt 82386 adiff 351699
+601:#593 dschk f900 cmds 150539 bad 43399 epbad 23694 fbad 44747 adopt 93886 adiff 399099
+639:#630 dschk f1000 cmds 168154 bad 43399 epbad 26951 fbad 44747 adopt 105386 adiff 446499
+685:#676 dschk f1100 cmds 185946 bad 43399 epbad 30240 fbad 44747 adopt 116886 adiff 493899
+739:#729 dschk f1200 cmds 203818 bad 43399 epbad 33466 fbad 44747 adopt 128386 adiff 541299
+780:#769 dschk f1300 cmds 221790 bad 43399 epbad 36750 fbad 44747 adopt 139886 adiff 588699
+820:#809 dschk f1400 cmds 239628 bad 43399 epbad 40040 fbad 44747 adopt 151386 adiff 636099
+865:#853 dschk f1500 cmds 257814 bad 43399 epbad 43324 fbad 44747 adopt 162886 adiff 683499
+959:#946 dschk f1600 cmds 276650 bad 43399 epbad 47158 fbad 44747 adopt 174386 adiff 730899
+1003:#990 dschk f1700 cmds 294655 bad 43399 epbad 50438 fbad 44747 adopt 185886 adiff 778299
+1105:#1091 dschk f1800 cmds 312743 bad 43399 epbad 53710 fbad 44747 adopt 197386 adiff 825699
+1142:#1127 dschk f1900 cmds 330475 bad 43399 epbad 57064 fbad 44747 adopt 208886 adiff 873099
+1179:#1164 dschk f2000 cmds 348081 bad 43399 epbad 60368 fbad 44747 adopt 220386 adiff 920499
+1219:#1203 dschk f2100 cmds 365925 bad 43399 epbad 63680 fbad 44747 adopt 231886 adiff 967899
+1255:#1238 dschk f2200 cmds 383665 bad 43399 epbad 66932 fbad 44747 adopt 243386 adiff 1015299
+1290:#1273 dschk end f2292 cmds 400186 bad 43399 epbad 69906 fbad 44747 adopt 253966 adiff 1058907
+1291:#1274 dschk lg hw 119 over 0
+1294:#1276 dschk f2300 cmds 401587 bad 43399 epbad 70162 fbad 44747 adopt 254886 adiff 1062699
