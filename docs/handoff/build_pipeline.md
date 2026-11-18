@@ -44,3 +44,6 @@ Proof of equal bytes: `PM_LANE=<l> PM_BUILD_REV=<c> PM_CACHE=off sh 3ds/build.sh
 | cold PM_CACHE=off | 266 s | 93 s |
 | key-only (bench.py run build_stale) | 12 s | 4.4 s |
 | scratch tree of a base commit | 13.5 s | 2.3 s |
+| base build of a new main commit (bench.py base --prebuild) | about 90 s | 23 s |
+| post-merge job with the cold check (post_merge.sh ... 1 0) | 600-750 s | 332 s |
+The cold build is CPU bound (FACT: 16 cores, 32 threads; -j28 gave 101 s against 93 s at -j20). It stays above 60 s.
