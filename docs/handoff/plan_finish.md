@@ -34,10 +34,11 @@ Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them
 | W13 | DEL3C nd_op.h, nd_gbi.h, the last reader headers, gMainGfxPos (variables.h:111, game_stubs.c:9) | W12 | 1 | nd_op.h users |
 | W14 | DEL4D1-2: gDP/gSP/gsDP/gsSP definitions and Gfx prototypes to 3ds/tools/gconv_inc (FACT gen_gfx_tab.sh:14): gbi.h; gbi_custom.h. DEL4D34 (gs2dex.h, gt.h, sp.h, gu.h: unused Gfx declarations, gt.h deleted) has no blocker: page now | W13 (DEL4D34 none) | 2 | one header per row |
 | W15 | S9GATE: listcen all 0, elfgate 0 0 0, the full drec set, then the user's end checks (section 5) | W14 | 1 | - |
-Width now (main 4abca1ff8a): merged NDR0E1 (snapchk bad 0), NST2H, MREN. Running NST2I (339c372f03 step 1). Ready now: DEL4D34 (include/PR headers, gfxtype -16, build -2). Waiting: NDR0E2 and NST2J (page: core 1 sc_lost and sc_dirty,
-dschk sclbad and sigbad) after NST2I, the two at the same time (disjoint hunks); REN8 after NDR0E2 and NST2J; NDR0F1 after NDR0E2. Critical path:
-NST2I -> NDR0E2 -> NDR0F1 -> NDR0F2/NDR0G -> W5. W5 rows (NDR1-4, NCONV1D) need the full mesh snap run (combine, render, binds): no page before the NDR0E2 and NDR0F1 data.
-nd_rec.c order: NST2I, NDR0E2 and NST2J, REN8. W10 DEL3A6 is done by REN6; DEL2A and DEL2C keep no rename part (MREN).
+Width now (main cbdf65c35f): merged NDR0E2 (snapchk bad 486 at texture rectangles: fold timing), NST2I (epbad all key 2090a: quiet NAPI commands), DEL4D34.
+Running: NDR0F1, NST2J (Azahar crash at a41cc4d4d4: clean rebuild asked). Ready: NDR0E3 (nd_rect.c, rect compare after box_fold_sync). Waiting: REN8 (after NST2J);
+NDR1B texrect apply (after NDR0E3 bad 0 and NDR0F1: nd_snap.c); NDR0F2, NDR0G (from NDR0F1 data); NST2K dschk names the NAPI runner of a 2090a key (after NST2J).
+Critical path: NDR0F1 -> NDR0F2/NDR0G -> W5. W5 rows (NDR1-4, NCONV1D) need the full mesh snap run (combine, render, binds).
+W10 DEL3A6 is done by REN6; DEL2A and DEL2C keep no rename part (MREN).
 ## 4. Sonnet rows split into Haiku rows, and rows Haiku cannot do
 - NDR0 (Sonnet) is NDR0A-E. A, B and C are measured steps: snapchk and dschk counts name each missing input. D and E follow from those counts.
 - NCONV1 (Sonnet) is NCONV1A and NCONV1D. NCONV1B and C are dropped: the ndnu_ unit arrays already hold the field-set words (ids equal ND_FS_, NCONV1A

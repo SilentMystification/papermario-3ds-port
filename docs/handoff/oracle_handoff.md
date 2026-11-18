@@ -9,8 +9,10 @@ Run listcen for fresh numbers.
 - User 2026-11-17: as many parallel Haiku coders as the plan allows. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0.
 ## Merged on main: NST1, NST3, NST2A-H, FALLBK, NDR0A-E1, NDR5, NCONV1A, REN1-REN7, MREN, PSOFB, HWFIX1, BOTSCR, BBRACE.
 ## Pages on main (oracle FIN)
-- Running: NST2I (step 1 339c372f03). Ready: DEL4D34 (7294a1f351, include/PR headers). Waiting: NDR0E2 and NST2J (after NST2I, together: disjoint hunks), REN8 (after both),
-  NDR0F1 (after NDR0E2). NST2J: core 1 NdDs.sc_lost/sc_dirty follow sc_ok/sc_sig (nd_ds.c ds_sync); dschk sclbad, sigbad.
+- Running: NDR0F1, NST2J (a41cc4d4d4 crashes in Azahar at map model lookup; no code path from the diff; clean rebuild asked).
+  Ready: NDR0E3. Waiting: REN8 (NST2J), NDR1B (NDR0E3 bad 0 + NDR0F1), NDR0F2/G (NDR0F1 data), NST2K (NST2J).
+- NDR0E2 data (FACT 4df41cf45a): rect snapchk bad 486 = fold names (rect compares before box_fold_sync). NST2I: epbad all 2090a (rule 9, NAPI).
+- NDR0F1 risk: sc_compare at a rect sets nd_snap_rpend; a later epoch without a new snap compares the rect snap (rnd names = check this first).
 - NST2H keys (FACT, a06c9a7b4c): spot 10130 2022d 1033e 1012a 1012b; wscmb 20130 1033e 10130 2022d 20220; axns and fxchk_a 20220 20121 10130.
 - NDR5 gap (answered): no row. load_mtx guards the source itself (nd_mtx_set.c:134 mtx_bad); gbi_cold_bad_mtx is a warning with list context.
 ## Open work (in order)
