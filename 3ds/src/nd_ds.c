@@ -21,7 +21,7 @@ void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, un
 NdDs nd_ds = {
     .w = { .geom = G_SHADE | G_SHADING_SMOOTH, .omode_h = 0, .omode_l = 0x00000030u, .prim = 0xffffffffu, .envc = 0xffffffffu,
            .fill = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF },
-    .comb_alpha_shade = 1,
+    .comb_alpha_shade = 1, .sc_lost = 1,
     .sci_x1 = 320, .sci_y1 = 240,
     .vp_sx = 160.f, .vp_sy = 120.f, .vp_sz = 127.75f, .vp_tx = 160.f, .vp_ty = 120.f, .vp_tz = 127.75f,
 };
@@ -338,7 +338,7 @@ void nd_ds_range(NdDs* s, const uint32_t* a, const uint32_t* b) {
         nd_ds_apply(s, lg_ch[i >> 12][2u * (i & 4095u)], lg_ch[i >> 12][2u * (i & 4095u) + 1u]);
 }
 
-unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
+static unsigned ds_apply(NdDs* s, uint32_t k, uint32_t v) {
     if (lg_dep && s == &nd_ds) lg_put(k, v);
     const u32 a = k & 0xffffffu, b = v;
     unsigned ch = 0;
@@ -366,6 +366,30 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
     case ND_FS_MOVEMEM: return ds_movemem(s, a, b);
     default: break;
     }
+    return ch;
+}
+
+static void ds_sync(NdDs* s, uint32_t k, uint32_t v, unsigned ch, uint32_t h0, int du0) {   /* NST2J: h0, du0 = omode_h, dual_on before the unit */
+    int sync = 0;
+    switch (k >> 24) {
+    case ND_FS_PRIM: case ND_FS_ENV: sync = (ch & 1u) || s->sc_lost; break;                     /* nd_set.c:132, :135 */
+    case ND_FS_TEXTURE: case ND_FS_COMB: sync = (ch & 1u) || s->sc_lost || s->sc_dirty; break; /* nd_set.c:138-141 */
+    case ND_FS_RARE: sync = 1; break;                                                          /* nd_set.c:157 */
+    case ND_FS_OMH:
+        if (s->w.omode_h == h0 && !s->sc_lost) break;                                          /* skipped (nd_set.c:125) */
+        if ((k & 0xffu) <= G_MDSFT_CYCLETYPE && (k & 0xffu) + ((k >> 8) & 0xffu) > G_MDSFT_CYCLETYPE) sync = 1; /* nd_set.c:95 */
+        else if (s->w.omode_h != h0) s->sc_dirty = 1;                                          /* omode_h is a sc_sig input */
+        break;
+    case ND_FS_TILESIZE: sync = ((v >> 24) & 7u) == 1u || (((v >> 24) & 7u) == 0u && (du0 || s->dual_on)); break; /* nd_tex_set.c:151, :155, :509 */
+    default: break;
+    }
+    if (sync) { s->sc_lost = 0; s->sc_dirty = 0; }
+}
+/* NST2J: the typed unit. ds_apply is the old body; the core 1 sync state follows it. */
+unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
+    const uint32_t h0 = s->w.omode_h; const int du0 = s->dual_on;
+    const unsigned ch = ds_apply(s, k, v);
+    ds_sync(s, k, v, ch, h0, du0);
     return ch;
 }
 
@@ -445,6 +469,7 @@ void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, N
     if (q[22]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[22], NULL); /* NST2D: custom gfx pre (R11, nd_range_run) */
     if (q[18]) nd_ds_apply(s, q[18], q[19]);
     if (q[20]) nd_ds_apply(s, q[20], q[21]);
+    s->sc_lost = 1; /* NST2J: the model runner leaves sc_ok 0 before the post range */
     if (q[23]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[23], NULL); /* NST2D: custom gfx post */
 }
 #undef T

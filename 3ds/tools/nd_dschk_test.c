@@ -27,5 +27,25 @@ int main(void) {
     n = nd_ds_cmp(&a, &b, bad, 4);
     if (n == 0) ok++; else printf("nst3 BAD td case gave %d first %s\n", n, n > 0 ? bad[0] : "-");
     printf("nst3 cmp ok %d/3\n", ok);
+    {   /* NST2J: the core 1 sync rule. The 6 cases run in order on one state s (case 3 is the unit of case 1, case 5 of case 2). */
+        NdDs s = nd_ds;
+        int ks = 0;
+        s.sc_lost = 1;
+        nd_ds_apply(&s, (uint32_t)ND_FS_PRIM << 24, s.w.prim);
+        if (s.sc_lost == 0 && s.sc_dirty == 0) ks++;
+        nd_ds_apply(&s, ((uint32_t)ND_FS_OMH << 24) | (2u << 8) | 12u, 2u << 12);
+        if (s.sc_lost == 0 && s.sc_dirty == 1) ks++;
+        nd_ds_apply(&s, (uint32_t)ND_FS_PRIM << 24, s.w.prim);
+        if (s.sc_lost == 0 && s.sc_dirty == 1) ks++;
+        nd_ds_apply(&s, ((uint32_t)ND_FS_TEXTURE << 24) | (uint32_t)(s.w.tex_on != 0), ((uint32_t)s.w.tex_ss << 16) | (uint32_t)s.w.tex_ts);
+        if (s.sc_lost == 0 && s.sc_dirty == 0) ks++;
+        s.sc_lost = 1;
+        nd_ds_apply(&s, ((uint32_t)ND_FS_OMH << 24) | (2u << 8) | 12u, 2u << 12);
+        if (s.sc_lost == 1) ks++;
+        nd_ds_apply(&s, ((uint32_t)ND_FS_OMH << 24) | (2u << 8) | 20u, 1u << 20);
+        if (s.sc_lost == 0 && s.sc_dirty == 0) ks++;
+        printf("nst2j sync ok %d/6\n", ks);
+        if (ks != 6) return 1;
+    }
     return ok == 3 ? 0 : 1;
 }
