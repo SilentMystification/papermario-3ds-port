@@ -49,6 +49,16 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - Core 0 leaves state that core 1 cannot follow: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits;
   a direct draw (nd_direct.c:103-116) writes pso state and binds without tile ops. dschk adopts core 1 values there (NST2B, NST2F) and counts adiff.
 - dschk copies nd_ds at rec_take of a command: every core 1 apply of a record goes after its nd_rec_* call.
+## Console reports 2026-11-17 (build 6449 = main 60182a2edd, FACT, rule 1: code read only)
+- 60 FPS row: paged ws_FPS60MENU (9ef4f1fd8d): git revert of FSKIP2 1e7ddd7ea1 (row renamed to "Frame skip", pm_options.c:421 :675).
+- OPEN, page ws_OPTIONS not written: (1) bottom screen blank sometimes; (2) some Select menu option rows change nothing.
+  Facts read so far: bottom console init pm_gpu.c:1902 (consoleInit GFX_BOTTOM, window LOG_TOP), only after C3D_Init; C3D_Init failure path :1799.
+  Bottom draw: pm_gpu_hud_flush (pm_gpu_ui.c:155-195) returns while menu_on or !consoleInitialised. Menu draw pm_gpu_ui.c:54-74 (consoleClear at close).
+  Only gfxFlushBuffers call: pm_gpu.c:1925 (menu_grey_top path). The top swaps at pm_gpu.c:1973 and pm_main.c:90; no bottom swap call (grep).
+  Log levels: pm_log.c:353-383 (livelevel, disklevel, conlevel; conlevel off = no log text on the bottom, GUESS). Options defaults pm_options.c:14-18.
+  Rows: tab_ids pm_options.c:418-445, labels :639-690, values :692+, flips pm_options_flip :298-335 and the act switch near :784 and :886.
+  To do: list each row id, its pm_opt field and every reader of that field (grep), git log -S on the field names over 002498da73..main.
 ## What to do first
+0. Write ws_OPTIONS from the OPEN block above (coordinator brief: switches prof and log profiles, GPOS1, NST hooks, TATTLEAR).
 1. Read design_nstate.md, plan_walker_delete.md and the ws_NST2* pages. Answer coder questions.
 2. Open work 2, then 3.
