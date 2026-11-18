@@ -2,13 +2,13 @@
 
 State: main b0763f2abf+, 2026-11-17. Counters FACT (orchestrator brief): build 308, data 191, gfxtype 251 (246 on branch GFXT1), reader 772,
 model 15, elfgate func 48 data 365. Run listcen for fresh numbers.
-## The chain: plan_finish.md (every row to the end, critical path, one console check per stage), design_nstate.md (S3-S6 design). Read both first.
+## The plan: plan_finish.md (15 waves, 47 Haiku rows, width and stop file per wave), design_nstate.md (S3-S6 design). Read both first.
 - D1 A, D2 A. UD1 option 1 (user): core 1 keeps the N64 field model; listcen reports a class core1 outside the end proof.
   UD2 option 1: core 0 keeps a native transform stack. UD3 option 1: prof push at the NST1 gate. Sonnet yes: NST1, NDR0, NCONV1, NREC1.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
 - HWFIX1 merged (nd_comb_core on a miss); user console check of 0f39de90cb: visual faults gone (FACT). TATTLEAR merged.
-## Pages on main and their waits (chain: NST1 -> NST3 -> NST2A -> NST2B -> NST2C -> NST2D -> NST2E -> NST2F -> NDR0)
-- Merged: PSOFB, NST1, NST3, NST2A, HWFIX1, BOTSCR. Done on branches, not on main: NST2B, NST2C, GFXT1, PSOCOV, BASELOG, OPTIONS (6efc8f900d).
+## Pages on main and their waits (NST2A-NST2E merged 75c0f42f15; NST2F running; no console check until S9GATE)
+- Merged: PSOFB, NST1, NST3, NST2A-E, HWFIX1, BOTSCR. Done on branches: GFXT1, PSOCOV, BASELOG, OPTIONS (6efc8f900d).
 - NSTO pages (oracle NSTO): NST2B model records (nd_ds_model; dschk adopts the groups a model cache hit skips), NST2C entity draw, sprite
   state, compiled def, particles (nd_ds_unit, nd_ds_feed), NST2D ranges (unit log of core 1 applies, marks, sub save/restore, R11 replay;
   dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
@@ -20,10 +20,11 @@ model 15, elfgate func 48 data 365. Run listcen for fresh numbers.
    and pm_f127 (pm_gpu.c:1725) (base ELF basebin/07b0785e17cf38b8). The tick top byte picks the unit: 0x39 MTX (variant a, stored base),
    0x2D COMB / RARE (variant b: key_s 0x100, sticky, all pso lookups miss). GUESS: psomiss tex_on 0x211321, 0x421862 = a tick with top byte 0x2A.
    Producer FACT: pm_gbi_fallback dl (nd_walk.c:770, raw gbi words, no NDO_END; caller pm_main.c:464). Fix page ws_FALLBK (2ac5fcf03a).
-3. NDR0 (Sonnet, design section 7) after the NST2F gate data. Reads it needs: gv_epoch_enter nd_geom.c:203-228, sync_combine_work
-   nd_comb.c:312-333 (leg_mode and comb_mode5 are decision inputs and outputs), sync_render nd_set.c:210, ensure_tile_slow nd_tex_set.c:335,
-   box_fold_sync nd_comb.c:374, nd_mesh_* are VTX/TRI state-run units (nd_geo.c:29-37), not commands. Then NCONV1 (section 8), NREC1 (9).
-4. Add the listcen class core1 (UD1) in the first row that adds ND_FS_ ids (NCONV1).
+3. FIN pages: ws_NDR0A (snapchk, from main), ws_NCONV1A (ND_FS_ ids, listcen core1 line), ws_NDR0B (td on core 1, after NST2F),
+   ws_RENFS (REN1-5 setter rename, after NCONV1A). Next pages: NDR0C (target role, render block in the snap: nd_tgt_role nd_tgt.h, set_cimg
+   nd_target.c:87, sync_render nd_set.c:210), NCONV1B (NDN_FS op: k in idx_pos, v in v), NDR0D (tile0_white nd_comb.c:354, box_fold_sync :372),
+   NDR5 (MTX op: op_geo nd_walk.c:316, no gv_epoch; a record sets ds_sclost, nd_rec.c:201: keep it for the xf record).
+4. Write each page from the snapchk and dschk names of the row before it. NDR0E is Sonnet only if the batch cut moves (plan_finish.md section 4).
 ## Facts that cost time
 - Every setter unit passes nd_rec_nr (nd_rec.c:399); core 0 runs it in nd_walk_state (nd_walk.c:390). reader, model, data, build fall only in S4-S7 (no row free of chain files: nd_cen.c callers are in nd_walk.c, nd_recs.c).
 - The F3 globals (conv_k4, dual_on, comb_set ...) have struct-field and parameter twins in 20+ files: never rename them by sed.
