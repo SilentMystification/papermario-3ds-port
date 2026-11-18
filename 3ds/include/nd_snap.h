@@ -86,4 +86,5 @@ void nd_snapchk_tick(void);
 unsigned nd_rec_cmds(void);
 /* nd_rec.c clears it at each command but the snapshot run; nd_snap.c sets it. */
 extern unsigned char nd_snap_arm;
+int nd_snap_spr(uint32_t o[9]); /* NDR4, nd_snap.c, core 0: the snap words of a sprite record (pm_gpu_spr_build); 0 when no snap */
 #endif

@@ -274,7 +274,9 @@ void nd_rec_model(const void* rec, unsigned words) {
     { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ DS_EP(4, 0); /* NST2B 1b: a model record is a state change for the ep bit */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
+void nd_snap_mesh(void); /* NDR4: strong in nd_snap.c */
 void nd_rec_spr(const void* rec, const void* geo) {
+    nd_snap_mesh(); /* NDR4: the snap of the sprite draw */
     rec_open();
     uint32_t* p = rec_take(2u + 2u * (G_PM_SPR_WORDS + 2u));
     ndc_n[NDC_SPR]++;
@@ -685,7 +687,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         if (p == stop) return;
         const uint32_t h = p[0];
         nd_stream_cur = p;
-        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && (op != NDC_NAPI || (p[1] != (uint32_t)(uintptr_t)nd_nr_run && !(h & 1u)))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */
+        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && op != NDC_SPR && (op != NDC_NAPI || (p[1] != (uint32_t)(uintptr_t)nd_nr_run && !(h & 1u)))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */
         { const unsigned op = h >> 24; if (op != NDC_JUMP && !(op == NDC_NAPI && (p[1] == (uint32_t)(uintptr_t)nd_nr_run || p[1] == (uint32_t)(uintptr_t)nd_dschk_run))) { nd_cmd_last = (uint8_t)op; nd_cmd_run = op == NDC_NAPI ? p[1] : 0u; } } /* NST2I, NST2K */
         switch (h >> 24) {
         case NDC_END: nd_snapchk_tick(); return; /* NDR0A: the snapchk frame line (nd_snap.c) */

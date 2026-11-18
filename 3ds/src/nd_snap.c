@@ -261,3 +261,13 @@ void nd_snapchk_tick(void) {
         pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u dir %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst, sc_dir);
     }
 }
+/* NDR4: the snap of a sprite record (pm_gpu_spr_build reads it). core 0. */
+static unsigned sc_sfr = ~0u;
+int nd_snap_spr(uint32_t o[9]) { /* NDR4: env prim omh oml geom cw0 cw1 mixk mixc of the live snap; 0 when none */
+    if (!nd_snap_live) return 0;
+    o[0] = sc_cur.in.env; o[1] = sc_cur.in.prim; o[2] = sc_cur.in.omode_h; o[3] = sc_cur.oml; o[4] = sc_cur.geom;
+    o[5] = sc_cur.in.w0; o[6] = sc_cur.in.w1; o[7] = (uint32_t)sc_cur.mixk; o[8] = sc_cur.mixc;
+    if (pm_drec_now() && pm_frame_count() != sc_sfr && (o[0] != nd_ws.envc || o[1] != nd_ws.prim || o[2] != nd_ws.omode_h || o[3] != nd_ws.omode_l ||
+        o[4] != nd_ws.geom || o[5] != nd_ws.comb_w0 || o[6] != nd_ws.comb_w1 || sc_cur.fogc != fogc || sc_cur.blendc != blendc)) { sc_sfr = pm_frame_count(); pm_log_d("sprsnap f%u", sc_sfr); }
+    return 1;
+}
