@@ -11,7 +11,7 @@
     ((unsigned int)(GCCc0w1(G_CCMUX_##b0, G_CCMUX_##d0, G_ACMUX_##Ab0, G_ACMUX_##Ad0) | \
                     GCCc1w1(G_CCMUX_##b1, G_ACMUX_##Aa1, G_ACMUX_##Ac1, G_CCMUX_##d1, G_ACMUX_##Ab1, G_ACMUX_##Ad1)))
 /* WSCMB: a combine unit (or a no-op unit) as an NdCmbW value (include/common_structs.h); the words of gsDPSetCombineMode and gsDPNoOp */
-#define ND_CMB_W_(w0, w1) { ND_FS_W0(ND_FS_COMB, (w0)), (w1) } /* DEL3C2: the typed combine unit (ND_X0, ND_X1 of the combine word) */
+#define ND_CMB_W_(w0, w1) { ND_FS_W0(ND_FS_COMB, (w0)), (w1) } /* DEL3C2: the typed combine unit (the nd_op.h units of the combine word) */
 #define ND_CMB_W(...) ND_CMB_W_(ND_W0_CMB(__VA_ARGS__), ND_W1_CMB(__VA_ARGS__))
 #define ND_CMB_NOP { ND_NOP_A, 0u }
 #define ND_W0_D2(c, len, idx, ofs) (_SHIFTL((c), 24, 8) | _SHIFTL(((len) - 1) / 8, 19, 5) | _SHIFTL((ofs) / 8, 8, 8) | _SHIFTL((idx), 0, 8))
