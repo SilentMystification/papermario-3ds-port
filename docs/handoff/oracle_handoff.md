@@ -45,7 +45,6 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - lkey_cen.py:71-72 fails a listed file whose reader count drops: a page that removes `.words.w*` reads edits allow.txt.
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file and the orchestrator commits stray files: read `git log -- <file>` and the file before a write.
-- Coders often hand back before the oracle reply arrives. Tell the orchestrator to resume them with the reply.
 - Core 0 leaves state that core 1 cannot follow: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits;
   a direct draw (nd_direct.c:103-116) writes pso state and binds without tile ops. dschk adopts core 1 values there (NST2B, NST2F) and counts adiff.
 - dschk copies nd_ds at rec_take of a command: every core 1 apply of a record goes after its nd_rec_* call.
