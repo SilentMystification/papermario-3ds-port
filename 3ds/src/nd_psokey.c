@@ -75,7 +75,7 @@ int nd_const_rgb(const NdCombIn* c, unsigned* out) {
     return 1;
 }
 
-/* The 16 combiner fields of cw0, cw1 as op_setcombine decodes them (tile 1 renamed to tile 0 when use_t1), and the folded box product (box_fold_sync). */
+/* The 16 combiner fields of cw0, cw1 as nd_comb_set decodes them (tile 1 renamed to tile 0 when use_t1), and the folded box product (box_fold_sync). */
 void nd_comb_tst(uint32_t w0, uint32_t w1, int use_t1, int box_folded, uint32_t t[16]) {
     t[0] = (w0 >> 20) & 0xf;  t[1] = (w1 >> 28) & 0xf;  t[2] = (w0 >> 15) & 0x1f; t[3] = (w1 >> 15) & 7;
     t[4] = (w0 >> 12) & 7;    t[5] = (w1 >> 12) & 7;    t[6] = (w0 >> 9) & 7;      t[7] = (w1 >> 9) & 7;

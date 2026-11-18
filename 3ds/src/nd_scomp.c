@@ -27,7 +27,7 @@ static unsigned unit_class(uint32_t w0) {
     }
 }
 
-/* S6SYNC: 1 when the op path runs sync_combine on this static unit (set_om over the cycle bits, nd_op_apply TEXTURE and COMB). */
+/* S6SYNC: 1 when the op path runs nd_comb_sync on this static unit (set_om over the cycle bits, nd_unit_apply TEXTURE and COMB). */
 static int unit_sync(uint32_t w0) {
     const unsigned a = w0 & 0xffffffu;
     switch (w0 >> 24) {
@@ -77,7 +77,7 @@ int nd_scomp_analyse(NdSDef* d) {
     return ok;
 }
 
-/* The key: the def and the combine decision inputs after the def's writes (nd_comb_decide NdCombIn and pm_comb_vprim). A field the def sets
+/* The key: the def and the combine decision inputs after the def's writes (nd_comb_dec NdCombIn and pm_comb_vprim). A field the def sets
  * takes the def's value; with a combine unit the combine fields derived from the words (tst1, use_t1, box_prod, box_folded 0, comb_set 1,
  * comb_alpha_shade) are a function of the def, so they are left out. */
 void nd_scomp_key(const NdSDef* d, const NdCombIn* in, uint32_t vprim, uint32_t key[ND_SC_KEYW]) {
@@ -154,7 +154,7 @@ void nd_scomp_rec(NdSDef* d, const void* vv, unsigned nv) {
 
 /* ---- core 0: the run ---- */
 /* DEL3B: a compiled record in the order of the old sc_exec: the pre value units, the static and no-op units of d in def order (nd_walk_state
- * skips a no-op), the cut and the render resync, the post value units. The static units take the walker decision (sync_combine), as a list def (NREC5). */
+ * skips a no-op), the cut and the render resync, the post value units. The static units take the walker decision (nd_comb_sync), as a list def (NREC5). */
 static __attribute__((cold, noinline)) void sr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("scomp run f%u", pm_frame_count()); } } /* DEL3B: the path ran */
 void nd_scomp_run(const uint32_t* rec) {
     const NdSDef* d = (const NdSDef*)(uintptr_t)rec[0];

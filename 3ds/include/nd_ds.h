@@ -1,5 +1,5 @@
 /* nd_ds.h: the core 1 draw state NdDs (design_nstate.md section 3, row NST1). NdDs = the walker state NdWs plus the globals of the core 0
- * setters (same names and types). nd_ds_apply copies the state writes of nd_op_apply (nd_set.c, nd_comb.c, nd_tex_set.c, nd_mtx_set.c)
+ * setters (same names and types). nd_ds_apply copies the state writes of nd_unit_apply (nd_set.c, nd_comb.c, nd_tex_set.c, nd_mtx_set.c)
  * without the GPU calls. Core 1 owns nd_ds; core 0 keeps nd_ws and the globals. Host-built (nd_ds_test.c). */
 #ifndef ND_DS_H
 #define ND_DS_H

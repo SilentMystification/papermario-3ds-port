@@ -225,20 +225,20 @@ static void nr_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
 /* DIRECT D4b-3, D5: native record run (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
- * list: its skip test (typed ops: nd_op_same, the light memory test of nr_geo), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
+ * list: its skip test (typed ops: nd_unit_same, the light memory test of nr_geo), else the op prologue (pm_gbi_cur_op, gv_epoch but not for vertex, triangle, matrix and list ops) and the
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_nr_list): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
-    if (nd_op_same(u)) return;
+    if (nd_unit_same(u)) return;
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
     gv_epoch++; /* GV1b; NST2H source */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, id, u[0], u[1]);
-    nd_op_apply(u);
+    nd_unit_apply(u);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
@@ -266,12 +266,12 @@ static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, co
         break;
     case ND_FS_MTX:
         if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (Gfx*)at, (Gfx*)at + 1);
-        load_mtx(a, b, 0);
+        nd_xf_load(a, b, 0);
         break;
-    case ND_FS_POPMTX: gbi_popmtx(b); break;
+    case ND_FS_POPMTX: nd_xf_popb(b); break;
     default:
         if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); /* POSTFAIL2 (debug tool) */
-        gbi_movemem(a, b);
+        nd_mv_mem(a, b);
         break;
     }
     if (__builtin_expect(fp, 0)) pm_ph_pop();
@@ -297,15 +297,15 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
         break;
     case ND_FS_RECT:
         
-        if (!(b & ND_FS_RECT_TEX)) nd_fillrect(a, b);
-        else if (at + 4 < e) { nd_texrect(a, b & 0x07ffffffu, at[3], at[5]); r = 2; } /* D10b: the op and its two RDPHALF units */
+        if (!(b & ND_FS_RECT_TEX)) nd_frect_draw(a, b);
+        else if (at + 4 < e) { nd_trect_draw(a, b & 0x07ffffffu, at[3], at[5]); r = 2; } /* D10b: the op and its two RDPHALF units */
         break;
     default:
         switch (sub) {
         case ND_FS_MISC_LST: ent_skipgen = 0; gp_prev_op = -1; break; /* D11a: an in-line static state list (nd_rec.c rec_inline): its list start as nr_call and nd_nr_list */
         case ND_FS_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
         case ND_FS_MISC_MODVTX: nd_modvtx((a >> 8) & 0xffu, a & 0xffu); break;
-        case ND_FS_MISC_CIMG: gbi_setcimg(a, b); break;
+        case ND_FS_MISC_CIMG: nd_cimg_set(a, b); break;
         default: break;
         }
         break;
@@ -350,7 +350,7 @@ static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of
     const unsigned dbg = pm_walk_dbg;
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) { const unsigned id = q[0] >> 24;
         if (q[0] == ND_NOP_A || id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) continue;
-        if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_set_texture(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { if (!nd_op_same(q)) nd_op_apply(q); }
+        if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_tx_texon(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { if (!nd_unit_same(q)) nd_unit_apply(q); }
         else if (__builtin_expect(!nd_op_typed(id), 0)) nr_unknown(dbg, q); else if (nd_op_geo(id)) nr_geo(dbg, q, q);
         else if (nd_op_ctl(id)) { const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
         else if (id == ND_FS_END) break; else nr_set(dbg, q, q);
@@ -421,7 +421,7 @@ void nd_parts_run(const uint32_t* u) {
         nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u);
     }
     nd_lsr_end(); /* NREC4 */
-    pm_comb_vprim = 0; sc_ok = 0; sync_combine(); /* S4COL: the normal plan is back in gs before the next walker draw */
+    pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync(); /* S4COL: the normal plan is back in gs before the next walker draw */
     pm_walk_side--;
     gv_streak_flush();
     tex_streak_flush();
@@ -438,15 +438,15 @@ static inline void part_units(const uint32_t* p, unsigned n) {
         switch (id) {
         case ND_FS_MTX:
             if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (Gfx*)p, (Gfx*)p + 1);
-            load_mtx(a, b, 0);
+            nd_xf_load(a, b, 0);
             break;
-        case ND_FS_POPMTX: gbi_popmtx(b); break;
+        case ND_FS_POPMTX: nd_xf_popb(b); break;
         default:
-            if (nd_op_same(p)) break;
+            if (nd_unit_same(p)) break;
             gv_epoch++; /* GV1b */
             if (id == ND_FS_PRIM) nd_set_prim(a, b);
-            else if (id == ND_FS_ENV) gbi_setenv(b);
-            else nd_set_tilesize(a, b);
+            else if (id == ND_FS_ENV) nd_envc_set(b);
+            else nd_tx_tsz(a, b);
             break;
         }
     }
@@ -471,7 +471,7 @@ void nd_parts_run_v(const uint32_t* u) {
         if (__builtin_expect(dbg, 0)) nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
     }
     nd_lsr_end(); /* NREC4 */
-    pm_comb_vprim = 0; sc_ok = 0; sync_combine();
+    pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync();
     pm_walk_side--;
     gv_streak_flush();
     tex_streak_flush();
@@ -625,7 +625,7 @@ int lt_mem_same(u32 w0, u32 w1) {
            lt[slot].dir[0] == (s8)l[8] && lt[slot].dir[1] == (s8)l[9] && lt[slot].dir[2] == (s8)l[10];
 }
 void nd_modvtx(unsigned where, unsigned vi) { /* B5 (HC4d2: typed ND_FS_MISC fields). Only G_MWO_POINT_XYSCREEN is used by the game (underwater.c) */
-    /* the screen position (b) is not used: a triangle with such a vertex is dropped (gv_tri GVR_SCR) */
+    /* the screen position (b) is not used: a triangle with such a vertex is dropped (nd_gv_tri GVR_SCR) */
     if (where == G_MWO_POINT_XYSCREEN && vi < 64) vert_scr[vi] = 1;
 }
 /* CORE2-3b: the game thread is about to write memory that the walk of the last frame may have read: a ROM read into RAM, a decode, a map

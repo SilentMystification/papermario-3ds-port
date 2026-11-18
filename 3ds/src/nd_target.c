@@ -1,4 +1,4 @@
-/* nd_target.c: the colour image and its role (plan_s10_path group R-target, WK-3): img_role, grab_cur, off_screen_check, the
+/* nd_target.c: the colour image and its role (plan_s10_path group R-target, WK-3): img_role, grab_cur, nd_img_check, the
  * depth word helpers and the colour image setter (G_SETCIMG). Cut from the former pm_gbi.c without logic change (D12). */
 #include <stdio.h>
 #include <string.h>
@@ -46,7 +46,7 @@ unsigned splash_grab_f = ~0u;
 int grab_hold;                  /* SBLK2 B1: set by the G_PM_ND_GRABHOLD bracket (motion_blur_flame.c, nd_native_rec) */
 unsigned hold_grab_f = ~0u;     /* SBLK2 B1: the frame whose one copy the hold reuses */
 extern unsigned pm_gpu_seq; /* GRABSEQ: keys both grabs on the drawn frame, not on pm_frame_count() */
-/* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c, HC4d2: the NDO_MISC_ND fields). */
+/* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c, HC4d2: the ND_FS_MISC_ND fields). */
 void nd_native_rec(unsigned kind, unsigned on) {
     if (kind == G_PM_ND_SPLASH) splash_on = (int)on;
     if (kind == G_PM_ND_GRABHOLD) grab_hold = (int)on;
@@ -73,7 +73,7 @@ void grab_cur(const void* src, int w, int h) {
     r = pm_gpu_grab(nd_cfb, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
 }
-void off_screen_check(void) {
+void nd_img_check(void) {
     int r;
     r = nd_img_role(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
@@ -98,13 +98,13 @@ static __attribute__((noinline)) void set_cimg(u32 addr, int ns, int stride) {
         ((nuGfxZBuffer && (const unsigned short*)nc >= nuGfxZBuffer && (const unsigned short*)nc < nuGfxZBuffer + 320 * 240) ? NDK_INZ : 0u) |
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
-void gbi_setcimg(u32 a, u32 b) { set_cimg(b, (int)((a >> 12) & 3), (int)(a & 0xfff) + 1); }
+void nd_cimg_set(u32 a, u32 b) { set_cimg(b, (int)((a >> 12) & 3), (int)(a & 0xfff) + 1); }
 /* NTGT: the NDC_NAPI runner of nd_target_begin and nd_target_end (nd_geo.c): one G_SETCIMG unit as the walker runs a control op (op_ctl, nd_walk.c):
  * no skip test, the prologue (pm_gbi_cur_op, gv_epoch), then the setter. rec: w0 = siz << 12 | width - 1, w1 = the address. */
 void nd_tgt_run(const uint32_t* rec) {
     pm_gbi_cur_op = ND_FS_MISC;
     gv_epoch++; /* GV1b */
-    gbi_setcimg(rec[0], rec[1]);
+    nd_cimg_set(rec[0], rec[1]);
 }
 
 /* ---- MV-8: target helper, cut from the former pm_gbi.c (no change) ---- */

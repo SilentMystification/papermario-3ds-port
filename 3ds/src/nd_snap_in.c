@@ -48,7 +48,7 @@ void nd_snap_rnd(const NdDs* s, NdSnapChk* r) {
     r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc; r->tss = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); /* NCONV2A */ r->plod = s->w.prim_lod; /* NCONV2D */
 }
 
-/* NDR0G1: the bind block of tile n as ensure_tile and dual_bind read it (td zero when not valid). */
+/* NDR0G1: the bind block of tile n as nd_tile_bind and dual_bind read it (td zero when not valid). */
 void nd_snap_bind(const NdTd* td, const NdTst* t, int n, NdSnapBind* o) {
     memset(o, 0, sizeof *o);
     if (td->valid) o->td = *td;
@@ -67,7 +67,7 @@ unsigned nd_snap_bdiff(const NdSnapBind* a, const NdSnapBind* b) {
     return m;
 }
 
-/* NDR0F1: the mix of sync_render (nd_set.c) on the arguments. Returns 1 with col = the colour mix of nd_mix1 (nd_set.c), 2 with col = the
+/* NDR0F1: the mix of nd_rnd_sync (nd_set.c) on the arguments. Returns 1 with col = the colour mix of nd_mix1 (nd_set.c), 2 with col = the
  * fog shade alpha mix (F08), 0 with col 0 (no mix). */
 int nd_snap_mix(unsigned ol, unsigned fogc, unsigned blendc, int nofog, unsigned* col) {
     unsigned p = (ol >> 30) & 3u, a = (ol >> 26) & 3u, m = (ol >> 22) & 3u, b = (ol >> 18) & 3u;

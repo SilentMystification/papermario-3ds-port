@@ -181,7 +181,7 @@ static void conv(const GSym* g) {
 
 /* ---- CONV2C: the v2 tables (nd_gtab.h NdNOp / NdNTab) of the self-contained lists. One walk over the typed units of a list, with the calls inlined (a
  * called list runs on the state of its call point, and the state it leaves stays), tracks the state groups of an NdPsoDesc, the tile state of tile 0
- * (the walker's set_tile / set_loadtile / set_loadblock / set_timg / set_loadtlut / set_tilesize rules, nd_texw0 of nd_texwin.c), the matrices and the
+ * (the walker's set_tile / set_loadtile / set_loadblock / set_timg / set_loadtlut / nd_tsz_set rules, nd_texw0 of nd_texwin.c), the matrices and the
  * colours. A list that reaches a triangle before it has set a combine, the cycle bits of other mode H and G_TEXTURE inherits state from its caller:
  * it gets no table (ntab_inherit.txt). A list with a unit the v2 form has no op for (lights outside a Lights1 symbol, image and marker units, tile 1, an
  * address outside the set) gets none either (ntab_unsup.txt, the reason). There is never a v1 fallback inside a v2 table. ---- */
@@ -258,7 +258,7 @@ static int v2_sym_expr(char* out, size_t n, uintptr_t p, int kind) {
     return 1;
 }
 
-/* the pipeline description of the state now (the walker's rules of op_setcombine: use_t1, box_prod, alpha shade are functions of the combine words) */
+/* the pipeline description of the state now (the walker's rules of nd_comb_set: use_t1, box_prod, alpha shade are functions of the combine words) */
 static NdPsoDesc v2_make_desc(const V2St* s) {
     NdPsoDesc d;
     memset(&d, 0, sizeof d);
@@ -534,7 +534,7 @@ static int v2_walk(const GSym* g, unsigned k0, unsigned depth) {
         case NDO_PRIMZ: /* FXLIT: a unit only, no v2 op (a value: set_primdepth runs on the device; the depth source is other mode L, in the desc) */
             break;
         case NDO_MISC:
-            if (CIMG_UNIT && (a >> 16) == NDO_MISC_CIMG) break; /* FLTGT: a unit only, no v2 op (nd_ntab_run runs it: gbi_setcimg, nd_walk.c:346) */
+            if (CIMG_UNIT && (a >> 16) == NDO_MISC_CIMG) break; /* FLTGT: a unit only, no v2 op (nd_ntab_run runs it: nd_cimg_set, nd_walk.c:346) */
             v2_unsup(v2_opname(id), k);
             break;
         case NDO_TIMG: {

@@ -50,8 +50,8 @@ void nd_nr_run(const uint32_t* q) { const unsigned n = (q[-2] >> 16) & 0xffu;
 /* NDR5: the transform record runs nd_xf_run, which calls these two (the walker's matrix code); each logs its unit as nd_nr_run does */
 static void ulog_put(uint32_t w0, uint32_t w1) { if (nulog < 256u) { ulog[2u * nulog] = w0; ulog[2u * nulog + 1u] = w1; nulog++; } }
 unsigned pm_gbi_cur_op;
-void load_mtx(u32 w0, u32 w1, u32 hdr) { (void)hdr; ulog_put(NDO_W0(NDO_MTX, w0), w1); }
-void gbi_popmtx(u32 w1) { ulog_put(NDO_W0(NDO_POPMTX, 0x380002u), w1); }
+void nd_xf_load(u32 w0, u32 w1, u32 hdr) { (void)hdr; ulog_put(NDO_W0(NDO_MTX, w0), w1); }
+void nd_xf_popb(u32 w1) { ulog_put(NDO_W0(NDO_POPMTX, 0x380002u), w1); }
 
 /* nd_model.c defines nd_r11_state (MDL-5f); nd_recs.c reads it */
 int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo);

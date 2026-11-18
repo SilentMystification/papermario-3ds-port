@@ -1,5 +1,5 @@
 /* nd_comb.c: the combine group (plan_s10_path group C, ST-2, cut from the former pm_gbi.c, pure cut). 3DS only: the decision and the
- * sync_combine work call pm_gpu_*. The typedef ScMemo is a copy of the former pm_gbi.c one (ST-2). The decision itself is nd_decide.c (NPSO2). */
+ * nd_comb_sync work call pm_gpu_*. The typedef ScMemo is a copy of the former pm_gbi.c one (ST-2). The decision itself is nd_decide.c (NPSO2). */
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -32,7 +32,7 @@ int comb_set;
 int comb_alpha_shade = 1;
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 PmPlan cur_plan;
-void sync_combine(void);
+void nd_comb_sync(void);
 extern int pm_comb_vprim; /* S4COL: the particle plan flag (pm_comb.c), in the memo keys */
 const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
 const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
@@ -41,7 +41,7 @@ const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1",
 const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
 const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
 int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
-unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last sync_combine and whether its result is still what pm_gpu holds */
+unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last nd_comb_sync and whether its result is still what pm_gpu holds */
 typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
 unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
     &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
@@ -78,8 +78,8 @@ int const_rgb_tex_alpha(unsigned* out) {
     return nd_const_rgb(&c, out);
 }
 
-/* ST-3: leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last sync_combine work (the legacy mode and the audit are in nd_decide.c, NPSO2). */
-int leg_mode;               /* S25: the combine mode sync_combine() last gave pm_gpu */
+/* ST-3: leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last nd_comb_sync work (the legacy mode and the audit are in nd_decide.c, NPSO2). */
+int leg_mode;               /* S25: the combine mode nd_comb_sync() last gave pm_gpu */
 int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync work, kept in the memo */
 unsigned sl_cc;
@@ -189,7 +189,7 @@ void scm_replay(const ScMemo* m) {
     else pm_gpu_set_combine(leg_mode);
 }
 
-/* R2B: the sync_combine input hash (the fields the skip test reads); sync_combine and the g2_same skip use the same value */
+/* R2B: the nd_comb_sync input hash (the fields the skip test reads); nd_comb_sync and the g2_same skip use the same value */
 unsigned sc_sig_now(void) {
     unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
                          nd_sc_flags(nd_ws.tex_on, nd_ws.use_t1, nd_ws.td[1].valid, dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, pm_comb_vprim) };
@@ -285,9 +285,9 @@ void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
     *tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu); *geo = nd_ws.geom; *cw0 = nd_ws.comb_w0; *cw1 = nd_ws.comb_w1;
 }
 
-/* S3N-3d: nd_comb_decide. The combine work on the inputs in (nd_comb_core, nd_decide.c, no walker global), then the plan colours of in->prim and in->env.
+/* S3N-3d: nd_comb_dec. The combine work on the inputs in (nd_comb_core, nd_decide.c, no walker global), then the plan colours of in->prim and in->env.
  * The fields the work leaves as they were keep the walker's value as before (mode5 when leg 4, why without a decision, cc without the constant mode, plan without a plan). */
-void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
+void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     nd_comb_pick(in, out);
     if (out->plan_on) pm_comb_colours(&out->plan, in->prim, in->env, in->prim_lo8, in->key_c, in->key_s);
     else out->plan = cur_plan;
@@ -337,7 +337,7 @@ void sync_combine_work(void) {
     nd_comb_apply(&o, nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.use_t1, nd_ws.envc);
 }
 
-void sync_combine(void) {
+void nd_comb_sync(void) {
     {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
          * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
         unsigned sg = sc_sig_now();
@@ -391,7 +391,7 @@ void box_fold_sync(void) {
         nd_ws.tst1.comb_aa = 7; nd_ws.tst1.comb_ab = 7; nd_ws.tst1.comb_ac = 7; nd_ws.tst1.comb_ad = 2;
         nd_ws.use_t1 = 0;
     }
-    sync_combine();
+    nd_comb_sync();
 }
 
 float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
@@ -417,7 +417,7 @@ void dual_bind(void) {
         for (i = 0; i < sizeof parts / sizeof parts[0]; i++) key = (key ^ parts[i]) * 16777619u;
     }
     if (key != aux_key || !pm_tex_aux_valid()) dual_bind_load(key); /* HCCUT4 */
-    ensure_tile(0);
+    nd_tile_bind(0);
     pm_tex_size(&tw0, &th0);
     pm_tex_aux_size(&tw1, &th1);
     {   /* V12c: the two tiles may have different shifts (bulb glow: tile 0 shift 1, tile 1 shift 0) and TEXEL1 may be a slot with a window origin */
@@ -492,7 +492,7 @@ void t1_fold_tri(const unsigned ri[3], unsigned tss) {
 
 
 
-void op_setcombine(u32 w0, u32 w1) {
+void nd_comb_set(u32 w0, u32 w1) {
             GP_SET(0, nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set);
             /* POND 3a: an open batch is drawn with the combine it was queued with. A new combine closes it first (the copy record's combine closed the blocker batch with the water combine). */
             if (!(nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set)) pm_gpu_flush();
@@ -551,14 +551,14 @@ void op_setcombine(u32 w0, u32 w1) {
 }
 
 /* ---- MV-10: debug switch combchk, cut from the former pm_gbi.c (no change) ---- */
-/* S3N-3d: debug switch combchk. Each combine work of sync_combine runs nd_comb_decide on its inputs and compares the outputs with the walker state. */
+/* S3N-3d: debug switch combchk. Each combine work of nd_comb_sync runs nd_comb_dec on its inputs and compares the outputs with the walker state. */
 int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
 
 unsigned cc_runs, cc_diff; static int cc_last_b = -1; /* the 300 frame bucket of the last log line */
 void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: the one line of prof=4 mode */
 __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked) { /* worked: the work ran (sl_* are set); a memo hit replays the outputs only */
     NdCombOut o;
-    nd_comb_decide(in, &o);
+    nd_comb_dec(in, &o);
     cc_runs++;
     int bad = o.leg != leg_mode || o.mode5 != comb_mode5 || o.pat != box_pat || o.use != ls_use || o.why != ls_why || o.cyc != ls_cyc ||
               o.dual != ls_dual || o.plan_on != plan_active || (worked && (o.cc_on != sl_const || o.env_on != sl_env || (sl_const && o.cc != sl_cc))) ||

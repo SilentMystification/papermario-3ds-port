@@ -12,7 +12,7 @@
 enum {
     NDG_END = 0, /* the list end (the last op) */
     NDG_VTX,     /* a = n (1 to 64), b = v0 (the first slot), p = const Vtx* (symbol + offset) */
-    NDG_TRI,     /* a, b, c = the three slots (the index / 2); NDO_TRI2 gives two ops */
+    NDG_TRI,     /* a, b, c = the three slots (the index / 2); ND_FS_TRI2 gives two ops */
     NDG_DEF,     /* a = units, p = const NdGDef* (its units run as ops, NREC5) */
     NDG_UNIT,    /* a = 1, p = const uint32_t*: the unit in the list, run as a typed op (values, rare and rect units, unmapped pointers) */
     NDG_CALL     /* a = 1 for the branch form (G_DL_NOPUSH), p = const NdGTab* (the callee) */

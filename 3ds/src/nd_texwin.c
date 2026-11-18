@@ -7,7 +7,7 @@
 #include "nd_api.h"
 
 /* D4a-1: the tile 0 window of a SetTileSize (source, size, stride): a pure function of the tile state t, the texture image timg and the
- * load model m (no global writes). set_tilesize applies it (td[0], the origin, the repeated-load skips). */
+ * load model m (no global writes). nd_tsz_set applies it (td[0], the origin, the repeated-load skips). */
 void nd_texw0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o) {
     int w = ((lrs - uls) >> 2) + 1;
     int h = ((lrt - ult) >> 2) + 1;
@@ -55,9 +55,9 @@ void nd_texw0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ul
     o->src = src; o->w = w; o->h = h; o->stride = stride; o->x0 = uls >> 2;
 }
 
-/* NAPI2B: the descriptor of tile 0 after a gDPLoadTextureTile of the stated image, as set_tilesize and nd_texw0 make it (the same function): the image
+/* NAPI2B: the descriptor of tile 0 after a gDPLoadTextureTile of the stated image, as nd_tsz_set and nd_texw0 make it (the same function): the image
  * (timg, its row stride in texels of the load size), the tile format and size, the four wrap words, the LoadTile window (ld*: texel origin and size) and the
- * SetTileSize window (10.2). pal, pal_n: the palette for a CI tile (else NULL, 0). Returns 0 when set_tilesize would leave tile 0 invalid (empty window, no source). */
+ * SetTileSize window (10.2). pal, pal_n: the palette for a CI tile (else NULL, 0). Returns 0 when nd_tsz_set would leave tile 0 invalid (empty window, no source). */
 int nd_tex_win_desc(NdBindDesc* o, const void* timg, int timg_stride, unsigned fmt, unsigned siz, const unsigned wrap[4], int ldx, int ldy, int ldw, int ldh,
                     int uls, int ult, int lrs, int lrt, const void* pal, int pal_n) {
     NdTst t;
