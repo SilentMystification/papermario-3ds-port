@@ -1,0 +1,6 @@
+LOOP NCONV2A host rc 0, build rc 0, 17 s
+STAGE key-inputs 2 s STAGE gen 1 s STAGE key 0 s STAGE slot-wait 0 s STAGE asset-check 0 s STAGE romfs 0 s STAGE sync 0 s STAGE configure 1 s STAGE compile-link 8 s STAGE copy-out 1 s STAGE tail 2 s 
+
+cmp fxops_drec: 1/1 byte-equal 
+LOOP TIME host+build 17 s, run+cmp 24 s, total 41 s
+LOOP PASS

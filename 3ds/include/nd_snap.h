@@ -14,7 +14,7 @@ typedef struct NdSnapBind {
 typedef struct NdSnapChk {
     NdCombIn in;
     int32_t key, leg, mode5, pat, plan_on;
-    int32_t role; uint32_t oml, geom, fogc, blendc, pad;
+    int32_t role; uint32_t oml, geom, fogc, blendc, tss; /* NCONV2A: tex_ss << 16 | tex_ts (was pad) */
     NdCombOut o; /* NDR0E1: the coloured combine decision of core 1 */
     uint32_t pad2; /* NDR0E1: size to a multiple of 8 */
     NdRender rs; /* NDR0F1: nd_render_state of the snapshot (core 1) */
@@ -64,6 +64,7 @@ void nd_snap_render(void);
 extern unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snapchk_rnd */
 /* nd_snap.c, core 0: the compare of the armed snapshot at a triangle draw (nd_geom.c). */
 void nd_snapchk_tri(void);
+void nd_tsnap_vtx(unsigned vt); /* NCONV2A, nd_snap.c, core 0: the vertex load tss of a snap triangle (snapchk only) */
 /* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */
 void nd_snapchk_rect(void);
 /* NDR2A, nd_snap.c, core 1: the snap of a direct draw: nd_ds with the pso words (nd_direct_bind order), prim and env. */

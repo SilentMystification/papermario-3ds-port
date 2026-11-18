@@ -48,7 +48,7 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
     nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
-    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
+    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, 0u, &o);
     r.plan_on = -1;
     if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
@@ -93,6 +93,7 @@ static int sc_nb;
 static const char* sc_nm[8];
 static NdSnapBind sc_eb[2];
 static unsigned sc_wst, sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */
+static unsigned ts_cmp, ts_bad, ts_vn, ts_vb; /* NCONV2A: tsnap data */
 unsigned pm_frame_count(void);
 int pm_drec_now(void);
 extern unsigned char nd_cmd_last; /* nd_rec.c:181 */
@@ -163,6 +164,7 @@ static void sc_compare(void) {
     if (sc_cur.geom != nd_ws.geom) sc_add("geom");
     if (sc_cur.fogc != fogc) sc_add("fogc");
     if (sc_cur.blendc != blendc) sc_add("blendc");
+    ts_cmp++; if (sc_cur.tss != (((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu))) ts_bad++; /* NCONV2A: data, not a bad name */
     if (memcmp(sc_cur.in.tst, mine.tst, sizeof mine.tst)) sc_add("tst");
     if (sc_cur.leg != leg_mode) sc_add("leg");
     if (sc_cur.mode5 != comb_mode5) sc_add("mode5");
@@ -228,6 +230,7 @@ void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch sn
     if (PMDL("snapchk")) sc_compare();
     nd_snap_comb();
 }
+void nd_tsnap_vtx(unsigned vt) { if (!PMDL("snapchk")) return; ts_vn++; if (vt != sc_cur.tss) ts_vb++; } /* NCONV2A */
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
 void nd_snap_comb(void) { nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); }
 const NdSnapBind* nd_snap_cur_b(void) { return sc_cur.b; } /* NDR1C */
@@ -268,6 +271,7 @@ void nd_snapchk_tick(void) {
         sc_bucket = pm_frame_n / 100;
         pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u wst %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss, sc_wst);
         pm_log_evt("lsnap f%u lists %u snaps %u cmp %u p1 %u bst %u tmis %u over %u", pm_frame_n, lr_lists, lr_snaps, lr_cmp, lr_c1, lr_bst, lr_tmis, ls_over);
+        pm_log_evt("tsnap f%u cmp %u wtss %u tris %u vtss %u", pm_frame_n, ts_cmp, ts_bad, ts_vn, ts_vb); /* NCONV2A */
     }
 }
 /* NDR4: the snap of a sprite record (pm_gpu_spr_build reads it). core 0. */
