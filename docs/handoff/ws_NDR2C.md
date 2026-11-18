@@ -2,7 +2,7 @@
 Designer: oracle FIN. WAIT: branch from main after the NDR2A merge (nd_dir_rec, nd_dir_drop, nd_dir_prim1, snapchk dir). Runs at the same time as NDR2B (disjoint files).
 Worktree build3ds/wt/NDR2C, branch NDR2C. PM_ROW=NDR2C PM_LANE=NDR2C. Edit only: src/hud_element.c, src/screen_overlays.c (pm_tsten_run part), src/screen_render_util.c.
 ## Facts (main 136c960247; find each line by its text)
-- hud_rect_direct (hud_element.c:471-547) makes the pso in its fmt switch (:484-518) and :526-528; case 0 reads the walker prim (`nd_direct_prim()`, :490). Its only caller is hud_rect_run (:554).
+- hud_rect_direct (hud_element.c:471-547) makes the pso in its fmt switch (:484-518) and :526-528; case 0 reads the walker prim (`nd_direct_prim()`, :492). Its only caller is hud_rect_run (:554).
   The record site (:874-876) records `nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc);` then hud_rect_feed.
 - cplx_quad_run (:599-635) makes its pso from the record (:607-612); the record site (:1917) records `nd_rec_napi(cplx_quad_run, &rec, sizeof rec / 8u);` then cplx_quad_feed.
 - pm_tsten_run (screen_overlays.c:83-118) makes its pso at :100-104 (`full` from u, :91); the record site screen_render_util.c:286 records `nd_rec_napi(pm_tsten_run, rec, 3u);`, prim = rec[4].
