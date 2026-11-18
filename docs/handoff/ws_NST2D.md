@@ -35,6 +35,6 @@ Edit only: 3ds/src/nd_ds.c, 3ds/include/nd_ds.h, 3ds/src/nd_rec.c, 3ds/src/nd_wa
 ## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 4 Azahar starts)
 1. Edits 1-6. Host PASS with `nst2d cases 2 bad 0` and the fault seen. Commit `NST2D 1: ranges feed nd_ds`.
 2. bench.py base spot_mac01_drec,wscmb_pause_drec (merge-base, not charged). rowloop --row NST2D --bench the same 2: LOOP PASS, byte-equal.
-3. bench.py run the 2 dschk scenes spot_mac01_dschk and fxchk_a_dschk; grep their dschk lines > build3ds/out/nst2d_dschk.txt. Pass: each last fbad not higher than dschk_base.txt,
-   the sum lower (GUESS), `over 0` in each `dschk lg` line. Write the grep into dschk_base.txt.
+3. bench.py run the 2 dschk scenes spot_mac01_dschk and fxchk_a_dschk; grep their dschk lines > build3ds/out/nst2d_dschk.txt. Pass: each last fbad not higher than the NST2C values
+   (FACT, commit a694f3c2ce text: spot_mac01_dschk f200 159785, fxchk_a_dschk end f2292 2620756; dschk_base.txt holds the older NST2 values), the sum lower (GUESS), `over 0` in each `dschk lg` line. Write the grep into dschk_base.txt.
 ## Fix rights: the listed files; compile errors. A higher fbad, over above 0, a crash, a DIFF: stop, send the output path to oracle NSTO. Wait. Stop: last commit `NST2D 2: gate. 2 benches byte-equal; dschk fbad <2> (base <2>); lg hw <2>` deletes this page. One SubagentHandback.
