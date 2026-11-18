@@ -88,8 +88,9 @@ static void old_path(const NdCombIn* in, const St* s, unsigned vprim, NdCombOut*
     nd_tev_build(&ti, to);
 }
 
-static unsigned n_ent, n_bad, n_plan, n_c4, n_tex;
+static unsigned n_ent, n_bad, n_plan, n_c4, n_tex, n_c1bad;
 static int fault;
+extern int pm_comb_vprim; /* pm_comb.c: the walker flag must stay 0 after the core 1 call (NDR0D) */
 
 static void one(const St* s, int tex_on, int t1v, int dual, int cset, uint32_t kc, uint32_t ks, uint32_t k4, int vprim, unsigned plod, int folded, int leg, uint32_t prim, uint32_t env) {
     uint32_t t[16];
@@ -115,6 +116,12 @@ static void one(const St* s, int tex_on, int t1v, int dual, int cset, uint32_t k
     NdTevOut to;
     pm_comb_set_k4(k4);
     old_path(&in, s, (unsigned)vprim, &co, &r, &to);
+    { /* NDR0D: nd_comb_core1 (own table, own K4) equals nd_comb_core on the same input; the fault gives mode5_prev 1 (leg 4 keeps it) */
+        NdCombOut ca, cb;
+        nd_comb_core(&in, (unsigned)vprim, 0, &ca);
+        nd_comb_core1(&in, (unsigned)vprim, fault ? 1 : 0, &cb);
+        if (memcmp(&ca, &cb, sizeof ca) || pm_comb_vprim != 0) n_c1bad++;
+    }
     NdPsoOut o;
     nd_pso_build(&d, &o);
     uint32_t cc = 0;
@@ -182,7 +189,8 @@ int main(int argc, char** argv) {
         }
         one(s, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, pe[1][0], pe[1][1]); /* comb_set 0 */
     }
+    printf("ndr0d core1 bad %u\n", n_c1bad);
     printf("decide states %u entries %u bad %u (plans %u, leg 4 %u, textured %u)\n", nst, n_ent, n_bad, n_plan, n_c4, n_tex);
     printf("decide entries %u bad %u\n", n_ent, n_bad);
-    return n_bad ? 1 : 0;
+    return n_bad || n_c1bad ? 1 : 0;
 }

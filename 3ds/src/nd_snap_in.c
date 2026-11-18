@@ -5,6 +5,7 @@
 #include "nd.h"
 #include "nd_ds.h"
 #include "nd_snap.h"
+#include "PR/gbi.h"
 
 void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in) {
     const NdTst* t = &s->w.tst1;
@@ -18,6 +19,27 @@ void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in) {
     in->leg_mode = leg;
     in->tex_on = s->w.tex_on; in->use_t1 = s->w.use_t1; in->t1_valid = s->w.td[1].valid; in->dual_on = s->dual_on;
     in->box_prod = s->box_prod; in->box_pat = pat; in->box_folded = 0; in->comb_set = s->comb_set; in->comb_alpha_shade = s->comb_alpha_shade;
+    if (s->box_prod && s->w.td[1].valid && nd_td_white(&s->w.td[0])) { /* NDR0D: box_fold_sync nd_comb.c:377-381 */
+        in->tst[0] = 3; in->tst[1] = 5; in->tst[2] = 1; in->tst[3] = 5; in->tst[4] = 7; in->tst[5] = 7; in->tst[6] = 7; in->tst[7] = 1;
+        in->use_t1 = 1; in->box_folded = 1;
+    }
+}
+
+/* NDR0D: tile0_white (nd_comb.c) on the tile d: 1 when all texels are 1.0 (I4 0xF or I8 0xFF). */
+int nd_td_white(const NdTd* d) {
+    const uint8_t* src = d->src;
+    if (!d->valid || !src || d->fmt != G_IM_FMT_I || d->siz > 1) return 0;
+    for (int y = 0; y < d->h; y++) {
+        for (int x = 0; x < d->w; x++) {
+            if (d->siz == 0) {
+                unsigned b = src[(y * d->stride + x) >> 1];
+                if (((x & 1) ? (b & 15u) : (b >> 4)) != 15u) return 0;
+            } else if (src[y * d->stride + x] != 255) {
+                return 0;
+            }
+        }
+    }
+    return 1;
 }
 
 /* NDR0C: the render inputs of the snapshot (the walker reads the same words: nd_ws.omode_l, nd_ws.geom, fogc, blendc). */

@@ -87,6 +87,7 @@ static int is_k(Term t) { return t.n == TN_ZERO || t.n == TN_ONE || t.n == TN_PR
 static int short_step;
 static unsigned char kspec[4][5];
 static int nk, kover;
+static int b_vprim, cb_lock; /* NDR0D: vprim of the running build; the lock of the build statics (core 0 and core 1 build) */
 /* A derived constant (kind 0: B * C / 2, kind 1: C / 2), one of 4 per plan. */
 static Term kterm(int kind, Term b, Term c) {
     if (nk >= 4) { kover = 1; return TM(TN_X0, 0); }
@@ -376,7 +377,7 @@ static int build(unsigned w0, unsigned w1, int two, int t1only, int lead, PmPlan
     for (int i = A.n; i < nst; i++) A.s[i] = mk(PM_F_REPLACE, TM(TN_PRV, 0), TM(TN_PRV, 0), TM(TN_PRV, 0), 0, 0, 0);
     if (nst > 6) return 1;
     if (uses_shade(&R, &A)) al.vtx = PM_NM_SHADE;
-    else if (pm_comb_vprim && reads_prim(&R, &A)) al.vtx = PM_NM_PRIM;
+    else if (b_vprim && reads_prim(&R, &A)) al.vtx = PM_NM_PRIM;
     out->n = nst;
     for (int i = 0; i < nst; i++) {
         const Seq* q[2] = { &R, &A };
@@ -404,15 +405,20 @@ static int build_lead(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out
     int rc = build(w0, w1, two, t1only, 0, out);
     return rc == 4 ? build(w0, w1, two, t1only, 1, out) : rc;
 }
-__attribute__((cold)) int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) {
+/* NDR0D: vprim is an argument (the walker's pm_comb_vprim on core 0, the particle flag of the record on core 1). The lock makes the statics one build at a time. */
+__attribute__((cold)) int pm_comb_build_v(unsigned w0, unsigned w1, int two, int t1only, int vprim, PmPlan* out) {
     int rc;
+    while (__atomic_exchange_n(&cb_lock, 1, __ATOMIC_ACQUIRE)) { }
+    b_vprim = vprim;
     fold_off = 0;
     short_step = 0;
     rc = build_lead(w0, w1, two, t1only, out);
     if (rc == 1) { short_step = 1; rc = build_lead(w0, w1, two, t1only, out); short_step = 0; }
     if (rc && fold_t[2]) { fold_off = 1; rc = build_lead(w0, w1, two, t1only, out); fold_off = 0; } /* the folded form needs 1 stage more: out of stages or constants, use the plain form */
+    __atomic_store_n(&cb_lock, 0, __ATOMIC_RELEASE);
     return rc;
 }
+__attribute__((cold)) int pm_comb_build(unsigned w0, unsigned w1, int two, int t1only, PmPlan* out) { return pm_comb_build_v(w0, w1, two, t1only, pm_comb_vprim, out); }
 
 static unsigned pm_k4;
 void pm_comb_set_k4(unsigned k4) { pm_k4 = k4 & 255u; }
@@ -427,10 +433,10 @@ static unsigned pk_colour(unsigned prim, unsigned key) {
 }
 
 static void unp(unsigned c, float o[4]);
-static float k_val(unsigned n, unsigned a, int ch, const float pr[4], const float en[4], unsigned plod) {
+static float k_val(unsigned n, unsigned a, int ch, const float pr[4], const float en[4], unsigned plod, unsigned k4) {
     switch (n) {
     case TN_ONE: return 1.f;
-    case TN_K4: return (float)pm_k4 / 255.f;
+    case TN_K4: return (float)k4 / 255.f;
     case TN_PR: return pr[a ? 3 : ch];
     case TN_EN: return en[a ? 3 : ch];
     case TN_PLOD: return (float)plod / 255.f;
@@ -438,13 +444,13 @@ static float k_val(unsigned n, unsigned a, int ch, const float pr[4], const floa
     }
 }
 /* H06b3: the constants of the folded form. kind 0 is C, 1 is Kp = max(D - B * C, 0), 2 is Kn = max(B * C - D, 0), per colour channel. */
-static unsigned fold_colour(const PmPlan* p, int kind, unsigned prim, unsigned env, unsigned plod) {
+static unsigned fold_colour(const PmPlan* p, int kind, unsigned prim, unsigned env, unsigned plod, unsigned k4) {
     float pr[4], en[4];
     unsigned o = 0;
     unp(prim, pr); unp(env, en);
     for (int ch = 0; ch < 4; ch++) {
         int c3 = ch < 3 ? ch : 0;
-        float b = k_val(p->fold[0], p->fold[1], c3, pr, en, plod), c = k_val(p->fold[2], p->fold[3], c3, pr, en, plod), d = k_val(p->fold[4], p->fold[5], c3, pr, en, plod);
+        float b = k_val(p->fold[0], p->fold[1], c3, pr, en, plod, k4), c = k_val(p->fold[2], p->fold[3], c3, pr, en, plod, k4), d = k_val(p->fold[4], p->fold[5], c3, pr, en, plod, k4);
         float k = d - b * c, v = kind == 0 ? c : kind == 1 ? (k > 0.f ? k : 0.f) : (k < 0.f ? -k : 0.f);
         o = o << 8 | (unsigned)(v * 255.f + .5f);
     }
@@ -452,35 +458,35 @@ static unsigned fold_colour(const PmPlan* p, int kind, unsigned prim, unsigned e
 }
 
 /* H06b2: (1 - K) / 2 per channel, K named by fold[0], fold[1]. */
-static unsigned kh_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned plod) {
+static unsigned kh_colour(const PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned k4) {
     float pr[4], en[4];
     unsigned o = 0;
     unp(prim, pr); unp(env, en);
-    for (int ch = 0; ch < 4; ch++) o = o << 8 | (unsigned)((1.f - k_val(p->fold[0], p->fold[1], ch < 3 ? ch : 0, pr, en, plod)) * 127.5f + .5f);
+    for (int ch = 0; ch < 4; ch++) o = o << 8 | (unsigned)((1.f - k_val(p->fold[0], p->fold[1], ch < 3 ? ch : 0, pr, en, plod, k4)) * 127.5f + .5f);
     return o;
 }
 
 /* FX2a, FX3c: a derived constant, spec p->ks[i] = kind, B term, B alpha flag, C term, C alpha flag. Kind 0 is B * C / 2, kind 1 is C / 2, kind 2 is B * C, per channel. */
-static unsigned x_colour(const PmPlan* p, int i, unsigned prim, unsigned env, unsigned plod) {
+static unsigned x_colour(const PmPlan* p, int i, unsigned prim, unsigned env, unsigned plod, unsigned k4) {
     float pr[4], en[4];
     unsigned o = 0;
     unp(prim, pr); unp(env, en);
     for (int ch = 0; ch < 4; ch++) {
         int c3 = ch < 3 ? ch : 0;
-        float v = k_val(p->ks[i][3], p->ks[i][4], c3, pr, en, plod) * (p->ks[i][0] == 2 ? 1.f : .5f);
-        if (p->ks[i][0] != 1) v *= k_val(p->ks[i][1], p->ks[i][2], c3, pr, en, plod); /* kind 2: B * C (PT07) */
+        float v = k_val(p->ks[i][3], p->ks[i][4], c3, pr, en, plod, k4) * (p->ks[i][0] == 2 ? 1.f : .5f);
+        if (p->ks[i][0] != 1) v *= k_val(p->ks[i][1], p->ks[i][2], c3, pr, en, plod, k4); /* kind 2: B * C (PT07) */
         o = o << 8 | (unsigned)(v * 255.f + .5f);
     }
     return o;
 }
 
-static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
+static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys, unsigned k4) {
     switch (n) {
-    case PM_NM_FC: return fold_colour(p, 0, prim, env, plod);
-    case PM_NM_FKP: return fold_colour(p, 1, prim, env, plod);
-    case PM_NM_FKN: return fold_colour(p, 2, prim, env, plod);
-    case PM_NM_KH: return kh_colour(p, prim, env, plod);
-    case PM_NM_X0: case PM_NM_X1: case PM_NM_X2: case PM_NM_X3: return x_colour(p, n - PM_NM_X0, prim, env, plod);
+    case PM_NM_FC: return fold_colour(p, 0, prim, env, plod, k4);
+    case PM_NM_FKP: return fold_colour(p, 1, prim, env, plod, k4);
+    case PM_NM_FKN: return fold_colour(p, 2, prim, env, plod, k4);
+    case PM_NM_KH: return kh_colour(p, prim, env, plod, k4);
+    case PM_NM_X0: case PM_NM_X1: case PM_NM_X2: case PM_NM_X3: return x_colour(p, n - PM_NM_X0, prim, env, plod, k4);
     case PM_NM_KEYC: return key;
     case PM_NM_KEYS: return keys;
     case PM_NM_PK: return pk_colour(prim, key);
@@ -488,16 +494,17 @@ static unsigned name_colour(const PmPlan* p, int n, unsigned prim, unsigned env,
     case PM_NM_ENV: return env;
     case PM_NM_PLOD: return plod * 0x01010101u;
     case PM_NM_HALF: return 0x80808080u;
-    case PM_NM_K4: return pm_k4 * 0x01010101u;
+    case PM_NM_K4: return k4 * 0x01010101u;
     default: return 0;
     }
 }
 
-void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) {
-    for (int i = 0; i < p->n; i++) p->st[i].constant = name_colour(p, p->st[i].cname, prim, env, plod, key, keys);
-    p->buf = name_colour(p, p->bufname, prim, env, plod, key, keys);
-    p->vtx = (p->vtxname == PM_NM_SHADE) ? 0 : name_colour(p, p->vtxname, prim, env, plod, key, keys);
+void pm_comb_colours_k(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys, unsigned k4) {
+    for (int i = 0; i < p->n; i++) p->st[i].constant = name_colour(p, p->st[i].cname, prim, env, plod, key, keys, k4);
+    p->buf = name_colour(p, p->bufname, prim, env, plod, key, keys, k4);
+    p->vtx = (p->vtxname == PM_NM_SHADE) ? 0 : name_colour(p, p->vtxname, prim, env, plod, key, keys, k4);
 }
+void pm_comb_colours(PmPlan* p, unsigned prim, unsigned env, unsigned plod, unsigned key, unsigned keys) { pm_comb_colours_k(p, prim, env, plod, key, keys, pm_k4); }
 
 static void unp(unsigned c, float o[4]) {
     o[0] = (float)((c >> 24) & 255u) / 255.f;

@@ -44,6 +44,28 @@ int main(int argc, char** argv) {
     CHK("t1_valid", in.t1_valid, 1);
     CHK("tst14", in.tst[14], fault ? 9u : 0u);
     printf("ndr0a in bad %d\n", bad);
+    { /* NDR0D: the box fold of nd_snap_in (box_fold_sync): a white tile 0 folds, a tile with one texel not 1.0 does not */
+        static const uint8_t full[2] = { 0xff, 0xff }, nearly[2] = { 0xff, 0xfe };
+        static NdDs f;
+        NdCombIn fi;
+        int before = bad;
+        for (int k = 0; k < 2; k++) {
+            memset(&f, 0, sizeof f);
+            f.box_prod = 1;
+            f.w.td[0].valid = 1; f.w.td[0].fmt = 4; f.w.td[0].siz = 0; f.w.td[0].w = 2; f.w.td[0].h = 2; f.w.td[0].stride = 2;
+            f.w.td[0].src = k == 0 ? full : nearly;
+            f.w.td[1].valid = 1;
+            nd_snap_in(&f, 0, 0, &fi);
+            CHK("fold_box", fi.box_folded, k == 0);
+            if (k == 0) {
+                CHK("fold_tst0", fi.tst[0], 3u);
+                CHK("fold_tst2", fi.tst[2], fault ? 2u : 1u);
+                CHK("fold_tst7", fi.tst[7], 1u);
+                CHK("fold_use_t1", fi.use_t1, 1);
+            }
+        }
+        printf("ndr0d fold bad %d\n", bad - before);
+    }
     (void)nf;
     return bad ? 1 : 0;
 }
