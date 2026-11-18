@@ -7,7 +7,7 @@ model 15, elfgate func 48 data 365. Run listcen for fresh numbers.
   UD2 option 1: core 0 keeps a native transform stack. UD3 option 1: prof push at the NST1 gate. Sonnet yes: NST1, NDR0, NCONV1, NREC1.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
 - HWFIX1 merged (nd_comb_core on a miss); user console check of 0f39de90cb: visual faults gone (FACT). TATTLEAR merged.
-## Pages on main and their waits (NST2A-NST2E merged 75c0f42f15; NST2F running; no console check until S9GATE)
+## Pages on main and their waits (main bc5e681339: NST2A-F, FALLBK, NDR0A, NCONV1A merged; no console check until S9GATE)
 - Merged: PSOFB, NST1, NST3, NST2A-E, HWFIX1, BOTSCR. Done on branches: GFXT1, PSOCOV, BASELOG, OPTIONS (6efc8f900d).
 - NSTO pages (oracle NSTO): NST2B model records (nd_ds_model; dschk adopts the groups a model cache hit skips), NST2C entity draw, sprite
   state, compiled def, particles (nd_ds_unit, nd_ds_feed), NST2D ranges (unit log of core 1 applies, marks, sub save/restore, R11 replay;
@@ -20,10 +20,9 @@ model 15, elfgate func 48 data 365. Run listcen for fresh numbers.
    and pm_f127 (pm_gpu.c:1725) (base ELF basebin/07b0785e17cf38b8). The tick top byte picks the unit: 0x39 MTX (variant a, stored base),
    0x2D COMB / RARE (variant b: key_s 0x100, sticky, all pso lookups miss). GUESS: psomiss tex_on 0x211321, 0x421862 = a tick with top byte 0x2A.
    Producer FACT: pm_gbi_fallback dl (nd_walk.c:770, raw gbi words, no NDO_END; caller pm_main.c:464). Fix page ws_FALLBK (2ac5fcf03a).
-3. FIN pages: ws_NDR0A (snapchk, from main), ws_NCONV1A (ND_FS_ ids, listcen core1 line), ws_NDR0B (td on core 1, after NST2F),
-   ws_RENFS (REN1-5 setter rename, after NCONV1A). Next pages: NDR0C (target role, render block in the snap: nd_tgt_role nd_tgt.h, set_cimg
-   nd_target.c:87, sync_render nd_set.c:210), NCONV1B (NDN_FS op: k in idx_pos, v in v), NDR0D (tile0_white nd_comb.c:354, box_fold_sync :372),
-   NDR5 (MTX op: op_geo nd_walk.c:316, no gv_epoch; a record sets ds_sclost, nd_rec.c:201: keep it for the xf record).
+3. FIN pages on main: NDR0B, RENFS (REN1-5), NDR0C, NDR5, NST2G. NCONV1B and C dropped (plan_finish.md section 4). Next: NDR0D after NDR0B
+   and NDR0C data (tile0_white nd_comb.c:354 on core 1 td[0], box_fold_sync :372; core 1 miss path: nd_comb_core writes pm_comb_vprim
+   nd_decide.c:234, pass vprim instead). NST2G names drive NST2H if bad or epbad stay above 0. dschk_base.txt before NST2G predates FALLBK.
 4. Write each page from the snapchk and dschk names of the row before it. NDR0E is Sonnet only if the batch cut moves (plan_finish.md section 4).
 ## Facts that cost time
 - Every setter unit passes nd_rec_nr (nd_rec.c:399); core 0 runs it in nd_walk_state (nd_walk.c:390). reader, model, data, build fall only in S4-S7 (no row free of chain files: nd_cen.c callers are in nd_walk.c, nd_recs.c).
