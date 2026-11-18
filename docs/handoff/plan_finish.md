@@ -6,7 +6,7 @@ Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them
 |---|---|---|
 | build 308, data 191 | all in include/ (FACT plan_walker_delete.md:4-5) | W14 DEL4D1-4 |
 | gfxtype 251 (246 after GFXT1, FACT e2a942d6f3) | nd_walk.c, nd_ent.c, nd_shape.c, nd_rec.c, nd_recs.c, nd_cen.c, PR headers (grep) | W6-W14 |
-| reader 772 | walker, setters, nd_ds.c 32 (grep) | W6 about -40 GUESS, W6-W8 about -190 GUESS, W9-W13 rest (NDO_ setters renamed to ND_FS_: class core1, UD1) |
+| reader 772 | walker, setters, nd_ds.c 32 (grep) | W6 about -40 GUESS, W6-W8 about -190 GUESS, W2-W3 REN1-5 (setters to ND_FS_, class core1, UD1), W9-W13 rest |
 | model 15 | nd_comb.c 3, nd_decide.c 2, nd_tex_set.c 3, nd_texwin.c 2, nd_rect.c 2, nd_set.c, nd_geom.c, nd_mtx_set.c (grep) | W12 DEL2A-F |
 | elfgate func 48, data 365 | func: nd_walk.c 12, nd_tex_set.c 6 and others (grep). data GUESS: ndg_ v1 tables and gMainGfxPos | W9-W13 |
 | elfgate gfxnames | OPEN (not in the brief) | W15 reads it |
@@ -19,22 +19,22 @@ Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them
 ## 3. Waves (47 rows; width = rows that run at once; the stop file blocks a wider split)
 | wave | rows (files) | needs merged | rows | stop file |
 |---|---|---|---|---|
-| W1 now | NDR0A snapchk (page b60f70c281: nd_snap*.c, nd_geo.c, nd_geom.c 1 line, nd_rec.c, nd_psolk.c); NCONV1A enum NdFs and nd_ds_fs (new nd_fs.h, nd_ds_fs.c, listcen.py class core1, host test); NDR5 transform record (nd_xf.c, nd_at.h NDXF, nd_mtx_set.c). Running: NST2F, FALLBK (oracle NSTO) | - | 3 | nd_ds.c (NST2F) |
-| W2 | NDR0B td on core 1 (page 5200d6d63a: nd_ds.c, nd_dschk.c); NDR0C target role and render block in the snap (nd_snap.c, nd_snap_in.c, nd_geo.c target, nd_target.c); NCONV1B converter emits NDN_FS for NDN_UNIT (nd_gfx_conv.c, nd_gtab.h, nd_gtab_test.c) | NST2F, NDR0A, NCONV1A | 3 | nd_snap_in.c |
-| W3 | NDR0D box fold texel test and t1_valid in the snap, core 1 miss path (nd_snap_in.c, nd_decide.c); NCONV1C core 1 runs the FS ops of a table (nd_gtab.c, nd_ds.c nd_ds_list) | NDR0B, NDR0C, NCONV1B | 2 | nd_ds.c |
+| W1 now | NDR0A snapchk (page b60f70c281: nd_snap*.c, nd_geo.c, nd_geom.c 1 line, nd_rec.c, nd_psolk.c); NCONV1A ND_FS_ ids and listcen core1 (page 03045f4a0d: nd_fs.h, listcen.py, host only). Running: NST2F, FALLBK (oracle NSTO) | - | 2 | nd_ds.c (NST2F), nd_rec.c (NDR0A) |
+| W2 | NDR0B td on core 1 (page 5200d6d63a: nd_ds.c, nd_dschk.c); NDR0C target role and render block in the snap (nd_snap.c, nd_snap_in.c, nd_geo.c target, nd_target.c); NCONV1B converter emits NDN_FS for NDN_UNIT (nd_gfx_conv.c, nd_gtab.h, nd_gtab_test.c); REN1-REN4 setters use ND_FS_ names (page a78c6d0139: nd_st.c+nd_val.c+nd_xf.c; nd_tx.h; nd_at.h; nd_nr.h) | NST2F (NDR0B), NDR0A (NDR0C), NCONV1A (NCONV1B, REN1-4) | 7 | nd_snap_in.c, nd_geo.c |
+| W3 | NDR0D box fold texel test and t1_valid in the snap, core 1 miss path (nd_snap_in.c, nd_decide.c); NCONV1C core 1 runs the FS ops of a table (nd_gtab.c, nd_ds.c nd_ds_list); NDR5 transform record (nd_xf.c, nd_at.h NDXF, nd_mtx_set.c, nd_rec.c: keep ds_sclost for the record); REN5 nd_geo.c ND_FS_ names | NDR0B, NDR0C, NCONV1B, REN1, REN3 | 4 | nd_ds.c |
 | W4 | NDR0E core 0 draws a mesh from the snap (nd_snap.c, nd_geom.c, nd_comb.c) | NDR0D | 1 | nd_geom.c, nd_comb.c |
 | W5 | NDR1 rectangles (nd_tx.h :50-56, nd_rect.c); NDR2 direct draws (nd_direct.c, hud_element.c, msg_draw.c, screen_overlays.c); NDR4 sprite records (nd_rec.c nd_rec_spr, nd_walk.c nd_walk_spr, sprite.c :278); NCONV1D NDN_DRAW as snaps (nd_gfx_conv.c, nd_gtab.c) | NDR0E, NCONV1C | 4 | nd_rec.c, nd_walk.c |
 | W6 | NDR3 glyphs (nd_direct.c :212); NCONV2 delete the NDN_UNIT path (nd_walk.c gt_run :634, nd_ntab_run); NREC1A model record payload as FS ops on core 1 (nd_rec.c nd_rec_model, nd_ds.c nd_ds_model); NREC3 map shapes (nd_shape.c, nd_dlc.c); NREC5 compiled defs (nd_scomp.c) | W5 | 5 | nd_rec.c |
 | W7 | NREC1B core 0 model runner reads snaps (nd_recs.c, nd_model.c); NREC2 entity (nd_ent.c, nd_rec.c :265 :278) | NREC1A | 2 | nd_rec.c |
 | W8 | NREC4 particles (nd_rec.c :329, nd_walk.c :453 :500) | NREC2, NCONV2 | 1 | nd_rec.c, nd_walk.c |
-| W9 | DEL3A nd_rec_nr records no unit (nd_rec.c :399), delete nd_dschk.c, snapchk; DEL1B nd_ent.c ENT_GBI; DEL1C nd_dlc.c; DEL5A nd_shape.c list parse; DEL5B v1 tables (nd_gtab.h NdGTab, nd_gtab.c nd_rec_dl, nd_gfx_conv.c v1, gen_gfx_tab.sh); DEL3B nd_scomp.c exec (:341 :347); DEL3A1-5 setters NDO_ to ND_FS_ (mechanical .patch: nd_st.c+nd_st.h, nd_val.c+nd_val.h, nd_tx.h, nd_at.h+nd_xf.c, nd_geo.c+nd_nr.h) | W8 | 11 | nd_rec.c |
+| W9 | DEL3A nd_rec_nr records no unit (nd_rec.c :399), delete nd_dschk.c, snapchk; DEL1B nd_ent.c ENT_GBI; DEL1C nd_dlc.c; DEL5A nd_shape.c list parse; DEL5B v1 tables (nd_gtab.h NdGTab, nd_gtab.c nd_rec_dl, nd_gfx_conv.c v1, gen_gfx_tab.sh); DEL3B nd_scomp.c exec (:341 :347) | W8 | 6 | nd_rec.c |
 | W10 | DEL1A caller arms (nd_rec.c NDC_STATE, st_put, nd_rec_state; nd_recs.c, nd_model.c, pm_phase.c, pm_nusys.c :89 :100); DEL3A6 nd_ds.c keys to ND_FS_ | W9 | 2 | nd_walk.c |
 | W11 | DEL1D nd_walk.c walker and op arms, nd_cen.c, nd_c2haz.c (D2 A) | W10 | 1 | nd_walk.c |
 | W12 | DEL2A nd_comb.c, nd_decide.c (rename for core 1); DEL2B nd_set.c; DEL2C nd_tex_set.c, nd_texwin.c; DEL2D nd_rect.c; DEL2E nd_geom.c gv part; DEL2F nd_mtx_set.c, nd.h NdWs fields | W11 | 6 | nd.h |
 | W13 | DEL3C nd_op.h, nd_gbi.h, the last reader headers, gMainGfxPos (variables.h:111, game_stubs.c:9) | W12 | 1 | nd_op.h users |
 | W14 | DEL4D1-4: gDP/gSP/gsDP/gsSP definitions and Gfx prototypes to 3ds/tools/gconv_inc (FACT gen_gfx_tab.sh:14): gbi.h; gbi_custom.h; gs2dex.h and gt.h; sp.h and gu.h | W13 | 4 | one header per row |
 | W15 | S9GATE: listcen all 0, elfgate 0 0 0, the full drec set, then the user's end checks (section 5) | W14 | 1 | - |
-Width now: 3 new rows plus NST2F and FALLBK. Peak width 11 (W9). Critical path: 15 waves.
+Width now: 2 new rows plus NST2F and FALLBK. W2 opens 7 rows when NCONV1A and NST2F pass. Peak width 7 (W2). Critical path: 15 waves.
 ## 4. Sonnet rows split into Haiku rows, and rows Haiku cannot do
 - NDR0 (Sonnet) is NDR0A-E. A, B and C are measured steps: snapchk and dschk counts name each missing input. D and E follow from those counts.
 - NCONV1 (Sonnet) is NCONV1A-D. Each NDN_UNIT unit becomes one NDN_FS op with the same a and b (the id set of NCONV1A). This adds no new error
