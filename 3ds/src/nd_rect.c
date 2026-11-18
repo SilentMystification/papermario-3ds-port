@@ -11,6 +11,7 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "nd_int.h"
+#include "nd_snap.h" /* NDR0E2 */
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out) {
@@ -217,6 +218,7 @@ __attribute__((noinline, cold)) static int nd_texrect_fold(int rx0, int ry0, int
 }
 
 __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
+    if (nd_snap_arm) nd_snapchk_rect(); /* NDR0E2: the armed snapchk compare of a texture rectangle (nd_snap.c) */
     nd_rect_tex_n++;
     int xh = (int)((w0 >> 12) & 0xfff);
     int yh = (int)(w0 & 0xfff);
