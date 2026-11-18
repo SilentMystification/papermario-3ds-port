@@ -3888,9 +3888,9 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
      * the full texture (mainW x mainH, 32 x 64 on the sbk_56 water): the native draw sampled 64 rows and took uv scale 1/64 (uvso1 2x, u0.dim 0x40).
      * The desc takes the window size of the live tile 0 when that window starts at the handle raster with the same form and stride. */
     NdTexDesc wdesc; uint16_t ww_ = 0, wh_ = 0; /* WATER: the window size the cache entry keeps (0: the full desc) */
-    if (ds && nd_ws.td[0].valid && nd_ws.td[0].src == ds->img && nd_ws.td[0].fmt == ds->fmt && nd_ws.td[0].siz == ds->siz && nd_ws.td[0].stride == ds->stride &&
-        nd_ws.td[0].w > 0 && nd_ws.td[0].h > 0 && nd_ws.td[0].w <= ds->w && nd_ws.td[0].h <= ds->h && (nd_ws.td[0].w != ds->w || nd_ws.td[0].h != ds->h)) {
-        wdesc = *ds; wdesc.w = nd_ws.td[0].w; wdesc.h = nd_ws.td[0].h;
+    if (ds && t0->valid && t0->src == ds->img && t0->fmt == ds->fmt && t0->siz == ds->siz && t0->stride == ds->stride &&
+        t0->w > 0 && t0->h > 0 && t0->w <= ds->w && t0->h <= ds->h && (t0->w != ds->w || t0->h != ds->h)) {
+        wdesc = *ds; wdesc.w = t0->w; wdesc.h = t0->h;
         ds = &wdesc; ww_ = (uint16_t)wdesc.w; wh_ = (uint16_t)wdesc.h;
     }
     NdMode ax; int ax_ok = 0; /* S3L-3: R13 words of an untextured record (no bind): decoded as the list ops that run before the render mode list */
