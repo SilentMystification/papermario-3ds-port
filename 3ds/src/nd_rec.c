@@ -323,6 +323,12 @@ void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
     p[1] = (uint32_t)(uintptr_t)run;
     memcpy(p + 2, rec, units * 8u);
 }
+/* NDR5: a transform record is taken as a state op: the shadow stays, no dschk record, ds_sclost stays (rec_take :188-201) */
+void nd_rec_xf(NdNapiRun run, const uint32_t* rec) {
+    st_take = 1;
+    nd_rec_napi(run, rec, 1u);
+    st_take = 0;
+}
 /* NATIVEAPI S4: a run of particle draws (nd_api.h NdParts). S7CONV: a list is a flat particle list when it has a native table with
  * NDG_F_PARTS (nd_gtab.h: the build-time form of the old parts_ok rule, proven equal by nd_gtab_test.c). Memo: the last 8 lists found. */
 /* NST2C: the units of a native record feed core 1 (nd_ds_unit; a sync is skipped) */
