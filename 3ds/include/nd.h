@@ -332,7 +332,7 @@ unsigned nd_tmpl_hi(void);       /* the most entries in use (log) */
 /* the register writes of template id; returns the count (ND_TMPL_WORDS max) */
 unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 
-/* Render state rules of the walker (the former pm_gbi.c sync_render): other mode words to the draw flags. depth_img: the colour image is the z buffer image (a model drawn into
+/* Render state rules of the walker (the former pm_gbi.c nd_rnd_sync): other mode words to the draw flags. depth_img: the colour image is the z buffer image (a model drawn into
  * it is a depth write). set_memb 0: the memory blend flag is not changed by this state. atest -1 = off. */
 typedef struct NdRender { uint8_t zcmp, zupd, blend, decal, nocol, memb, set_memb, depth; int16_t atest; } NdRender;
 typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRender r; uint8_t has_cb, has_tx; uint32_t cw0, cw1, tw1, gand, gor; uint32_t bad; uint8_t has_g; } NdMode;
@@ -471,7 +471,7 @@ uint32_t nd_mkey_a(const uint32_t* rec); /* HC6 step 2: key A of a record (core 
 enum { HD_PRIM = 1, HD_ENV = 2, HD_FOG = 4, HD_BLEND = 8, HD_TEX = 16, HD_COMB = 32, HD_FOGF = 64, HD_OK = 128 };
 typedef struct NdHitD { uint32_t omh_m, omh_v, oml_m, oml_v, kh, kl, g_and, g_or, prim, plod, env, fog, blend, tss, cw0, cw1; int16_t fm, fo; uint8_t fl, tex; } NdHitD;
 NdHitD* nd_mc_hd(const NdMEnt* e); /* HC6 step 3: the state change of entry e (fl 0: not made yet) */
-/* S3N-3d: the combine choice of one draw (the former pm_gbi.c nd_comb_decide). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
+/* S3N-3d: the combine choice of one draw (the former pm_gbi.c nd_comb_dec). In: the combine words, the walker flags and the 16 combiner fields of tst1 (comb_a..d, comb_aa..ad,
  * comb2_a..d, comb2_aa..ad). Out: leg (legacy mode, or 8 with plan), use and plan (general plan), cc (constant colour of mode 4), and the walker state (mode5, pat, why, cyc, dual). */
 typedef struct NdCombIn {
     uint32_t w0, w1, omode_h, prim, env, prim_lo8, key_c, key_s, conv_k4;
@@ -483,7 +483,7 @@ typedef struct NdCombOut {
     uint32_t cc;
     PmPlan plan;
 } NdCombOut;
-void nd_comb_decide(const NdCombIn* in, NdCombOut* out);
+void nd_comb_dec(const NdCombIn* in, NdCombOut* out);
 /* NPSO2 (nd_decide.c, no walker global): the combine decision on explicit inputs; plan not coloured. mode5_prev: the value kept when leg 4 returns first. */
 void nd_comb_core(const NdCombIn* in, unsigned vprim, int mode5_prev, NdCombOut* out);
 /* NDR0D (nd_decide.c): nd_comb_core on core 1 with its own decision table and K4 (nd_snap.c). */

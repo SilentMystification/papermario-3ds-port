@@ -41,7 +41,7 @@ static int fake_aux = -1;
 static void fake_role_set(int r) { nd_tgt.img = NULL; nd_tgt.siz = 2; nd_tgt.kind = r == ROLE_MAIN ? NDK_NULL : 0; }
 
 void comb_in_walker(NdCombIn* in) { memset(in, 0, sizeof *in); in->w0 = nd_ws.comb_w0; in->w1 = nd_ws.comb_w1; in->omode_h = nd_ws.omode_h; }
-void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
+void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     n_decide++;
     memset(out, 0, sizeof *out);
     out->cyc = (int)((in->omode_h >> G_MDSFT_CYCLETYPE) & 3u);
@@ -50,8 +50,8 @@ void nd_comb_decide(const NdCombIn* in, NdCombOut* out) {
     if (in->w0 == 0xfc000003u) { out->cc_on = 1; out->cc = 0x11223344u; out->leg = 4; return; }
     out->leg = 2;
 }
-void op_setcombine(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
-void sync_render(void) { n_render++; }
+void nd_comb_set(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
+void nd_rnd_sync(void) { n_render++; }
 void nd_sr_forget(void) { n_forget++; }
 void ens_clear(void) { n_end_clear++; }
 int pm_is_cfb(const void* p) { return p != NULL; }
@@ -89,7 +89,7 @@ NdDs nd_ds; /* NDR2A: nd_dir_prim1 and nd_dir_rec read it */
 void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { (void)run; (void)rec; (void)units; }
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { (void)p; (void)prim; (void)env; }
 static int snap_none; static NdCombOut snap_o;
-const NdCombOut* nd_snap_dir_o(void) { NdCombIn in; if (snap_none) return NULL; comb_in_walker(&in); nd_comb_decide(&in, &snap_o); return &snap_o; } /* NDR2D: the decision core 1 would snap */
+const NdCombOut* nd_snap_dir_o(void) { NdCombIn in; if (snap_none) return NULL; comb_in_walker(&in); nd_comb_dec(&in, &snap_o); return &snap_o; } /* NDR2D: the decision core 1 would snap */
 unsigned char nd_snap_live; /* NDR2A */
 /* nd_rec.c is not linked here; NST2E feeds (nd_fill_feed, nd_trect_feed) */
 /* NSTREAM3: the native record runner of the direct fallbacks (nd_walk.c); the same count as the op walker */
@@ -97,9 +97,9 @@ void nd_nr_exec(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
 void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }
-void off_screen_check(void) {}
+void nd_img_check(void) {}
 void box_fold_sync(void) {}
-void ensure_tile(int n) { (void)n; }
+void nd_tile_bind(int n) { (void)n; }
 void dual_bind(void) {}
 void pm_tex_size(int* w, int* h) { *w = 32; *h = 16; }
 void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
@@ -112,10 +112,10 @@ void pm_gpu_tex_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s
 int tri_prep_ok;
 static u32 q_log[8][4];
 static int q_n, q_prep[8];
-void load_mtx(u32 w0, u32 w1, u32 hdr) { q_log[q_n][0] = 1; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_log[q_n][3] = hdr; q_n++; }
+void nd_xf_load(u32 w0, u32 w1, u32 hdr) { q_log[q_n][0] = 1; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_log[q_n][3] = hdr; q_n++; }
 void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { (void)list; q_log[q_n][0] = 2; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_n++; }
 void draw_tri(unsigned w) { q_prep[q_n] = tri_prep_ok; q_log[q_n][0] = 3; q_log[q_n][1] = w; q_log[q_n][3] = pm_gbi_cur_op; q_n++; }
-void gbi_popmtx(u32 w1) { q_log[q_n][0] = 4; q_log[q_n][2] = w1; q_n++; }
+void nd_xf_popb(u32 w1) { q_log[q_n][0] = 4; q_log[q_n][2] = w1; q_n++; }
 
 int main(void) {
     NdPsoN64 a = { 0xfc000010u, 0x11111111u, 0x00504340u, 0x0u, 0xf000u };
@@ -143,7 +143,7 @@ int main(void) {
     CHECK(dual_on == 0);
     n_setcomb = 0;
     CHECK(nd_direct_bind(ia, 0xff804020u, 0x55u) == 1);
-    CHECK(n_setcomb == 0); /* the same words: no second op_setcombine */
+    CHECK(n_setcomb == 0); /* the same words: no second nd_comb_set */
     ipl = nd_pso_n64(&pl);
     CHECK(nd_direct_bind(ipl, 1u, 2u) == 1 && n_plan == 1 && plan_active == 1);
     icc = nd_pso_n64(&cc);

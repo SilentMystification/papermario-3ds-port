@@ -287,7 +287,7 @@ int nd_edge_aa(uint32_t m) {
     return (m & 0x7048u) == 0x3048u && ((m >> 20) & 3u) == 1u && ((m >> 16) & 3u) == 1u && (m & 0xc00u) != 0xc00u;
 }
 
-/* ---- render state rules: moved from the former pm_gbi.c sync_render (RDP other mode to draw flags) ---- */
+/* ---- render state rules: moved from the former pm_gbi.c nd_rnd_sync (RDP other mode to draw flags) ---- */
 #define OM_CYCLETYPE 20 /* G_MDSFT_CYCLETYPE */
 void nd_render_state(uint32_t omode_h, uint32_t m, int depth_img, NdRender* o) {
     memset(o, 0, sizeof *o);

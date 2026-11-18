@@ -1,6 +1,6 @@
 /* nd_decide.c: NPSO2, the pure pipeline decision. No walker global is read or written: every input is an NdCombIn or an NdPsoDesc field.
  * nd_comb_core is the combine work of nd_comb.c (sync_legacy, decide, cc_eval, cc_legacy, const_rgb_tex_alpha) on explicit inputs. The device
- * (nd_comb.c: sync_combine_work, nd_comb_decide) calls it, so the decision is one piece of code. The host links it (3ds/tests/host.d/decide.sh).
+ * (nd_comb.c: sync_combine_work, nd_comb_dec) calls it, so the decision is one piece of code. The host links it (3ds/tests/host.d/decide.sh).
  * Colours are draw values: the plan this file makes keeps the colour names and has constants 0 (nd_pso_colour makes the values).
  *
  * Globals the moved code read before, and where each comes from now (NdCombIn field, NdPsoDesc field):

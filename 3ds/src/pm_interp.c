@@ -1,5 +1,5 @@
 /* F06-2: pm_interp_lerp(t) pairs this frame with the previous one (same node id, same leaf count, same leaf index) and builds
- * a table: dest Mtx* -> lerped MtxF (res = (1 - t) * old + t * new). Unpaired leaves are not in the table. the former pm_gbi.c load_mtx reads it.
+ * a table: dest Mtx* -> lerped MtxF (res = (1 - t) * old + t * new). Unpaired leaves are not in the table. the former pm_gbi.c nd_xf_load reads it.
  * F06-1: frame interpolation record (PaperBoat method, FrameInterpolation.cpp). Switch `fps60` / pm_opt.fps60, read at the first start.
  * Every guMtxF2L between pm_interp_start and pm_interp_stop adds a leaf (node id, leaf index, dest Mtx*, MtxF).
  * Node id = hash(parent id, a, b, occurrence index). Root node "game_logic". No picture change. */

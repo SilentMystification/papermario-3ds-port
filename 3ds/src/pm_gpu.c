@@ -36,7 +36,7 @@ static inline int dv_mode(void) { /* RECT-1b: read the switch on first use in an
     return __builtin_expect(dview >= 0, 1) ? dview : dv_read();
 }
 static unsigned dv_draw;
-static unsigned rs_src[3]; /* S1-3: other mode words and depth image flag of the last sync_render, for the ndref oracle */
+static unsigned rs_src[3]; /* S1-3: other mode words and depth image flag of the last nd_rnd_sync, for the ndref oracle */
 static unsigned plan_k[4], plan_kp[4]; /* S1-3: the combiner words of the plan: pm_comb_build(w0, w1, two, t1only) gives plan (pending key from pm_gpu_plan_key, set with the plan) */
 static int stencil_on; /* B3b: case 6 model, see flush */
 static int env_hi = 1; /* texenv stages configured so far (stage 0 is always reset) */
@@ -212,7 +212,7 @@ int pm_stretch_cfg; /* MENUGEN part 3: the Fullscreen option (options wide=2); p
 int pm_stretch; /* MENUGEN: 1 = Fullscreen: the Native picture (pm_wide 0) stretched 1.25x in X over 400 px, HUD included. Only the final viewport (rebuild_3d) and scissor (stage_scissor) and the grab columns read it. Set in pm_gpu_init and by the options flip. */
 static void mfr_init(void); extern int mfr_on; /* TIK19 debug (switch mfr) */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
-unsigned char pm_gv_rejm = 0x2f; /* WIDE4: the clip bits gv_tri rejects on (x planes off for a wide orthographic draw) */
+unsigned char pm_gv_rejm = 0x2f; /* WIDE4: the clip bits nd_gv_tri rejects on (x planes off for a wide orthographic draw) */
 static int ui_ortho; /* F07-3: the game matrix is orthographic (UI): drawn 1:1 and centered with wide, not stretched */
 static C3D_Mtx off_proj;
 
@@ -542,7 +542,7 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     ndref_draws++;
 }
 /* S1-3 oracle: kind 4, one record per GPU draw call (pass). Body: u32 pass (0 main, 1 decal pass A, 2 decal pass B, 3 zmark pass 2), z, zmark, zcmp, zupd, nocol, noise, raw,
- * plan key w0, w1, two, t1only (0 when combine is not 8), omode_h, omode_l, depth image flag of the last sync_render, then ctx[216..268) (13 words, the effect block C3Di_EffectBind writes) and ctx[292..428) (34 words: 6 texenv stages of 5 words,
+ * plan key w0, w1, two, t1only (0 when combine is not 8), omode_h, omode_l, depth image flag of the last nd_rnd_sync, then ctx[216..268) (13 words, the effect block C3Di_EffectBind writes) and ctx[292..428) (34 words: 6 texenv stages of 5 words,
  * texenv buffer update, buffer colour, third buffer word). The words are read from the citro3d context at the draw call, so they are exactly what the flush turns into register writes. */
 static int ndref_nz, ndref_raw;
 static __attribute__((cold, noinline)) void ndref_state(unsigned pass, int z) {
@@ -3280,7 +3280,7 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
     if (nb.draw_3d && nb.gni > 0) flush();
     ui_ortho = ortho;
-    pm_gv_rejm = (pm_wide && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
+    pm_gv_rejm = (pm_wide && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c nd_gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
     memcpy(game_mvp, m, sizeof(game_mvp));
     gs.vp_sx = sx;
     gs.vp_sy = sy;
@@ -3871,7 +3871,7 @@ void pm_gpu_set_r13_t1(int bound) {
     if (pm_tex_native_unit1(&r13u1) == 1) { r13u1_ok = 1; r13i8_1 = pm_tex_i8(1); int a_; pm_tex_cur_slots(&a_, &r13u1_slot); } /* TIK19: the slot of the unit 1 words (the cache entry keeps it) */
     /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
-int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of sync_render */
+int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of nd_rnd_sync */
 extern unsigned fogc, blendc; extern int pm_nofog;
 int nd_snap_mix(unsigned, unsigned, unsigned, int, unsigned*); /* nd_snap_in.c */
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
@@ -3881,7 +3881,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     int tex = 0, i8 = 0, hs = -1, id = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
     const NdTexDesc* ds = nd_tex_handle_desc((int)texidx, gfx);
     if (gfx != NULL && ds == NULL) { nd_nat_why = nd_tex_handle_miss((int)texidx, gfx); return -1; } /* S3N-3d: a textured handle without a desc (B4 common case only): fallback */
-    /* SBKW-2: the walker binds the tile 0 window (LoadTile w x h from the handle raster, ensure_tile), not the whole handle. The handle desc is
+    /* SBKW-2: the walker binds the tile 0 window (LoadTile w x h from the handle raster, nd_tile_bind), not the whole handle. The handle desc is
      * the full texture (mainW x mainH, 32 x 64 on the sbk_56 water): the native draw sampled 64 rows and took uv scale 1/64 (uvso1 2x, u0.dim 0x40).
      * The desc takes the window size of the live tile 0 when that window starts at the handle raster with the same form and stride. */
     NdTexDesc wdesc; uint16_t ww_ = 0, wh_ = 0; /* WATER: the window size the cache entry keeps (0: the full desc) */
@@ -3940,7 +3940,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.base_oh = ax_ok ? (msw[MSW_OMH] & ~ax.wh) | ax.om_h : msw[MSW_OMH]; c.base_ol = ax_ok ? (msw[MSW_OML] & ~ax.wl) | ax.om_l : msw[MSW_OML]; /* B8; S3L-3: the R13 mode ops first */
     c.known_h = msw[MSW_KH] | (ax_ok ? ax.wh : 0u); c.known_l = msw[MSW_KL] | (ax_ok ? ax.wl : 0u);
     { /* MERLEE: the V06 colour mix (the room shroud, PM_RM_SHROUD) from this record's own other mode (the base, then its list; the shroud word is the last list op, nd_recs.c)
-       * and the fog and blend colours rec_apply set. gs.r_mix is the state of the walker's last sync_render, not of this record. The F08 fog mix (2) stays the walker's. */
+       * and the fog and blend colours rec_apply set. gs.r_mix is the state of the walker's last nd_rnd_sync, not of this record. The F08 fog mix (2) stays the walker's. */
         unsigned mixc; const uint32_t ol_ = *mode_ok ? (c.base_ol & ~mdl_mode.wl) | mdl_mode.om_l : c.base_ol;
         if (nd_snap_mix(ol_, msw[MSW_FOGC], msw[MSW_BLENDC], pm_nofog, &mixc) == 1) { c.r_mix = 1; c.mixcol = mixc; }
         else { c.r_mix = gs.r_mix == 2 ? 2 : 0; c.mixcol = r_mixcol; }
@@ -4472,7 +4472,7 @@ unsigned pm_gpu_env_now(void) { return gs.env_col; }
 void pm_gpu_flush(void) { flush(); }
 
 /* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
-extern int dual_on; void ensure_tile(int n); void dual_bind(void); int dual_boost_on(void);
+extern int dual_on; void nd_tile_bind(int n); void dual_bind(void); int dual_boost_on(void);
 static unsigned spr_nat_n, spr_nat_fb[32];
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static unsigned spc_texget, spc_miss, spc_rh0[2]; /* PERF2: full texture lookups of sprites and the dirty-slot rehash totals at the last sprcost line */
@@ -4555,7 +4555,7 @@ extern unsigned shc[16]; /* BOMBLIT: nd_tex_set.c shade path counters */
 static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) {
     if (shaded) {
         if (!dual_on || nd_ws.use_t1) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
-        ensure_tile(0);
+        nd_tile_bind(0);
         dual_bind();
         if (pm_tex_native_unit0(un) != 1) { *why = 2; return 0; }
         while (*tw < (int)r->w) *tw <<= 1;
@@ -4615,7 +4615,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
     c.base_oh = sn ? sv[2] : nd_ws.omode_h; c.base_ol = sn ? sv[3] : nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
     if (sn) { c.r_mix = (int)sv[7]; c.mixcol = sv[7] ? sv[8] : r_mixcol; } else /* NDR4: the mix of the snap */
-    { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as sync_render), not gs.r_mix of the last model's sync_render:
+    { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as nd_rnd_sync), not gs.r_mix of the last model's nd_rnd_sync:
        * a sprite drawn after a shrouded model took its shroud (star power). */
         unsigned mixc; const unsigned ol_ = nd_ws.omode_l, p_ = (ol_ >> 30) & 3u, a_ = (ol_ >> 26) & 3u, mm_ = (ol_ >> 22) & 3u, b_ = (ol_ >> 18) & 3u;
         if (nd_mix1(ol_, &mixc)) { c.r_mix = 1; c.mixcol = mixc; }
@@ -4624,7 +4624,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     }
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
-    if (__builtin_expect(PMDL("sprmix"), 0)) { /* SHROUD: gs_r_mix (the last sync_render) and own_r_mix (this sprite's othermode, c.r_mix above) */
+    if (__builtin_expect(PMDL("sprmix"), 0)) { /* SHROUD: gs_r_mix (the last nd_rnd_sync) and own_r_mix (this sprite's othermode, c.r_mix above) */
         static unsigned sprmix_n; unsigned f_ = pm_frame_count(); if (f_ >= 415u && f_ <= 565u && sprmix_n++ < 300u) pm_log("sprmix f%u gs_r_mix %d own_r_mix %d mixcol %08x om30 %u ol %08x", f_, gs.r_mix, c.r_mix, c.mixcol, nd_ws.omode_l >> 30, nd_ws.omode_l);
     }
     if (nd_model_state_spr(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; } /* PERF1-5: through the sprite state memo */

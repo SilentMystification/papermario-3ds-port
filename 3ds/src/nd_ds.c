@@ -1,6 +1,6 @@
 /* nd_ds.c: the core 1 draw state and its apply (design_nstate.md section 4, row NST1). Each case copies the state writes of the core 0
- * handler named in its comment, in the same order. Left out: every pm_gpu_* call, flush, sync_combine, GP_SET, lit_freeze, log, and the
- * draw-time fields (td[], tile_x0/y0, tile_fx/fy, cur_tile, box_folded, leg_mode, comb_mode5, box_pat, the plan, fogmix_on which sync_render
+ * handler named in its comment, in the same order. Left out: every pm_gpu_* call, flush, nd_comb_sync, GP_SET, lit_freeze, log, and the
+ * draw-time fields (td[], tile_x0/y0, tile_fx/fy, cur_tile, box_folded, leg_mode, comb_mode5, box_pat, the plan, fogmix_on which nd_rnd_sync
  * writes, the tex_shaded0 record m1). The initial values are those of nd_ws (nd_state.c), the global initializers and pm_gbi_init
  * (geom G_SHADE | G_SHADING_SMOOTH). Pure C: the host test builds it with stubs for is_host, pm_wide and tex_win_s25. */
 #include <stdint.h>
@@ -52,7 +52,7 @@ static unsigned ds_om(NdDs* s, int h, uint32_t mask, u32 v) {
     return ch;
 }
 
-/* nd_comb.c op_setcombine: the combine words, the derived fields, the TEXEL1 rename, dual_on, box_prod, comb_alpha_shade. */
+/* nd_comb.c nd_comb_set: the combine words, the derived fields, the TEXEL1 rename, dual_on, box_prod, comb_alpha_shade. */
 static unsigned ds_comb(NdDs* s, u32 w0, u32 w1) {
     unsigned ch = 0;
     NdTst* t = &s->w.tst1;
@@ -160,7 +160,7 @@ static unsigned ds_scissor(NdDs* s, u32 w0, u32 w1) {
     return ch;
 }
 
-/* nd_tex_set.c set_tile, set_tilesize (the stored size and the dual_on reset only). */
+/* nd_tex_set.c set_tile, nd_tsz_set (the stored size and the dual_on reset only). */
 static unsigned ds_tile(NdDs* s, u32 a, u32 b) {
     unsigned ch = 0, tile = (b >> 24) & 7;
     NdTst* t = &s->w.tst1;
@@ -174,7 +174,7 @@ static unsigned ds_tile(NdDs* s, u32 a, u32 b) {
     SET(t->tile_shift[tile][1], (b >> 10) & 15);
     return ch;
 }
-static void ds_td0(NdDs* s, int uls, int ult, int lrs, int lrt) {   /* set_tilesize tile 0 (nd_tex_set.c:158-213) */
+static void ds_td0(NdDs* s, int uls, int ult, int lrs, int lrt) {   /* nd_tsz_set tile 0 (nd_tex_set.c:158-213) */
     NdTst* t = &s->w.tst1; NdTd* d = &s->w.td[0]; NdWin wn;
     nd_texw0(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
     if (!wn.src || wn.w <= 0 || wn.h <= 0) return;
@@ -205,12 +205,12 @@ static unsigned ds_tilesize(NdDs* s, u32 a, u32 b) {
         s->m1v = 1; s->m1w = ((lrs - uls) >> 2) + 1; s->m1h = ((lrt - ult) >> 2) + 1; }
     if (tile == 1) ds_td1(s, uls, ult, lrs, lrt);                                                       /* tex_tile1 :468-481 */
     if (tile == 0) {                                                                                   /* tex_shaded0 :497 */
-        s->w.td[0].valid = 0;                                                                          /* set_tilesize :153 */
+        s->w.td[0].valid = 0;                                                                          /* nd_tsz_set :153 */
         const int sh = s->m1v && t->tile_fmt[0] == 2 && t->tile_siz[0] == 0 && t->tile_pal[0] != t->tile_pal[1] && t->comb_a == 1 && t->comb_c == 2 &&
             s->m1w > 0 && s->m1h > 0; /* GUESS: load_shaded_sprite succeeds */
         if (sh) SET(s->dual_on, 1);
         s->m1v = 0;
-        if (!sh) ds_td0(s, uls, ult, lrs, lrt); }                                                       /* set_tilesize :158-213 */
+        if (!sh) ds_td0(s, uls, ult, lrs, lrt); }                                                       /* nd_tsz_set :158-213 */
     return ch;
 }
 
@@ -273,7 +273,7 @@ static unsigned ds_loadtlut(NdDs* s, u32 b) {
     return ch;
 }
 
-/* nd_mtx_set.c gbi_movemem and gbi_viewport (no lit_freeze). */
+/* nd_mtx_set.c nd_mv_mem and nd_vp_set (no lit_freeze). */
 static unsigned ds_movemem(NdDs* s, u32 w0, u32 w1) {
     unsigned ch = 0;
     if ((w0 & 0xff) == G_MV_LIGHT) {
@@ -348,7 +348,7 @@ static unsigned ds_apply(NdDs* s, uint32_t k, uint32_t v) {
     case ND_FS_OML: return ds_om(s, 0, nd_op_om_mask(a), b);
     case ND_FS_GEOM: SET(s->w.geom, (s->w.geom & a) | b); break; /* nd_set.c set_geom */
     case ND_FS_PRIM: SET(s->w.prim, b); SET(s->w.prim_lod, a & 0xffffu); break; /* nd_set_prim */
-    case ND_FS_ENV: SET(s->w.envc, b); break; /* gbi_setenv */
+    case ND_FS_ENV: SET(s->w.envc, b); break; /* nd_envc_set */
     case ND_FS_FOG: SET(s->fogc, b); break;
     case ND_FS_BLEND: SET(s->blendc, b); break;
     case ND_FS_FILL: SET(s->w.fill, b); break;

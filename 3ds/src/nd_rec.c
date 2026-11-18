@@ -361,7 +361,7 @@ void nd_parts_end(NdParts* b) {
         }
     nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
     nd_lsc_begin_v(1u); nd_ds_parts(&nd_ds, b->u, nd_ds_unit); nd_lsc_end_at(nd_rec_last_pay() + 1u); /* NST2C: the instances' state on core 1; NREC4: the instance snap table in payload word 1 */
-    nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NST2J: the parts runner ends with sync_combine */
+    nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NST2J: the parts runner ends with nd_comb_sync */
     b->n = 0;
 }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */

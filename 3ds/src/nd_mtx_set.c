@@ -13,6 +13,7 @@
 #include "variables.h"
 #include "nd_int.h"
 #include "nd_op.h"
+#include "nd_fs.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdLight lt[9];
@@ -122,10 +123,10 @@ static __attribute__((cold, noinline)) void mtx_bad(u32 w0, u32 w1, u32 hdr, con
     static int once;
     if (once) return;
     once = 1;
-    pm_log_evt("load_mtx: source %08x outside host memory, w0 %08x w1 %08x hdr %08x, caller %p, frame %u, skipped",
+    pm_log_evt("nd_xf_load: source %08x outside host memory, w0 %08x w1 %08x hdr %08x, caller %p, frame %u, skipped",
                (unsigned)(uintptr_t)src, (unsigned)w0, (unsigned)w1, (unsigned)hdr, caller, pm_frame_count());
 }
-void load_mtx(u32 w0, u32 w1, u32 hdr) {
+void nd_xf_load(u32 w0, u32 w1, u32 hdr) {
     nd_mtx_static = (hdr & 0x100u) != 0;
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
     Mtx* src = (Mtx*)ptr_of(w1);
@@ -162,7 +163,7 @@ void load_mtx(u32 w0, u32 w1, u32 hdr) {
     upload_mvp();
 }
 
-static __attribute__((noinline)) void gbi_viewport(u32 w1) {
+static __attribute__((noinline)) void nd_vp_set(u32 w1) {
     Vp* vp = (Vp*)ptr_of(w1);
     if (vp) {
         vp_sx = (float)vp->vp.vscale[0] / 4.f;
@@ -175,7 +176,7 @@ static __attribute__((noinline)) void gbi_viewport(u32 w1) {
     }
 }
 
-void gbi_movemem(u32 w0, u32 w1) {
+void nd_mv_mem(u32 w0, u32 w1) {
     if ((w0 & 0xff) == G_MV_LIGHT) lit_freeze(); /* GV5 */
     if ((w0 & 0xff) == G_MV_LIGHT) { /* T01: look-at vectors */
         int ls = (int)(((w0 >> 8) & 0xff) * 8 / 24) - 2;
@@ -187,10 +188,10 @@ void gbi_movemem(u32 w0, u32 w1) {
         const u8* l = (const u8*)ptr_of(w1);
         if (l && slot >= 0 && slot < 9) { lt[slot].col[0] = l[0]; lt[slot].col[1] = l[1]; lt[slot].col[2] = l[2]; lt[slot].dir[0] = (s8)l[8]; lt[slot].dir[1] = (s8)l[9]; lt[slot].dir[2] = (s8)l[10]; }
     }
-    if ((w0 & 0xff) == G_MV_VIEWPORT) gbi_viewport(w1);
+    if ((w0 & 0xff) == G_MV_VIEWPORT) nd_vp_set(w1);
 }
 
-void gbi_popmtx(u32 w1) {
+void nd_xf_popb(u32 w1) {
     nd_mtx_pop(w1 / 64); /* S1-4: count 0 pops one */
     upload_mvp();
 }
@@ -200,12 +201,12 @@ void gbi_popmtx(u32 w1) {
 void rec_lights(const Lightsn* L, unsigned k) {
     if (k > 7u) return;
     const unsigned n = k ? k : 1u; /* NUMLIGHTS_0 is 1 */
-    const uint32_t t[2] = { NDO_W0(NDO_MW, NDO_MW_NUMLIGHT << 16), NUML(n) };
-    if (!nd_op_same(t)) nd_op_apply(t);
+    const uint32_t t[2] = { ND_FS_W0(ND_FS_MW, ND_FS_MW_NUMLIGHT << 16), NUML(n) };
+    if (!nd_unit_same(t)) nd_unit_apply(t);
     for (unsigned i = 1; i <= n + 1u; i++) {
         const u32 a = (((u32)sizeof(Light) - 1u) / 8u) << 19 | ((i * 24u + 24u) / 8u) << 8 | G_MV_LIGHT;
         const u32 b = (u32)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a);
-        if (!lt_mem_same(a, b)) gbi_movemem(a, b);
+        if (!lt_mem_same(a, b)) nd_mv_mem(a, b);
     }
 }
 

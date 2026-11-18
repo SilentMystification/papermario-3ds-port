@@ -13,7 +13,7 @@
 #include "nd_snap.h"
 __attribute__((weak)) void nd_snapchk_tri(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_geom.c */
 __attribute__((weak)) unsigned char nd_snap_rpend; /* NDR0F1: strong in nd_snap.c */
-__attribute__((weak)) void nd_snap_render(void) { sync_render(); } /* NDR0F2: strong in nd_snap.c */
+__attribute__((weak)) void nd_snap_render(void) { nd_rnd_sync(); } /* NDR0F2: strong in nd_snap.c */
 const NdSnapBind* nd_ep_bs; /* NDR0G2: the blocks of the open epoch (nd_snap_eb), NULL = walker */
 #include "pm_tex.h"
 #include "pm_port.h"
@@ -43,7 +43,7 @@ unsigned st_lit, st_fogg, st_fogb, st_blc, st_tgen, st_tri; /* S25: draws that u
 int n_cmd, n_in, n_drop, n_out;
 
 /* BTLUI3 (debug switch cplxtrace, cold): the fate of the complex HUD quads. hud_element.c stores each quad's vertex block (ctr_store); a
- * vertex load of one sets ctr_live and logs it (ctrv); gv_tri logs each triangle while ctr_live (ctrt) and sets ctr_pend; the next raw
+ * vertex load of one sets ctr_live and logs it (ctrv); nd_gv_tri logs each triangle while ctr_live (ctrt) and sets ctr_pend; the next raw
  * batch close logs it (ctrb, pm_gpu.c). */
 const void* ctr_vtx[8];
 unsigned ctr_n;
@@ -185,7 +185,7 @@ int gv_fog_gpu_ok(void) { return pm_gpu_gv5_ok() && pm_gpu_gv_zcoef(NULL, NULL);
  * only (fallback reason, cull mode, the combiner, texture and render sync, the draw parameters) is made once per epoch and per texture scale, not per triangle. */
 unsigned gv_epoch = 1, ep_epoch; unsigned ep_osc, ep_fl, ep_n, ep_pepoch, ep_ptss, ep_open_gen, ep_open_epoch, ep_open_tss, ep_open_gmi;
 
-int ep_why, ep_ct, ep_cullboth, ep_open, ep_t1f; /* ep_t1f: TEXEL1 reads an off-screen window: gv_tri folds the window per triangle (t1_fold_tri) */
+int ep_why, ep_ct, ep_cullboth, ep_open, ep_t1f; /* ep_t1f: TEXEL1 reads an off-screen window: nd_gv_tri folds the window per triangle (t1_fold_tri) */
 
 GvP ep_p;
 
@@ -214,18 +214,18 @@ void gv_epoch_enter(void) {
         ep_fl = tri_flags();
         nd_bsrc = nd_ep_bs; /* NDR0G2 */
         if (!nd_dq_on) { /* S5CHUDA: a direct quad has bound tile 0 itself (nd_direct_quad) */
-            ensure_tile(nd_ws.use_t1 ? 1 : 0);
+            nd_tile_bind(nd_ws.use_t1 ? 1 : 0);
             dual_bind();
         }
         if (nd_snap_rpend) nd_snap_render(); /* NDR0F2: the snap of this triangle */
-        else sync_render();
+        else nd_rnd_sync();
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
-         * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). sync_render turned it off.
+         * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). nd_rnd_sync turned it off.
          * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
          * custom pre list under the model matrix without the billboard turn (nd_recs.c rec_apply order) and reaches the GPU back-facing (cull 2), so
          * all 10 triangles were culled and no pixel was marked. */
         if (nd_img_role(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f); }
-        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
+        /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: nd_gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
         if (plan_active && cur_plan.uses_tex1) {
             if (!ND_BTD(0)->valid || !ND_BTD(1)->valid) ep_why = GVR_TEX1;
             else if (pm_tex_aux_off_idx() >= 0) ep_t1f = 1;
@@ -303,7 +303,7 @@ static int gv_tri_core(const int* idx) {
 }
 
 /* BTLUI3: a triangle of a traced quad (ctr_live, set by the vertex load of the quad) gets one ctrt line */
-int gv_tri(const int* idx) {
+int nd_gv_tri(const int* idx) {
     if (!ctr_live) return gv_tri_core(idx);
     ctr_out = 0; ctr_why = -1; ctr_app = 0; ctr_trip = 0;
     int r = gv_tri_core(idx);
@@ -321,7 +321,7 @@ void nd_tridrop_log(unsigned f) {
     memcpy(gvfb_snap, gv_fb, sizeof gvfb_snap);
     tri_drop[0] = tri_drop[1] = 0;
 }
-int tri_prep_ok; /* PG4: off_screen_check and box_fold_sync ran for this op */
+int tri_prep_ok; /* PG4: nd_img_check and box_fold_sync ran for this op */
 void draw_tri(unsigned w);
 
 void draw_tri(unsigned w) {
@@ -346,24 +346,24 @@ void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
-    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { nd_img_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
     if (nd_ls_on) nd_lsr_tri(nd_ls_ord - 1u);
     if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */
     nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NCONV1D2: a list triangle binds from its range snap. NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
     if (nd_snap_arm) { nd_snapchk_tri(); if (ep_epoch == gv_epoch) nd_snap_rpend = 0; } /* DEL3A: the bind and rnd compares are deleted */ /* NDR0A: the armed snapchk compare (nd_snap.c). NDR0F1: no new epoch at this triangle: compare the render block of the open epoch now */
     { /* GV1: ring vertices go to the GPU with no CPU transform. The rest reads the ring copy. */
-        const int done = vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && gv_tri(idx);
+        const int done = vert_ring[i0] != GV_NONE && vert_ring[i1] != GV_NONE && vert_ring[i2] != GV_NONE && nd_gv_tri(idx);
         nd_snap_rpend = 0; /* NDR0F1B */ /* NCONV1D2 */
         if (done) return;
     }
-    /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and gv_tri refused (gv_fb names why) */
+    /* TRI-4: no CPU triangle path. A triangle the ring did not take is dropped and counted (DEL): tri_drop[0] a vertex not on the ring, tri_drop[1] all on the ring and nd_gv_tri refused (gv_fb names why) */
     tri_drop[(vert_ring[i0] == GV_NONE || vert_ring[i1] == GV_NONE || vert_ring[i2] == GV_NONE) ? 0 : 1]++;
     n_drop++;
 }
 
-/* NATIVEAPI S4 (nd_parts_run): one flat particle list drawn from the ring with the state of now. The triangle path of draw_tri and gv_tri
+/* NATIVEAPI S4 (nd_parts_run): one flat particle list drawn from the ring with the state of now. The triangle path of draw_tri and nd_gv_tri
  * (the epoch and the state checks, the GPU append and the GPU triangle, the refusal count), with the vertex state of the ring copy in
- * rs[] (no CPU vertex state is kept). No CPU clip test: gv_tri only skipped triangles wholly outside one view plane, which draw no pixel on
+ * rs[] (no CPU vertex state is kept). No CPU clip test: nd_gv_tri only skipped triangles wholly outside one view plane, which draw no pixel on
  * the GPU either. Lit and refused loads return 0 before any triangle: the caller runs the list. S7CONV: the list comes as its native table
  * (nd_gtab.h, NDG_F_PARTS: every load source mapped and inside 64 slots, every index inside the loads), read as sequential 8-byte ops; no
  * list word is read. */
@@ -397,7 +397,7 @@ int nd_part_draw(const NdNDev* t) {
             gp_ntri++;
             n_cmd++;
             tri_since_vtx = 1;
-            if (ep_osc != gv_epoch) { off_screen_check(); box_fold_sync(); ep_osc = gv_epoch; }
+            if (ep_osc != gv_epoch) { nd_img_check(); box_fold_sync(); ep_osc = gv_epoch; }
             if (nd_ls_on) { nd_ls_ord++; nd_lsr_tri(nd_ls_ord - 1u); } /* NREC4: the instance snap */
             const unsigned char sn = nd_ls_on && nd_snap_arm;
             if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;
@@ -408,7 +408,7 @@ int nd_part_draw(const NdNDev* t) {
             if (ep_cullboth) { n_out++; GP_LAP(GPL_EARLY); continue; }
             if (ep_pepoch != gv_epoch || ep_ptss != tss) {
                 gv_params_calc(tss, &ep_p);
-                gv_vc_vtx = gv_vc_block != gv_epoch && plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE && !ep_p.boost && !ep_p.fxon; /* S4COL: as gv_tri (PBATCH2) */
+                gv_vc_vtx = gv_vc_block != gv_epoch && plan_active && cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE && !ep_p.boost && !ep_p.fxon; /* S4COL: as nd_gv_tri (PBATCH2) */
                 if (gv_vc_vtx) for (int q = 0; q < 4; q++) { ep_p.cm[q] = 1.f; ep_p.ca[q] = 0.f; }
                 pm_gpu_set_rgb_scale(ep_p.boost ? 2 : 1);
                 ep_pepoch = gv_epoch; ep_ptss = tss;

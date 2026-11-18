@@ -43,8 +43,8 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     nd_snap_in(s, sn_leg, sn_pat, &r.in);
     nd_snap_rnd(s, &r);
     r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, s->w.omode_l, s->w.omode_h, zc);
-    r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
-    nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
+    r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of nd_rnd_sync */
+    nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of nd_rnd_sync */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
     if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.plod == sn_last.plod && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
@@ -87,7 +87,7 @@ void nd_snap_rect(void) { snap_take(&nd_ds, sn_tgt.siz == 2 && (sn_tgt.kind & (N
 /* ---- core 0 ---- */
 unsigned char nd_snap_arm;
 unsigned char nd_snap_live; /* NDR1C: a snap is armed for this rectangle run; a command clears it */
-unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after gv_tri and by nd_snap_render */
+unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after nd_gv_tri and by nd_snap_render */
 static NdSnapChk sc_cur;
 static NdSnapBind sc_eb[2];
 static unsigned sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */

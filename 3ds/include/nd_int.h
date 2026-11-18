@@ -21,12 +21,12 @@ void pm_cfb_capture_prev_cpu_for(const void* fill);
 extern int zcol, zslot_on, sci_x0;
 
 float depth_of_word(unsigned w16);
-void off_screen_check(void);
+void nd_img_check(void);
 float shift_mul(unsigned n);
-void ensure_tile(int n);
+void nd_tile_bind(int n);
 void gp3_t0_surv(void);
 void box_fold_sync(void);
-void sync_render(void);
+void nd_rnd_sync(void);
 unsigned rgba_from_5551(unsigned c);
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out);
 void dual_bind(void);
@@ -37,8 +37,8 @@ extern int ep_t1f;
 int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd);
 int box_pattern_rect(int xl, int yl, int xh, int yh, u32 hs, u32 hd);
 
-void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd); /* nd_rect.c: G_TEXRECT (3 slots) */
-void nd_fillrect(u32 w0, u32 w1);                /* nd_rect.c: G_FILLRECT */
+void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd); /* nd_rect.c: G_TEXRECT (3 slots) */
+void nd_frect_draw(u32 w0, u32 w1);                /* nd_rect.c: G_FILLRECT */
 extern unsigned nd_rect_tex_n, nd_rect_fill_n;    /* nd_rect.c: calls of each handler */
 
 typedef struct { unsigned draws, nat, fb, segn, segi, comp, dyn, why[12], ceq, cdiff, cseg; } EntCount;
@@ -68,14 +68,14 @@ unsigned rec_run(const Gfx* q);
 int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
 unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
-void nd_modvtx(unsigned where, unsigned vi); /* HC4d2: NDO_MISC_MODVTX fields */
-void gbi_movemem(u32 w0, u32 w1);
-void gbi_popmtx(u32 w1);
-void gbi_setcimg(u32 a, u32 b); /* HC4d2: NDO_MISC_CIMG (a = sub << 16 | siz << 12 | width - 1, b = address) */
-void gbi_setenv(u32 w1);
+void nd_modvtx(unsigned where, unsigned vi); /* HC4d2: ND_FS_MISC_MODVTX fields */
+void nd_mv_mem(u32 w0, u32 w1);
+void nd_xf_popb(u32 w1);
+void nd_cimg_set(u32 a, u32 b); /* HC4d2: ND_FS_MISC_CIMG (a = sub << 16 | siz << 12 | width - 1, b = address) */
+void nd_envc_set(u32 w1);
 void gv_streak_flush(void);
 void gv_streak_op(unsigned op);
-void load_mtx(u32 w0, u32 w1, u32 hdr);
+void nd_xf_load(u32 w0, u32 w1, u32 hdr);
 void note(unsigned op);
 void pm_gbi_ent_segchk(const uint32_t* dl);
 void pm_gbi_ent_texchk(const uint32_t* dl);
@@ -83,7 +83,7 @@ void set_fillcolor(u32 w1);
 void set_fogcolor(u32 w1);
 void set_geom(u32 w0, u32 w1);
 void set_primdepth(u32 w1);
-void sync_combine(void);
+void nd_comb_sync(void);
 void tex_streak_flush(void);
 void tex_streak_op(unsigned op);
 void* ptr_of(u32 w);
@@ -143,8 +143,8 @@ extern unsigned st_vx;
 extern unsigned vert_tss[64];
 
 /* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the the former pm_gbi.c helpers it calls ---- */
-int nd_op_same(const uint32_t* u);    /* HC4a: nd_set.c, the typed scalar ops (nd_op.h) */
-void nd_op_apply(const uint32_t* u);
+int nd_unit_same(const uint32_t* u);    /* HC4a: nd_set.c, the typed scalar ops (nd_op.h) */
+void nd_unit_apply(const uint32_t* u);
 void nd_bad_next(u32 w1, u32 w0, u32 list);
 void nd_bad_vtx(u32 w1, u32 w0, u32 list);
 void nd_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc);
@@ -154,10 +154,10 @@ void set_fogcolor(u32 w1);
 void set_primdepth(u32 w1);
 void set_fillcolor(u32 w1);
 void nd_set_prim(u32 a, u32 b);              /* nd_set.c: G_SETPRIMCOLOR (a = LOD word, b = colour) */
-void nd_sr_forget(void);                     /* ST-1: nd_state.c, sync_render state forgotten */
+void nd_sr_forget(void);                     /* ST-1: nd_state.c, nd_rnd_sync state forgotten */
 int nd_mix1(unsigned ol, unsigned* col);   /* nd_set.c: the V06 blend colour mix of other mode L (1 and the colour, else 0) */
-void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, unsigned oml, unsigned sg); /* NDR0F2: nd_set.c, the GPU part of sync_render */
-int nd_sr_same(unsigned sg);                /* NDR0F2: nd_set.c, 1 when the GPU state of signature sg is set (sync_render skip) */
+void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, unsigned oml, unsigned sg); /* NDR0F2: nd_set.c, the GPU part of nd_rnd_sync */
+int nd_sr_same(unsigned sg);                /* NDR0F2: nd_set.c, 1 when the GPU state of signature sg is set (nd_rnd_sync skip) */
 void gp_note(int k, int same);               /* PG0 counter, the former pm_gbi.c */
 void lit_freeze(void);                       /* GV5, the former pm_gbi.c */
 extern int sci_x0, sci_y0, sci_x1, sci_y1;   /* ST-1: nd_state.c, scissor of the walker */
@@ -182,7 +182,7 @@ extern unsigned st0_ep; extern int st0_ok; /* nd_tex_set.c */
 typedef struct NdTexM { int ld_valid, ld_x, ld_y, ld_h, ld_w; unsigned ldrec_n, blk_n; const void* tlut_pal[16]; } NdTexM;
 extern NdTexM nd_tm;
 /* D4a-1: the tile 0 window of a SetTileSize (source, size, stride): a pure function of the tile state t, the texture image timg and the
- * load model m (no global writes). set_tilesize applies it (td[0], the origin, the repeated-load skips). nd_texw0 is in nd_texwin.c. */
+ * load model m (no global writes). nd_tsz_set applies it (td[0], the origin, the repeated-load skips). nd_texw0 is in nd_texwin.c. */
 typedef struct NdWin { const u8* src; int w, h, stride, x0; } NdWin;
 void nd_texw0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o);
 void nd_texw1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o); /* D4a-1: the tile 1 window, in nd_texwin.c */
@@ -197,14 +197,14 @@ void tlut_v20(unsigned slot);
 void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt);
 int tex_shaded0(int uls, int ult);
 void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, unsigned ms, unsigned ft, unsigned mt);
-/* HC4c: the typed texture setters (nd_op.h fields; nd_op_apply runs them by id) */
-void nd_set_timg(u32 a, u32 b);
-void nd_set_tile(u32 a, u32 b);
-void nd_set_loadblock(u32 b);
-void nd_set_loadtile(u32 a, u32 b);
-void nd_set_loadtlut(u32 b);
-void nd_set_tilesize(u32 a, u32 b);
-void nd_set_texture(u32 a, u32 b);
+/* HC4c: the typed texture setters (nd_op.h fields; nd_unit_apply runs them by id) */
+void nd_tx_timg(u32 a, u32 b);
+void nd_tx_tile(u32 a, u32 b);
+void nd_tx_ldblk(u32 b);
+void nd_tx_ldtile(u32 a, u32 b);
+void nd_tx_ldtlut(u32 b);
+void nd_tx_tsz(u32 a, u32 b);
+void nd_tx_texon(u32 a, u32 b);
 void nd_bind_run(const uint32_t* u);   /* the typed bind list of a texture handle (rec_apply) */
 
 /* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; the former pm_gbi.c and the walker read them. ---- */
@@ -242,10 +242,10 @@ const u8* fb_prev_base(int n);
 void ens_clear(void);
 extern unsigned short** nuGfxCfb; extern unsigned nuGfxCfbNum;
 void grab_cur(const void* src, int w, int h);       /* the former pm_gbi.c, target group */
-void nd_native_rec(unsigned kind, unsigned on);      /* nd_target.c, LS-4: G_PM_ND records (HC4d2: NDO_MISC_ND fields) */
+void nd_native_rec(unsigned kind, unsigned on);      /* nd_target.c, LS-4: G_PM_ND records (HC4d2: ND_FS_MISC_ND fields) */
 int load_shaded_sprite(void);           /* the former pm_gbi.c, TX-3 */
 int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3 */
-void op_setcombine(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */
+void nd_comb_set(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 /* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
 extern int comb_mode5, plan_active, fog_fm, fog_fo, box_prod, box_pat, comb_alpha_shade, leg_mode;
@@ -254,7 +254,7 @@ void cc_cycle1(const float* t0, const float* t1, float out[4]);
 /* ---- C (ST-2): the combine group in nd_comb.c ---- */
 int const_rgb_tex_alpha(unsigned* out);
 float cc_clamp(float v);
-void op_setcombine(u32 w0, u32 w1);
+void nd_comb_set(u32 w0, u32 w1);
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1);
 
 
@@ -285,7 +285,7 @@ void gv_xf(int sl);
 int gv_fog_gpu_ok(void);
 int gv_state_why(int* ct, int* both);
 void gv_epoch_enter(void);
-int gv_tri(const int* idx);
+int nd_gv_tri(const int* idx);
 float cull_cross(const float* p1, const float* p2, const float* p3);
 void ep_flush_stats(void);
 extern int tri_prep_ok, lit_pending, ep_why, ep_ct, ep_cullboth;

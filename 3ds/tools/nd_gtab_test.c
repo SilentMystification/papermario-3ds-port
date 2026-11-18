@@ -191,7 +191,7 @@ static void check_tab(const char* name, const NdGTab* t, unsigned nu) {
 /* ---- CONV2C: the host compare of the v2 tables (nd_gtab.h NdNTab). Compiled with -DNTAB_V2 by 3ds/tests/host.d/conv2c.sh, linked with nd_ntab_idx.c, nd_decide.c,
  * nd_tmpl.c, nd_texwin.c and pm_comb.c. For every v2 table the v1 table of the same list is walked as the v1 path walks it (the NdGDef words and the unit ops, the
  * calls of the callee tables), on the reset walker state (all zero: a self-contained list needs no other), by a state model written here from the walker's setters
- * (op_setcombine, set_tile, set_loadtile, set_loadblock, set_timg, set_loadtlut, set_tilesize; nd_texw0 of nd_texwin.c is the one shared function). The model gives, per
+ * (nd_comb_set, set_tile, set_loadtile, set_loadblock, set_timg, set_loadtlut, nd_tsz_set; nd_texw0 of nd_texwin.c is the one shared function). The model gives, per
  * triangle: the vertex array and the three absolute indices, the pipeline description (nd_pso_build output bytes and the description bytes), the tile 0 bind
  * descriptor; and the transform and colour op sequences. The table is replayed the same way. Any difference counts in bad.
  * --fault: one NDN_COL value + 1 in the compare's copy (the compare must then report bad above 0). ---- */
@@ -244,7 +244,7 @@ static const GSym* m_vsym(uint32_t p) {
         if (gconv_sym[i].kind == GS_VTX && p >= (uintptr_t)gconv_sym[i].addr && p < (uintptr_t)gconv_sym[i].end) return &gconv_sym[i];
     return NULL;
 }
-/* the walker's combine rules (op_setcombine and box_prod, as nd_decide_test.c walker_comb) */
+/* the walker's combine rules (nd_comb_set and box_prod, as nd_decide_test.c walker_comb) */
 static NdPsoDesc m_desc(const MSt* s) {
     NdPsoDesc d;
     memset(&d, 0, sizeof d);

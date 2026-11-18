@@ -30,5 +30,5 @@ static inline void nd_nr_o(uint32_t** o, uint32_t k, uint32_t v) { if (o) { uint
 #define ND_NR_TLUT(tile, count) (((uint32_t)(tile) & 7u) << 24 | ((uint32_t)(count) & 0x3ffu) << 14)
 #define ND_NR_RGBA(r, g, b, a) (((uint32_t)(r) & 0xffu) << 24 | ((uint32_t)(g) & 0xffu) << 16 | ((uint32_t)(b) & 0xffu) << 8 | ((uint32_t)(a) & 0xffu))
 #define ND_NR_KEYR(cR, sR, wR) (((uint32_t)(wR) & 0xfffu) << 16 | ((uint32_t)(cR) & 0xffu) << 8 | ((uint32_t)(sR) & 0xffu))
-#define ND_NR_TR_W0(xh, yh) ND_FS_W0(ND_FS_RECT, ND_NR_XY12(xh, yh)) /* DEL1A: the rectangle unit form (nd_texrect reads the low 24 bits) */
+#define ND_NR_TR_W0(xh, yh) ND_FS_W0(ND_FS_RECT, ND_NR_XY12(xh, yh)) /* DEL1A: the rectangle unit form (nd_trect_draw reads the low 24 bits) */
 #endif

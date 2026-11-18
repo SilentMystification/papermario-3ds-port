@@ -429,7 +429,7 @@ __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, un
     unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
     /* DARK: a static range draws into the colour image of its epoch, as draw_tri does. The darkness stencil quad (Gfx_DarknessStencilQuad,
      * a static list on the SGEN-1 entity path) draws into the 64 x 64 image in the z-buffer memory; without this check it drew on the screen. */
-    if (seg_osc_ep != gv_epoch) { off_screen_check(); seg_osc_ep = gv_epoch; }
+    if (seg_osc_ep != gv_epoch) { nd_img_check(); seg_osc_ep = gv_epoch; }
     if (nd_ls_on) nd_lsr_seg(nd_ls_ord);
     const unsigned char sn = nd_ls_on && nd_snap_arm; /* NCONV1D2: the snap steps of draw_tri (nd_geom.c) */
     if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;
