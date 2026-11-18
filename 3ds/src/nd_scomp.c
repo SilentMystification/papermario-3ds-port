@@ -9,6 +9,7 @@
 #include "ultra64.h"
 #include "nd.h"
 #include "nd_op.h"
+#include "nd_fs.h"
 #include "nd_scomp.h"
 
 static unsigned def_next; /* core 1: the ids of the analysed defs (a hint only: last[]; the key word 0 is the def pointer) */
@@ -18,12 +19,12 @@ static unsigned unit_class(uint32_t w0) {
     const unsigned id = w0 >> 24, a = w0 & 0xffffffu;
     if (w0 == ND_NOP_A) return 3u;
     switch (id) {
-    case NDO_OMH: case NDO_OML: case NDO_GEOM: case NDO_TEXTURE: case NDO_COMB: return 1u;
-    case NDO_FOG: case NDO_BLEND: case NDO_FILL: case NDO_PRIMZ: case NDO_SCISSOR: case NDO_MTX: case NDO_POPMTX: case NDO_MOVEMEM: return 2u;
-    case NDO_MW: return (a >> 16) == NDO_MW_NONE ? 3u : 2u; /* S6VORD: clip ratio, persp normalize: no field, a no-op */
-    case NDO_MISC: return ((a >> 16) == NDO_MISC_CIMG || (a >> 16) == NDO_MISC_ND) ? 2u : 0u;
-    case NDO_PRIM: case NDO_ENV: case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE:
-    case NDO_LOADBLOCK: case NDO_LOADTILE: case NDO_LOADTLUT: return 4u; /* SCOMP0: an ordered value unit */
+    case ND_FS_OMH: case ND_FS_OML: case ND_FS_GEOM: case ND_FS_TEXTURE: case ND_FS_COMB: return 1u;
+    case ND_FS_FOG: case ND_FS_BLEND: case ND_FS_FILL: case ND_FS_PRIMZ: case ND_FS_SCISSOR: case ND_FS_MTX: case ND_FS_POPMTX: case ND_FS_MOVEMEM: return 2u;
+    case ND_FS_MW: return (a >> 16) == ND_FS_MW_NONE ? 3u : 2u; /* S6VORD: clip ratio, persp normalize: no field, a no-op */
+    case ND_FS_MISC: return ((a >> 16) == ND_FS_MISC_CIMG || (a >> 16) == ND_FS_MISC_ND) ? 2u : 0u;
+    case ND_FS_PRIM: case ND_FS_ENV: case ND_FS_TIMG: case ND_FS_TILE: case ND_FS_TILESIZE:
+    case ND_FS_LOADBLOCK: case ND_FS_LOADTILE: case ND_FS_LOADTLUT: return 4u; /* SCOMP0: an ordered value unit */
     default: return 0u; /* RARE, draws and control */
     }
 }
@@ -32,8 +33,8 @@ static unsigned unit_class(uint32_t w0) {
 static int unit_sync(uint32_t w0) {
     const unsigned a = w0 & 0xffffffu;
     switch (w0 >> 24) {
-    case NDO_OMH: { const unsigned sft = a & 0xffu, len = (a >> 8) & 0xffu; return sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE; }
-    case NDO_TEXTURE: case NDO_COMB: return 1;
+    case ND_FS_OMH: { const unsigned sft = a & 0xffu, len = (a >> 8) & 0xffu; return sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE; }
+    case ND_FS_TEXTURE: case ND_FS_COMB: return 1;
     default: return 0;
     }
 }
@@ -61,14 +62,14 @@ int nd_scomp_analyse(NdSDef* d) {
         seen = 1;
         if (first == 32u) first = k;
         last = k;
-        d->last_op = nd_op_n64[id - NDO_BASE];
+        d->last_op = nd_op_n64[id - ND_FS_BASE];
         if (unit_sync(w0)) { if (d->nsync >= 4u) ok = 0; else d->sync_k[d->nsync++] = (uint8_t)k; }
         switch (id) {
-        case NDO_OMH: { const uint32_t m = nd_op_om_mask(a); d->omh_v = (d->omh_v & ~m) | (b & m); d->omh_m |= m; break; }
-        case NDO_OML: { const uint32_t m = nd_op_om_mask(a); d->oml_v = (d->oml_v & ~m) | (b & m); d->oml_m |= m; break; }
-        case NDO_GEOM: d->geom_c &= a; d->geom_s = (d->geom_s & a) | b; d->has_geom = 1; break; /* set_geom: geom = (geom & a) | b, composed */
-        case NDO_TEXTURE: d->tex_a = a; d->tex_b = b; d->has_tex = 1; break;
-        case NDO_COMB: d->cw0 = NDO_COMB_W0(a); d->cw1 = b; d->has_comb = 1; break;
+        case ND_FS_OMH: { const uint32_t m = nd_op_om_mask(a); d->omh_v = (d->omh_v & ~m) | (b & m); d->omh_m |= m; break; }
+        case ND_FS_OML: { const uint32_t m = nd_op_om_mask(a); d->oml_v = (d->oml_v & ~m) | (b & m); d->oml_m |= m; break; }
+        case ND_FS_GEOM: d->geom_c &= a; d->geom_s = (d->geom_s & a) | b; d->has_geom = 1; break; /* set_geom: geom = (geom & a) | b, composed */
+        case ND_FS_TEXTURE: d->tex_a = a; d->tex_b = b; d->has_tex = 1; break;
+        case ND_FS_COMB: d->cw0 = ND_FS_COMB_W0(a); d->cw1 = b; d->has_comb = 1; break;
         default: break; /* MW none */
         }
     }
@@ -198,7 +199,7 @@ static void sc_block(const NdSDef* d) {
     if (d->oml_m) { nd_ws.omode_l = (nd_ws.omode_l & ~d->oml_m) | d->oml_v; nd_ws.om_kl |= d->oml_m; }
     if (d->has_geom) set_geom(d->geom_c, d->geom_s);
     if (d->has_tex) nd_set_texture(d->tex_a, d->tex_b);
-    /* the NDO_COMB skip test without its sync part: equal words, set, not folded, no fold since the last combine */
+    /* the ND_FS_COMB skip test without its sync part: equal words, set, not folded, no fold since the last combine */
     if (d->has_comb && (nd_ws.comb_w0 != d->cw0 || nd_ws.comb_w1 != d->cw1 || !comb_set || box_folded || cmb_gen_seen != comb_gen)) op_setcombine(d->cw0, d->cw1);
 }
 
@@ -246,12 +247,12 @@ static void sc_units(const NdSDef* d) {
         const uint32_t* p = u + 2u * k;
         const unsigned id = p[0] >> 24;
         if (d->vmask >> k & 1u) continue;
-        if (id != NDO_OMH && id != NDO_OML && id != NDO_GEOM && id != NDO_TEXTURE && id != NDO_COMB) continue; /* no-ops */
+        if (id != ND_FS_OMH && id != ND_FS_OML && id != ND_FS_GEOM && id != ND_FS_TEXTURE && id != ND_FS_COMB) continue; /* no-ops */
         if (nd_op_same(p)) continue;
         if (!unit_sync(p[0])) { nd_op_apply(p); continue; }
-        if (id == NDO_OMH) { const uint32_t m = nd_op_om_mask(p[0] & 0xffffffu); sc_omh(m, p[1]); }
-        else if (id == NDO_TEXTURE) nd_set_texture(p[0] & 0xffffffu, p[1]);
-        else op_setcombine(NDO_COMB_W0(p[0] & 0xffffffu), p[1]);
+        if (id == ND_FS_OMH) { const uint32_t m = nd_op_om_mask(p[0] & 0xffffffu); sc_omh(m, p[1]); }
+        else if (id == ND_FS_TEXTURE) nd_set_texture(p[0] & 0xffffffu, p[1]);
+        else op_setcombine(ND_FS_COMB_W0(p[0] & 0xffffffu), p[1]);
         sc_decide(d, k);
     }
 }

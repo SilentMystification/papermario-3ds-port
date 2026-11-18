@@ -10,6 +10,7 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
+#include "nd_fs.h"
 
 unsigned rec_n; /* M4-2: records run in the current opsplit window */
 void nd_range_run(const uint32_t* a); /* nd_walk.c: DIRECT D10a, a custom gfx range of the frame stream */
@@ -28,13 +29,13 @@ static __attribute__((noinline)) void rec_top(const uint32_t t[2]) {
     nd_op_apply(t);
 }
 static void rec_t(unsigned id, uint32_t a, uint32_t b) {
-    const uint32_t t[2] = { NDO_W0(id, a), b };
+    const uint32_t t[2] = { ND_FS_W0(id, a), b };
     rec_top(t);
 }
 /* S3F-2: the fog of a record: the colour word, then the position word (the MOVEWORD header is built with the gbi macro, no division here). */
-static void rec_fogpos(u32 pos) { rec_t(NDO_MW, NDO_MW_FOG << 16, pos); }
+static void rec_fogpos(u32 pos) { rec_t(ND_FS_MW, ND_FS_MW_FOG << 16, pos); }
 static __attribute__((noinline)) void rec_fog(u32 col, u32 pos) {
-    rec_t(NDO_FOG, 0, col);
+    rec_t(ND_FS_FOG, 0, col);
     rec_fogpos(pos);
 }
 /* HC4b (W3): the render mode list of index i as the typed ops of the render mode table (nd_rec.c, built by the recorder), run as the list ran
@@ -73,8 +74,8 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     rec_n++;
     gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
-    if (f & 4u) rec_t(NDO_PRIM, 0, q[6].words.w0); /* depth and remap: the old words before the lights */
-    if (f & 8u) rec_t(NDO_ENV, 0, q[6].words.w1);
+    if (f & 4u) rec_t(ND_FS_PRIM, 0, q[6].words.w0); /* depth and remap: the old words before the lights */
+    if (f & 8u) rec_t(ND_FS_ENV, 0, q[6].words.w1);
     if (f & 64u) rec_fog(q[4].words.w0, q[5].words.w1);
     if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights, as the old word order */
     u32 w0 = q->words.w0;
@@ -87,9 +88,9 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     }
     rec_rm((w0 >> 16) & 0xffu); /* ST-4, HC4b: the render mode list (typed table) */
     if (f & 32u) { /* S3F-2b: shroud: render mode, fog colour, blend colour, fog position (the old order) */
-        rec_t(NDO_OML, NDO_A_RENDERMODE, (u32)(PM_RM_SHROUD) | q[7].words.w1);
-        rec_t(NDO_FOG, 0, q[4].words.w0);
-        if (f & 16u) rec_t(NDO_BLEND, 0, q[7].words.w0);
+        rec_t(ND_FS_OML, ND_FS_A_RENDERMODE, (u32)(PM_RM_SHROUD) | q[7].words.w1);
+        rec_t(ND_FS_FOG, 0, q[4].words.w0);
+        if (f & 16u) rec_t(ND_FS_BLEND, 0, q[7].words.w0);
         rec_fogpos(q[5].words.w1);
     } else if (f & 2u) {
         rec_fog(q[4].words.w0, q[5].words.w1); /* S3F-2: fog after the render mode, as the old word order */
@@ -122,38 +123,38 @@ extern int mfr_on; extern unsigned mfr_idx; void pm_gpu_mfr_rec(uint32_t geo, in
 static void hd_op(NdHitD* d, const uint32_t* t) {
     const uint32_t a = t[0] & 0xffffffu, b = t[1];
     switch (t[0] >> 24) {
-    case NDO_OMH: { const uint32_t m = nd_op_om_mask(a), mv = m & ~(3u << G_MDSFT_TEXTFILT); d->omh_v = (d->omh_v & ~mv) | (b & mv); d->omh_m |= mv; d->kh |= m; break; }
-    case NDO_OML: { const uint32_t m = nd_op_om_mask(a); d->oml_v = (d->oml_v & ~m) | (b & m); d->oml_m |= m; d->kl |= m; break; }
-    case NDO_GEOM: d->g_and &= a; d->g_or = (d->g_or & a) | b; break;
-    case NDO_PRIM: d->prim = b; d->plod = a & 0xffffu; d->fl |= HD_PRIM; break;
-    case NDO_ENV: d->env = b; d->fl |= HD_ENV; break;
-    case NDO_FOG: d->fog = b; d->fl |= HD_FOG; break;
-    case NDO_BLEND: d->blend = b; d->fl |= HD_BLEND; break;
-    case NDO_TEXTURE: d->tex = (uint8_t)a; d->tss = b; d->fl |= HD_TEX; break;
-    case NDO_COMB: d->cw0 = NDO_COMB_W0(a); d->cw1 = b; d->fl |= HD_COMB; break;
-    case NDO_MW: if ((a >> 16) == NDO_MW_FOG) { d->fm = (s16)(b >> 16); d->fo = (s16)b; d->fl |= HD_FOGF; } break;
+    case ND_FS_OMH: { const uint32_t m = nd_op_om_mask(a), mv = m & ~(3u << G_MDSFT_TEXTFILT); d->omh_v = (d->omh_v & ~mv) | (b & mv); d->omh_m |= mv; d->kh |= m; break; }
+    case ND_FS_OML: { const uint32_t m = nd_op_om_mask(a); d->oml_v = (d->oml_v & ~m) | (b & m); d->oml_m |= m; d->kl |= m; break; }
+    case ND_FS_GEOM: d->g_and &= a; d->g_or = (d->g_or & a) | b; break;
+    case ND_FS_PRIM: d->prim = b; d->plod = a & 0xffffu; d->fl |= HD_PRIM; break;
+    case ND_FS_ENV: d->env = b; d->fl |= HD_ENV; break;
+    case ND_FS_FOG: d->fog = b; d->fl |= HD_FOG; break;
+    case ND_FS_BLEND: d->blend = b; d->fl |= HD_BLEND; break;
+    case ND_FS_TEXTURE: d->tex = (uint8_t)a; d->tss = b; d->fl |= HD_TEX; break;
+    case ND_FS_COMB: d->cw0 = ND_FS_COMB_W0(a); d->cw1 = b; d->fl |= HD_COMB; break;
+    case ND_FS_MW: if ((a >> 16) == ND_FS_MW_FOG) { d->fm = (s16)(b >> 16); d->fo = (s16)b; d->fl |= HD_FOGF; } break;
     default: break;
     }
 }
 static void hd_run(NdHitD* d, const uint32_t* u, unsigned n) { for (unsigned k = 0; k < n; k++, u += 2) hd_op(d, u); }
-static void hd_t(NdHitD* d, unsigned id, uint32_t a, uint32_t b) { const uint32_t t[2] = { NDO_W0(id, a), b }; hd_op(d, t); }
+static void hd_t(NdHitD* d, unsigned id, uint32_t a, uint32_t b) { const uint32_t t[2] = { ND_FS_W0(id, a), b }; hd_op(d, t); }
 static __attribute__((cold, noinline)) void hit_delta(const Gfx* q, NdHitD* d) {
     const u32 f = q[3].words.w0;
     memset(d, 0, sizeof *d);
     d->g_and = 0xFFFFFFFFu;
-    if (f & 4u) hd_t(d, NDO_PRIM, 0, q[6].words.w0);
-    if (f & 8u) hd_t(d, NDO_ENV, 0, q[6].words.w1);
-    if (f & 64u) { hd_t(d, NDO_FOG, 0, q[4].words.w0); hd_t(d, NDO_MW, NDO_MW_FOG << 16, q[5].words.w1); }
+    if (f & 4u) hd_t(d, ND_FS_PRIM, 0, q[6].words.w0);
+    if (f & 8u) hd_t(d, ND_FS_ENV, 0, q[6].words.w1);
+    if (f & 64u) { hd_t(d, ND_FS_FOG, 0, q[4].words.w0); hd_t(d, ND_FS_MW, ND_FS_MW_FOG << 16, q[5].words.w1); }
     if (q[13].words.w0) hd_run(d, (const uint32_t*)(q + G_PM_REC_WORDS), q[13].words.w0);
-    else if (q->words.w1) { const uint32_t* u = (const uint32_t*)(uintptr_t)q->words.w1; for (; (u[0] >> 24) != NDO_END; u += 2) hd_op(d, u); }
+    else if (q->words.w1) { const uint32_t* u = (const uint32_t*)(uintptr_t)q->words.w1; for (; (u[0] >> 24) != ND_FS_END; u += 2) hd_op(d, u); }
     if (q[4].words.w1) hd_op(d, (const uint32_t*)(uintptr_t)q[4].words.w1);
     { const unsigned i = (q->words.w0 >> 16) & 0xffu; if (i < ND_RM_N) hd_run(d, nd_rm_tab[i], nd_rm_n[i]); }
     if (f & 32u) {
-        hd_t(d, NDO_OML, NDO_A_RENDERMODE, (u32)(PM_RM_SHROUD) | q[7].words.w1);
-        hd_t(d, NDO_FOG, 0, q[4].words.w0);
-        if (f & 16u) hd_t(d, NDO_BLEND, 0, q[7].words.w0);
-        hd_t(d, NDO_MW, NDO_MW_FOG << 16, q[5].words.w1);
-    } else if (f & 2u) { hd_t(d, NDO_FOG, 0, q[4].words.w0); hd_t(d, NDO_MW, NDO_MW_FOG << 16, q[5].words.w1); }
+        hd_t(d, ND_FS_OML, ND_FS_A_RENDERMODE, (u32)(PM_RM_SHROUD) | q[7].words.w1);
+        hd_t(d, ND_FS_FOG, 0, q[4].words.w0);
+        if (f & 16u) hd_t(d, ND_FS_BLEND, 0, q[7].words.w0);
+        hd_t(d, ND_FS_MW, ND_FS_MW_FOG << 16, q[5].words.w1);
+    } else if (f & 2u) { hd_t(d, ND_FS_FOG, 0, q[4].words.w0); hd_t(d, ND_FS_MW, ND_FS_MW_FOG << 16, q[5].words.w1); }
     d->fl |= HD_OK;
 }
 /* HC6 census switch hitst (cold): per field, the hits whose old rule (keep the walker state) left a value other than the miss's. */
@@ -273,13 +274,13 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
     const int shr = (qs[3].words.w0 & 32u) != 0;
     if (hcb || nmo || shr) {
         unsigned k = 0;
-        for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != NDO_END; i++) {
-            if (hcb && (mwp[2 * i] >> 24) == NDO_COMB) continue; /* the pre list's combine replaces it */
+        for (unsigned i = 0; i < 16u && (mwp[2 * i] >> 24) != ND_FS_END; i++) {
+            if (hcb && (mwp[2 * i] >> 24) == ND_FS_COMB) continue; /* the pre list's combine replaces it */
             mcomp[2 * k] = mwp[2 * i]; mcomp[2 * k + 1] = mwp[2 * i + 1]; k++;
         }
-        if (shr) { mcomp[2 * k] = NDO_W0(NDO_OML, NDO_A_RENDERMODE); mcomp[2 * k + 1] = (u32)(PM_RM_SHROUD) | qs[7].words.w1; k++; }
+        if (shr) { mcomp[2 * k] = ND_FS_W0(ND_FS_OML, ND_FS_A_RENDERMODE); mcomp[2 * k + 1] = (u32)(PM_RM_SHROUD) | qs[7].words.w1; k++; }
         for (unsigned j = 0; j < nmo; j++, k++) { mcomp[2 * k] = mo[2 * j]; mcomp[2 * k + 1] = mo[2 * j + 1]; }
-        mcomp[2 * k] = NDO_W0(NDO_END, 0); mcomp[2 * k + 1] = 0;
+        mcomp[2 * k] = ND_FS_W0(ND_FS_END, 0); mcomp[2 * k + 1] = 0;
         mwp = mcomp;
     }
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)qs, mwp,

@@ -9,6 +9,7 @@
 #include "nd_api.h"
 #include "nd_op.h"
 #include "variables.h"
+#include "nd_fs.h"
 extern int pm_texf_centre; int pm_tex_filt_linear(void); /* TEXF: pm_options.c, pm_tex.c */
 
 float nd_shift_mul(unsigned n) {
@@ -81,14 +82,14 @@ int nd_r13_texonly(const uint32_t* aw, unsigned n, uint32_t* cw, int* has_cb) {
     for (unsigned i = 0; i < n; i++) {
         const uint32_t w0 = aw[2 * i], w1 = aw[2 * i + 1];
         switch (w0 >> 24) {
-        case NDO_TIMG: case NDO_TILE: case NDO_TILESIZE: case NDO_LOADTILE: case NDO_LOADBLOCK: case NDO_LOADTLUT:
-        case NDO_OML: case NDO_OMH: /* the texture block's render state (the block carries one) */
+        case ND_FS_TIMG: case ND_FS_TILE: case ND_FS_TILESIZE: case ND_FS_LOADTILE: case ND_FS_LOADBLOCK: case ND_FS_LOADTLUT:
+        case ND_FS_OML: case ND_FS_OMH: /* the texture block's render state (the block carries one) */
         case 0x00u: /* G_NOOP */
             break;
-        case NDO_COMB:
-            cw[0] = NDO_COMB_W0(w0); cw[1] = w1; *has_cb = 1; /* the full word, as the walker key has it (the op byte included) */
+        case ND_FS_COMB:
+            cw[0] = ND_FS_COMB_W0(w0); cw[1] = w1; *has_cb = 1; /* the full word, as the walker key has it (the op byte included) */
             break;
-        case NDO_TEXTURE: /* the texture scale */
+        case ND_FS_TEXTURE: /* the texture scale */
             cw[2] = w1; cw[3] = 1;
             break;
         default:
@@ -146,21 +147,21 @@ int nd_tex_handle_miss(int index, const void* gfx) {
 
 /* ---- S3N-1 (B5, B6): render mode lists ---- */
 
-/* HC4b: the list is typed ops (nd_op.h: the render mode table, the composed list of rec_run) to its NDO_END, at most 8 ops. */
+/* HC4b: the list is typed ops (nd_op.h: the render mode table, the composed list of rec_run) to its ND_FS_END, at most 8 ops. */
 int nd_mode_compile(NdMode* m, const unsigned* w) {
     uint32_t mh = 0, ml = 0, vh = 0, vl = 0;
     m->ok = 0; m->has_cb = 0; m->has_tx = 0; m->has_g = 0; m->gand = 0xFFFFFFFFu; m->gor = 0; m->bad = 0;
     for (unsigned i = 0; i < 8; i++) {
         const uint32_t w0 = w[2 * i], w1 = w[2 * i + 1], id = w0 >> 24, a = w0 & 0xFFFFFFu;
-        if (id == NDO_END) break;
-        if (id == NDO_COMB) { m->has_cb = 1; m->cw0 = NDO_COMB_W0(a); m->cw1 = w1; continue; }
-        if (id == NDO_TEXTURE) { m->has_tx = 1; m->tw1 = w1; continue; }
-        if (id == NDO_GEOM) { /* B9: compose (geom & gand) | gor over the list */
+        if (id == ND_FS_END) break;
+        if (id == ND_FS_COMB) { m->has_cb = 1; m->cw0 = ND_FS_COMB_W0(a); m->cw1 = w1; continue; }
+        if (id == ND_FS_TEXTURE) { m->has_tx = 1; m->tw1 = w1; continue; }
+        if (id == ND_FS_GEOM) { /* B9: compose (geom & gand) | gor over the list */
             m->gor = (m->gor & a) | w1; m->gand &= a; m->has_g = 1; continue;
         }
-        if (id != NDO_OMH && id != NDO_OML) { m->bad = id; return 0; } /* B9: another op is a fallback, its code counted */
+        if (id != ND_FS_OMH && id != ND_FS_OML) { m->bad = id; return 0; } /* B9: another op is a fallback, its code counted */
         const uint32_t mask = nd_op_om_mask(a);
-        if (id == NDO_OMH) { mh |= mask; vh = (vh & ~mask) | (w1 & mask); }
+        if (id == ND_FS_OMH) { mh |= mask; vh = (vh & ~mask) | (w1 & mask); }
         else { ml |= mask; vl = (vl & ~mask) | (w1 & mask); }
     }
     m->om_h = vh; m->om_l = vl; m->wh = mh; m->wl = ml; /* B8: partial lists compile; the read bits merge at draw (nd_model_state) */
@@ -175,7 +176,7 @@ int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax) {
     uint32_t tmp[18];
     if (n == 0 || n > 8) return 0;
     memcpy(tmp, aw, n * 8u);
-    if (n < 8) { tmp[2 * n] = NDO_W0(NDO_END, 0); tmp[2 * n + 1] = 0; }
+    if (n < 8) { tmp[2 * n] = ND_FS_W0(ND_FS_END, 0); tmp[2 * n + 1] = 0; }
     if (!nd_mode_compile(ax, (const unsigned*)tmp)) return 0;
     return !ax->has_g;
 }
@@ -255,7 +256,7 @@ void nd_model_log(unsigned f) {
  * the native draw; rec_run runs the post after it), so the native draw reads the state it sets. Ops: G_SETOTHERMODE_H/L, SETPRIMCOLOR, SETENVCOLOR,
  * SETCOMBINE, SETBLENDCOLOR, SETFOGCOLOR, the syncs, G_ENDDL (0xdf); at most 16 ops. The state it gives the draw: the last SETCOMBINE words (cw, has_cb 1)
  * and the SETOTHERMODE ops (mo, 2 words each, nmo <= 4). Returns 1 when the draw can follow the list (no list: 1), 0 for any other op (why 3).
- * POND: a pre list may also hold a pushed G_DL (NDO_CALL, push) and SETPRIMDEPTH (NDO_PRIMZ) when a nested model record (G_PM_REC 0x0d) follows them: the
+ * POND: a pre list may also hold a pushed G_DL (ND_FS_CALL, push) and SETPRIMDEPTH (ND_FS_PRIMZ) when a nested model record (G_PM_REC 0x0d) follows them: the
  * mac_00 water list (gfx_build_water) draws the prim depth blocker, then mdl_draw_hidden_panel_surface appends the record of a copy of the model
  * with no geometry. That record sets the whole draw state again (bind, combine, render mode list), so the draw takes it as its record (nr) and only
  * the state ops after it (cw, mo). The record words are skipped (14 words, then its R13 count of words). */
@@ -263,12 +264,12 @@ void nd_model_log(unsigned f) {
  * NDC_MODEL (the nested record, its payload), NDC_JUMP (effect data or the next chunk) and NDC_END (the end of the list, as G_ENDDL). */
 static int nd_r11_op(uint32_t w0, uint32_t w1, int pre, int* pend, int* has_cb, uint32_t* cw, uint32_t* mo, unsigned* nmo) {
     switch (w0 >> 24) {
-    case NDO_OMH: case NDO_OML: /* HC4b: the typed othermode op goes into the composed mode list as it is */
+    case ND_FS_OMH: case ND_FS_OML: /* HC4b: the typed othermode op goes into the composed mode list as it is */
         if (*nmo < 4u) { mo[2 * *nmo] = w0; mo[2 * *nmo + 1] = w1; (*nmo)++; } return 1;
-    case NDO_PRIM: case NDO_ENV: case NDO_BLEND: case NDO_FOG: return 1;
-    case NDO_PRIMZ: if (!pre) return 0; *pend = 1; return 1;
-    case NDO_COMB: cw[0] = NDO_COMB_W0(w0); cw[1] = w1; *has_cb = 1; return 1;
-    case NDO_CALL: if (!pre || (w0 & 1u)) return 0; *pend = 1; return 1; /* HC4d2: a list call, push form (a branch ends the list: not followed) */
+    case ND_FS_PRIM: case ND_FS_ENV: case ND_FS_BLEND: case ND_FS_FOG: return 1;
+    case ND_FS_PRIMZ: if (!pre) return 0; *pend = 1; return 1;
+    case ND_FS_COMB: cw[0] = ND_FS_COMB_W0(w0); cw[1] = w1; *has_cb = 1; return 1;
+    case ND_FS_CALL: if (!pre || (w0 & 1u)) return 0; *pend = 1; return 1; /* HC4d2: a list call, push form (a branch ends the list: not followed) */
     default: return 0;
     }
 }
@@ -286,7 +287,7 @@ static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw
         case NDC_NAPI:
             if (p[1] != (uint32_t)(uintptr_t)nd_nr_run) return 0; /* NSTREAM2: only a run of native records */
             for (unsigned k = 0; k < n; k++, i++) {
-                if ((p[2 + 2 * k] >> 24) == NDO_DROP) { k++; i--; continue; } /* HC4b t4chk: a dropped op is not in the list */
+                if ((p[2 + 2 * k] >> 24) == ND_FS_DROP) { k++; i--; continue; } /* HC4b t4chk: a dropped op is not in the list */
                 if (i >= 16u) return 0;
                 if (!nd_r11_op(p[2 + 2 * k], p[3 + 2 * k], pre, &pend, has_cb, cw, mo, nmo)) return 0;
             }
