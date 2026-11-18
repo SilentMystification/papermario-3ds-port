@@ -187,22 +187,24 @@ __attribute__((noinline)) static void nd_texrect_copy_span(int xl, int yl, int x
 /* BG1 cause 3: a NOMASK tile (mask 0) clamps at its lower edge, as the RDP does. The end is the tile lrs (10.2, inclusive) plus one texel, minus the uls part. */
 __attribute__((noinline)) static void nd_texrect_copy_clamp(int xl, int yl, int xh, int yh, int rtile, int tw, int th, float s0, float t0, float* s1, float* t1) {
     float s1pre = *s1, t1pre = *t1;
-    if (!nd_ws.tst1.tile_wrap[rtile][2] && *s1 > s0) { float smax = ((float)(nd_ws.tst1.tile_sz[rtile][2] >> 2) + 1.f - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw; if (*s1 > smax) *s1 = smax; }
-    if (!nd_ws.tst1.tile_wrap[rtile][3] && *t1 > t0) { float tmax = ((float)(nd_ws.tst1.tile_sz[rtile][3] >> 2) + 1.f - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th; if (*t1 > tmax) *t1 = tmax; }
+    if (!ND_BWR(rtile)[2] && *s1 > s0) { float smax = ((float)(ND_BSZ(rtile)[2] >> 2) + 1.f - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw; if (*s1 > smax) *s1 = smax; }
+    if (!ND_BWR(rtile)[3] && *t1 > t0) { float tmax = ((float)(ND_BSZ(rtile)[3] >> 2) + 1.f - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th; if (*t1 > tmax) *t1 = tmax; }
     if (PMDL("bgclamp") && pm_frame_count() >= 100u && pm_frame_count() <= 160u) {
         static int nbc = 0;
-        if (nbc < 400) { nbc++; pm_log_d("bgclamp f%u rect %d,%d-%d,%d s %.2f>%.2f t %.2f>%.2f tex %dx%d mask %u %u lrs %d lrt %d ux %d fx %.2f", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, s1pre * tw, *s1 * tw, t1pre * th, *t1 * th, tw, th, (unsigned)nd_ws.tst1.tile_wrap[rtile][2], (unsigned)nd_ws.tst1.tile_wrap[rtile][3], nd_ws.tst1.tile_sz[rtile][2], nd_ws.tst1.tile_sz[rtile][3], nd_ws.tile_x0, nd_ws.tile_fx); }
+        if (nbc < 400) { nbc++; pm_log_d("bgclamp f%u rect %d,%d-%d,%d s %.2f>%.2f t %.2f>%.2f tex %dx%d mask %u %u lrs %d lrt %d ux %d fx %.2f", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, s1pre * tw, *s1 * tw, t1pre * th, *t1 * th, tw, th, (unsigned)ND_BWR(rtile)[2], (unsigned)ND_BWR(rtile)[3], ND_BSZ(rtile)[2], ND_BSZ(rtile)[3], nd_ws.tile_x0, nd_ws.tile_fx); }
     }
 }
+static unsigned char rc_sn; /* NDR1C: the rectangle in progress has a live snap */
+static void rc_render(void) { if (rc_sn) nd_snap_render(); else sync_render(); } /* NDR1C */
 /* MERLON: the ball rectangle (G_ZS_PRIM, depth compare) reads the texel S - SL through the tile mask, then tests the primitive depth. */
 __attribute__((noinline, cold)) static void nd_texrect_zprim(int rx0, int ry0, int ex, int ey, float* s0, float* t0, float* s1, float* t1, u32 hs,
                                                               float ms, float mt, int tw, int th, int rtile) {
     if (pm_tex_off_idx() >= 0) {
-        const float ps = wrap_period_shift((float)(s16)(hs >> 16) / 32.f * ms, nd_ws.tst1.tile_sz[rtile][0], nd_ws.tst1.tile_wrap[rtile][0], nd_ws.tst1.tile_wrap[rtile][2], (*s1 - *s0) * (float)tw);
-        const float pt = wrap_period_shift((float)(s16)(hs & 0xffff) / 32.f * mt, nd_ws.tst1.tile_sz[rtile][1], nd_ws.tst1.tile_wrap[rtile][1], nd_ws.tst1.tile_wrap[rtile][3], (*t1 - *t0) * (float)th);
+        const float ps = wrap_period_shift((float)(s16)(hs >> 16) / 32.f * ms, ND_BSZ(rtile)[0], ND_BWR(rtile)[0], ND_BWR(rtile)[2], (*s1 - *s0) * (float)tw);
+        const float pt = wrap_period_shift((float)(s16)(hs & 0xffff) / 32.f * mt, ND_BSZ(rtile)[1], ND_BWR(rtile)[1], ND_BWR(rtile)[3], (*t1 - *t0) * (float)th);
         *s0 -= ps / (float)tw; *s1 -= ps / (float)tw; *t0 -= pt / (float)th; *t1 -= pt / (float)th;
     }
-    sync_render();
+    rc_render();
     pm_gpu_tex_rect_z(rx0, ry0, ex, ey, *s0, *t0, *s1, *t1, (float)nd_ws.prim_z / 32767.f);
 }
 /* The texture folded over a mirrored or wrapped off-screen tile: one quad per fold segment. 1 when drawn. */
@@ -219,6 +221,7 @@ __attribute__((noinline, cold)) static int nd_texrect_fold(int rx0, int ry0, int
 
 __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     const unsigned char sn_armed = nd_snap_arm; nd_snap_arm = 0; /* NDR1B: compared after the fold */
+    rc_sn = nd_snap_live; /* NDR1C */
     nd_rect_tex_n++;
     int xh = (int)((w0 >> 12) & 0xfff);
     int yh = (int)(w0 & 0xfff);
@@ -234,23 +237,26 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     if (nd_texlog_on != 0) nd_texrect_log(xl, yl, xh, yh);
     /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
     zcol = nd_tgt.siz == 2 && (nd_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL));
-    if (zcol) { zslot_on = 1; sync_render(); }
-    else if (nd_img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
+    if (zcol) { zslot_on = 1; rc_render(); }
+    else if (nd_img_role(0) == ROLE_SLOT) rc_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
     off_screen_check();
     box_fold_sync();
     if (sn_armed) nd_snapchk_tri(); /* NDR1B: the compare, then the snap combine */
-    sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
+    else if (rc_sn) nd_snap_comb(); /* NDR1C */
+    if (rc_sn) nd_snap_rlog(); /* NDR1C */
+    rc_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
     if (box_pat && nd_ws.td[0].valid && nd_ws.td[1].valid && box_pattern_rect(xl, yl, xh, yh, hs, hd)) { return; }
     /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
-    int rtile = (nd_ws.use_t1 || (((w1 >> 24) & 7) == 1 && nd_ws.td[1].valid)) ? 1 : 0;
+    nd_bsrc = rc_sn ? nd_snap_cur_b() : NULL; /* NDR1C: the tile words of the snap */
+    int rtile = (nd_ws.use_t1 || (((w1 >> 24) & 7) == 1 && ND_BTD(1)->valid)) ? 1 : 0;
     if (!rtile) gp3_t0_surv();
     ensure_tile(rtile);
     dual_bind();
     int tw = 1, th = 1;
     pm_tex_size(&tw, &th);
     /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
-    float ms = shift_mul(nd_ws.tst1.tile_shift[rtile][0]);
-    float mt = shift_mul(nd_ws.tst1.tile_shift[rtile][1]);
+    float ms = shift_mul(ND_BSH(rtile)[0]);
+    float mt = shift_mul(ND_BSH(rtile)[1]);
     float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
     float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;
@@ -277,14 +283,15 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
                 nd_texrect_zprim(rx0, ry0, ex, ey, &s0, &t0, &s1, &t1, hs, ms, mt, tw, th, rtile);
                 goto rect_done; /* MERLON: the rectangle is drawn once, with its depth test. The fall-through drew it again with no depth (the crystal ball square through the walls) */
             }
-            if (pm_tex_off_idx() >= 0 && (nd_ws.tst1.tile_wrap[rtile][0] & 3) == 3 && (nd_ws.tst1.tile_wrap[rtile][1] & 3) == 3 && nd_ws.tst1.tile_wrap[rtile][2] && nd_ws.tst1.tile_wrap[rtile][3] &&
-                (1 << nd_ws.tst1.tile_wrap[rtile][2]) == tw && (1 << nd_ws.tst1.tile_wrap[rtile][3]) == th) {
+            if (pm_tex_off_idx() >= 0 && (ND_BWR(rtile)[0] & 3) == 3 && (ND_BWR(rtile)[1] & 3) == 3 && ND_BWR(rtile)[2] && ND_BWR(rtile)[3] &&
+                (1 << ND_BWR(rtile)[2]) == tw && (1 << ND_BWR(rtile)[3]) == th) {
                 if (nd_texrect_fold(rx0, ry0, ex, ey, s0, t0, s1, t1, tw, th)) goto rect_done;
             }
             pm_gpu_tex_rect(rx0, ry0, ex, ey, s0, t0, s1, t1);
         }
     }
     rect_done:
+    nd_bsrc = NULL; /* NDR1C */
     zcol = 0;
     return;
 }
