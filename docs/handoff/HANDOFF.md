@@ -26,7 +26,7 @@ memory index. Then `date`, ListAgents (status `running` is the ONLY slot count),
 8. A design risk was named and then shipped: D1 (PSOFB fixed fallback) drew white and black rectangles on the console. Control: CORE item 8.
 
 ## Queue rule and process facts
-Every ready page gets a coder at once (no hard coder limit, 2 oracles running). Work runs on branches. A chain row starts from the branch of the row before it.
+Every ready page gets a coder at once (at most 5 coders running, 2 oracles running). Work runs on branches. A chain row starts from the branch of the row before it.
 Coders cannot wait for an oracle reply: they end their turn. Resume them with the reply and tell them to finish. Merge with `sh 3ds/tools/merge_row.sh <row>`;
 if the oracle edited the page on main and the branch deletes it, `git rm` the page on main first. Main must be clean: oracles leave untracked pages for
 minutes (commit them or retry). The post-merge check (cold+shots) runs on every queued job while postmerge_FAIL.txt exists: purge old jobs in
