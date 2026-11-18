@@ -94,6 +94,11 @@ void nd_snapchk_tri(void) {
             pm_log_evt("snapchk bad f%u%s", pm_frame_n, names);
         }
     }
+}
+
+/* NDR0A: the 100-frame counter line, once per frame stream end (nd_rec.c stream_run NDC_END); behind PMDL. */
+void nd_snapchk_tick(void) {
+    if (!PMDL("snapchk")) return;
     if (pm_frame_n / 100 != sc_bucket) {
         sc_bucket = pm_frame_n / 100;
         pm_log_evt("snapchk f%u recs %u cmp %u bad %u fbad %u miss %u", pm_frame_n, sc_recs, sc_cmp, sc_bad, sc_fbad, sc_miss);

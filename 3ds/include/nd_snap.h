@@ -21,6 +21,8 @@ void nd_snap_mesh(void);
 void nd_snapchk_run(const uint32_t* rec);
 /* nd_snap.c, core 0: the compare of the armed snapshot at a triangle draw (nd_geom.c). */
 void nd_snapchk_tri(void);
+/* nd_snap.c, core 0: the 100-frame counter line (PMDL("snapchk")), called at each frame stream end (nd_rec.c). */
+void nd_snapchk_tick(void);
 /* nd_rec.c: the count of the commands of every kind (the snapshot is taken when it changes). */
 unsigned nd_rec_cmds(void);
 /* nd_rec.c clears it at each command but the snapshot run; nd_snap.c sets it. */

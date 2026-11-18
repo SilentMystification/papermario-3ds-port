@@ -629,6 +629,7 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
     static int n;
     if (n++ < 4) pm_log_e("ndc: bad command %08x at %p", (unsigned)h, (const void*)p);
 }
+__attribute__((weak)) void nd_snapchk_tick(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
 /* POSTFAIL2: the context of the chain whose chunk holds p (*chunk: its index), else -1. Cold: the bad viewport log only. */
@@ -647,7 +648,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         nd_stream_cur = p;
         { const unsigned op = h >> 24; if (op != NDC_JUMP && (op != NDC_NAPI || p[1] != (uint32_t)(uintptr_t)nd_nr_run)) nd_snap_arm = 0; } /* NDR0A: a command but the native runs disarms the snapchk */
         switch (h >> 24) {
-        case NDC_END: return;
+        case NDC_END: nd_snapchk_tick(); return; /* NDR0A: the snapchk frame line (nd_snap.c) */
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
         case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
         case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;
