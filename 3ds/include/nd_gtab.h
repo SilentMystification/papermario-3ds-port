@@ -65,7 +65,7 @@ const NdGTab* nd_gtab_find(const void* list);
 #define NDG(sym) (&ndg_##sym)
 typedef const void* NdLst; /* FXTYPE: a list handle (NDN(x) or a list name); nd_draw_list, nd_rec_dl and gSPDisplayList take it */
 #ifdef ND_GCONV_IN /* GSETB: host compile of the converter inputs (gen_gfx_tab.sh); the gfxin twin defines the list */
-#define NDN_DECL(sym) extern NdW2 sym[]
+#define NDN_DECL(sym) extern Gfx sym[] /* DELGT: host only (ND_GCONV_IN), the gfxin twin defines Gfx */
 #define NDN(sym) (sym)
 #else
 #define NDN_DECL(sym) NDN_DECL_(sym)

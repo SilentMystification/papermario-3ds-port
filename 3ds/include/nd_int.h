@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include "ultra64.h"
 #include "nd.h"
+#include "nd_cmd.h"
 
 typedef struct { int p0, p1; float u0, u1; } FoldSeg;
 
