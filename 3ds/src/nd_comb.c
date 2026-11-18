@@ -253,15 +253,10 @@ static __attribute__((cold, noinline)) void pso_seen_note(const NdCombIn* in) {
         in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade, (unsigned)pm_comb_vprim, (unsigned)(in->prim_lo8 & 0xffu));
 }
 
-/* PSOFB (user 2026-11-16): a key that the pso table does not hold draws with vertex colour only (legacy mode 0) and logs its key once. */
-static __attribute__((cold, noinline)) void pso_fallback(const NdCombIn* in, NdCombOut* o) {
-    pso_seen_note(in); memset(o, 0, sizeof *o);
-    o->use = -1; o->cyc = (int)((in->omode_h >> G_MDSFT_CYCLETYPE) & 3); o->dual = in->dual_on | in->box_prod << 1;
-}
-
 /* PSOLK: the combine decision of the walker inputs in: the pso table entry (nd_pso_find) with the walker's colours, or nd_comb_core on a miss. */
+static int psooff_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("psooff"); return v; } /* HWFIX1 gate: every key misses */
 static void nd_comb_pick(const NdCombIn* in, NdCombOut* o) {
-    if (!nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pk_miss++; pso_fallback(in, o); return; }
+    if (psooff_on() || !nd_pso_find(in, (unsigned)pm_comb_vprim, o)) { pso_seen_note(in); pk_miss++; nd_comb_core(in, (unsigned)pm_comb_vprim, comb_mode5, o); return; }
     pk_hit++;
     nd_pso_fix(o, in, comb_mode5);
 }

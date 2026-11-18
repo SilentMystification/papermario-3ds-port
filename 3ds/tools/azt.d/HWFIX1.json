@@ -1,0 +1,32 @@
+{
+  "scenarios": [
+    {
+      "name": "hwfix1_psooff",
+      "status": "unverified",
+      "subject": "HWFIX1 gate: as fxslot_drec with psooff (every pso key misses, nd_comb_core decides).",
+      "proves": "HWFIX1: a pso table miss decides with nd_comb_core, so the draw records of the all-miss run equal the table run (fxslot_drec).",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=153,71,132 fxslot=110 loglevel=debug det drec=412:3:155 psochk psooff",
+      "until": "fxtest: done",
+      "cap": 40,
+      "deadline": 35,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f722 draws [1-9]\\d* bytes \\d+"
+        },
+        {
+          "name": "done",
+          "regex": "fxtest: done"
+        }
+      ],
+      "reason": "FXSLOT byte gate for the fxslot=110 slots (k 12, 57, 102 of the 3 slots). Cold det start, cap 40 s, deadline 35 s."
+    }
+  ]
+}
