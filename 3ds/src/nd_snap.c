@@ -46,7 +46,8 @@ void nd_snap_mesh(void) { /* NDR0E2: the snap is taken at every mesh triangle an
     r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, nd_ds.w.omode_l, nd_ds.w.omode_h, 0);
     r.mixk = nd_snap_mix(nd_ds.w.omode_l, nd_ds.fogc, nd_ds.blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of sync_render */
     nd_render_state(nd_ds.w.omode_h, nd_ds.w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of sync_render */
-    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc) return; /* no new command, same inputs */
+    nd_snap_bind(&nd_ds.w.td[0], &nd_ds.w.tst1, 0, &r.b[0]); nd_snap_bind(&nd_ds.w.td[1], &nd_ds.w.tst1, 1, &r.b[1]); /* NDR0G1 */
+    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 5u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return; /* no new command, same inputs */
     r.key = nd_pso_find_i(&r.in, 0u, &o);
     r.plan_on = -1;
     if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
@@ -113,6 +114,7 @@ static void sc_compare(void) {
         if (o->cc_on && pm_gpu_const_now() != o->cc) sc_add("gconst");
         if (o->env_on && pm_gpu_env_now() != sc_cur.in.env) sc_add("genv");
     }
+    { NdSnapBind w; for (int n = 0; n < 2; n++) { nd_snap_bind(&nd_ws.td[n], &nd_ws.tst1, n, &w); if (memcmp(&sc_cur.b[n], &w, sizeof w)) sc_add(n ? "b1" : "b0"); } } /* NDR0G1 */
     if (sc_cur.key < 0) sc_miss++;
     if (sc_nb) {
         sc_bad++;
