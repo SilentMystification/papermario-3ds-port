@@ -195,7 +195,6 @@ static const struct { struct { uint32_t w0, w1; } cc; uint32_t rm0, rm1; } kFill
     { ND_CMB_W(G_CC_PRIMITIVE, G_CC_PRIMITIVE), G_RM_XLU_SURF, G_RM_XLU_SURF2 },
 };
 
-void nd_walk_state(const uint32_t* q, unsigned n); /* nd_walk.c, core 0: the op executor */
 
 /* the typed units of the fallback ops: the record-side gbi redirect (nd_gx_w takes a local packet, so the ops are typed as the stream has them) */
 #include "gbi_custom.h"
@@ -340,10 +339,10 @@ void nd_trect_rec(const NdTRect* r) { NdPsoN64 pd; trect_pso(r, &pd); nd_dir_rec
  * nd_direct_end: gv_epoch_enter (nd_geom.c) then skips ensure_tile and dual_bind, which would rebind tile 0 from the walker's stale td[0] over
  * the descriptor nd_direct_tex bound. The walker state a direct bind changed raises gv_epoch once, as the first state op of the stream would. */
 void nd_direct_quad(uint32_t mtx, const void* vtx4) {
-    const u32 wm = ND_W0_D2(G_MTX, sizeof(Mtx), (G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW) ^ G_MTX_PUSH, 0) & 0xffffffu; /* gSPMatrix */
+    const u32 wm = ND_W0_D2(ND_FS_MTX, sizeof(Mtx), (G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW) ^ G_MTX_PUSH, 0) & 0xffffffu; /* gSPMatrix */
     const u32 wv = ND_W0_VTX(4, 0) & 0xffffffu;                                                                       /* gSPVertex(v, 4, 0) */
-    const u32 t0 = (_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(0, 1, 2, 0)) & 0xffffffu;                            /* gSP1Triangle(0, 1, 2) */
-    const u32 t1 = (_SHIFTL(G_TRI1, 24, 8) | __gsSP1Triangle_w1f(0, 2, 3, 0)) & 0xffffffu;                            /* gSP1Triangle(0, 2, 3) */
+    const u32 t0 = __gsSP1Triangle_w1f(0, 1, 2, 0) & 0xffffffu;                            /* gSP1Triangle(0, 1, 2) */
+    const u32 t1 = __gsSP1Triangle_w1f(0, 2, 3, 0) & 0xffffffu;                            /* gSP1Triangle(0, 2, 3) */
     nd_dq_on = 1;
     gv_epoch++;
     pm_gbi_cur_op = ND_FS_MTX;
