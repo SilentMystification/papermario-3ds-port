@@ -11,6 +11,7 @@
 #include "pm_port.h"
 #include "variables.h"
 #include "nd_fs.h"
+#include "nd_msnapw.h"
 
 unsigned rec_n; /* M4-2: records run in the current opsplit window */
 void nd_range_run(const uint32_t* a); /* nd_walk.c: DIRECT D10a, a custom gfx range of the frame stream */
@@ -252,6 +253,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
         if (!qw[26] || (!PMDL("r13off") && nd_r13_texonly(qw + NDMC_RW, qw[26], cw_, &cb_))) t1 = pm_gbi_bind_tile1();
         pm_gpu_set_r13_t1(t1);
     }
+    nd_msnap_use((const uint32_t*)q); /* NREC1B: model_draw reads this snap */
     if (__builtin_expect(PMDL("snapchk"), 0)) nd_msnap_cmp((const uint32_t*)q); /* NREC1A: the core 1 model snap against the walker inputs of model_draw */
     /* MDL-5f: the walker order is record combine, render mode list, pre list (rec_apply), so a state-only pre list's SETCOMBINE and SETOTHERMODE
      * ops win over the record's words. The native draw gets them in the same order: its combine replaces cwp, the render mode list is copied

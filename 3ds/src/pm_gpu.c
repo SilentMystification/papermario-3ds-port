@@ -23,6 +23,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_thread.h"
 #include "pm_gpu_int.h"
 #include "pm_flipfps.h"
+#include "nd_msnapw.h"
 
 static int drew;
 /* 3D writes the depth buffer. A later texrect has to win even if the test stays on. */
@@ -3875,7 +3876,9 @@ void pm_gpu_set_r13_t1(int bound) {
 }
 int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of sync_render */
 extern unsigned fogc, blendc; extern int pm_nofog;
+int nd_snap_mix(unsigned, unsigned, unsigned, int, unsigned*); /* nd_snap_in.c */
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
+    const uint32_t* const msw = nd_msnap_w(); const NdTd* const t0 = nd_msnap_td0(); /* NREC1B */
     *mode_ok = modew != NULL && nd_mode_compile(&mdl_mode, (const unsigned*)modew) != 0;
     if (!*mode_ok) { static unsigned mb_; if (mb_++ < 8u) { const uint32_t* mw_ = (const uint32_t*)modew; pm_log_prof_line("modebad modew %p bad %02x w0 %08x w1 %08x w2 %08x w3 %08x", modew, mdl_mode.bad, modew ? mw_[0] : 0u, modew ? mw_[1] : 0u, modew ? mw_[2] : 0u, modew ? mw_[3] : 0u); } }
     int tex = 0, i8 = 0, hs = -1, id = -1; unsigned hg = 0; /* S3N-6: the unit slot hint of the entry */
@@ -3920,7 +3923,7 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.mode = *mode_ok ? &mdl_mode : NULL;
     c.u0 = tex ? &mdl_un : NULL;
     c.i8_0 = i8;
-    unsigned sw_tss, sw_geo, sw_cw0, sw_cw1; pm_gbi_sticky(&sw_tss, &sw_geo, &sw_cw0, &sw_cw1);
+    const unsigned sw_tss = msw[MSW_TSS], sw_geo = msw[MSW_GEOM], sw_cw0 = msw[MSW_CW0], sw_cw1 = msw[MSW_CW1]; /* NREC1B */
     if (ax_ok) { int tw = 1, th = 1; pm_tex_size(&tw, &th); c.tex_w = tw; c.tex_h = th; } /* S3L-3: no bind: the uv params of the walker use the size of its last bound texture (gv_params_calc); the draw reads no texel */
     c.has_comb = 1; c.aux_ok = ax_ok || r13;
     if (r13t1b_ok && !r13u1_ok) { nd_nat_why = 6; nd_nat_sub = 2; return -1; } /* tile 1 bound with no unit 1: named, why 6 */
@@ -3935,14 +3938,14 @@ static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t
     c.draw_3d = 1; /* S3N-3c: a native batch goes through pm_gpu_grange, which sets draw_3d */
     c.zmark = gs.r_zmark; c.zn = gs.r_zmark_zn; /* S5-2 (a) */
     c.dview = dv_mode(); c.r_memblend = r_memblend; c.r_replace = r_replace; /* MERLEE: r_mix and mixcol below, from the record's other mode */
-    c.prim = nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.env = gs.env_col; c.cconst = cconst; /* B9: prim from the bridge state */
+    c.prim = msw[MSW_PRIM]; c.prim_lod = msw[MSW_PLOD]; c.env = msw[MSW_ENVC]; c.cconst = cconst; /* B9: prim from the bridge state */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = ax_ok ? (nd_ws.omode_h & ~ax.wh) | ax.om_h : nd_ws.omode_h; c.base_ol = ax_ok ? (nd_ws.omode_l & ~ax.wl) | ax.om_l : nd_ws.omode_l; /* B8; S3L-3: the R13 mode ops first */
-    c.known_h = nd_ws.om_kh | (ax_ok ? ax.wh : 0u); c.known_l = nd_ws.om_kl | (ax_ok ? ax.wl : 0u);
+    c.base_oh = ax_ok ? (msw[MSW_OMH] & ~ax.wh) | ax.om_h : msw[MSW_OMH]; c.base_ol = ax_ok ? (msw[MSW_OML] & ~ax.wl) | ax.om_l : msw[MSW_OML]; /* B8; S3L-3: the R13 mode ops first */
+    c.known_h = msw[MSW_KH] | (ax_ok ? ax.wh : 0u); c.known_l = msw[MSW_KL] | (ax_ok ? ax.wl : 0u);
     { /* MERLEE: the V06 colour mix (the room shroud, PM_RM_SHROUD) from this record's own other mode (the base, then its list; the shroud word is the last list op, nd_recs.c)
        * and the fog and blend colours rec_apply set. gs.r_mix is the state of the walker's last sync_render, not of this record. The F08 fog mix (2) stays the walker's. */
         unsigned mixc; const uint32_t ol_ = *mode_ok ? (c.base_ol & ~mdl_mode.wl) | mdl_mode.om_l : c.base_ol;
-        if (nd_mix1(ol_, &mixc)) { c.r_mix = 1; c.mixcol = mixc; }
+        if (nd_snap_mix(ol_, msw[MSW_FOGC], msw[MSW_BLENDC], pm_nofog, &mixc) == 1) { c.r_mix = 1; c.mixcol = mixc; }
         else { c.r_mix = gs.r_mix == 2 ? 2 : 0; c.mixcol = r_mixcol; }
     }
     /* PM5-3: the normal rows of the walker's matrix (gm_nrm: model view rows 0 to 2, w 0) for a lit or fogged range */

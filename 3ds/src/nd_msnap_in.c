@@ -5,6 +5,9 @@
 #include "nd_ds.h"
 #include "nd_snap.h"
 #include "nd_msnap.h"
+#include "nd_msnapw.h"
+#include <stddef.h>
+_Static_assert(offsetof(NdMSnap, prim) == 4u * MSW_PRIM && offsetof(NdMSnap, tss) == 4u * MSW_TSS && offsetof(NdMSnap, envc) == 4u * MSW_ENVC, "NREC1B msw");
 
 void nd_msnap_take(const NdDs* s, NdMSnap* m) {
     memset(m, 0, sizeof *m);

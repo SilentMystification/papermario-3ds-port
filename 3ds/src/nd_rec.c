@@ -18,6 +18,7 @@
 #include "nd_lkey.h"
 #include "nd_rmdef.h"
 #include "nd_ds.h"
+#include "nd_msnap.h"
 #include "nd_fs.h"
 
 extern s32 gCurrentDisplayContextIndex;
@@ -268,11 +269,12 @@ void nd_rec_model(const void* rec, unsigned words) {
     { const unsigned rmi = (((const uint32_t*)rec)[0] >> 16) & 0xffu; if (rmi < ND_RM_N && !rm_built[rmi]) nd_rm_build(rmi); } /* HC4b: W3 */
     const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) keep++; /* R13NOP: a typed sync is not an R13 op */
-    rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep)); ndc_n[NDC_MODEL]++;
+    rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U); /* NREC1B: room for the jump and the model snap */ ndc_n[NDC_MODEL]++;
     memcpy(p + 2, rec, G_PM_REC_WORDS * 8u); uint32_t* q = p + 2; uint32_t* o = q + 2 * G_PM_REC_WORDS;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
-    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ if (__builtin_expect(PMDL("snapchk"), 0)) nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */ DS_EP(4, 0); /* NST2B 1b: a model record is a state change for the ep bit */
+    { uint32_t* j = p + 2u + 2u * (G_PM_REC_WORDS + keep); j[0] = NDC_HDR(NDC_JUMP, 0, 0); j[1] = (uint32_t)(uintptr_t)(j + 2u + 2u * ND_MSNAP_U); } /* NREC1B */
+    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */ DS_EP(4, 0); /* NST2B 1b: a model record is a state change for the ep bit */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
 void nd_snap_mesh(void); /* NDR4: strong in nd_snap.c */
