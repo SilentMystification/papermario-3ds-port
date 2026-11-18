@@ -1,0 +1,13 @@
+ok include/nd_snap.h uint32_t pad2; /* NDR0E1: size to a multiple of 8 
+ok include/nd_snap.h void nd_lsr_noep(void); extern unsigned nd_lsr_rec
+ok src/nd_snap_in.c r->tss = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xff
+ok src/nd_snap.c r.mixk == sn_last.mixk
+ok src/nd_snap.c nd_rec_data_st(h + ls_n * (unsigned)sizeof ls_s[0]
+ok src/nd_snap.c *dst = (uint32_t)(uintptr_t)b;
+ok src/nd_snap.c /* NCONV2B: the walker takes the combine
+ok src/nd_snap.c     const NdCombIn* i = &sc_cur.in;
+ok src/nd_snap.c lr_nx = 0; lr_st
+ok src/nd_snap.c     if (lr_b[2u + r] & ND_LS_DUP) return;
+ok src/nd_snap.c void nd_lsr_end(void) { if (nd_ls_on && nd_ls_ord 
+ok src/nd_walk.c void nd_nr_run(const uint32_t* rec) { nd_nr_exec(r
+ok src/nd_walk.c void nd_ntab_run(const NdNDev* e) { nd_nr_exec(e->

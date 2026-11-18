@@ -1,0 +1,10 @@
+#279 lsnap f100 lists 823 snaps 888 cmp 888 p1 888 bst 0 tmis 0 over 0
+#280 lscut f100 epc 845 epm 0 epx 0 dup 0 rect 0
+#309 lsnap f200 lists 2092 snaps 2257 cmp 2257 p1 2257 bst 0 tmis 0 over 0
+#310 lscut f200 epc 2145 epm 0 epx 0 dup 0 rect 0
+#347 lsnap f300 lists 3292 snaps 3557 cmp 3557 p1 3557 bst 0 tmis 0 over 0
+#348 lscut f300 epc 3445 epm 0 epx 0 dup 0 rect 0
+#371 lsnap f400 lists 4492 snaps 4857 cmp 4857 p1 4857 bst 0 tmis 0 over 0
+#372 lscut f400 epc 4745 epm 0 epx 0 dup 0 rect 0
+#525 lsnap f500 lists 5768 snaps 6233 cmp 6233 p1 6233 bst 0 tmis 0 over 0
+#526 lscut f500 epc 6083 epm 0 epx 0 dup 0 rect 0
