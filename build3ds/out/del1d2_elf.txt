@@ -1,0 +1,24 @@
+func ensure_tile_slow value=0x00121394 size=1344 section=.text
+func set_tilesize value=0x00100a90 size=1672 section=.text
+func gbi_viewport value=0x0011502c size=200 section=.text
+func ensure_tile value=0x00109b9c size=316 section=.text
+func nd_set_loadblock value=0x00112d74 size=24 section=.text
+func nd_op_same value=0x0010eef4 size=632 section=.text
+func nd_set_texture value=0x00112d54 size=32 section=.text
+func nd_set_loadtile value=0x00111850 size=220 section=.text
+func gbi_movemem value=0x00114f18 size=276 section=.text
+func nd_set_tile value=0x0011042c size=144 section=.text
+func sync_render value=0x0010a298 size=240 section=.text
+func ent_run value=0x0010e2a4 size=644 section=.text
+func gbi_setcimg value=0x0011339c size=28 section=.text
+func nd_set_loadtlut value=0x001112d8 size=88 section=.text
+func nd_op_apply value=0x0010f834 size=636 section=.text
+func ent_flat value=0x0013c880 size=156 section=.text
+func nd_texrect value=0x0010a4ec size=1888 section=.text
+func dlc_try value=0x0010e820 size=1100 section=.text
+func nd_fillrect value=0x00117cb8 size=376 section=.text
+func sync_combine value=0x00100248 size=312 section=.text
+data gMainGfxPos value=0x011b1b3c size=4 section=.bss
+elfgate gfxset 853 gfxscan_files 6010
+elfgate symbols 111106
+elfgate func 31 data 1 gfxnames 0 gfxscan_skip 3
