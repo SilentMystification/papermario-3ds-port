@@ -355,20 +355,20 @@ void nd_rec_st(NdNapiRun run, const void* rec, unsigned units) {
     nd_rec_napi(run, rec, units);
     st_take = 0;
 }
-/* NATIVEAPI S4: a run of particle draws (nd_api.h NdParts). S7CONV: a list is a flat particle list when it has a native table with
- * NDG_F_PARTS (nd_gtab.h: the build-time form of the old parts_ok rule, proven equal by nd_gtab_test.c). Memo: the last 8 lists found. */
+/* NATIVEAPI S4: a run of particle draws (nd_api.h NdParts). S7CONV: a list is a flat particle list when its v2 entry has
+ * NDN_FL_PARTS (nd_gtab.h: the build-time form of the old parts_ok rule, proven equal by nd_gtab_test.c). Memo: the last 8 lists found. */
 /* NST2C: the units of a native record feed core 1 (nd_ds_unit; a sync is skipped) */
 void nd_ds_feed(const uint32_t* u, unsigned n) {
     for (unsigned k = 0; k < n; k++) if (u[2u * k] != ND_NOP_A) nd_ds_unit(&nd_ds, u[2u * k], u[2u * k + 1u]);
 }
 void nd_rec_nr(uint32_t w0, uint32_t w1); /* the stream form of one typed unit (below) */
-static const NdGTab* parts_tab(const void* l) {
+static const NdNDev* parts_tab(const void* l) {
     static const void* memo_l[8];
-    static const NdGTab* memo_t[8];
+    static const NdNDev* memo_t[8];
     static unsigned mi;
     for (unsigned k = 0; k < 8u; k++) if (memo_l[k] == l) return memo_t[k];
-    const NdGTab* t = nd_gtab_find(l);
-    if (!t || !(t->flags & NDG_F_PARTS)) return NULL;
+    const NdNDev* t = nd_ntab_find(l);
+    if (!t || !(t->fl & NDN_FL_PARTS)) return NULL;
     memo_l[mi] = l; memo_t[mi] = t; mi = (mi + 1u) & 7u;
     return t;
 }
@@ -380,14 +380,14 @@ void nd_parts_begin(NdParts* b, unsigned pre, unsigned post) {
 void nd_parts_add(NdParts* b, const uint32_t* units) {
     const unsigned m = b->m, pre = b->pre;
     const uint32_t a = units[2u * pre + 1u];
-    const NdGTab* t = units[2u * pre] == ND_OP_CALL_W0 && is_host(a) ? parts_tab((const void*)(uintptr_t)a) : NULL;
+    const NdNDev* t = units[2u * pre] == ND_OP_CALL_W0 && is_host(a) ? parts_tab((const void*)(uintptr_t)a) : NULL;
     if (!t) {
         nd_parts_end(b);
         for (unsigned k = 0; k < m; k++) nd_rec_nr(units[2u * k], units[2u * k + 1u]);
         return;
     }
     memcpy(b->u + 2u + 2u * m * b->n, units, 2u * m * 4u);
-    b->u[2u + 2u * m * b->n + 2u * pre + 1u] = (uint32_t)(uintptr_t)t; /* the call unit carries the table (nd_parts_run, nd_part_draw) */
+    b->u[2u + 2u * m * b->n + 2u * pre + 1u] = (uint32_t)(uintptr_t)t; /* DEL5B2: the call unit carries the v2 entry (nd_parts_run, nd_part_draw) */
     b->n++;
     /* the record: 1 + n * m units (at most 255); the instances sit in u (252 units) */
     if (1u + (b->n + 1u) * m > 255u || (b->n + 1u) * m > 252u) nd_parts_end(b);

@@ -395,7 +395,7 @@ unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v) {
 }
 
 /* NST2A nd_ds_list (design_nstate.md section 5, NST2a). Applies the state units of a static list to nd_ds in the order core 0 runs them:
- * a v2 table its units nt->u (nu pairs); a v1 table its ops in gt_ops order (NDG_DEF d.u, NDG_UNIT, NDG_CALL); any other list its typed
+ * a v2 table its units nt->u (nu pairs); any other list its typed
  * pairs to ND_FS_END (at most DS_LIST_MAX). A call unit recurses at depth + 1 (ND_LIST_DEPTH 12, nd_walk.c); a call with w0 bit 0 (the
  * branch form) ends the list that holds it. */
 /* NCONV2C: the ep rule of one applied unit (moved from nd_rec.c nd_ds_unit): the first rule that fires, 0 none. ch: nd_ds_apply's result; lost, dirty: before the unit. */
@@ -409,7 +409,6 @@ unsigned nd_ds_ep_rule(uint32_t w0, unsigned ch, int lost, int dirty) { const un
 #define DS_LIST_MAX 200000u
 #define DS_LIST_DEPTH 12u
 static void ds_list_at(NdDs* s, uint32_t w, unsigned depth);
-static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth);
 /* n pairs of u; raw: stop at ND_FS_END (the list end of a typed list). */
 static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int raw) {
     for (unsigned i = 0; i < n; i++) {
@@ -430,27 +429,9 @@ static void ds_list_at(NdDs* s, uint32_t w, unsigned depth) {
     if (!l) return;
     const NdNDev* nt = nd_ntab_find(l);
     if (nt) { ds_pairs(s, nt->u, nt->nu, depth, 0); return; }
-    const NdGTab* g = nd_gtab_find(l);
-    if (g) { ds_gtab(s, g, depth); return; }
     ds_pairs(s, (const uint32_t*)l, DS_LIST_MAX, depth, 1);
 }
-static void ds_gtab(NdDs* s, const NdGTab* t, unsigned depth) {
-    if (depth >= DS_LIST_DEPTH) return;
-    for (const NdGOp* o = t->op;; o++) {
-        switch (o->k) {
-        case NDG_DEF: { const NdGDef* g = (const NdGDef*)o->p; ds_pairs(s, (const uint32_t*)g->d.u, g->d.n, depth, 0); break; }
-        case NDG_UNIT: ds_pairs(s, (const uint32_t*)o->p, 1u, depth, 0); break;
-        case NDG_CALL:
-            ds_gtab(s, (const NdGTab*)o->p, depth + 1u);
-            if (o->a & 1u) return; /* a branch ends the list that holds it */
-            break;
-        case NDG_VTX: break; /* no state */
-        case NDG_TRI: if (nd_lsc_on) nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); break;
-        default: return; /* NDG_END */
-        }
-    }
-}
-/* nd_rec_dl (nd_gtab.c) and nd_rec_nr (nd_rec.c, an ND_FS_CALL unit with depth 1). l: a host address or a segment address. */
+/* nd_rec_ntab (nd_gtab.c) and nd_rec_nr (nd_rec.c, an ND_FS_CALL unit with depth 1). l: a host address or a segment address. */
 void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(uintptr_t)l, (unsigned)depth); }
 
 /* NST2b nd_ds_model (design_nstate.md section 5, row NST2b): the state units of one model record, in the order of rec_apply (nd_recs.c:72-103)
@@ -560,7 +541,7 @@ void nd_ds_parts(NdDs* s, const uint32_t* u, NdDsUnitFn unit) {
     const uint32_t* p = u + 2;
     for (unsigned k = 0; k < n; k++, p += 2u * m)
         for (unsigned j = 0; j < m; j++) {
-            if (j == pre) { if (nd_lsc_on) { unsigned t = 0; const NdNDev* e = (const NdNDev*)(const void*)((const NdGTab*)(uintptr_t)p[2u * j + 1u])->list; for (unsigned q = 0; q < e->nu; q++) { const unsigned id = e->u[2u * q] >> 24; t += id == ND_FS_TRI1 ? 1u : id == ND_FS_TRI2 ? 2u : 0u; } /* DEL5B1 */ nd_lsc_tris(t); } continue; } /* NREC4: the list triangles of the instance */
+            if (j == pre) { if (nd_lsc_on) { unsigned t = 0; const NdNDev* e = (const NdNDev*)(uintptr_t)p[2u * j + 1u]; for (unsigned q = 0; q < e->nu; q++) { const unsigned id = e->u[2u * q] >> 24; t += id == ND_FS_TRI1 ? 1u : id == ND_FS_TRI2 ? 2u : 0u; } /* DEL5B1 */ nd_lsc_tris(t); } continue; } /* NREC4: the list triangles of the instance */
             unit(s, p[2u * j], p[2u * j + 1u]);
             if (nd_lsc_on) nd_lsc_unit(p[2u * j]); /* NREC4 */
         }

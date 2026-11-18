@@ -78,9 +78,7 @@ typedef const void* NdLst; /* FXTYPE: a list handle (NDN(x) or a list name); nd_
  * list has a table (nd_gtab_find, memo of the last 8 lookups) it records one NDC_NAPI record {nd_gtab_run, table, state-only flag}; else it writes
  * the G_DL unit as the macro did (counted). Core 1. nd_gtab_run (nd_walk.c, core 0) draws the table: a state-only list (what rec_inline records in
  * line) as G_PM_LST and its state ops; any other list through the walker's G_DL arms (ent_gdl, dlc_try), else its ops. */
-void nd_rec_dl(const void* list);
-void nd_gtab_run(const uint32_t* rec);
-void nd_gtab_run_e(const uint32_t* rec); /* ENTRY1: nd_gtab_run with the psochk compare of rec[3] (NdPsoDesc*) */
+void nd_rec_ntab(const void* list); /* DEL5B2: was nd_rec_dl */
 void nd_ntab_rec(const uint32_t* rec); void nd_ntab_rec_e(const uint32_t* rec); /* GKEY2: rec[0] = const NdNDev* */
 
 /* CONV2F: nd_draw_list(list, ND_SELF) at the call site of a self-contained v2 table (no entry: the table has its own pipeline state).
