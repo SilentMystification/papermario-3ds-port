@@ -616,7 +616,6 @@ void nd_rec_list(const void* l) {
     uint32_t kb[2u * 64u];
     const NdNDev* ke = nd_ntab_find(l);
     const Gfx* g = (const Gfx*)(ke == (const NdNDev*)l ? (const void*)nd_lkey_end(l, ke, kb, 64u) : l); /* CGFX: a moved key (NDN) */
-    if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 5u);
     for (unsigned n = 0; n < 1024u; n++, g++) {
         const u32 u0 = g->words.w0, u1 = g->words.w1;
         u32 w0 = u0, w1 = u1;
