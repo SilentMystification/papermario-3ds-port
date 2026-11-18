@@ -39,6 +39,5 @@ unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW
 void nd_scomp_rec(NdSDef* d, const void* v, unsigned nv);
 /* Core 0: the NDC_NAPI runner. */
 void nd_scomp_run(const uint32_t* rec);
-int nd_scomp_exec(NdSDef* d, const uint32_t* v, unsigned nv); /* core 0: run d with nv value units; 0 = refused (run the ops) */
-int nd_scomp_exec_own(NdSDef* d); /* core 0: run d whose value units are its own (static list data); 0 = refused */
+int nd_scomp_ok(NdSDef* d); /* NREC5, core 0: 1 when the compiler takes d */
 #endif
