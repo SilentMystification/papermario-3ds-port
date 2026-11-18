@@ -16,10 +16,10 @@ OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 
 ## Open work (in order)
 1. Answer coder questions (HWFIX1 first, NST1, NST3, NST2A-F). epbad: core 0 bumps gv_epoch but not nd_st_epoch at
    every model record (nd_walk.c:156); fix is ws_NST2B edit 7. Other prologues without nd_st_epoch (nd_walk.c:184 ENT) count once their unit feeds ds_ep.
-2. PSOFB psomiss: tex_on 2167585 = 0x211321 (f5d196a337 text). No cause by code read: model input is bool (nd_model.c:335), so nd_ws.tex_on. Writers: set_texture nd_tex_set.c:223 (via nd_op_apply nd_set.c:172, nd_scomp.c:195, :248) and nd_recs.c:195 (u8).
-   Every NDO_TEXTURE encoder masks a to 0/1 (nd_op.h:89, nd_nr.h:15, nd_op.c:29). So a non-unit word with top byte 0x2A ran as a unit.
-   GUESS paths: stale def units nd_scomp.c:241-248 (ent_sdef nd_ent.c:213 points into a heap list), stale nd_cgfx_rng range (nd_recs.c:99).
-   OPEN: needs a user yes for one debug-log run (log unit pointer and pm_gbi_cur_op in set_texture when on > 1). The gate logs are gone.
+2. Non-list walk (FACT, NST2D wscmb base variants): each frame the walker runs bss as units, past t_blk0 (pm_dspaud.c:52, a tick)
+   and pm_f127 (pm_gpu.c:1725) (base ELF basebin/07b0785e17cf38b8). The tick top byte picks the unit: 0x39 MTX (variant a, stored base),
+   0x2D COMB / RARE (variant b: key_s 0x100, sticky, all pso lookups miss). GUESS: psomiss tex_on 0x211321, 0x421862 = a tick with top byte 0x2A.
+   ws_WALKSRC (5ceee60b7f) logs the run start and return address. Next: symbolize them in its ELF, name the producer, write the fix page.
 3. NDR0 (Sonnet, design section 7) after the NST2F gate data. Reads it needs: gv_epoch_enter nd_geom.c:203-228, sync_combine_work
    nd_comb.c:312-333 (leg_mode and comb_mode5 are decision inputs and outputs), sync_render nd_set.c:210, ensure_tile_slow nd_tex_set.c:335,
    box_fold_sync nd_comb.c:374, nd_mesh_* are VTX/TRI state-run units (nd_geo.c:29-37), not commands. Then NCONV1 (section 8), NREC1 (9).
