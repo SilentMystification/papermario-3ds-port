@@ -48,6 +48,7 @@ void nd_sub_call(const NdSub* s);
  * (R11) and the replay runs it to its NDC_END (nd_range_run). A static custom gfx list (SetCustomGfx) is recorded as commands (nd_rec_list). */
 void nd_rec_end(void);
 void nd_rec_list(const void* l);
+int nd_rec_inline(uint32_t a); /* DEL3C1: nd_rec.c, a push call of an in-line state list; nd_gx_host.c */
 
 #define ND_REC_AUX_MAX 96 /* the most R13 words of one model record (make_texture_gfx with mipmaps and two palettes) */
 void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* sw, unsigned* kb); /* PROF: commands per op and state ops (sw) since the last take; the stream high-water mark (KB) */

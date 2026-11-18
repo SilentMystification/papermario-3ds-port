@@ -1,0 +1,8 @@
+3ds/src/nd_direct.c:199:/* the typed units of the fallback ops: the record-side gbi redirect (nd_gx_w takes a local packet, so the ops are typed as the stream has them) */
+3ds/src/nd_rec.c:411:/* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
+3ds/src/nd_scomp.c:138:        if (w0 == ND_NOP_A) continue; /* the syncs are dropped (as nd_gx_w) */
+3ds/src/nd_st.c:19:    if (x0 == ND_NOP_A) return; /* nd_gx_w drops a no-op unit (nd_rec.c IS_NOP) */
+src/hud_element.c:262: * NdHudPiece per texture tile. hud_rect_emit writes the gDP and gSP words of a record: core 1 runs it on gMainGfxPos (fps60 anchors
+src/model.c:3989:/* GPOSREST: every caller passed &gMainGfxPos (the frame stream), so the packet swap was a no-op */
+src/msg_draw.c:331:    /* DIRECT D4b-2, GFXPOS7: every producer records into the frame stream (nd_gx_w takes each gMainGfxPos packet back, nd_rec.c D9):
+src/sprite.c:209:/* S5SPR: the state ops of one sprite component. Core 1 runs them on gMainGfxPos for a shaded component (create_shading_palette writes ops too);
