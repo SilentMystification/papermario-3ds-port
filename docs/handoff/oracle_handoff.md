@@ -8,6 +8,9 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
 - D1 A, D2 A. UD1 option 1 (user): core 1 keeps the N64 field model; listcen reports a class core1 outside the end proof.
   UD2 option 1: core 0 keeps a native transform stack. UD3 option 1: prof push at the NST1 gate. Sonnet yes: NST1, NDR0, NCONV1, NREC1.
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
+- Console build 6449 (user, FACT): white and black rectangles everywhere. Cause: PSOFB pso_fallback (nd_comb.c:257-264) draws vertex
+  colour only on a miss. ws_HWFIX1 (05cc4cae3a, DIAG1) puts nd_comb_core back on a miss (nd_decide.c back to 3ds/src). Its gate is
+  switch psooff, which makes every key miss: drec must equal the table run. ws_TATTLEAR merged: wide CAM_TATTLE 3D x = (x + 40) * 4 / 5.
 ## Pages on main and their waits (chain: NST1 -> NST3 -> NST2A -> NST2B -> NST2C -> NST2D -> NST2E -> NST2F -> NDR0)
 - ws_PSOFB (Haiku, running): model -2. ws_NST1 (Sonnet, running; worktree build3ds/wt/NST1 has nd_ds.c, NdDs holds lt[], lk, vp_*, tm).
 - ws_NST3: dschk switch, 4 dschk scenes, dschk_base.txt. ws_NST2A: static lists (fixed by NSTO: nd_ds_list after nd_rec_napi).
@@ -16,7 +19,7 @@ FLAMEDL build -2 gfxpos -2, TST13 build -1 gfxpos -1 (page values). Run listcen 
   dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
   unfold values, shaded sprite dual_on on core 1; S3 end gate bad 0 epbad 0. Every NST2 row replaces fxrest.d/dschk_base.txt.
 ## Open work (in order)
-1. Answer coder questions (PSOFB, NST1, NST3, NST2A-F). epbad is OPEN: no data; NST2F expects a diagnose round.
+1. Answer coder questions (HWFIX1 first, NST1, NST3, NST2A-F). epbad is OPEN: no data; NST2F expects a diagnose round.
 2. PSOFB psomiss (from PHASEE2): each gate bench (spot_mac01_drec, wscmb_pause_drec) has 1 psomiss entry whose combine inputs hold a
    one-bit flag above 1 or below 0. The 4 builders (nd_comb.c:199, nd_model.c:209, pm_gpu.c:3925, nd_scomp.c:226) and the flag writers
    write 0 or 1 (code read). After the PSOFB merge: read the 8 flag values in the PSOFB 2 commit text, find the writer, write a Haiku page.
