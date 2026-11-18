@@ -14,14 +14,14 @@ memory index. Then `date`, ListAgents (status `running` is the ONLY slot count),
    Logging was off. HUD, Stats and Position HUD draw only on the bottom screen: ws_BOTSCR fixes them.
 
 ## Failures of 2026-11-17 and the control for each (the user's anger: read this)
-1. Status report asked 3 times: hand-backs were handled first. Control: CORE item 0 (read ALL user messages of the turn, answer in this reply).
+1. Status report asked 3 times: hand-backs were handled first. Control: CORE item 0 (a user question is top priority: read ALL user messages of the turn, answer in this reply).
 2. Console push failed 4 times: the netloader broadcast probe does not reach the consoles from this PC; the old error text blamed the console; the skill command
    builds and has no -ip. Control: push_runbook.md, go.ps1 uses the known address, the probe text is fixed. The user's word "ready" is fact.
 3. Asked to push before the build was ready, then merged between the ask and the push. Control: runbook order. No AskUserQuestion popup for a push (the user
    rejects it): one plain line, then push on the user's word.
 4. Ready work was held "until the console confirms": a coder sat idle. Control: CORE item 3 (queue). A merge may wait for a gate, the work never waits.
-5. Double posts: the Stop hook rejects sentences over 20 words and shows the user both drafts. Control: short sentences in the FIRST draft, one reply per turn.
-6. Oracles stopped at 150K: that rule is dead. Limit 500K, past 250K new work goes to a new agent (orchestrator_rules.md Agents).
+5. Double posts: the user's global Stop hook (~/.claude/hooks/style_guard.js) blocks a reply with a sentence over 20 words and the user sees both drafts. That is a user-level setting, not a project rule. Control: one reply per turn, short sentences in the first draft.
+6. Oracles were stopped at 150K: that rule is dead. About 500K is a SOFT limit: never interrupt work for it, reuse old oracles for relevant work, do not resume a bloated oracle for new work (orchestrator_rules.md Agents).
 7. A ScheduleWakeup did not fire for 2 hours (16:02 to 18:09). Control: read `date` every turn, set a 10 minute wakeup.
 8. A design risk was named and then shipped: D1 (PSOFB fixed fallback) drew white and black rectangles on the console. Control: CORE item 8.
 
