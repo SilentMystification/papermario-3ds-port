@@ -176,6 +176,18 @@ MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a
   mkdir -p /tmp/gconv; cp -r /gcache/. /tmp/gconv/; rm -rf /tmp/gconv/out; rm -f /tmp/gconv/key.txt /tmp/gconv/outs.sha1
   RT_LOG=/tmp/rt/prep.log RT_ROOT=/work/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so gcc -m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -DVERSION=us -D_MIPS_SZLONG=32 -Dnullptr=NULL -DND_HOST_GFX -I 3ds/include -I 3ds/stub_include -I include -I src -I assets/us -I ver/us/build/include -c -o /tmp/gconv/nd_gfx_tab.o /tmp/gconv/nd_gfx_tab.c
   cp /tmp/rt/prep.log /hso/rt/prep.log
+  # HOSTCACHE: /tmp/ndcomb.o, /tmp/ndcombs.c, /tmp/ndlogs.c are the RO inputs of the host.d units (RO=/tmp); made here, on every path.
+  gcc -m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -c -o /tmp/ndcomb.o 3ds/src/pm_comb.c
+  printf "void pm_log_d(const char* fmt, ...) { (void)fmt; }\nvoid pm_log_w(const char* fmt, ...) { (void)fmt; }\nvoid pm_log_prof_line(const char* fmt, ...) { (void)fmt; }\nunsigned pm_frame_count(void) { return 0; }\nunsigned nd_r13_nohit;\nint pm_texf_centre; int pm_tex_filt_linear(void) { return 0; }\nstatic unsigned char gs_dummy[1024];\nvoid* gGameStatusPtr = gs_dummy;\n" > /tmp/ndlogs.c
+  printf "#include <nd.h>
+#include <string.h>
+void nd_comb_decide(const NdCombIn* in, NdCombOut* out) { (void)in; memset(out, 0, sizeof *out); }
+int pm_gpu_noise_ok(void) { return 0; }
+void pm_gpu_noise_draw(NdUnit* u, float* nzo) { (void)u; (void)nzo; }
+void* nd_ntab_find(const void* list) { (void)list; return 0; } /* GKEY2: rec_inline (nd_rec.c) links; the unit tests have no device entries (nd_gtab.c needs the generated tables) */
+__attribute__((weak)) int pm_wide; __attribute__((weak)) int is_host(unsigned p) { return p >= 0x00100000u; } __attribute__((weak)) void tex_win_s25(int* a, int* b, int* c, int* d, unsigned e, unsigned f, unsigned g, unsigned h) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; } /* NST1: nd_ds.c (linked with nd_rec.c, the nd_rec_nr hook) */
+__attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2: nd_r11_walk (nd_model.c) names the native record runner; weak: nd_geo_test.c and the other unit doubles define their own */
+" > /tmp/ndcombs.c
   t0=$(date +%s); stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
   # the inline block runs as an async subshell (set -e holds there; in an && list it would not), its status from wait
   if [ "$HS_INLINE" = 1 ]; then r=0; ( set -e; export RT_LOG=/tmp/rt/inline.log RT_ROOT=/work/ RT_ROOT2=/tmp/gconv/ LD_PRELOAD=/tmp/rt/\$PLATFORM/rt.so
@@ -195,7 +207,6 @@ MSYS_NO_PATHCONV=1 docker run --rm -i --memory "${PM_BUILD_MEM:-4g}" -v $AVOL:/a
   stage L33
   /tmp/ndm
   stage L34
-  gcc -m32 -w -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -c -o /tmp/ndcomb.o 3ds/src/pm_comb.c
   stage L35
   gcc -m32 -Wall -Wextra -Werror -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -o /tmp/ndt 3ds/tools/nd_tmpl_test.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
   stage L36
@@ -239,16 +250,6 @@ unsigned pm_tex_slot_gen(int i) { (void)i; return 0; }\nint pm_tex_slot_unit(int
   stage L57
   /tmp/ndl assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin
   stage L58
-  printf "void pm_log_d(const char* fmt, ...) { (void)fmt; }\nvoid pm_log_w(const char* fmt, ...) { (void)fmt; }\nvoid pm_log_prof_line(const char* fmt, ...) { (void)fmt; }\nunsigned pm_frame_count(void) { return 0; }\nunsigned nd_r13_nohit;\nint pm_texf_centre; int pm_tex_filt_linear(void) { return 0; }\nstatic unsigned char gs_dummy[1024];\nvoid* gGameStatusPtr = gs_dummy;\n" > /tmp/ndlogs.c
-  printf "#include <nd.h>
-#include <string.h>
-void nd_comb_decide(const NdCombIn* in, NdCombOut* out) { (void)in; memset(out, 0, sizeof *out); }
-int pm_gpu_noise_ok(void) { return 0; }
-void pm_gpu_noise_draw(NdUnit* u, float* nzo) { (void)u; (void)nzo; }
-void* nd_ntab_find(const void* list) { (void)list; return 0; } /* GKEY2: rec_inline (nd_rec.c) links; the unit tests have no device entries (nd_gtab.c needs the generated tables) */
-__attribute__((weak)) int pm_wide; __attribute__((weak)) int is_host(unsigned p) { return p >= 0x00100000u; } __attribute__((weak)) void tex_win_s25(int* a, int* b, int* c, int* d, unsigned e, unsigned f, unsigned g, unsigned h) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; } /* NST1: nd_ds.c (linked with nd_rec.c, the nd_rec_nr hook) */
-__attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2: nd_r11_walk (nd_model.c) names the native record runner; weak: nd_geo_test.c and the other unit doubles define their own */
-" > /tmp/ndcombs.c
   gcc -m32 -Wall -Wextra -Werror $FP -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -o /tmp/ndgv 3ds/tools/nd_gv_test.c 3ds/src/nd_model.c 3ds/tools/nd_op.c 3ds/src/nd_mtx.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o /tmp/ndcombs.c /tmp/ndlogs.c -lm
   stage L68
   /tmp/ndgv
@@ -307,7 +308,7 @@ cat "$TMPLOG"
 if [ "$fail" = 0 ]; then
     echo "ND HOST TESTS PASS"
     mkdir -p build3ds/out/hostcache; rm -rf "$TC.tmp.$RUN"; mkdir -p "$TC.tmp.$RUN"
-    cp "$TMPLOG" "$TC.tmp.$RUN/out.txt"; echo 0 > "$TC.tmp.$RUN/rc.txt"; sha1sum "$TC.tmp.$RUN/out.txt" | cut -d' ' -f1 > "$TC.tmp.$RUN/out.sha1"
+    { cat "$TMPLOG"; echo "ND HOST TESTS PASS"; } > "$TC.tmp.$RUN/out.txt"; echo 0 > "$TC.tmp.$RUN/rc.txt"; sha1sum "$TC.tmp.$RUN/out.txt" | cut -d' ' -f1 > "$TC.tmp.$RUN/out.sha1"
     rm -rf "$TC"; mv "$TC.tmp.$RUN" "$TC"
     exit 0
 fi
