@@ -176,6 +176,8 @@ static void rec_ctx_check(void) {
 /* NST3 dschk (design_nstate.md section 6): ds_ep is the batch bit before the next command, ds_sclost the scalar-lost bit, ds_in
  * guards the dschk record itself (its nested rec_take). ds_rec holds the NdDs copy and the ep word (8-byte units). */
 static uint8_t ds_ep, ds_sclost, ds_in;
+static uint32_t ds_epw; /* NST2H: rule << 8 | unit id of the first ep rule since the last dschk record */
+#define DS_EP(r, i) do { if (!ds_ep) ds_epw = (uint32_t)(r) << 8 | ((i) & 0xffu); ds_ep = 1; } while (0)
 extern unsigned nd_st_epoch; /* nd_walk.c, core 0 */
 void nd_dschk_run(const uint32_t* rec) __attribute__((weak)); /* nd_dschk.c, core 0. Weak (NST3 mechanical fix): the host units that link
  * nd_rec.c do not link nd_dschk.c; the call is behind PMDL("dschk"), never true on host. */
@@ -193,10 +195,11 @@ static uint32_t* rec_take(unsigned n) {
             ds_in = 1;
             memset(ds_rec, 0, sizeof ds_rec);
             memcpy(ds_rec, &nd_ds, sizeof nd_ds);
-            ds_rec[sizeof nd_ds / 4u] = ds_ep;
+            ds_rec[sizeof nd_ds / 4u] = ds_ep ? (1u | ds_epw << 8) : 0u;
             nd_rec_napi(nd_dschk_run, ds_rec, DS_REC_W / 2u);
             ds_in = 0;
             ds_ep = 0;
+            ds_epw = 0;
         }
         ds_sclost = 1;
     }
@@ -249,9 +252,9 @@ void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
     if ((w0 >> 24) == NDO_CALL) nd_ds_list(s, (const void*)(uintptr_t)w1, 1); /* NST2A: the callee's state units (depth 1) */
     { /* NST3 ep rule (design section 6), core 1 data only */
         const unsigned id = w0 >> 24;
-        if ((ch & 1u) && id != NDO_VTX && id != NDO_TRI1 && id != NDO_TRI2 && id != NDO_MTX && id != NDO_POPMTX) ds_ep = 1;
-        if (ds_sclost && (id == NDO_OMH || id == NDO_PRIM || id == NDO_ENV || id == NDO_TEXTURE || id == NDO_COMB)) ds_ep = 1;
-        if (id == NDO_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) ds_ep = 1;
+        if ((ch & 1u) && id != NDO_VTX && id != NDO_TRI1 && id != NDO_TRI2 && id != NDO_MTX && id != NDO_POPMTX) DS_EP(1, id);
+        if (ds_sclost && (id == NDO_OMH || id == NDO_PRIM || id == NDO_ENV || id == NDO_TEXTURE || id == NDO_COMB)) DS_EP(2, id);
+        if (id == NDO_MOVEMEM && ((ch & 1u) || (w0 & 0xffu) != G_MV_LIGHT)) DS_EP(3, id);
     }
 }
 void nd_rec_model(const void* rec, unsigned words) {
@@ -263,7 +266,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     memcpy(p + 2, rec, G_PM_REC_WORDS * 8u); uint32_t* q = p + 2; uint32_t* o = q + 2 * G_PM_REC_WORDS;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
-    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ ds_ep = 1; /* NST2B 1b: a model record is a state change for the ep bit */
+    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ DS_EP(4, 0); /* NST2B 1b: a model record is a state change for the ep bit */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
 void nd_rec_spr(const void* rec, const void* geo) {
@@ -459,7 +462,7 @@ static int rec_inline(uint32_t a) {
         if (k == 3u) break;
         if (!k) return 0;
     }
-    ds_ep = 1; /* NST3: the list marker ends a batch */
+    DS_EP(5, 0); /* NST3: the list marker ends a batch */
     { static const uint32_t lst[2] = { NDO_W0(NDO_MISC, NDO_MISC_LST << 16), 0 }; rec_op_t(lst); }
     for (unsigned i = 0; i < n; i++) if (st_kind(w[2u * i]) == 1u) nd_rec_nr(w[2u * i], w[2u * i + 1u]);
     return 1;
