@@ -218,7 +218,7 @@ __attribute__((noinline, cold)) static int nd_texrect_fold(int rx0, int ry0, int
 }
 
 __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
-    if (nd_snap_arm) nd_snapchk_rect(); /* NDR0E2: the armed snapchk compare of a texture rectangle (nd_snap.c) */
+    const unsigned char sn_armed = nd_snap_arm; nd_snap_arm = 0; /* NDR1B: compared after the fold */
     nd_rect_tex_n++;
     int xh = (int)((w0 >> 12) & 0xfff);
     int yh = (int)(w0 & 0xfff);
@@ -238,6 +238,7 @@ __attribute__((noinline)) void nd_texrect(u32 w0, u32 w1, u32 hs, u32 hd) {
     else if (nd_img_role(0) == ROLE_SLOT) sync_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
     off_screen_check();
     box_fold_sync();
+    if (sn_armed) nd_snapchk_tri(); /* NDR1B: the compare, then the snap combine */
     sync_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
     if (box_pat && nd_ws.td[0].valid && nd_ws.td[1].valid && box_pattern_rect(xl, yl, xh, yh, hs, hd)) { return; }
     /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
