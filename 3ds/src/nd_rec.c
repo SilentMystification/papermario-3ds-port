@@ -622,11 +622,14 @@ void nd_rec_cnt_take(unsigned o[NDC_N], unsigned* sw, unsigned* kb) {
     { unsigned v = ndc_sw; *sw = v - last_sw; last_sw = v; }
     *kb = (hw_units * 4u + 1023u) >> 10;
 }
+/* NDR0A: the commands of every kind since the start (nd_snap_mesh takes a new snapshot when it changes). */
+unsigned nd_rec_cmds(void) { return ndc_n[NDC_MODEL] + ndc_n[NDC_SPR] + ndc_n[NDC_ENT] + ndc_n[NDC_TEXRECT] + ndc_n[NDC_NAPI] + ndc_n[NDC_CALL]; }
 
 static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* p) {
     static int n;
     if (n++ < 4) pm_log_e("ndc: bad command %08x at %p", (unsigned)h, (const void*)p);
 }
+unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
 /* POSTFAIL2: the context of the chain whose chunk holds p (*chunk: its index), else -1. Cold: the bad viewport log only. */
 int nd_rec_where(const void* p, unsigned* chunk) {
@@ -642,6 +645,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         if (p == stop) return;
         const uint32_t h = p[0];
         nd_stream_cur = p;
+        { const unsigned op = h >> 24; if (op != NDC_JUMP && (op != NDC_NAPI || p[1] != (uint32_t)(uintptr_t)nd_nr_run)) nd_snap_arm = 0; } /* NDR0A: a command but the native runs disarms the snapchk */
         switch (h >> 24) {
         case NDC_END: return;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;

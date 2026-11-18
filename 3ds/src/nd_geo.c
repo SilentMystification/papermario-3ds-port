@@ -29,10 +29,14 @@ void nd_val_primz(uint32_t z, uint32_t dz) {
 void nd_mesh_vtxw(uint32_t v, unsigned n, unsigned v0) {
     NDGEO_VTX(nd_nr, v, n, v0);
 }
+/* NDR0A: the snapchk take (nd_snap.c, strong). This weak no-op serves the host units that link nd_geo.c without nd_snap.c. */
+__attribute__((weak)) void nd_snap_mesh(void) {}
 void nd_mesh_tri1(unsigned a, unsigned b, unsigned c, unsigned f) {
+    nd_snap_mesh();
     NDGEO_TRI1(nd_nr, a, b, c, f);
 }
 void nd_mesh_tri2(unsigned a, unsigned b, unsigned c, unsigned f, unsigned d, unsigned e, unsigned g, unsigned h) {
+    nd_snap_mesh();
     NDGEO_TRI2(nd_nr, a, b, c, f, d, e, g, h);
 }
 void nd_lit_1(uint32_t l0, uint32_t a) {

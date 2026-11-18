@@ -1,0 +1,35 @@
+{
+  "benches": [
+    {
+      "name": "spot_mac01_snapchk",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NDR0A: snapchk lines of the run (cold det start). bad and fbad are the NDR0A counter.",
+      "scenario": "spot_mac01_snapchk",
+      "cap": 30,
+      "until": "snapchk f200 ",
+      "tags": [
+        "azahar",
+        "det"
+      ],
+      "gates": []
+    },
+    {
+      "name": "wscmb_pause_snapchk",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NDR0A: snapchk lines of the run (cold det start). bad and fbad are the NDR0A counter.",
+      "scenario": "wscmb_pause_snapchk",
+      "cap": 30,
+      "until": "snapchk f200 ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    }
+  ]
+}

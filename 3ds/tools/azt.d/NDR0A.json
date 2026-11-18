@@ -1,0 +1,58 @@
+{
+  "scenarios": [
+    {
+      "name": "spot_mac01_snapchk",
+      "status": "unverified",
+      "subject": "Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the dschk switch (core 1 draw state against core 0 at every command).",
+      "proves": "NDR0A: the snapchk lines of the run (recs and cmp above 0; bad and fbad recorded, not judged). Base run of the merge-base for the byte compare.",
+      "debug": "warp=mac_01:0 pos=0:0:200 loglevel=debug det snapchk",
+      "extra": [],
+      "until": "snapchk f200 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "snapchk",
+          "regex": "snapchk f200 cmds [1-9]\\d* "
+        }
+      ],
+      "reason": "NDR0A: copy of spot_mac01_dschk with snapchk in place of dschk. Cold start, cap 30 s, deadline 25 s. The snapchk f200 line is the until."
+    },
+    {
+      "name": "wscmb_pause_snapchk",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad), START opens the pause menu at frame 80, cold det start with the dschk switch.",
+      "proves": "NDR0A: the snapchk lines of the run (recs and cmp above 0; bad and fbad recorded, not judged). Base run of the merge-base for the byte compare.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 loglevel=debug det snapchk",
+      "extra": [],
+      "until": "snapchk f200 ",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "pause mode",
+          "regex": "game mode 10 frame"
+        },
+        {
+          "name": "snapchk",
+          "regex": "snapchk f200 cmds [1-9]\\d* "
+        }
+      ],
+      "reason": "NDR0A: copy of wscmb_pause_dschk with snapchk in place of dschk. Cold start, cap 30 s, deadline 25 s. The snapchk f200 line is the until."
+    }
+  ]
+}
