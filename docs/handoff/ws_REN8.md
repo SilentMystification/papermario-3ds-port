@@ -1,5 +1,5 @@
 # ws_REN8 (Haiku): the core 1 recorder names the unit ids ND_FS_ in place of NDO_ (counter: listcen reader lower)
-Designer: oracle FIN. WAIT: branch from main after the NDR5 merge (NDR5 edits nd_rec.c). Worktree build3ds/wt/REN8, branch REN8. PM_ROW=REN8 PM_LANE=REN8.
+Designer: oracle FIN. WAIT: branch from main after the NDR5 merge and the NST2H merge (both edit nd_rec.c). Worktree build3ds/wt/REN8, branch REN8. PM_ROW=REN8 PM_LANE=REN8.
 Edit only: 3ds/src/nd_rec.c.
 ## Facts (code read, main f1c6cf10ef)
 - nd_fs.h (row NCONV1A) defines every NDO_ name nd_rec.c uses as ND_FS_ with the same value (oracle grep: no name missing). No `NDO_##` paste, no NDO_ string.
