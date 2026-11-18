@@ -18,9 +18,8 @@ Run listcen for fresh numbers.
 - NDR5 gap (answered): no row. load_mtx guards the source itself (nd_mtx_set.c:134 mtx_bad).
 ## Open work (in order)
 1. Answer coder questions of the snap chain (pages name the gate and the stop).
-2. NDR2 direct draws: core 1 needs the pso words of each record (pd and prim are built in the core 0 runners: hud_rect_direct, cplx_quad_run,
-   nd_trect_run, nd_fill_run, screen_overlays.c:108). Design: a pure pso-of-record function per kind for both cores, a core 1 snap on a copy of
-   nd_ds with the pso words (omh mask, oml low 3 bits kept, combine via the nd_ds.c combine case, prim, env, dual_on 0), the record by nd_rec_napi_s.
+2. NDR2: page NDR2A (fill records; nd_snap_pso, nd_snapchk_dir, nd_direct_bind takes the arm). Next pages: NDR2B trect producers, NDR2C hud rect,
+   cplx quad and tsten (pso of the record as a pure function for both cores), NDR2D apply (sc_cur.o in nd_direct_bind, delete dec_*).
 3. NDR4 sprites: pm_gpu_spr_build (pm_gpu.c:4575) reads nd_ws (prim, env, omode, combine, dual_on) and gs.r_mix: give it the snap fields.
 4. NCONV1D, NCONV2, NREC1A-5, DEL rows: no page yet. Their blocker is the snap chain (W4) and NDR2/NDR4 (W5).
 5. Stream size: NdSnapChk is about 640 bytes (GUESS). The compact NdSnap of design_nstate.md section 7 is a later row.
@@ -48,4 +47,4 @@ Run listcen for fresh numbers.
   a direct draw (nd_direct.c:103-116) writes pso state and binds without tile ops. dschk adopts core 1 values there and counts adiff.
 ## What to do first
 1. Read plan_finish.md, design_nstate.md and the ws_* pages on main. Answer coder questions.
-2. Write NDR2 (open work 2), then NDR4. Check `git log -5 -- docs/handoff` first: two oracles write pages.
+2. Write NDR2B-D (open work 2), then NDR4. Check `git log -5 -- docs/handoff` first: two oracles write pages.
