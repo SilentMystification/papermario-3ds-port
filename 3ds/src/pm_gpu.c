@@ -779,7 +779,6 @@ static void flush_impl(void);
 static unsigned prev_draws, kick_at;
 static int kick_done; /* PERF2: the one split of this frame is done (KICK2's second split at 85 percent is deleted: each split costs a cache flush and a GSP submit on the CPU) */
 extern int pm_ph_on;
-void pm_gbi_draw_note(int native); /* WCEN3 */
 extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws; /* PI4 */
 static void kick_split(void);
 static inline void kick_check(void) { /* PERF2 step 4: the test per draw inline, the split (once a frame) out of line */
@@ -1324,7 +1323,6 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
     PH_ADD(C_NDRAW, 1); PH_ADD(C_NIDX, dp->nidx); /* FXCEN1 */
     { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
-    pm_gbi_draw_note(1); /* WCEN3: a native draw (per producer, the former pm_gbi.c) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
     NdDraw d5;
     if (__builtin_expect(dp->use5 && !dp->no_uni, 0)) dp = sub_pm5(dp, &d5); /* PERF2: out of line */
@@ -1416,11 +1414,10 @@ static __attribute__((cold, noinline)) void t1log_draw(const NdDraw* d) {
     if (t1l_on && d->has_uvx && d->use5 && pm_frame_count() >= 100 && t1l_n++ < 400) pm_log("t1draw f%u use5 %d loc_uvx %u u1 dim %x addr %x param %x lod %x type %x uvx %.4f %.4f %.4f %.4f", pm_frame_count(), d->use5, d->loc_uvx, d->u[1].dim, d->u[1].addr, d->u[1].param, d->u[1].lod, d->u[1].type, d->uvx[0], d->uvx[1], d->uvx[2], d->uvx[3]);
 }
 /* FB-3 pm5tex1: one line per producer the first time it submits a program 5 draw with tex1 (the unit 1 uv map, uvx): the pm5 tex1 path is in use */
-void pm_gbi_cur_prod_name(char* b, int n);
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d) {
     static char seen[24][48]; static unsigned nseen;
     if (!d->use5 || !d->has_uvx || pm_log_level() < 2) return; /* pm_log is an info line */
-    char prod[48]; pm_gbi_cur_prod_name(prod, sizeof prod);
+    const char* const prod = "-"; /* DELCEN: no producer census */
     for (unsigned i = 0; i < nseen; i++) if (strcmp(seen[i], prod) == 0) return;
     if (nseen < 24) { strncpy(seen[nseen], prod, 47); seen[nseen][47] = 0; nseen++; }
     extern unsigned pm_frame_count(void);
@@ -4674,7 +4671,7 @@ void pm_gpu_flush_at(int line) { /* PG0: a flush asked for by the display list i
     }
     pm_dc_c[DC_CL]++;
     int c = 0;
-    if (pm_ph_cen) { c = pm_gbi_flush_class(); pm_fl_n[c]++; { extern void pm_gbi_census_close(void); pm_gbi_census_close(); } } /* T2b: non-empty close per producer */
+    if (pm_ph_cen) { c = pm_gbi_flush_class(); pm_fl_n[c]++; } /* T2b: non-empty close per producer */
     dc_on = (dc_seq++ & 7) == 0 && (pm_ph_cen || pm_dcs_on); /* DC1: one close in 8 is sampled, with phase mode or dcsum (PROF2-2: not in a prof sample) */
     if (!dc_on) { flush_impl(); return; } /* W2: the flush timer uses the DC1 sample, one close in 8, scaled by 8 */
     unsigned t0 = pm_ph_cen ? pm_ticks() : 0; /* the per-class flush time is phase only */

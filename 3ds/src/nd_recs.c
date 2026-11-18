@@ -13,7 +13,6 @@
 #include "nd_fs.h"
 #include "nd_msnapw.h"
 
-unsigned rec_n; /* M4-2: records run in the current opsplit window */
 void nd_range_run(const uint32_t* a); /* nd_walk.c: DIRECT D10a, a custom gfx range of the frame stream */
 void pm_gpu_set_r13_t1(int bound);
 /* M4-2 / S3F-2 / S3F-4: producer record of a model (model.c appendGfx_model, TARGET_3DS), G_PM_REC_WORDS (11) words, R0 to R10. R0: w0 = G_PM_REC << 24 |
@@ -52,7 +51,6 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     if (!l) return;
     if (!is_host((u32)(uintptr_t)l)) { gbi_cold_bad_next((u32)(uintptr_t)l, (u32)G_DL << 24, 0); return; }
     if (dlc_on && dlc_try(l)) { /* DLC1: a compiled list, as G_DL */
-        if (pm_ph_cen) { os_dlc_hit(); mr0_dlc_hit = 1; }
         return;
     }
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(l, 0u);
@@ -73,7 +71,6 @@ static __attribute__((noinline)) void rec_matrix(const Gfx* q) {
 }
 static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
-    rec_n++;
     gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
     if (f & 4u) rec_t(ND_FS_PRIM, 0, q[6].words.w0); /* depth and remap: the old words before the lights */
     if (f & 8u) rec_t(ND_FS_ENV, 0, q[6].words.w1);
@@ -239,7 +236,6 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
     if (wskip || (!tried && !ndm && mdone && q[12].words.w0 && !q[11].words.w0 && pm_gpu_model_hit(mkp, mce))) {
         /* S3N-6 hit: the record state is the cached one (rec_apply is not run; its matrix ops ran above). The sticky shadows are cleared as after a native draw.
          * POND (A1): a record with no geometry (q[12] 0, the water copy of model.c mdl_draw_hidden_panel_surface) never takes the hit path: its state is its whole effect, so rec_apply must run. */
-        rec_n++;
         gv_epoch++;
         nat = 1; hit = !wskip;
         hit_apply(q, mce); /* HC6 step 1: the walker state a miss leaves */
@@ -328,7 +324,6 @@ unsigned rec_run(const Gfx* q) {
     rec_matrix(q); /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
     if (!pm_gpu_model_hit(&mk, mce)) return rec_miss(q, &mk, mce, 0, 1, mi0);
     /* S3N-6 hit: rec_apply is not run (its matrix ops ran above); the walker state is the miss's (hit_apply); the sticky shadows are cleared as after a native draw */
-    rec_n++;
     gv_epoch++;
     hit_apply(q, mce);
     sc_ok = 0; nd_sr_forget();

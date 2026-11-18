@@ -69,9 +69,8 @@ unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws, pm_ph_iv, pm_ph_hud_us; /* PI
 
 void pm_ph_scene_mode(int mode) { pm_gpu_kc_cut(); cur_mode = mode; pf_scene_seen = 0; }
 static void fs_win_reset(void);
-void pm_gbi_win_reset(void);
 /* CAP1: a map load starts the opsplit, mr0, ms0 and fsplit windows */
-void pm_ph_scene_map(int area, int map) { pm_gpu_kc_cut(); cur_area = area; cur_map = map; pf_scene_seen = 0; pm_gbi_win_reset(); fs_win_reset(); }
+void pm_ph_scene_map(int area, int map) { pm_gpu_kc_cut(); cur_area = area; cur_map = map; pf_scene_seen = 0; fs_win_reset(); }
 void pm_ph_scene_get(int* mode, int* area, int* map) { *mode = cur_mode; *area = cur_area; *map = cur_map; }
 void pm_ph_gpu_note(void) {
     if (!pm_ph_on) return;
@@ -298,7 +297,6 @@ void pm_pmu_sp0(unsigned out[3]) {
  * pm_ph_frame_end hands its record to pf_take and pm_pf_frame turns pm_ph_on off again. The PMU fields (PF3) print 0 until PF3. */
 extern unsigned pm_step_calls;
 extern unsigned pm_ph_iv;
-unsigned long long pm_gbi_sp0_dlc(void); /* the former pm_gbi.c: dlc group ticks, summed in sampled frames only */
 int pm_pf_on;
 void pm_log_prof_line(const char* fmt, ...); /* PROF4, pm_log.c */
 int pm_pf_arm; /* prof samples: prof on and phase off. the former pm_gbi.c skips its phase reports while it is set */
@@ -715,9 +713,6 @@ static void pf_arm(void) {
 }
 /* PF2: one sampled frame, at its end. r is the frame record: it is not stored in the phase window. */
 static void pf_take(const Rec* r) {
-    unsigned long long d = pm_gbi_sp0_dlc();
-    pf_dlc_t += d >= pf_dlc_prev ? d - pf_dlc_prev : d; /* a map load resets the counter: then d is the new value */
-    pf_dlc_prev = d;
     pf_sms[0] += r->ms[PH_DRAW]; pf_sms[1] += r->ms[PH_TEX]; pf_sms[2] += r->ms[PH_GPU];
 }
 void pm_pf_frame(unsigned long long t0, unsigned long long t1) {

@@ -76,9 +76,7 @@ static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, u
     /* The render tile's wrap belongs to the triangles already queued.
      * Draw them before this tile replaces it. */
     if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
-        int f_on = pm_ph_cen && sp0_cur == 1; unsigned f0 = f_on ? pm_ticks() : 0; /* SPLIT0C2: flush time in the tex kind */
         pm_gpu_flush();
-        if (f_on) sp0_F += (unsigned)(pm_ticks() - f0);
         pm_tex_set_wrap(wr[0], wr[1], wr[2], wr[3]);
         st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
     }
@@ -541,15 +539,6 @@ __attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_
     *p_uls = uls; *p_ult = ult; *p_lrs = lrs; *p_lrt = lrt;
 }
 
-/* S3-2 measurement (phase census only, line sp0x): the own time and the draw close time of one typed op by its F3DEX2 code. */
-__attribute__((cold, noinline)) void nd_tex_timed(const uint32_t* u) {
-    const unsigned op = nd_op_n64[(u[0] >> 24) - NDO_BASE], t0 = pm_ticks();
-    unsigned long long f0 = pm_gpu_fl_acc();
-    nd_op_apply(u);
-    unsigned dt = (unsigned)(pm_ticks() - t0), df = (unsigned)(pm_gpu_fl_acc() - f0);
-    tx_t[op] += dt - (df < dt ? df : dt); tx_f[op] += df; tx_n[op]++;
-}
-
 /* HC4c (W4): the typed bind list of a texture handle (model.c make_texture_gfx, typed at the texture load) to its NDO_END, as the walker ran
  * the word list: every op runs (no skip test), a combine directly before a G_TEXTURE leaves the combine sync to the G_TEXTURE. */
 __attribute__((noinline)) void nd_bind_run(const uint32_t* u) {
@@ -560,8 +549,7 @@ __attribute__((noinline)) void nd_bind_run(const uint32_t* u) {
         if (id == NDO_COMB) {
             op_setcombine(NDO_COMB_W0(u[0]), u[1]);
             if ((u[2] >> 24) != NDO_TEXTURE) sync_combine();
-        } else if (__builtin_expect(pm_ph_cen, 0)) nd_tex_timed(u);
-        else nd_op_apply(u);
+        } else nd_op_apply(u);
     }
 }
 

@@ -126,28 +126,23 @@ static __attribute__((cold, noinline)) int walk_dbg_op(unsigned dbg, const Gfx* 
         fp = op == G_VTX ? PH_GVTX : (op == G_TRI1 || op == G_TRI2) ? PH_GTRI : op == G_MTX ? PH_GMTX : 0;
         if (fp) pm_ph_push(fp);
     }
-    if (dbg & WD_CEN) { os_op_hook(at, sp, op); mdc_op(at, sp, op, w0, w1); } /* W1: after the prologue, so a sample is the handler only; MDL1: model census, counts only */
+    (void)at; (void)sp; (void)w0; (void)w1; /* DELCEN: the op and model census are deleted */
     return fp;
 }
 static __attribute__((cold, noinline)) void walk_dbg_end(unsigned dbg) { /* the end of the outer list */
     if (dbg & WD_PH) pm_gpu_ndt_cls(-1); /* PERF2: the class span ends with the outer list */
     if (!(dbg & WD_CEN)) return;
     if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
-    mr0_walk_end(); /* MR0 */
 }
 static __attribute__((cold, noinline)) void walk_dbg_rec(unsigned dbg, const Gfx* rec, unsigned words) { /* a producer record: CORE2-2 census, WCEN2 count */
     if (dbg & WD_C2) nd_c2_rec(rec, words);
-    if (dbg & WD_CEN) pk_rec[pmx_cur]++;
 }
-static __attribute__((cold, noinline)) void walk_dbg_nat(void) { pk_nat[pmx_cur]++; } /* WCEN2: a record drawn natively */
-static __attribute__((cold, noinline)) void walk_dbg_dlc(void) { os_dlc_hit(); mr0_dlc_hit = 1; }
 /* The model record arm (G_PM_REC in a list, NDC_MODEL in the frame stream): the record words past the header. */
 static unsigned rec_case(unsigned dbg, const Gfx* q) {
     if (__builtin_expect(dbg, 0)) walk_dbg_rec(dbg, q, G_PM_REC_WORDS);
     NDT_BD(tr, dbg);
     unsigned n = rec_run(q);
     NDT_E(tr, NDT_REC);
-    if (__builtin_expect(dbg & WD_CEN, 0) && rec_nat_last) walk_dbg_nat();
     return n;
 }
 extern unsigned nd_st_epoch; /* NST3, defined below: raised by the model record prologue (NST2B) */
@@ -177,7 +172,7 @@ void nd_walk_spr(const Gfx* q) {
     NDT_E(ts, NDT_SPR);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
-    if (sh) { extern unsigned char nd_snap_arm; nd_snap_arm = 0; /* NDR4: the native sprite took its snap */ if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_nat(); return; }
+    if (sh) { extern unsigned char nd_snap_arm; nd_snap_arm = 0; /* NDR4: the native sprite took its snap */ return; }
     if (__builtin_expect(nd_lc_frame != -1, 0)) nd_lstcen(q, 3u);
     { extern int nd_spr_walk; nd_spr_walk = 1; nd_ops_run(q + G_PM_SPR_WORDS, 2u, 1); nd_spr_walk = 0; } /* WALLSHADE */
 }
@@ -270,7 +265,7 @@ static void walk_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
     }
     if (!ow && dlc_on && !ring) {
         NDT_BD(td, dbg); int dh = dlc_try(next); NDT_E(td, NDT_DLC);
-        if (dh) { if (__builtin_expect(dbg & WD_CEN, 0)) walk_dbg_dlc(); return; }
+        if (dh) return;
     }
     if (__builtin_expect(nd_lc_frame != -1, 0) && !nt) nd_lstcen(next, ex_depth ? 2u : 1u);
     if (!ex_depth) { if (nt) nd_ops_run(nt->u, nt->nu, 1); else nd_ops_run(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
@@ -293,8 +288,7 @@ static void op_typed(unsigned dbg, const uint32_t* u, const void* at) {
     gv_epoch++; if (!nd_st_epoch) nd_st_why = 1u << 8 | id; nd_st_epoch++; /* GV1b; NST2H source */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
-    if (__builtin_expect(dbg & WD_CEN, 0) && nd_op_tex(id)) nd_tex_timed(u); /* sp0x census */
-    else nd_op_apply(u);
+    nd_op_apply(u);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
@@ -423,13 +417,9 @@ void nd_nr_run(const uint32_t* rec) { nd_nr_exec(rec, (rec[-2] >> 16) & 0xffu); 
 /* The census of an outer run (W1/P1 producer cursor, CORE2-2 walked task), cold. */
 static __attribute__((cold, noinline)) void ops_cen_begin(const void* l) {
     if (nd_c2_on > 0) nd_c2_task(l);
-    if (!pm_ph_cen) return;
-    if (os_nest == 0) { pre_w0 = (const Gfx*)l; pmx_main = 0; pmk_n = 0; /* WCEN3: the marks of this list only */
-        pre_mkn = pmk_n; pre_mk0 = NULL; pmx_cur = pk_slot((unsigned)(uintptr_t)l); /* WCEN2: a list has its own key (its address) */ pmx_next = 0; mdcm_next = 0; mdcm_cur = -1; }
-    os_nest++;
 }
 static __attribute__((cold, noinline)) void ops_cen_end(void) {
-    if (pm_ph_cen) { walk_dbg_end(pm_walk_dbg); if (os_open && os_nest == 1) os_close(); os_nest--; }
+    if (pm_ph_cen) walk_dbg_end(pm_walk_dbg);
     if (nd_c2_on > 0) nd_c2_walked();
 }
 void nd_list_run(const void* l) { nd_ops_run(l, ND_LIST_MAX, 0); }

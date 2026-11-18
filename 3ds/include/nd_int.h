@@ -43,7 +43,6 @@ extern unsigned nd_rect_tex_n, nd_rect_fill_n;    /* nd_rect.c: calls of each ha
 
 typedef struct { unsigned draws, nat, fb, segn, segi, comp, dyn, why[12], ceq, cdiff, cseg; } EntCount;
 typedef struct { unsigned lists, nat, dyn, ref, skip; } GdlCount;
-typedef struct { const Gfx* p; unsigned s; } PkMark;
 
 /* ---- W: enums and defines of the gather and walk paths (cut from the former pm_gbi.c) ---- */
 enum { GVR_SCR, GVR_MIXED, GVR_TSS, GVR_LIT, GVR_FOG, GVR_ZMARK, GVR_TEX1, GVR_REFUSE, GVR_LITLOAD, GVR_RING, GVR_N };
@@ -77,11 +76,7 @@ void gbi_setenv(u32 w1);
 void gv_streak_flush(void);
 void gv_streak_op(unsigned op);
 void load_mtx(u32 w0, u32 w1, u32 hdr);
-void mdc_op(const Gfx* at, int sp, unsigned op, u32 w0, u32 w1);
-void mr0_walk_end(void);
 void note(unsigned op);
-void os_dlc_hit(void);
-void os_op_hook(const Gfx* at, int sp, unsigned op);
 void pm_gbi_ent_segchk(const uint32_t* dl);
 void pm_gbi_ent_texchk(const uint32_t* dl);
 void set_fillcolor(u32 w1);
@@ -108,7 +103,6 @@ extern float vert_p[64][4];
 extern int comb_set;
 extern int dlc_on;
 extern int lit_pending;
-extern int mr0_dlc_hit;
 extern int rec_nat_last;
 extern int rm_frame;
 extern int splash_on;
@@ -142,10 +136,7 @@ extern unsigned gv_load_n;
 extern unsigned keyc;
 extern unsigned keys;
 extern unsigned n_ops;
-extern unsigned pk_nat[];
-extern unsigned pk_rec[];
 extern unsigned pm_gbi_cur_op;
-extern unsigned pmx_cur;
 extern unsigned sc_sig;
 extern unsigned short vert_gmi[64];
 extern unsigned short vert_ring[64];
@@ -198,8 +189,6 @@ void nd_texw0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ul
 void nd_texw1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o); /* D4a-1: the tile 1 window, in nd_texwin.c */
 extern int dual_on;              /* the former pm_gbi.c */
 extern void* const zb_fake;      /* the former pm_gbi.c */
-extern unsigned sp0_cur;         /* the former pm_gbi.c: split timer kind */
-extern unsigned long long sp0_F; /* the former pm_gbi.c */
 int pm_is_cfb(const void* p);
 int pm_is_cur_cfb(const void* p);
 void pm_cfb_capture_prev(void);
@@ -218,11 +207,10 @@ void nd_set_loadtlut(u32 b);
 void nd_set_tilesize(u32 a, u32 b);
 void nd_set_texture(u32 a, u32 b);
 void nd_bind_run(const uint32_t* u);   /* the typed bind list of a texture handle (rec_apply) */
-void nd_tex_timed(const uint32_t* u);  /* sp0x census: one typed op, timed (phase census only) */
 
 /* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; the former pm_gbi.c and the walker read them. ---- */
 extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
-extern unsigned gm_last, gm_steps, gm_n;
+extern unsigned gm_last, gm_n;
 extern float (*gm_tab)[4][4];
 extern float (*gm_nrm)[3][4];
 extern float combined_k[4][4];     /* INTERPB1: the key frame twins, valid in the t = 0.5 pass (pm_interp_repl) */
@@ -245,7 +233,6 @@ extern s8 lk[2][3];
 extern unsigned lt_n;
 
 /* TX-2 (nd_tex.c). owner: nd_tex.c unless noted. */
-extern unsigned long long tx_t[256], tx_f[256]; extern unsigned tx_n[256]; /* owner: the former pm_gbi.c (sp0 report) */
 extern const void* ens_img[2]; extern const void* ens_src; extern const void* ens_pal;
 extern unsigned ens_fmt, ens_siz; extern unsigned ens_wrap[4]; extern int ens_sz[4];
 void unpack8(unsigned c, float o[4]);
@@ -272,25 +259,9 @@ void op_setcombine(u32 w0, u32 w1);
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1);
 
 
-/* ---- K: the census group (nd_cen.c, WK-2). Cut from the former pm_gbi.c; the walk (pm_gbi_run) and the frame hooks read these. ---- */
-#define PK_MARKS 1024 /* WCEN3: the all-marks table holds two frames of both display contexts */
-#define PK_SLOTS 256
-#define PK_PRE 253 /* main list ops before the first mark */
-#define PK_BG 254 /* ops of a list that is not the main list */
-#define PK_OTHER 255 /* a producer that found no free slot */
-extern PkMark pmk[PK_MARKS], pmk_all[PK_MARKS];
-extern int pmk_n, pmx_main, pmx_next, pmk_all_n;
-extern unsigned pmx_cur;
-extern unsigned os_nest, os_open, os_op;
-extern int mdcm_next, mdcm_cur;
-extern const Gfx* pre_w0;
-extern const Gfx* pre_mk0;
-extern int pre_mkn;
-void os_close(void);
-unsigned pk_slot(unsigned a);
 
 /* K: census readers of the former pm_gbi.c globals (defined in the former pm_gbi.c, read by nd_cen.c). */
-extern unsigned op_cnt[256], n_splits, n_grabs, rec_n, sp0_grp, sp0_skip, gp_ntri, gp_frames, gp3_t0_pending, gp3_t0_dead;
+extern unsigned op_cnt[256], n_splits, n_grabs, sp0_grp, sp0_skip, gp_ntri, gp_frames, gp3_t0_pending, gp3_t0_dead;
 extern int ep_open;
 extern unsigned gp_same[8], gp_set[8];
 extern u8 seen[256];
