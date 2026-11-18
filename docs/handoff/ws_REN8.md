@@ -1,5 +1,5 @@
 # ws_REN8 (Haiku): the core 1 recorder names the unit ids ND_FS_ in place of NDO_ (counter: listcen reader lower)
-Designer: oracle FIN. WAIT: branch from main after the NDR0E2 merge (order on nd_rec.c: NST2H, NST2I, NDR0E2, REN8). Worktree build3ds/wt/REN8, branch REN8. PM_ROW=REN8 PM_LANE=REN8.
+Designer: oracle FIN. WAIT: branch from main after the NDR0E2 and NST2J merges (order on nd_rec.c: NST2I, then NDR0E2 and NST2J, then REN8). Worktree build3ds/wt/REN8, branch REN8. PM_ROW=REN8 PM_LANE=REN8.
 Edit only: 3ds/src/nd_rec.c.
 ## Facts (code read, main f1c6cf10ef)
 - nd_fs.h (row NCONV1A) defines every NDO_ name nd_rec.c uses as ND_FS_ with the same value (oracle grep: no name missing). No `NDO_##` paste, no NDO_ string.
@@ -8,7 +8,7 @@ Edit only: 3ds/src/nd_rec.c.
 - stunit.sh:12 seds `p[0] = NDC_HDR(NDC_NAPI, 1, 0);` in nd_rec.c (no NDO_ token: the rename keeps it).
 ## Edit (one shape)
 1. `sed -i -E 's/\bNDO_/ND_FS_/g' 3ds/src/nd_rec.c` (code and comments). Before (nd_rec.c:153): `if ((w0 >> 24) == NDO_END) break;` After: `if ((w0 >> 24) == ND_FS_END) break;`
-2. Add `#include "nd_fs.h"` after the last #include of nd_rec.c. Keep every existing #include.
+2. Add `#include "nd_fs.h"` after the last #include of nd_rec.c. Keep every existing #include. In the NDR5 comment above nd_rec_xf write `nd_ds.sc_lost stays` for `ds_sclost stays (rec_take :188-201)`.
 3. Run `grep -c 'p\[0\] = NDC_HDR(NDC_NAPI, 1, 0);' 3ds/src/nd_rec.c`: 1 expected. 0: stop, send it to the oracle. A name that nd_fs.h does not define: stop, send the error.
 ## Steps and tests (output to build3ds/out/, read the last 20 lines; 1 build, 1 Azahar start)
 1. Edits 1-3. `sh 3ds/tools/nd_host_test.sh` PASS. `python 3ds/tools/listcen.py > build3ds/out/REN8_listcen.txt`, the same on the merge-base: reader lower by the

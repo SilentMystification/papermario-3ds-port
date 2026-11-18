@@ -13,7 +13,7 @@ Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them
 ## 2. Rules of the waves
 - A row gates drec byte-equal against `git merge-base HEAD main`, host PASS, dschk or snapchk not higher. It merges on its gate (no console check
   until the end, rule 8). A row whose blocker is not merged branches from the blocker's gate commit.
-- Rows of one wave share no file. Only one row per wave writes fxrest.d/dschk_base.txt (named in the page).
+- Rows of one wave share no file, or only hunks 20+ lines apart that both pages name. Only one row per wave writes fxrest.d/dschk_base.txt (named in the page).
 - Core 1 code reuses no name of listcen MODEL_NAMES (listcen.py:196-198) or of the elfgate func line (elfgate_patterns.txt:1).
 - nd_comb_core writes pm_comb_vprim (nd_decide.c:234, :244). A core 1 call (UD4) passes vprim and writes no core 0 global (NDR0D edit).
 ## 3. Waves (50 rows: REN6-8, MREN and NST2H added, DEL3A6 done by REN6; width = rows that run at once; the stop file blocks a wider split)
@@ -34,8 +34,10 @@ Tags: FACT (source), GUESS, OPEN. All rows are Haiku unless section 3 names them
 | W13 | DEL3C nd_op.h, nd_gbi.h, the last reader headers, gMainGfxPos (variables.h:111, game_stubs.c:9) | W12 | 1 | nd_op.h users |
 | W14 | DEL4D1-4: gDP/gSP/gsDP/gsSP definitions and Gfx prototypes to 3ds/tools/gconv_inc (FACT gen_gfx_tab.sh:14): gbi.h; gbi_custom.h; gs2dex.h and gt.h; sp.h and gu.h | W13 | 4 | one header per row |
 | W15 | S9GATE: listcen all 0, elfgate 0 0 0, the full drec set, then the user's end checks (section 5) | W14 | 1 | - |
-Width now (main 461b70e216): running NDR0E1; gated NST2H (a06c9a7b4c, merge pending), MREN; waiting NST2I (NST2H), NDR0E2 (NDR0E1, NST2I), REN8 (NDR0E2), NDR0F1 (NDR0E2). Merged: NDR0D, NDR5, REN5-7, NST2G. Critical path:
-NDR0E1 -> NDR0E2 -> NDR0F1 -> NDR0F2/NDR0G -> W5. W5 rows (NDR1-4, NCONV1D) need the full mesh snap run (combine, render, binds): no page before the NDR0E2 and NDR0F1 data. nd_rec.c order: NST2H, NST2I, NDR0E2, REN8. NST2I (dschk on gv_epoch, ep rules 6-9) then NST2J (sc_lost per command kind). W10 DEL3A6 is done by REN6; DEL2A and DEL2C keep no rename part (MREN).
+Width now (main 4abca1ff8a): merged NDR0E1 (snapchk bad 0), NST2H, MREN. Running NST2I (339c372f03 step 1). Waiting: NDR0E2 and NST2J (page: core 1 sc_lost and sc_dirty,
+dschk sclbad and sigbad) after NST2I, the two at the same time (disjoint hunks); REN8 after NDR0E2 and NST2J; NDR0F1 after NDR0E2. Critical path:
+NST2I -> NDR0E2 -> NDR0F1 -> NDR0F2/NDR0G -> W5. W5 rows (NDR1-4, NCONV1D) need the full mesh snap run (combine, render, binds): no page before the NDR0E2 and NDR0F1 data.
+nd_rec.c order: NST2I, NDR0E2 and NST2J, REN8. W10 DEL3A6 is done by REN6; DEL2A and DEL2C keep no rename part (MREN).
 ## 4. Sonnet rows split into Haiku rows, and rows Haiku cannot do
 - NDR0 (Sonnet) is NDR0A-E. A, B and C are measured steps: snapchk and dschk counts name each missing input. D and E follow from those counts.
 - NCONV1 (Sonnet) is NCONV1A and NCONV1D. NCONV1B and C are dropped: the ndnu_ unit arrays already hold the field-set words (ids equal ND_FS_, NCONV1A

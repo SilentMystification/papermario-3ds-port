@@ -1,5 +1,5 @@
 # ws_NDR0E2 (Haiku): core 0 draws a mesh triangle with the snap combine decision; snapchk also compares at texture rectangles (stage S4; counter: snapchk bad)
-Designer: oracle FIN. WAIT: branch from main after the NDR0E1 merge with snapchk bad 0 and after the NST2I merge (NST2H and NST2I edit nd_rec.c). Worktree build3ds/wt/NDR0E2,
+Designer: oracle FIN. NDR0E1 is merged (4abca1ff8a, snapchk bad 0). WAIT: branch from main after the NST2I merge (nd_rec.c). NST2J may run at the same time (disjoint hunks). Worktree build3ds/wt/NDR0E2,
 branch NDR0E2. PM_ROW=NDR0E2 PM_LANE=NDR0E2. Edit only: 3ds/src/nd_rec.c (3 places), 3ds/include/nd_api.h (1 line), 3ds/src/nd_snap.c, 3ds/include/nd_snap.h, 3ds/src/nd_rect.c (2 lines).
 ## Facts (code read, main 7c8aeb0f21; NDR0E1 line numbers move)
 - nd_snap_mesh (nd_snap.c:36) records only under PMDL("snapchk") with nd_rec_napi. A plain record runs rec_take without st_take: shadow reset (sh_all), the dschk
