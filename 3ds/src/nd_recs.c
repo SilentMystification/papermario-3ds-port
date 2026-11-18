@@ -46,7 +46,7 @@ static __attribute__((noinline)) void rec_rm(unsigned i) {
 }
 /* S3G-1: a model list of a record (the render mode list, the geometry): run as G_DL does (nd_sg_try first), else on the list executor
  * (nd_list_run, D10c) to its G_ENDDL. */
-static __attribute__((noinline)) void rec_dl(const Gfx* l) {
+static __attribute__((noinline)) void rec_dl(const NdW2* l) {
     if (!l) return;
     if (!is_host((u32)(uintptr_t)l)) { nd_bad_next((u32)(uintptr_t)l, ND_FS_W0(ND_FS_CALL, 0u), 0); return; }
     if (dlc_on && nd_sg_try(l)) { /* DLC1: a compiled list, as G_DL */
@@ -55,19 +55,19 @@ static __attribute__((noinline)) void rec_dl(const Gfx* l) {
     nd_list_run(l);
 }
 /* S3G-2: the R13 ops after a record (HC4c: typed by nd_rec_model): n units run in place (D10b: a flat range on the op executor). */
-static __attribute__((noinline)) void rec_aux(const Gfx* l, unsigned n) {
+static __attribute__((noinline)) void rec_aux(const NdW2* l, unsigned n) {
     nd_nr_list(l, n, 0);
 }
 /* S3N-6: the matrix ops of a record (R1, R2 load, R8 billboard), the first part of rec_apply. A cache hit runs them before it decides; a
  * miss after that skips them (mdone) and runs the rest of rec_apply in the old order. */
 extern int nd_mtx_static; /* SEAM2 */
-static __attribute__((noinline)) void rec_matrix(const Gfx* q) {
+static __attribute__((noinline)) void rec_matrix(const NdW2* q) {
     u32 f = q[3].words.w0;
     if (!(f & 256u)) nd_xf_load(q[1].words.w0, q[2].words.w1, q[1].words.w1);
     else nd_mtx_static = 1;
     if (q[8].words.w0) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1);
 }
-static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
+static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     gv_epoch++; /* GV1b: the texture and render mode words it replaces counted here */
     if (f & 4u) rec_t(ND_FS_PRIM, 0, q[6].words.w0); /* depth and remap: the old words before the lights */
@@ -75,11 +75,11 @@ static __attribute__((noinline)) void rec_apply(const Gfx* q, int mdone) {
     if (f & 64u) rec_fog(q[4].words.w0, q[5].words.w1);
     if (q[3].words.w1) rec_lights((const Lightsn*)(uintptr_t)q[3].words.w1, q[2].words.w0); /* S3F-1b: lights, as the old word order */
     u32 w0 = q->words.w0;
-    const Gfx* tg = (const Gfx*)(uintptr_t)q->words.w1;
+    const NdW2* tg = (const NdW2*)(uintptr_t)q->words.w1;
     if (q[13].words.w0) rec_aux(q + G_PM_REC_WORDS, q[13].words.w0); /* S3G-2: the typed R13 ops (special tile list, untextured ops) run in place of the bind */
     else if (tg) nd_bind_run((const uint32_t*)tg); /* HC4c: the typed bind list */
     if (q[4].words.w1) { /* S3F-2: the combine word, after the bind as in the old order */
-        const Gfx* e = (const Gfx*)(uintptr_t)q[4].words.w1;
+        const NdW2* e = (const NdW2*)(uintptr_t)q[4].words.w1;
         rec_top((const uint32_t*)e); /* HC4e4: SolidCombineModes, AlphaTestCombineModes are typed (gs forms) */
     }
     rec_rm((w0 >> 16) & 0xffu); /* ST-4, HC4b: the render mode list (typed table) */
@@ -134,7 +134,7 @@ static void hd_op(NdHitD* d, const uint32_t* t) {
 }
 static void hd_run(NdHitD* d, const uint32_t* u, unsigned n) { for (unsigned k = 0; k < n; k++, u += 2) hd_op(d, u); }
 static void hd_t(NdHitD* d, unsigned id, uint32_t a, uint32_t b) { const uint32_t t[2] = { ND_FS_W0(id, a), b }; hd_op(d, t); }
-static __attribute__((cold, noinline)) void hit_delta(const Gfx* q, NdHitD* d) {
+static __attribute__((cold, noinline)) void hit_delta(const NdW2* q, NdHitD* d) {
     const u32 f = q[3].words.w0;
     memset(d, 0, sizeof *d);
     d->g_and = 0xFFFFFFFFu;
@@ -192,7 +192,7 @@ static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     if (fl & HD_TEX) { nd_ws.tex_on = d->tex; nd_ws.tex_ss = d->tss >> 16; nd_ws.tex_ts = d->tss & 0xffffu; }
     if (fl & HD_FOGF) { fog_fm = d->fm; fog_fo = d->fo; }
 }
-static void hit_apply(const Gfx* q, const NdMEnt* e) {
+static void hit_apply(const NdW2* q, const NdMEnt* e) {
     NdHitD dl, * d = &dl;
     if (e && q[13].words.w0 <= 8u) { d = nd_mc_hd(e); if (!d->fl) hit_delta(q, d); }
     else hit_delta(q, d);
@@ -217,7 +217,7 @@ static __attribute__((cold, noinline)) void mkchk_note(const NdMKey* k, const Nd
 void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls); /* KEYMISS census (pm_keymiss.c, switch keymiss) */
 /* HC6 step 3: everything of a record but the hit: the miss (the full key, the diagnostics, rec_apply, the native draw or the walker geometry), the
  * warm budget skip, a failed hit (tried: the matrix ran and pm_gpu_model_hit said no) and the debug switches that need the full key (full0). */
-static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* mkp, NdMEnt* mce, int full0, int tried, unsigned mi0) {
+static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* mkp, NdMEnt* mce, int full0, int tried, unsigned mi0) {
     int cached = mce != NULL;
     int full = full0;
     if (!cached && !full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; full = 1; } /* HC6 step 2: the miss path reads the full key */
@@ -251,7 +251,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
      * without its SETCOMBINE (when the pre list has one) and its SETOTHERMODE ops are followed by the pre list's ops, then ENDDL. */
     /* POND: a pre list with a nested model record (the mac_00 water copy, nd_model.c nd_r11_walk): that record set the draw state last, so the draw
      * takes its words (flags, prim, bind, R13 words, render mode list, combine); the geometry stays this record's. */
-    const Gfx* qs = q;
+    const NdW2* qs = q;
     const uint32_t* mwp;
     const uint32_t* cwp;
     uint32_t mcomp[2 * 24], cwr[2];
@@ -259,7 +259,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
     if (q[11].words.w0) {
         const uint32_t* nr = NULL;
         nd_r11_state((uint32_t)q[11].words.w0, &nr, cwr, &hcb, mo, &nmo);
-        if (nr) qs = (const Gfx*)nr;
+        if (nr) qs = (const NdW2*)nr;
     }
     mwp = nd_rm_tab[(qs->words.w0 >> 16) & (ND_RM_N - 1u)]; /* HC4b: typed render mode ops (nd_mode_compile) */
     cwp = qs[4].words.w1 ? (const uint32_t*)(uintptr_t)qs[4].words.w1 : NULL;
@@ -292,7 +292,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
         unsigned tss_, geo_, cw0_, cw1_; pm_gbi_sticky(&tss_, &geo_, &cw0_, &cw1_);
         pm_log("wrec f%u copy hit %d nat %d cw %08x %08x", pm_frame_count(), hit, nat, cw0_, cw1_);
     }
-    if (!nat && (ndm || nmn_sw())) rec_dl((const Gfx*)(uintptr_t)q[12].words.w0); /* S3G-1: geometry (0 when none) */
+    if (!nat && (ndm || nmn_sw())) rec_dl((const NdW2*)(uintptr_t)q[12].words.w0); /* S3G-1: geometry (0 when none) */
     if (q[11].words.w1) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w1); /* S3G-1: custom gfx post (D10a: a stream range) */
     if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     if (ndm) pm_gpu_ndm_end();
@@ -301,7 +301,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const Gfx* q, NdMKey* m
     return G_PM_REC_WORDS - 1 + q[13].words.w0; /* R1 to R12: matrix, lights, fog, combine, prim, env, blend, shroud, billboard, panner, custom gfx, geometry, pop; then the R13 words */
 }
 /* HC6 step 3: the record path. A hit (an entry of key A + key B, its matrix, pm_gpu_model_hit) runs here; everything else in rec_miss (cold). */
-unsigned rec_run(const Gfx* q) {
+unsigned rec_run(const NdW2* q) {
     const unsigned mi0 = mfr_idx;
     NdMKey mk;
     /* HC6 step 2: the lookup takes key A (the payload, core 1) and key B (pm_gpu_model_keyb); the full key (the store, the miss diagnostics, ndm, mfr)

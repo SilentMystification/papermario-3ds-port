@@ -1634,27 +1634,6 @@ typedef struct {
  * This union is the fundamental type of the display list.
  * It is, by law, exactly 64 bits in size.
  */
-typedef union {
-	Gwords		words;
-	Gdma		dma;
-	Gtri		tri;
-	Gline3D		line;
-	Gpopmtx		popmtx;
-	Gsegment	segment;
-	GsetothermodeH	setothermodeH;
-	GsetothermodeL	setothermodeL;
-	Gtexture	texture;
-	Gperspnorm	perspnorm;
-	Gsetimg		setimg;
-	Gsetcombine	setcombine;
-	Gsetcolor	setcolor;
-	Gfillrect	fillrect;	/* use for setscissor also */
-	Gsettile	settile;
-	Gloadtile	loadtile;	/* use for loadblock also, th is dxt */
-	Gsettilesize	settilesize;
-	Gloadtlut	loadtlut;
-        long long int	force_structure_alignment;
-} Gfx;
 
 /*
  * Macros to assemble the graphics display list

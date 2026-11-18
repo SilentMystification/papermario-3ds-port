@@ -1,5 +1,5 @@
 /* nd_gtab.h: native tables of static display lists (NATIVEAPI S7, row S7CONV design note; plan_nativeapi.md section 6). A build-time host
- * tool (3ds/tools/nd_gfx_conv.c, run by 3ds/tools/gen_gfx_tab.sh) reads the typed units of each static Gfx list of the converted set and
+ * tool (3ds/tools/nd_gfx_conv.c, run by 3ds/tools/gen_gfx_tab.sh) reads the typed units of each static NdW2 list of the converted set and
  * writes one NdGTab per list into 3ds/src/nd_gfx_tab.c (generated, never committed). A table is the list in unit order as 8-byte ops: vertex
  * loads with their source as a link address, triangle slot triples, S6T state defs analysed on the host (NdSDef, st 1), calls of other
  * tables, and the units that stay run-time values (pointers to the unit in the list). Sync and no-op units give no op. */
@@ -65,13 +65,13 @@ const NdGTab* nd_gtab_find(const void* list);
 #define NDG(sym) (&ndg_##sym)
 typedef const void* NdLst; /* FXTYPE: a list handle (NDN(x) or a list name); nd_draw_list, nd_rec_dl and gSPDisplayList take it */
 #ifdef ND_GCONV_IN /* GSETB: host compile of the converter inputs (gen_gfx_tab.sh); the gfxin twin defines the list */
-#define NDN_DECL(sym) extern Gfx sym[]
+#define NDN_DECL(sym) extern NdW2 sym[]
 #define NDN(sym) (sym)
 #else
 #define NDN_DECL(sym) NDN_DECL_(sym)
 #define NDN_DECL_(sym) extern const NdNDev ndd_##sym
 #define NDN(sym) NDN_(sym) /* GSETW: N(x) expands first */
-#define NDN_(sym) ((Gfx*)&ndd_##sym) /* GSET: the key of a moved list (nd_draw_list, handles) */
+#define NDN_(sym) ((NdW2*)&ndd_##sym) /* GSET: the key of a moved list (nd_draw_list, handles) */
 #endif
 
 /* S7RUN: the static list call from a table. nd_rec_dl(list) replaces gSPDisplayList(gMainGfxPos++, list) at a call site (push form). When the
@@ -89,7 +89,7 @@ void nd_rec_dl_e(const void* list, const NdPsoDesc* e);
 void nd_rec_dl_key(const void* list, unsigned k); /* FXENT3: capture form; key k 0..14 goes to bits 28-31 of the entcap site word as k + 1 */
 #define nd_rec_dl_k(list, k, n) nd_rec_dl_key((list), (unsigned)(k)) /* n = the key count; entapply.py reads it */
 
-/* CONV2A (plan v3 section 2): the native table of one (static list, entry pso) pair. No pointer into a Gfx array, no typed unit.
+/* CONV2A (plan v3 section 2): the native table of one (static list, entry pso) pair. No pointer into a NdW2 array, no typed unit.
  * The converter (CONV2C) writes the tables. nd_ntab_run (CONV2D) runs them on core 0 into the native emit. */
 enum {
     NDN_END = 0,  /* end of the op list */

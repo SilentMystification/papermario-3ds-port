@@ -60,7 +60,7 @@ static __attribute__((cold, noinline)) void nd_bad_vp(const uint32_t* u) {
         nd_rec_ctx(), (int)gCurrentDisplayContextIndex);
 }
 
-void nd_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc) {
+void nd_bad_mtx(u32 w0, u32 w1, NdW2* list, NdW2* pc) {
     static unsigned bad; if (bad++ < 6) pm_log_w("gbi: matrix w0 %08x w1 %08x outside host memory, list %p at op %d, frame %d, previous ops %08x %08x %08x %08x", w0, w1, (void*)list, (int)(pc - list), rm_frame,
         pc > list ? pc[-1].words.w0 : 0, pc > list ? pc[-1].words.w1 : 0, pc > list + 1 ? pc[-2].words.w0 : 0, pc > list + 1 ? pc[-2].words.w1 : 0);
 }
@@ -109,7 +109,7 @@ static void walk_cls_init(void) {
     for (unsigned i = 0; i < sizeof rect; i++) walk_cls_tab[rect[i]] = NDT_RECT;
     walk_cls_tab[0] = NDT_TEX; /* the table is built: entry 0 (G_NOOP) holds a non-list class only as the init mark */
 }
-static __attribute__((cold, noinline)) int walk_dbg_op(unsigned dbg, const Gfx* at, int sp, unsigned op, u32 w0, u32 w1) {
+static __attribute__((cold, noinline)) int walk_dbg_op(unsigned dbg, const NdW2* at, int sp, unsigned op, u32 w0, u32 w1) {
     int fp = 0;
     if (dbg & WD_PH) { if (walk_cls_tab[0] != NDT_TEX) walk_cls_init(); pm_gpu_ndt_cls(op ? walk_cls_tab[op] : NDT_LIST); }
     n_ops++;
@@ -134,7 +134,7 @@ static __attribute__((cold, noinline)) void walk_dbg_end(unsigned dbg) { /* the 
     if (gp_prev_op >= 0) { gp_opt[gp_prev_op] += pm_ticks() - gp_opt_last; gp_opn[gp_prev_op]++; gp_prev_op = -1; }
 }
 /* The model record arm (G_PM_REC in a list, NDC_MODEL in the frame stream): the record words past the header. */
-static unsigned rec_case(unsigned dbg, const Gfx* q) {
+static unsigned rec_case(unsigned dbg, const NdW2* q) {
     NDT_BD(tr, dbg);
     unsigned n = rec_run(q);
     NDT_E(tr, NDT_REC);
@@ -142,7 +142,7 @@ static unsigned rec_case(unsigned dbg, const Gfx* q) {
 }
 /* DIRECT D1: NDC_MODEL of the frame stream (nd_rec.c), with the walker's op prologue of G_PM_REC (gv_epoch, the census op hook). D10a: the
  * only model record path (no list holds a record). */
-void nd_walk_rec_model(const Gfx* q) {
+void nd_walk_rec_model(const NdW2* q) {
     const unsigned dbg = pm_walk_dbg;
     dlc_on = 1;
     pm_gbi_cur_op = G_PM_REC;
@@ -155,7 +155,7 @@ void nd_walk_rec_model(const Gfx* q) {
 }
 /* DIRECT D2: NDC_SPR (nd_rec.c): the sprite record and its vertex and triangle words, at the point of its final draw (the walker state is the
  * draw state). Native, or else the walker loads and draws the two words, as the G_VTX arm. */
-void nd_walk_spr(const Gfx* q) {
+void nd_walk_spr(const NdW2* q) {
     const unsigned dbg = pm_walk_dbg;
     pm_gbi_cur_op = G_PM_SPR;
     int fp = 0;
@@ -171,7 +171,7 @@ void nd_walk_spr(const Gfx* q) {
 static __attribute__((cold, noinline)) void ent_lsr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("lsnap ent f%u", pm_frame_count()); } } /* NREC2 */
 /* DIRECT D3: NDC_ENT (nd_rec.c): an entity record. A DRAW record that the native path refuses leaves its G_DL to the walker (ent_skipgen,
  * as the walker's G_PM_ENT arm and the G_DL after it). */
-void nd_walk_ent(const Gfx* q, unsigned words) {
+void nd_walk_ent(const NdW2* q, unsigned words) {
     const unsigned dbg = pm_walk_dbg;
     pm_gbi_cur_op = G_PM_ENT;
     const uint32_t* const lsb = (const uint32_t*)(uintptr_t)((const uint32_t*)q)[-1]; nd_lsr_begin(lsb); if (lsb) ent_lsr_note(); /* NREC2: the list snap table (nd_rec_ent_draw) */
@@ -201,8 +201,8 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
 /* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
  * static list goes to the entity path (ent_gdl) or a compiled map shape (nd_sg_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_nr_list), inside a list nested. */
-static void nr_call(unsigned dbg, const Gfx* at, u32 w0, u32 w1) {
-    Gfx* next = (Gfx*)ptr_of(w1);
+static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1) {
+    NdW2* next = (NdW2*)ptr_of(w1);
     if (!next) return;
     if (!is_host((u32)next)) { nd_bad_next(w1, w0, (u32)(uintptr_t)at); return; }
     __builtin_prefetch(next);
@@ -238,7 +238,7 @@ static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
     gv_epoch++; /* GV1b; NST2H source */
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, id, u[0], u[1]);
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, id, u[0], u[1]);
     nd_unit_apply(u);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
@@ -253,9 +253,9 @@ static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, co
     }
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, id, u[0], u[1]);
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, id, u[0], u[1]);
     switch (id) {
-    case ND_FS_VTX: nd_geom_vtx(a, b, (const Gfx*)at); break;
+    case ND_FS_VTX: nd_geom_vtx(a, b, (const NdW2*)at); break;
     case ND_FS_TRI1:
         tri_prep_ok = 0;
         draw_tri(a);
@@ -266,7 +266,7 @@ static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, co
         draw_tri(b);
         break;
     case ND_FS_MTX:
-        if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (Gfx*)at, (Gfx*)at + 1);
+        if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)at, (NdW2*)at + 1);
         nd_xf_load(a, b, 0);
         break;
     case ND_FS_POPMTX: nd_xf_popb(b); break;
@@ -290,10 +290,10 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
     pm_gbi_cur_op = op;
     if (id != ND_FS_CALL && !(id == ND_FS_MISC && sub == ND_FS_MISC_MODVTX)) { gv_epoch++; } /* GV1b; no cut for a list call or a vertex modify */
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)at, 0, op, u[0], u[1]);
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, op, u[0], u[1]);
     switch (id) {
     case ND_FS_CALL:
-        nr_call(dbg, (const Gfx*)at, a, b);
+        nr_call(dbg, (const NdW2*)at, a, b);
         if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
         break;
     case ND_FS_RECT:
@@ -320,7 +320,7 @@ static __attribute__((cold, noinline)) void nr_unknown(unsigned dbg, const uint3
     pm_gbi_cur_op = op;
     gv_epoch++; /* GV1b */
     int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const Gfx*)q, 0, op, q[0], q[1]);
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)q, 0, op, q[0], q[1]);
     note(op);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
@@ -438,7 +438,7 @@ static inline void part_units(const uint32_t* p, unsigned n) {
         pm_gbi_cur_op = id;
         switch (id) {
         case ND_FS_MTX:
-            if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (Gfx*)p, (Gfx*)p + 1);
+            if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)p, (NdW2*)p + 1);
             nd_xf_load(a, b, 0);
             break;
         case ND_FS_POPMTX: nd_xf_popb(b); break;
@@ -536,7 +536,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
         nd_nr_exec(u, 1u);
         return;
     }
-    const Gfx* next = (const Gfx*)key;
+    const NdW2* next = (const NdW2*)key;
     pm_gbi_cur_op = ND_FS_CALL;
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;

@@ -22,9 +22,9 @@
 #include "nd_fs.h"
 
 extern s32 gCurrentDisplayContextIndex;
-void nd_walk_rec_model(const Gfx* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
-void nd_walk_spr(const Gfx* q);                 /* nd_walk.c: a sprite record and its geometry words */
-void nd_walk_ent(const Gfx* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
+void nd_walk_rec_model(const NdW2* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
+void nd_walk_spr(const NdW2* q);                 /* nd_walk.c: a sprite record and its geometry words */
+void nd_walk_ent(const NdW2* q, unsigned words); /* nd_walk.c: an entity record (and its G_DL) */
 void nd_texrect_run(const uint32_t* p);
 int is_host(u32 p);                             /* nd_walk.c: p is in host memory */         /* nd_tex_set.c: a texture rectangle */
 
@@ -237,7 +237,7 @@ void nd_rec_spr(const void* rec, const void* geo) {
 }
 /* D3: the draw record of a static list (gbi_custom.h gPmEntDrawRecord) and the G_DL of that list. form: record word 2 w0 (1: the animator form, log). */
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form) {
-    Gfx r[G_PM_ENT_WORDS + 1];
+    NdW2 r[G_PM_ENT_WORDS + 1];
     gPmEntDrawRecord(r, list, segid, varray);
     r[2].words.w0 = form;
     r[G_PM_ENT_WORDS].words.w0 = ND_OP_CALL_W0; /* HC4d2: the list call as a typed op (W6) */
@@ -571,9 +571,9 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         switch (h >> 24) {
         case NDC_END: return;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
-        case NDC_MODEL: nd_walk_rec_model((const Gfx*)(p + 2)); break;
-        case NDC_SPR: nd_walk_spr((const Gfx*)(p + 2)); break;
-        case NDC_ENT: nd_walk_ent((const Gfx*)(p + 2), (h >> 16) & 0xffu); break;
+        case NDC_MODEL: nd_walk_rec_model((const NdW2*)(p + 2)); break;
+        case NDC_SPR: nd_walk_spr((const NdW2*)(p + 2)); break;
+        case NDC_ENT: nd_walk_ent((const NdW2*)(p + 2), (h >> 16) & 0xffu); break;
         case NDC_TEXRECT: nd_texrect_run(p); break;
         case NDC_NAPI: ((NdNapiRun)(uintptr_t)p[1])(p + 2); break;
         case NDC_CALL: nd_ds_rpl++; stream_run((const uint32_t*)(uintptr_t)p[1], (const uint32_t*)(uintptr_t)p[2]); nd_ds_rpl--; break;

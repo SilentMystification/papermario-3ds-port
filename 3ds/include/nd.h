@@ -82,7 +82,7 @@ float nd_shift_mul(unsigned n);     /* tile shift to scale: 1 for 0, 1 / 2^n for
 float nd_prim_clip_z(unsigned prim_z);
 
 
-/* S3N-1 (B5, B6): a render mode list (ModelRenderModes[i], Gfx pairs ending in G_ENDDL) as a native state. ok 1 only when the list has SETOTHERMODE_H/L ops
+/* S3N-1 (B5, B6): a render mode list (ModelRenderModes[i], NdW2 pairs ending in G_ENDDL) as a native state. ok 1 only when the list has SETOTHERMODE_H/L ops
  * alone and writes every bit nd_render_state reads. Then r is the render state of the list (depth_img 0). nd_mode_compile returns m->ok. */
 
 /* NDTEX (S1-6): texture descriptor to a texture block id. cms, cmt: the G_SETTILE wrap flags (bit 0 mirror, bit 1 clamp), masks, maskt: the tile mask exponents.
@@ -162,7 +162,7 @@ typedef struct NdWs {
     NdTd td[2];
 } NdWs;
 extern NdWs nd_ws;
-void nd_words(const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (Gfx) into nd_ws. Not called during the walk. */
+void nd_words(const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (NdW2) into nd_ws. Not called during the walk. */
 
 /* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices
  * it loads itself. The compiler keeps the box of the object coordinates per group, the geometry mode ops with the triangle index they apply before, the Vtx copies
@@ -337,7 +337,7 @@ unsigned nd_tmpl_words(int id, const NdTmplWord** out);
 typedef struct NdRender { uint8_t zcmp, zupd, blend, decal, nocol, memb, set_memb, depth; int16_t atest; } NdRender;
 typedef struct NdMode { uint8_t ok; uint32_t om_h, om_l; uint32_t wh, wl; NdRender r; uint8_t has_cb, has_tx; uint32_t cw0, cw1, tw1, gand, gor; uint32_t bad; uint8_t has_g; } NdMode;
 /* B9: has_cb: the list sets the combine (cw0, cw1 = the last G_SETCOMBINE); has_tx: the list sets TEXTURE (tw1 = its w1: s << 16 | t, the walker tss); gand, gor: the geometry ops composed (geom = (geom & gand) | gor); bad: the op code of the first other op (ok 0) */ /* B8: om_h, om_l = the list bits, wh, wl = the bits it writes; r = the list alone (nd_model_state merges) */
-int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax); /* S3L-3: the R13 words (n Gfx pairs after the record) as a pre-list NdMode: SETOTHERMODE, SETCOMBINE, TEXTURE only, no geometry. 0: another op (fallback) */
+int nd_aux_state(const uint32_t* aw, unsigned n, NdMode* ax); /* S3L-3: the R13 words (n NdW2 pairs after the record) as a pre-list NdMode: SETOTHERMODE, SETCOMBINE, TEXTURE only, no geometry. 0: another op (fallback) */
 int nd_mode_compile(NdMode* m, const unsigned* w);
 void nd_render_state(uint32_t omode_h, uint32_t omode_l, int depth_img, NdRender* o);
 int nd_edge_aa(uint32_t m); /* KMR11W: the N64 texture edge blender (AA_EN, IM_RD, CVG_X_ALPHA, ALPHA_CVG_SEL, not FORCE_BL, cycle 2 M=CLR_MEM B=A_MEM, not decal) */

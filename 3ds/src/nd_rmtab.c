@@ -1,4 +1,4 @@
-/* MODELRM: the render mode table, by RENDER_MODE_IDX_xx (src/model.c once held it as Gfx* ModelRenderModes[]; its 61 lists are now device entries made by
+/* MODELRM: the render mode table, by RENDER_MODE_IDX_xx (src/model.c once held it as NdW2* ModelRenderModes[]; its 61 lists are now device entries made by
  * 3ds/tools/gen_gfx_tab.sh from 3ds/tools/gfxin/src/model.c). nd_rm_build (nd_rec.c) reads the units of entry i. */
 #include "nd_gtab.h"
 #include "nd_rmdef.h"

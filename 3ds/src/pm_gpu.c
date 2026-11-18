@@ -3776,7 +3776,7 @@ static NdMode mdl_mode; static NdUnit mdl_un;
  * this first). The walker-sticky values come from the same globals model_draw reads (the pre-apply values; the post-apply values are a function of them). */
 extern unsigned pm_dlc_gen;
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max);
-/* S3L-3: hash of the R13 words (the Gfx pairs after the record, count in R13 w0): the cache key holds it, the decode of the words is not in the key */
+/* S3L-3: hash of the R13 words (the NdW2 pairs after the record, count in R13 w0): the cache key holds it, the decode of the words is not in the key */
 static uint32_t aux_hash(const uint32_t* rec) {
     unsigned n = rec[26]; uint32_t h = 2166136261u ^ n;
     if (!n) return 0;

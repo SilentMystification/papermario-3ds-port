@@ -112,7 +112,7 @@ const void* ent_env_vtx(uint32_t w1, unsigned n) {
 static inline unsigned ent_uid(u32 w0, u32 w1) { (void)w1; return w0 >> 24; }
 
 /* S6-5: the words of the list and of every nested list (G_DL), then the vertex span */
-u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
+u32 ent_hash_walk(const NdW2* l, u32 h, int depth) {
     unsigned nl;
     const uint32_t* lu = nd_lkey_units(l, nd_ntab_find(l), ND_DLC_MAXOPS, &nl); /* LKEY: a moved list key hashes its device units */
     for (unsigned i = 0; i < nl; i++) {
@@ -121,7 +121,7 @@ u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
         uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
         if ((ut[0] >> 24) == ND_FS_END) return h;
         if ((ut[0] >> 24) == ND_FS_CALL) {
-            const Gfx* t = (const Gfx*)ptr_of(w1);
+            const NdW2* t = (const NdW2*)ptr_of(w1);
             if (t && is_host((u32)t) && depth < 5) h = ent_hash_walk(t, h, depth + 1);
             if (ut[0] & 1) return h;
         }
@@ -129,14 +129,14 @@ u32 ent_hash_walk(const Gfx* l, u32 h, int depth) {
     return h;
 }
 
-u32 ent_hash(const Gfx* l, const u8* vp, u32 vlen) {
+u32 ent_hash(const NdW2* l, const u8* vp, u32 vlen) {
     u32 h = l ? ent_hash_walk(l, 2166136261u, 0) : 2166136261u;
     for (u32 i = 0; i < vlen; i += 4u) { u32 v; memcpy(&v, vp + i, 4); h = (h ^ v) * 16777619u; }
     return h;
 }
 
 static int ent_flat_call(uint32_t w1, unsigned* n, int depth); /* LKEY: defined below */
-int nd_eg_flat(const Gfx* l, unsigned* n, int depth) {
+int nd_eg_flat(const NdW2* l, unsigned* n, int depth) {
     for (unsigned i = 0; i < ND_DLC_MAXOPS; i++) {
         u32 w0 = l[i].words.w0, w1 = l[i].words.w1;
         uint32_t ut[2]; ut[0] = w0; ut[1] = w1;
@@ -152,10 +152,10 @@ int nd_eg_flat(const Gfx* l, unsigned* n, int depth) {
     }
     return 0;
 }
-/* EMIT4: a v2 list reads its flat words from the device entries (nd_ntab_flat); a callee without an entry is read from its Gfx list (nd_eg_flat) */
+/* EMIT4: a v2 list reads its flat words from the device entries (nd_ntab_flat); a callee without an entry is read from its NdW2 list (nd_eg_flat) */
 static unsigned ent_flat_w, ent_v2_log;
 static int ent_flat_call(uint32_t w1, unsigned* n, int depth) {
-    const Gfx* t = (const Gfx*)ptr_of(w1);
+    const NdW2* t = (const NdW2*)ptr_of(w1);
     if (!t || !is_host((u32)t) || depth >= 5) return 0;
     const NdNDev* c = nd_ntab_find(t);
     if (c) return nd_ntab_flat(c, ent_flat_buf, n, ND_DLC_MAXOPS, depth + 1, ent_flat_call);
@@ -164,7 +164,7 @@ static int ent_flat_call(uint32_t w1, unsigned* n, int depth) {
 }
 
 /* the pool copies against the list: every triangle corner is the vertex the slot holds at the triangle (bytes 0 to 5 and 8 to 15; the flag word is the palette index). Per segment. */
-void ent_refcheck(const EntKey* k, const Gfx* l) {
+void ent_refcheck(const EntKey* k, const NdW2* l) {
     const u8* slot[64];
     u8 bad[ENT_SEGMAX];
     unsigned gt = 0, s = 0;
@@ -201,17 +201,17 @@ void ent_refcheck(const EntKey* k, const Gfx* l) {
 /* MERLEE: a list in a game heap (the general heap, or the battle heap, which is gFrameBuf2) was built at run time: the imgfx animated mesh lists
  * (imgfx.c imgfx_load_anim) point at vertex buffers that imgfx_mesh_anim_update rewrites every frame. Its vertex span goes into the per-frame hash
  * (nd_eg_run), as for a keyed list; without it the first compiled pose was drawn for the whole animation. Static lists (entity, map, overlay data) keep the list-only hash. */
-static int ent_heap_list(const Gfx* l) {
+static int ent_heap_list(const NdW2* l) {
     extern u8 heap_generalHead[]; extern u16 gFrameBuf2[];
     return (u32)l - (u32)heap_generalHead < (u32)GENERAL_HEAP_SIZE || (u32)l - (u32)gFrameBuf2 < (u32)BATTLE_HEAP_SIZE;
 }
 unsigned nd_ent_sc; /* S6E: gaps run as compiled ranges (entsync line) */
-static NdSDef* ent_sdef(const Gfx* l, u32 a, u32 b) { /* the gap [a, b) of l as an S6T def (1 to 32 units), else NULL */
+static NdSDef* ent_sdef(const NdW2* l, u32 a, u32 b) { /* the gap [a, b) of l as an S6T def (1 to 32 units), else NULL */
     NdSDef* d = (b <= a || b - a > 32u) ? NULL : (NdSDef*)calloc(1, sizeof *d);
     if (d) { d->u = l + a; d->n = (uint8_t)(b - a); } return d; }
 static void ent_sdef_free(EntKey* k) { for (unsigned s = 0; s < k->nseg && k->seg; s++) free(k->seg[s].sd); free(k->tail); k->tail = NULL; }
 unsigned nd_ent_tab, nd_ent_notab, nd_ent_gapt, nd_ent_gaps, nd_ent_gapn; /* S7ENT census (entsync line): lists compiled with a table, without; gaps run as a chain of table pieces, gaps from ent_sdef in tabled lists, gaps of lists without a table */
-void nd_eg_build(EntKey* k, const Gfx* l0) {
+void nd_eg_build(EntKey* k, const NdW2* l0) {
     pm_xf.ent_n++; /* MAPX-1 */
     unsigned ns = 0, nops = 0;
     u32 bad = 0, ntri = 0;
@@ -228,10 +228,10 @@ void nd_eg_build(EntKey* k, const Gfx* l0) {
     if (!fl) { k->why = 5; return; }
     ent_flat_buf[nops].words.w0 = ND_FS_W0(ND_FS_END, 0); ent_flat_buf[nops].words.w1 = 0;
     if (!k->vb) { for (unsigned i = 0; i < nops; i++) if (ent_uid(ent_flat_buf[i].words.w0, ent_flat_buf[i].words.w1) == ND_FS_VTX) { u32 a = ent_flat_buf[i].words.w1; if (!is_host(a) && (a >> 24) > 0 && (a >> 24) < 16u) { k->useseg = 1; break; } } if (k->useseg) { k->why = 9; return; } }
-    k->fw = (Gfx*)malloc((nops + 1u) * sizeof(Gfx));
+    k->fw = (NdW2*)malloc((nops + 1u) * sizeof(NdW2));
     if (!k->fw) { k->why = 5; return; }
-    memcpy(k->fw, ent_flat_buf, (nops + 1u) * sizeof(Gfx));
-    const Gfx* l = k->fw;
+    memcpy(k->fw, ent_flat_buf, (nops + 1u) * sizeof(NdW2));
+    const NdW2* l = k->fw;
     const u32* w = (const u32*)l;
     int rc = nd_ent_segments(w, ent_sbuf, ENT_SEGMAX, &ns, &bad);
     if (rc != NDR_OK) { k->why = (u8)(rc + 1); if (rc == NDR_OP) ent_opc[bad & 0xffu]++; return; }
@@ -280,14 +280,14 @@ void nd_eg_build(EntKey* k, const Gfx* l0) {
     if (entchk_on()) ent_refcheck(k, l);
 }
 
-static void ent_compile_t(EntKey* k, const Gfx* l) { const unsigned t0 = pm_ticks(); nd_eg_build(k, l); if (pm_xf.on) pm_xf.ent_t += pm_ticks() - t0; } /* XFT: a first compile, timed */
+static void ent_compile_t(EntKey* k, const NdW2* l) { const unsigned t0 = pm_ticks(); nd_eg_build(k, l); if (pm_xf.on) pm_xf.ent_t += pm_ticks() - t0; } /* XFT: a first compile, timed */
 
 void ent_reset(void) {
     for (unsigned i = 0; i < ENT_TAB; i++) if (ent_tab[i]) { ent_sdef_free(ent_tab[i]); free(ent_tab[i]->seg); free(ent_tab[i]->fw); free(ent_tab[i]); ent_tab[i] = NULL; }
     ent_nent = 0; ent_gen_seen = pm_dlc_gen;
 }
 
-EntKey* ent_lookup(const Gfx* l, u32 vb) {
+EntKey* ent_lookup(const NdW2* l, u32 vb) {
     unsigned h = (((u32)l >> 3) * 2654435761u ^ vb * 40503u) >> 20 & (ENT_TAB - 1);
     for (unsigned n = 0; n < ENT_TAB; n++, h = (h + 1) & (ENT_TAB - 1)) {
         EntKey* k = ent_tab[h];
@@ -346,7 +346,7 @@ void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (fr
     if (entchk_on()) pm_log_w("entsegcmp f%u segs %u eq %u diff %u", f, ent_c.cseg, ent_c.ceq, ent_c.cdiff);
 }
 
-EntKey* ent_find(const Gfx* l, u32 vb) {
+EntKey* ent_find(const NdW2* l, u32 vb) {
     unsigned h = (((u32)l >> 3) * 2654435761u ^ vb * 40503u) >> 20 & (ENT_TAB - 1);
     for (unsigned n = 0; n < ENT_TAB; n++, h = (h + 1) & (ENT_TAB - 1)) {
         EntKey* k = ent_tab[h];
@@ -360,7 +360,7 @@ u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h 
 
 /* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts are dynamic by address: walker (DIRECT D10a:
  * the frame stream holds no list). 1: drawn, 0 not drawn, -1 ring path wanted (the caller skips nd_sg_try). */
-int ent_gdl(const Gfx* l) {
+int ent_gdl(const NdW2* l) {
     if (!dlc_on || ((u32)l & 7u) || (u32)l - (u32)D_80164000 < 2u * sizeof(DisplayContext)) { gdl_c.skip++; return 0; }
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
@@ -393,9 +393,9 @@ int ent_gdl(const Gfx* l) {
     return r;
 }
 
-int ent_draw(const Gfx* rec) {
-    const Gfx* l = (const Gfx*)ptr_of(rec[0].words.w1);
-    const Gfx* nx = rec + G_PM_ENT_WORDS;
+int ent_draw(const NdW2* rec) {
+    const NdW2* l = (const NdW2*)ptr_of(rec[0].words.w1);
+    const NdW2* nx = rec + G_PM_ENT_WORDS;
     if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || nx->words.w0 != ND_OP_CALL_W0 || nx->words.w1 != rec[0].words.w1) return 0;
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
@@ -407,23 +407,23 @@ int ent_draw(const Gfx* rec) {
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
-static void ent_gap(NdSDef* d, const Gfx* l, u32 n) { /* S6E: a gap as a compiled range, with the list start and end of nd_ent_units; only when every value unit precedes the statics (the op order) */
+static void ent_gap(NdSDef* d, const NdW2* l, u32 n) { /* S6E: a gap as a compiled range, with the list start and end of nd_ent_units; only when every value unit precedes the statics (the op order) */
     if (d && !d->st) d->st = nd_scomp_analyse(d) ? 1u : 2u;
     nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)l, n); /* DEL1B */
     if (d && d->st == 1u && d->nv == d->pre) sr_ok = 0; /* NREC5: the render resync of the old compiled run */
 }
 /* HC8 step 7: the recompile of a changed entity (content hash), the interpreter run of one segment (the fallback loop) are cold: out of line. */
-static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const Gfx* l) {
+static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const NdW2* l) {
     if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
     else { u8 nr = k->nrec; nd_eg_build(k, l); k->nrec = nr; }
 }
 static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const EntSeg* e) {
-    const Gfx* fw = k->fw;
+    const NdW2* fw = k->fw;
     ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
     for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + i), 1u); } /* DEL1B */
     if (e->op1 > e->op0) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + e->op0), e->op1 - e->op0); } /* DEL1B */
 }
-int nd_eg_run(const Gfx* l, EntKey* k, u32 segid) {
+int nd_eg_run(const NdW2* l, EntKey* k, u32 segid) {
     const unsigned f = pm_frame_count();
     if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
     if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
@@ -437,7 +437,7 @@ int nd_eg_run(const Gfx* l, EntKey* k, u32 segid) {
     const unsigned lb = nd_ls_ord;
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
-        const Gfx* fw = k->fw;
+        const NdW2* fw = k->fw;
         if (e->op0 > e->a0) ent_gap(e->sd, fw + e->a0, e->op0 - e->a0);
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         nd_ls_ord = lb + e->tri0;
@@ -453,7 +453,7 @@ int nd_eg_run(const Gfx* l, EntKey* k, u32 segid) {
 }
 
 /* G_PM_ENT in the walk (nd_walk.c): returns 1 when the entity draw ran from the pools (the walk skips the record's G_DL), else 0. */
-int nd_ent_case(const Gfx* rec, u32 w0, u32 w1) {
+int nd_ent_case(const NdW2* rec, u32 w0, u32 w1) {
     if (w0 & G_PM_ENT_END) { /* LKEY: a moved list key (NDN) gives its device units and an end unit */
         static uint32_t eb[2u * 256u];
         const void* el = (const void*)(uintptr_t)w1;

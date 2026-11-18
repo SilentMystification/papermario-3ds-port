@@ -2,6 +2,29 @@
 #ifndef ND_GBI_INC_H
 #define ND_GBI_INC_H
 #include_next <PR/gbi.h>
+
+/* DELGT: the host Gfx union (the device gbi.h has none: the port uses NdW2) */
+typedef union {
+	Gwords		words;
+	Gdma		dma;
+	Gtri		tri;
+	Gline3D		line;
+	Gpopmtx		popmtx;
+	Gsegment	segment;
+	GsetothermodeH	setothermodeH;
+	GsetothermodeL	setothermodeL;
+	Gtexture	texture;
+	Gperspnorm	perspnorm;
+	Gsetimg		setimg;
+	Gsetcombine	setcombine;
+	Gsetcolor	setcolor;
+	Gfillrect	fillrect;	/* use for setscissor also */
+	Gsettile	settile;
+	Gloadtile	loadtile;	/* use for loadblock also, th is dxt */
+	Gsettilesize	settilesize;
+	Gloadtlut	loadtlut;
+        long long int	force_structure_alignment;
+} Gfx;
 #ifdef    F3DEX_GBI_2
 # ifndef  F3DEX_GBI
 # endif
