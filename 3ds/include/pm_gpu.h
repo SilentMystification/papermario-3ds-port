@@ -83,6 +83,8 @@ void pm_comb_colours_k(PmPlan* p, unsigned prim, unsigned env, unsigned plod, un
 /* What the stages give, as the PICA computes them. t0, shade: RGBA 0..1. out: RGBA 0..1. */
 void pm_comb_eval(const PmPlan* p, const float t0[4], const float t1[4], const float shade[4], float out[4]);
 void pm_gpu_set_const(unsigned rgba); /* combine mode 4: flat colour (a = factor on texture alpha) */
+/* NDR0E1: the GPU state for the snapchk compare (pm_gpu.c) */
+int pm_gpu_comb_now(void); const PmPlan* pm_gpu_plan_now(void); unsigned pm_gpu_const_now(void); unsigned pm_gpu_env_now(void);
 void pm_gpu_set_zmark(int on, float zn); /* B3b: case 6 model: depth test against the world, constant depth write */
 void pm_gpu_set_nocolor(int on); /* S25: the blender returns the frame buffer colour, so only depth is written */
 void pm_gpu_set_render(int zcmp, int zupd, int blend, int atest, int decal);

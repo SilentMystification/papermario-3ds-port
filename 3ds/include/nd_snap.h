@@ -11,6 +11,8 @@ typedef struct NdSnapChk {
     NdCombIn in;
     int32_t key, leg, mode5, pat, plan_on;
     int32_t role; uint32_t oml, geom, fogc, blendc, pad;
+    NdCombOut o; /* NDR0E1: the coloured combine decision of core 1 */
+    uint32_t pad2; /* NDR0E1: size to a multiple of 8 */
 } NdSnapChk;
 _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
 
