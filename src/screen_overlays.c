@@ -167,8 +167,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
             {
                 const NdFillRec rec = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress,
                                         progress == 255.0f ? 1u : 0u };
-                nd_rec_napi(nd_fill_run, &rec, 3u);
-                nd_fill_feed((const uint32_t*)&rec);
+                nd_fill_rec(&rec); /* NDR2A */
             }
             return;
         case OVERLAY_VIEWPORT_COLOR:
@@ -177,8 +176,7 @@ void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* ove
                 const s32 vx = camera->viewportStartX, vy = camera->viewportStartY;
                 const NdFillRec rec = { vx, vy, vx + camera->viewportW, vy + camera->viewportH,
                                         ((u32)colR << 24) | ((u32)colG << 16) | ((u32)colB << 8) | (u32)(u8)progress, progress == 255.0f ? 1u : 0u };
-                nd_rec_napi(nd_fill_run, &rec, 3u);
-                nd_fill_feed((const uint32_t*)&rec);
+                nd_fill_rec(&rec); /* NDR2A */
             }
             return;
     }

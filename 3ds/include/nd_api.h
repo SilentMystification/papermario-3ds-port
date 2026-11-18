@@ -89,6 +89,10 @@ uint32_t nd_direct_env(void);                  /* core 0: the walker's environme
 typedef struct { int32_t x0, y0, x1, y1; uint32_t rgba, kind; } NdFillRec;
 void nd_fill_run(const uint32_t* u); /* nd_direct.c, core 0: the NDC_NAPI runner of an NdFillRec */
 void nd_fill_feed(const uint32_t* u); /* nd_direct.c, core 1: the units of an NdFillRec feed nd_ds (NST2E) */
+void nd_fill_rec(const NdFillRec* f); /* nd_direct.c, core 1, NDR2A: a fill record: its pso snap, the record run and the feed of nd_ds */
+void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim); /* nd_direct.c, core 1, NDR2A: a direct record with its pso snap */
+uint32_t nd_dir_prim1(void); /* nd_direct.c, core 1, NDR2A: nd_direct_prim at record time (game files do not include nd_ds.h) */
+void nd_dir_drop(void); /* nd_direct.c, core 0, NDR2A: a fallback walk never takes the pso snap */
 
 /* S5TRECT: one texture window load plus one texture rectangle (the rect words as gbi.h writes them). 13 units (104 bytes on 32-bit: 2 pointers,
  * 23 words, fill and pad). nd_trect_run (nd_direct.c, core 0) is the NDC_NAPI runner. */

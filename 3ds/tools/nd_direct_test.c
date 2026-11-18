@@ -86,6 +86,11 @@ void nd_gx_w(Gfx* g, uint32_t w0, uint32_t w1) { (void)g; if (n_gx < 16) { gx_lo
 void nd_walk_state(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 void nd_ds_feed(const uint32_t* u, unsigned n) { (void)u; (void)n; }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); } /* NST2J: the page left this stub out (nd_direct.c calls it) */
+NdDs nd_ds; /* NDR2A: nd_dir_prim1 and nd_dir_rec read it */
+void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { (void)run; (void)rec; (void)units; }
+void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { (void)p; (void)prim; (void)env; }
+void nd_snapchk_dir(const NdCombOut* w) { (void)w; }
+unsigned char nd_snap_live; /* NDR2A */
 unsigned char nd_dschk_dir; /* NST2F: nd_dschk.c is not linked here; nd_direct.c sets it */ /* nd_rec.c is not linked here; NST2E feeds (nd_fill_feed, nd_trect_feed) */
 /* NSTREAM3: the native record runner of the direct fallbacks (nd_walk.c); the same count as the op walker */
 void nd_nr_exec(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }

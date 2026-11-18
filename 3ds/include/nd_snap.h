@@ -6,6 +6,7 @@
 #include <stdint.h>
 #include "nd.h"
 #include "nd_ds.h"
+#include "nd_api.h"
 
 typedef struct NdSnapBind {
     NdTd td; unsigned wrap[4]; int sz[4]; unsigned shift[2]; /* NDR0G1: tile n as ensure_tile and dual_bind read it */
@@ -65,6 +66,10 @@ extern unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own trian
 void nd_snapchk_tri(void);
 /* NDR0E2, nd_snap.c, core 0: the armed snapshot at a texture rectangle (nd_rect.c): the compare only. */
 void nd_snapchk_rect(void);
+/* NDR2A, nd_snap.c, core 1: the snap of a direct draw: nd_ds with the pso words (nd_direct_bind order), prim and env. */
+void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env);
+/* NDR2A, nd_snap.c, core 0: the armed pso snap against the decision of nd_direct_bind (log tag dir). */
+void nd_snapchk_dir(const NdCombOut* w);
 /* NDR1C, nd_snap.c, core 1: the snap of a texture rectangle (nd_rec_texrect); zcol of nd_rect.c:236 from the target. */
 void nd_snap_rect(void);
 /* NDR1C, nd_snap.c, core 0: 1 while the rectangle run has a live snap (a command clears it). */
