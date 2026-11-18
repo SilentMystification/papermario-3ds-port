@@ -9,6 +9,9 @@
 # one tar of the HOST_IN files (the key list is the tar list, so a test that reads a file outside the key fails) and the
 # shared asset volume pm3ds-assets-<AHASH> (checked against its out.sha1 first: exit 7 removes it). Only the crash page run
 # (2 files, 1 s FACT) keeps the bind mount; no other read crosses WSL2 9p. Self-test: 3ds/tests/volhost/run.sh.
+# HOSTTMP: the fixed /tmp paths of the units run inside the docker container (pm3ds-host:1), and each docker run has its own
+# /tmp (FACT 2026-11-18: a second run does not see the first run's /tmp file). Git Bash /tmp does not follow TMP (FACT: it is
+# the Windows temp folder), so no host-side step may write a fixed /tmp path. Parallel runs (PM_LANE) do not share /tmp.
 cd "$(dirname "$0")/../.." || exit 2
 t0=$(date +%s); stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
 ROOT=$(pwd -W 2>/dev/null || pwd)
