@@ -1,9 +1,9 @@
 #!/bin/sh
-# SRCSYNC (VOLGEN): the content manifests and the source volume of a lane. Sourced by 3ds/build.sh (VOLHOST: also by
-# 3ds/tools/nd_host_test.sh). Needs: OUT, IMG, SRCVOL, CODE_DIRS, ASSET_BASE, ASSET_DIRS (asset_manifest sets AHASH and AVOL).
-# The lane source volume holds the code only. The assets live in one shared volume per asset content, pm3ds-assets-<16 hex>,
-# linked into /src by two symlinks (/src/assets/us, /src/ver/us/build -> /a/c/...). Every id here is a content hash, never a
-# time or a size (plan_buildspeed.md "Cache safety"). Host self-test: 3ds/tests/srcsync/run.sh.
+# SRCSYNC (VOLGEN): the content manifests and the shared asset volume. Sourced by 3ds/build.sh (VOLHOST: also by
+# 3ds/tools/nd_host_test.sh). Needs: OUT, IMG, ASSET_BASE, ASSET_DIRS, MAIN_ROOT (asset_manifest sets AHASH and AVOL).
+# The assets live in one shared volume per asset content, pm3ds-assets-<16 hex>, linked into /src by two symlinks
+# (/src/assets/us, /src/ver/us/build -> /a/c/...). Every id here is a content hash (plan_buildspeed.md "Cache safety").
+# BUILDO: the source volumes belong to the build slots (3ds/build.sh ws_sync), not to the lanes. Self-test: 3ds/tests/srcsync/run.sh.
 
 # in_manifest <path>...: "path<TAB>id" of every file under the paths, sorted. id b:<blob> for a tracked file equal to the
 # index (git ls-files -s), h:<git hash-object --no-filters> for every other file (modified, untracked, ignored).
@@ -34,21 +34,16 @@ asset_manifest() {
     oa=$(cd "$OUT" && pwd)
     # LOOP2: one python process with 8 hash threads (3ds/tools/asset_ids.py; the same bytes as find | sort | git hash-object,
     # asset_ids.py --check): FACT 3.1 s against 4.1 s on 18426 files.
+    # BUILDO: a stat cache per asset base (asset_ids.py PM_ASSET_STAT, the git index rule; PM_CACHE=off hashes every file).
     if command -v py >/dev/null 2>&1; then aip="py -3"; else aip=python3; fi
-    $aip 3ds/tools/asset_ids.py "$ASSET_BASE" "$oa/asset_paths.txt" "$oa/asset_now.txt" $ASSET_DIRS
+    ast=$MAIN_ROOT/build3ds/asset_stat_$(printf '%s' "$(cd "$ASSET_BASE" && pwd)" | sha1sum | cut -c1-8).txt
+    [ -n "$MAIN_ROOT" ] || ast=
+    PM_ASSET_STAT=$ast $aip 3ds/tools/asset_ids.py "$ASSET_BASE" "$oa/asset_paths.txt" "$oa/asset_now.txt" $ASSET_DIRS
     [ -s "$OUT/asset_now.txt" ] || { echo "asset_manifest: no asset files under $ASSET_BASE ($ASSET_DIRS)" >&2; exit 1; }
     AHASH=$(sha1sum < "$OUT/asset_now.txt" | cut -c1-40)
     AVOL=pm3ds-assets-$(printf '%s' "$AHASH" | cut -c1-16)
     if [ "${PM_CACHE:-on}" = off ]; then AVOL=pm3ds-assets-cold$$; fi
 }
-
-# vol_state: one container reads the source volume id (line 1) and prints "assets-ok" when the asset volume holds this key.
-vol_state() {
-    MSYS_NO_PATHCONV=1 docker run --rm -v $SRCVOL:/src -v $AVOL:/a -e K=$AHASH $IMG sh -c \
-        'cat /src/.pm_manifest_id 2>/dev/null; echo; [ -d /a/c ] && [ "$(cat /a/c/key.txt 2>/dev/null)" = "$K" ] && echo assets-ok; true'
-}
-# vol_match: the manifest is valid only while the volume id and $OUT/src_volid.txt match (g tag: a content-id sync, VOLGEN).
-vol_match() { case "$VOLID" in g*) ;; *) return 1 ;; esac; [ "$VOLID" = "$(cat $OUT/src_volid.txt 2>/dev/null)" ]; }
 
 # asset_vol_make: fills the asset volume once: the files, key.txt and out.sha1 go to a temp folder that one mv names /a/c.
 asset_vol_make() {
@@ -65,29 +60,4 @@ asset_vol_make() {
     a1=$AHASH; asset_manifest
     if [ "$a1" != "$AHASH" ]; then docker volume rm $AVOL >/dev/null 2>&1; echo "asset files changed during the copy: build again" >&2; exit 1; fi
     echo "asset volume $AVOL made" >&2
-}
-
-# src_sync: makes the lane source volume equal to the code manifest. Sets SYNCID, writes $OUT/src_manifest2.txt.
-src_sync() {
-    MAN=$OUT/src_manifest2.txt
-    # No id match: a new volume (a volume of an older sync can hold files that the manifest does not name).
-    if vol_match; then SYNCID=$VOLID; else rm -f $MAN; SYNCID="g$(date +%s)_$$"; docker volume rm $SRCVOL >/dev/null 2>&1 || true; fi
-    [ -f $MAN ] || : > $MAN
-    [ "$AOK" = 1 ] || asset_vol_make
-    in_manifest $CODE_DIRS > $OUT/src_now.txt
-    awk -F'\t' 'FILENAME==ARGV[1]{old[$1]=$2; next} (old[$1] != $2){print $1}' $MAN $OUT/src_now.txt > $OUT/src_changed.txt
-    awk -F'\t' 'FILENAME==ARGV[1]{now[$1]=1; next} !($1 in now){print $1}' $OUT/src_now.txt $MAN > $OUT/src_deleted.txt
-    nchg=$(wc -l < $OUT/src_changed.txt); ndel=$(wc -l < $OUT/src_deleted.txt)
-    if [ -s $OUT/src_changed.txt ]; then
-        # STALEOBJ: -m stamps each copied file with the copy time, so it is newer than every object in the build volume.
-        tar -cf - -T $OUT/src_changed.txt | MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src -e S="$SYNCID" $IMG sh -c '
-            tar -xmf - -C /src
-            for p in assets/us ver/us/build; do [ -L /src/$p ] || rm -rf /src/$p; mkdir -p /src/${p%/*}; ln -sfn /a/c/$p /src/$p; done
-            printf %s "$S" > /src/.pm_manifest_id'
-    fi
-    if [ -s $OUT/src_deleted.txt ]; then
-        MSYS_NO_PATHCONV=1 docker run --rm -i -v $SRCVOL:/src $IMG sh -c 'while read -r f; do rm -f "/src/$f"; done' < $OUT/src_deleted.txt
-    fi
-    cp -f $OUT/src_now.txt $MAN
-    echo "$SYNCID" > $OUT/src_volid.txt
 }

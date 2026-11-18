@@ -33,12 +33,19 @@ rk_paths() {
 # rk_ids <idfile> <reads file>: "path<TAB>id" of each read: the idfile id, else (GC_EXCL or not listed) d:<sha1 of the disk
 # file>, or "-" when the file is gone.
 rk_ids() {
-    awk -F'\t' -v X="$GC_EXCL" 'BEGIN { m = split(X, x, " "); for (i = 1; i <= m; i++) ex[x[i]] = 1 }
-        FILENAME == ARGV[1] { if (!($1 in ex)) id[$1] = $2; next } { print $1 "\t" (($1 in id) ? id[$1] : "?") }' "$1" "$2" |
-    while IFS='	' read -r p i; do
-        if [ "$i" = "?" ]; then if [ -f "$p" ]; then i="d:$(sha1sum < "$p" | cut -c1-40)"; else i=-; fi; fi
-        printf '%s\t%s\n' "$p" "$i"
-    done
+    # BUILDO: awk joins the lists (a shell read loop cost about 1 s per 1000 reads in Git Bash); only the "?" paths (few) are hashed.
+    rq=${OUT:-.}/.rkq.$$
+    awk -F'	' -v X="$GC_EXCL" 'BEGIN { m = split(X, x, " "); for (i = 1; i <= m; i++) ex[x[i]] = 1 }
+        FILENAME == ARGV[1] { if (!($1 in ex)) id[$1] = $2; next } !($1 in id) { print $1 }' "$1" "$2" > $rq.q
+    : > $rq.u
+    while IFS= read -r p; do
+        if [ -f "$p" ]; then i="d:$(sha1sum < "$p" | cut -c1-40)"; else i=-; fi
+        printf '%s\t%s\n' "$p" "$i" >> $rq.u
+    done < $rq.q
+    awk -F'	' -v X="$GC_EXCL" 'BEGIN { m = split(X, x, " "); for (i = 1; i <= m; i++) ex[x[i]] = 1 }
+        FILENAME == ARGV[1] { u[$1] = $2; next } FILENAME == ARGV[2] { if (!($1 in ex)) id[$1] = $2; next }
+        { print $1 "	" (($1 in id) ? id[$1] : u[$1]) }' $rq.u "$1" "$2"
+    rm -f $rq.q $rq.u
 }
 
 # rk_full <K0> <idfile> <reads file>: the full key text.

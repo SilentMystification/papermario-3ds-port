@@ -25,7 +25,8 @@ Run listcen for fresh numbers.
 5. Stream size: NdSnapChk is about 640 bytes (GUESS). The compact NdSnap of design_nstate.md section 7 is a later row.
 6. DEL1D: dead declarations nd_walk_state at nd_api.h:13 and nd_direct.c:252 (no caller outside nd_walk.c; host stubs define it).
 ## Facts that cost time
-- A crash at map load: read last_log.txt for `shape load fail` and count the lane romfs/shape files before any code theory.
+- A crash at map load: read last_log.txt for `shape load fail`, then check the shape entry (volume pm3ds-shape /sh/<lane shape_key.txt>,
+  `sha1sum -c out.sha1` in it) before any code theory. Build stages, keys and tool rules: docs/handoff/build_pipeline.md (BUILDO).
 - Core 1 (logic thread, pm_logic.c) runs at the same time as core 0 (walker). Det runs are serial: a race does not show in a bench.
   Shared statics of a core 1 call need a lock or a per-core copy (NDR0D: pm_comb.c build statics, nd_decide.c table).
 - Every setter unit passes nd_rec_nr (nd_rec.c:419); core 0 runs it in nd_walk_state (nd_walk.c:394).

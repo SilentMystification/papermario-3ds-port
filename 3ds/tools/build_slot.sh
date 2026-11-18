@@ -4,7 +4,7 @@
 #   build_slot_take     waits for a free slot, sets BUILD_SLOT (the number) and BUILD_SLOT_DIR
 #   build_slot_release  removes the slot this shell took
 # BUILDSLOT_DIR overrides the folder (the host test 3ds/tests/buildlock/run.sh uses it).
-BUILD_SLOTS_N=${PM_BUILD_SLOTS:-4} # 4 slots: peak 2.89 GiB per build, 8.62 GiB at 3 builds (memlog 2026-11-16), WSL cap 14 GB
+BUILD_SLOTS_N=${PM_BUILD_SLOTS:-6} # BUILDO: 6 slots; a slot is also a build workspace (3ds/build.sh). Host tests use their own pool (nd_host_test.sh).
 
 build_slot_dir() {
     if [ -n "$BUILDSLOT_DIR" ]; then echo "$BUILDSLOT_DIR"; return; fi
