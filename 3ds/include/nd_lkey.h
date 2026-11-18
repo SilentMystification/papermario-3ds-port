@@ -5,7 +5,8 @@
 #define ND_LKEY_H
 #include "nd_op.h"
 #include "nd_gtab.h"
-/* A list with a device entry e: e->u and at most e->nu units (no end unit). Any other list: the list itself and max (the reader stops at NDO_END). */
+#include "nd_fs.h"
+/* A list with a device entry e: e->u and at most e->nu units (no end unit). Any other list: the list itself and max (the reader stops at ND_FS_END). */
 static inline const uint32_t* nd_lkey_units(const void* list, const NdNDev* e, unsigned max, unsigned* n) {
     if (e) {
         *n = e->nu < max ? (unsigned)e->nu : max;
@@ -19,13 +20,13 @@ static inline const uint32_t* nd_lkey_tab(const NdGTab* t, unsigned max, unsigne
     return nd_lkey_units(t->list, (t->flags & NDG_F_MOVED) ? (const NdNDev*)(const void*)t->list : 0, max, n);
 }
 /* For a reader that needs the end unit (nd_dlc_tex_decode, nd_ent_segments): a list with a device entry is copied into buf (at most max - 1
- * units) and an NDO_END unit follows; buf has 2 * max words. Any other list: the list itself. */
+ * units) and an ND_FS_END unit follows; buf has 2 * max words. Any other list: the list itself. */
 static inline const uint32_t* nd_lkey_end(const void* list, const NdNDev* e, uint32_t* buf, unsigned max) {
     unsigned n, k;
     if (!e) return (const uint32_t*)list;
     const uint32_t* u = nd_lkey_units(list, e, max - 1u, &n);
     for (k = 0; k < n; k++) { buf[2u * k] = u[2u * k]; buf[2u * k + 1u] = u[2u * k + 1u]; }
-    buf[2u * k] = NDO_W0(NDO_END, 0);
+    buf[2u * k] = ND_FS_W0(ND_FS_END, 0);
     buf[2u * k + 1u] = 0;
     return buf;
 }
