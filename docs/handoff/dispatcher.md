@@ -6,7 +6,7 @@ Load SendMessage with ToolSearch `select:SendMessage`. Send the orchestrator (`t
 
 STATE FILE build3ds/out/dispatch_state.md (untracked). Rewrite it after every event. One line each:
 `PROXY <your agent id>` / `COACH <chain> <agent id> quota <n> context <K>K` / `DESIGN <name> <agent id> <topic>` / `RUN <row> <coach chain> <coder id>` / `GATED <row> <branch tip>` / `MERGER <row> <agent id>` / `WAIT <row> <blocker>` / `HOLD <text or none>` / `DECISION <text>`.
-A fresh dispatcher reads this file first. It never relies on memory.
+A fresh dispatcher reads this file first. It never relies on memory. `node docs/handoff/orch_facts.js pages` prints main, worktrees and free goal pages.
 
 CHAINS (a coach owns the pages of one chain, files are disjoint between chains): snap NDR (NDR0G2 -> NDR1C -> NDR2A -> NDR2B || NDR2C || NDR4 -> NDR2D), conversion NCONV, record NREC, delete DEL. The ws pages on main and plan_finish.md define them.
 START A COACH: Agent `subagent_type: oracle`, prompt: `COACH for chain <chain>. Dispatcher <your id>. Quota <n> coders. Pages: <rows>. Read docs/handoff/oracle_handoff.md and the pages.` A coach starts coders with the 4-line prompt (oracle.md rule 7).

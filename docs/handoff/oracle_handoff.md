@@ -37,6 +37,8 @@ State: main 8cfb9f345c, 2026-11-18. Counters FACT (listcen 642c83353f): build 30
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file: read `git log -- <file>` and the file before a write.
 - Core 0 stale state: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits; a direct draw writes pso state and binds without tile ops.
+## Roles (dispatcher.md)
+A COACH oracle runs the coders of one chain under a quota (oracle.md rule 7). A design oracle writes pages and starts no agent. Both report to the dispatcher.
 ## What to do first
 1. Read plan_finish.md, design_nstate.md and the ws_* pages on main. Answer coder questions (SendMessage, 10 lines).
 2. Design NCONV1D (open work 2), then write NCONV2, NREC and DEL pages. Check `git log -5 -- docs/handoff` first.

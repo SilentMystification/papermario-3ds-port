@@ -1,5 +1,6 @@
 // orch_facts.js: facts from disk for the orchestrator (hook script).
 //   node orch_facts.js facts   (UserPromptSubmit) prints the facts of this turn
+//   node orch_facts.js pages   (dispatcher) prints worktrees and free goal pages
 //   node orch_facts.js stop    (Stop) blocks the end of a turn once when a hand-back waits or main is dirty
 // Agent states are NOT here: ListAgents is a tool, not a shell command. The facts line says so.
 const { execSync } = require('child_process');
@@ -55,20 +56,33 @@ function worktrees() {
 const dirty = sh('git status --porcelain').split('\n').filter(Boolean);
 const wts = worktrees();
 
-if (mode === 'facts') {
+function freePages() {
+  try { return fs.readdirSync(path.join(root, 'docs', 'handoff')).filter(n => /^ws_.*\.md$/.test(n) && !wts.some(w => 'ws_' + w.id + '.md' === n)); } catch (e) { return []; }
+}
+
+if (mode === 'facts') { // orchestrator: main and the dispatcher state only. Agent traffic is the dispatcher's job.
   const lines = [];
-  lines.push('FACTS FROM DISK (orch_facts.js). Agent states: call ListAgents now (completed = IDLE). Then check idle capacity.');
+  lines.push('FACTS FROM DISK (orch_facts.js). Call ListAgents: the dispatcher must run. Agent detail is in the state file.');
   lines.push('main ' + sh('git rev-parse --short HEAD') + (dirty.length ? ' DIRTY: ' + dirty.slice(0, 4).join(' | ') + (dirty.length > 4 ? ' ...' : '') : ' clean'));
-  // Token cost: list only worktrees with a file in the last 4 hours or a young hand-back. The rest is one count.
-  let old = 0;
-  for (const w of wts) {
-    if (w.actMin === null || w.actMin > 240) { old++; continue; }
-    lines.push('worktree ' + w.id + ': ahead ' + w.ahead + ', newest file ' + w.actMin + ' min ago');
+  let st = '';
+  try { st = fs.readFileSync(path.join(root, 'build3ds', 'out', 'dispatch_state.md'), 'utf8'); } catch (e) { /* none */ }
+  if (!st) lines.push('dispatch state: NONE (no dispatcher yet: start one from docs/handoff/dispatcher.md)');
+  else {
+    const sl = st.split('\n').filter(Boolean);
+    const n = (k) => sl.filter(l => l.startsWith(k + ' ')).length;
+    const px = sl.find(l => l.startsWith('PROXY '));
+    const hold = sl.find(l => l.startsWith('HOLD '));
+    lines.push('dispatch state: ' + (px || 'PROXY ?') + ', ' + n('RUN') + ' coders, ' + n('GATED') + ' gated, ' + n('WAIT') + ' waiting, ' + (hold || 'HOLD none'));
   }
-  if (old) lines.push(old + ' old worktrees with no file in 4 h (parked branches, ignore)');
-  let pages = [];
-  try { pages = fs.readdirSync(path.join(root, 'docs', 'handoff')).filter(n => /^ws_.*\.md$/.test(n) && !wts.some(w => 'ws_' + w.id + '.md' === n)); } catch (e) { /* none */ }
-  lines.push('free goal pages: ' + (pages.length ? pages.join(' ') : 'NONE (ask the oracle for pages)'));
+  process.stdout.write(lines.join('\n') + '\n');
+  process.exit(0);
+}
+
+if (mode === 'pages') { // dispatcher: free goal pages and worktrees (node docs/handoff/orch_facts.js pages)
+  const lines = ['main ' + sh('git rev-parse --short HEAD') + (dirty.length ? ' DIRTY: ' + dirty.slice(0, 4).join(' | ') : ' clean')];
+  for (const w of wts) lines.push('worktree ' + w.id + ': ahead ' + w.ahead + ', newest file ' + (w.actMin === null ? '?' : w.actMin) + ' min ago');
+  const pg = freePages();
+  lines.push('free goal pages: ' + (pg.length ? pg.join(' ') : 'NONE'));
   process.stdout.write(lines.join('\n') + '\n');
   process.exit(0);
 }

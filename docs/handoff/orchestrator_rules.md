@@ -5,18 +5,19 @@ the old line is deleted. Append a new line only when no rule covers the topic. N
 The Core block is printed every turn by the UserPromptSubmit hook (.claude/settings.json). Keep it short.
 
 <!-- CORE -->
-FACT/GUESS/OPEN on every number. Style: the global style hook (user level, not a project rule). One reply per turn.
-EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply, before any hand-back, merge or agent work. Read ALL user messages of the turn (they arrive mid-turn). A state the user reports is fact: never doubt it. 1 Run `date` (a gap means a lost wakeup), ListAgents (only `running` holds a slot), `postmerge_bg.sh --status`. 2 Hand-back: gate pass means spawn a Haiku merger (merge_protocol.md), no merge in this chat. No foreground command over 10 s. A duplicate gets no reply. 3 QUEUE: every ready page gets a coder at once (at most 5 coders; build_pipeline.md). A coder launch prompt has 4 lines: row, page, start commit, oracle id. 4 CHAT: one line per merge. An interim or duplicate notice gets one short line. Report only a merge, a fault, a user decision or a user answer. Take the recommended default and go on. 5 Object first if a directive looks wrong or costly. 6 PUSH: when a build of main is ready (binchk OK, key matches) write ONE line: `Build <commit> ready. Say the console.` No AskUserQuestion. On the user's word run the push_runbook.md command at once (-ip, -NoBuild). Never push without that word. 7 Never end a turn while a job or merge waits: ScheduleWakeup 10 min. 8 No console check until the last row (S9GATE) merges. A gated row merges on its gate. Ask for a console only for an urgent test.
+FACT/GUESS/OPEN on every number. Style: the global style hook. One reply per turn.
+EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply. Read ALL user messages of the turn. A state the user reports is fact. 1 Run `date` and ListAgents (the dispatcher runs or not). 2 You start no coder, oracle or merger: the dispatcher does (dispatcher.md). Order it with SendMessage. A dispatcher line gets one short line to the user: MERGED, FAULT, DECISION (take its default), CYCLE (start a fresh dispatcher). 3 No foreground command over 10 s. 4 CHAT: report only a merge, a fault, a user decision or a user answer. No echo of notices. 5 Object first if a directive looks wrong or costly. 6 PUSH: when a build of main is ready write ONE line `Build <commit> ready. Say the console.` No popup. On the user's word run the push_runbook.md command at once (-ip, -NoBuild). Never push without that word. 7 Never end a turn while the dispatcher waits on a job: ScheduleWakeup 10 min. 8 No console check until S9GATE merges.
 <!-- /CORE -->
 
 ## Roles
-- Orchestrator: launches agents, merges, reports, asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push). No game code, no debugging.
-- Oracle (Opus): designs and diagnoses, never writes code, tests or full patches (.claude/agents/oracle.md). Writes one page at a time, commits each at once and messages the orchestrator, who starts a coder per page (coders always fed, at most 5 running). At most 2 at once.
-- Coders: implement and run ALL tests, and ask the oracle at the first failure (.claude/agents/coder.md). Haiku by default. Sonnet only with the user's yes. Never Opus.
+- Orchestrator (Sonnet): talks to the user, starts and cycles the dispatcher, asks the user design choices only (AskUserQuestion, 2-4 options, recommended first; never for a push), does the push. No game code, no debugging, no agent launches except the dispatcher.
+- Dispatcher (Haiku, dispatcher.md): owns the state file, the coder quota, the merger and all agent traffic.
+- Oracle (Opus, oracle.md): a coach runs the coders of one chain, a design oracle writes pages and starts no agent. Never writes code. At most 2 design oracles at once.
+- Coders (Haiku, coder.md): implement and run ALL tests, ask their coach at the first failure. Sonnet only with the user's yes. Never Opus.
 
 ## Agents
-- Label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
-- A coder prompt names the oracle id that wrote its page. The coder asks that oracle.
+- Dispatcher launches: label every Agent call `[Model type] ROW - task`, for example `[Haiku coder] GSETR - move 26 lists`.
+- A coder prompt names its coach oracle id. The coder asks that coach.
 - Resume a finished agent when its context helps. Start a fresh one when it does not. Oracle context (about 500K) is a SOFT limit: never interrupt work because it is passed. Reuse an old oracle for work that fits its context. If an oracle is bloated and has no relevant work, do not resume it for new work: start a fresh one.
 - Pages split by file so rows run in parallel. A page says "start after Merge X" only for a shared file or output. A page lists the expected bench differences. A purely mechanical edit (same change at many sites) may go in `ws_<id>.patch` (`git apply`).
 - A hand-back is one SubagentHandback message. No hand-back file. A coder cannot wait for an oracle reply: it ends its turn (a hand-back). Resume it with the reply (SendMessage) and tell it to finish the row.
@@ -26,9 +27,9 @@ EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply, b
 - Bug, test, gate and code rules: CLAUDE.md rules 1 to 10. A tool fault stops the gate: read the tool source first. Never guess and check. No build or push in the foreground of the chat.
 - Memcheck margin above 0 KB is the real limit (soft).
 
-## Merge
-1. `sh 3ds/tools/merge_row.sh <row>` (main clean). A page that the branch deletes and main changed: `git rm` it on main first.
-2. Rebuild main in the background with `sh 3ds/build.sh`.
+## Merge (the dispatcher's Haiku merger runs merge_protocol.md)
+1. `sh 3ds/tools/merge_row.sh <row>` (main clean).
+2. Rebuild main in the background with `sh 3ds/build.sh` before a push.
 3. `postmerge_FAIL.txt` blocks merges (exit 8). Tool fault: fix with plain git, then `postmerge_bg.sh --queue`. Code fault: never override. A full pass on a newer commit clears it.
 4. Budget reset: run `run_azahar.ps1 -ResetBudget <row>` from the row worktree (azt.ps1 reads the worktree copy of test_budget.csv).
 
