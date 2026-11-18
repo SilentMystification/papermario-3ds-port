@@ -8,6 +8,8 @@ Designer: oracle FIN. Branch from main (no blocker). Worktree build3ds/wt/SHAPEC
   Azahar run) also runs it. On a miss it deletes $OUT/romfs/shape (:143) and converts into the same lane folder as the real build.
   GUESS: two builds of one lane overlapped, and one stored the partial folder (entries 3ae2c60c at 00:52:45 and 316e71f4 at 00:52:58).
 - gc_put_dir (gencache.sh:98-120) stores any folder; gc_get_dir (:85-95) checks only the entry's own out.sha1. Nothing checks the file count.
+- The build key holds shape_key.txt, an input key (build.sh:244). A shape set made again under the same key skips the build (:279-282), and the
+  build-volume romfs check (:327-334) passes a partial copy (its romfs.sha1 lists only the partial files). Only PM_CACHE=off copies the romfs again.
 - nd_shape_conv prints `shapeconv maps <n> ...` (nd_shape_conv.c:768) and writes <name>.nds per map (:743).
 ## Edits (build.sh gen_shapes only)
 1. After line :141 (shape_key.txt): `if [ -n "$PM_KEY_ONLY" ] && [ "${PM_CACHE:-on}" != check ]; then return 0; fi # SHAPECACHE: the key needs shape_key.txt only`
