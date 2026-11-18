@@ -7,28 +7,7 @@
 #include "nd.h"
 #include "nd_ops.h"
 #include "nd_op.h"
-/* HC4e3: the raw op of a list word; a typed unit (nd_op.h) is mapped to the F3DEX2 op it stands for (NDO_END to G_ENDDL, a typed no-op to G_NOOP). The fields
- * the readers use (w0 low 24 bits, w1) are the same in both forms for these ops. */
-static inline unsigned dlc_op(uint32_t w0) {
-    const unsigned op = w0 >> 24;
-    if (!nd_op_typed(op)) return op;
-    if (op == NDO_MISC) return (w0 & 0xFFFFFFu) == (NDO_MISC_NOP << 16) ? (unsigned)OP_NOOP : op;
-    switch (op) {
-    case NDO_GEOM: return OP_GEOMETRYMODE;
-    case NDO_TIMG: return OP_SETTIMG;
-    case NDO_TILE: return OP_SETTILE;
-    case NDO_TILESIZE: return OP_SETTILESIZE;
-    case NDO_LOADBLOCK: return OP_LOADBLOCK;
-    case NDO_LOADTILE: return OP_LOADTILE;
-    case NDO_LOADTLUT: return OP_LOADTLUT;
-    case NDO_VTX: return OP_VTX;
-    case NDO_TRI1: return OP_TRI1;
-    case NDO_TRI2: return OP_TRI2;
-    case NDO_END: return OP_ENDDL;
-    default: return op;
-    }
-}
-
+#include "nd_fs.h"
 typedef struct { NdGrp g; } Tmp;
 static NdGrp tg[ND_DLC_MAXGRP];
 static uint32_t tgop[ND_DLC_MAXGOP][2];
@@ -97,10 +76,10 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
     /* pass 1: cut into groups (dlc_compile) */
     for (i = 0; i < ND_DLC_MAXOPS; i++) {
         uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
-        unsigned op = dlc_op(w0);
-        if (op == OP_ENDDL) break;
+        unsigned op = (w0 >> 24);
+        if (op == ND_FS_END) break;
         switch (op) {
-        case OP_VTX: {
+        case ND_FS_VTX: {
             unsigned n = (w0 >> 12) & 0xFF, v0n = (w0 >> 1) & 0x7F, v0 = v0n >= n ? v0n - n : 0;
             const int16_t* src = (const int16_t*)env->vtx(w1, n);
             if (!src || n == 0 || n > 64 || v0 >= 64) return NDR_VTX;
@@ -123,9 +102,9 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
             g->nvtx = (uint16_t)(g->nvtx + n);
             break;
         }
-        case OP_TRI1: case OP_TRI2: {
+        case ND_FS_TRI1: case ND_FS_TRI2: {
             if (!in) return NDR_SLOT;
-            for (int t = 0; t < (op == OP_TRI2 ? 2 : 1); t++) {
+            for (int t = 0; t < (op == ND_FS_TRI2 ? 2 : 1); t++) {
                 uint32_t w = t ? w1 : w0;
                 int ix[3] = { (int)((w >> 16) & 0xFF) / 2, (int)((w >> 8) & 0xFF) / 2, (int)(w & 0xFF) / 2 };
                 for (int k = 0; k < 3; k++) if (ix[k] <= 63 && live[ix[k]] == 2) return NDR_SLOT; /* a slot that the list did not load */
@@ -136,15 +115,14 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
             tsv = 1;
             break;
         }
-        case OP_GEOMETRYMODE: {
+        case ND_FS_GEOM: {
             uint32_t am = w0 & 0xFFFFFFu;
             cam &= am; com = (com & am) | w1;
             if (in) { if (ngop >= ND_DLC_MAXGOP) return NDR_LONG; tgop[ngop][0] = am; tgop[ngop][1] = w1; ngop++; g->ng++; }
             break;
         }
-        case OP_NOOP: case OP_FULLSYNC: case OP_TILESYNC: case OP_PIPESYNC: case OP_LOADSYNC:
-            break;
         default:
+            if (w0 == ND_NOP_A) break; /* DEL1C: a sync or no-op unit */
             return NDR_OP;
         }
     }
@@ -184,8 +162,8 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
         q->vbase = o->vfirst + nv; q->ibase = ni; q->gbase = go;
         for (uint32_t j = q->op0; j < q->op1; j++) {
             uint32_t w0 = l[2 * j], w1 = l[2 * j + 1];
-            switch (dlc_op(w0)) {
-            case OP_VTX: {
+            switch ((w0 >> 24)) {
+            case ND_FS_VTX: {
                 unsigned n = (w0 >> 12) & 0xFF, v0n = (w0 >> 1) & 0x7F, v0 = v0n >= n ? v0n - n : 0;
                 const uint8_t* src = (const uint8_t*)env->vtx(w1, n);
                 if (v0 + n > 64) n = 64 - v0;
@@ -198,8 +176,8 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
                 gnv += n;
                 break;
             }
-            case OP_TRI1: case OP_TRI2:
-                for (int t = 0; t < (dlc_op(w0) == OP_TRI2 ? 2 : 1); t++) {
+            case ND_FS_TRI1: case ND_FS_TRI2:
+                for (int t = 0; t < ((w0 >> 24) == ND_FS_TRI2 ? 2 : 1); t++) {
                     uint32_t w = t ? w1 : w0;
                     int ix[3] = { (int)((w >> 16) & 0xFF) / 2, (int)((w >> 8) & 0xFF) / 2, (int)(w & 0xFF) / 2 };
                     unsigned em = 0, kp = env->tp ? tp_at(env, &tc, rt, &em) : 0, c0 = tc;
@@ -251,7 +229,7 @@ int nd_dlc_compile(NdObj* o, const uint32_t* l, const NdDlcEnv* env) {
                     }
                 }
                 break;
-            case OP_GEOMETRYMODE:
+            case ND_FS_GEOM:
                 o->gat[go++] = (uint16_t)nt;
                 break;
             default:
@@ -277,15 +255,15 @@ static int tex_decode_n(const uint32_t* l, unsigned nops, NdTexDec* o) {
     memset(o, 0, sizeof *o);
     for (i = 0; i < nops; i++) {
         uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
-        unsigned op = dlc_op(w0), tile = (w1 >> 24) & 7u;
-        if (op == OP_ENDDL) break;
+        unsigned op = (w0 >> 24), tile = (w1 >> 24) & 7u;
+        if (op == ND_FS_END) break;
         switch (op) {
-        case OP_SETTIMG:
+        case ND_FS_TIMG:
             ntexop++;
             have_timg = 1; timg = (const void*)(uintptr_t)w1; timg_stride = (w0 & 0xfffu) + 1u; have_ld = 0; /* the walker: SETTIMG clears ld_valid */
             if (w1 == 0 && code == NDTX_NONE) code = NDTX_TIMG;
             break;
-        case OP_SETTILE:
+        case ND_FS_TILE:
             ntexop++;
             if (tile == 0) {
                 tfmt = (w0 >> 21) & 7u; tsiz = (w0 >> 19) & 3u; pal0 = (w1 >> 20) & 15u; tmem0 = w0 & 0x1ffu;
@@ -295,21 +273,21 @@ static int tex_decode_n(const uint32_t* l, unsigned nops, NdTexDec* o) {
                 tmem7 = w0 & 0x1ffu; have_set7 = 1;
             } else if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile;
             break;
-        case OP_SETTILESIZE:
+        case ND_FS_TILESIZE:
             ntexop++;
             if (tile != 0) { if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile; break; }
             uls = (w0 >> 12) & 0xfffu; ult = w0 & 0xfffu; lrs = (w1 >> 12) & 0xfffu; lrt = w1 & 0xfffu;
             if (!have_timg || !have_set0) { if (code == NDTX_NONE) code = NDTX_TIMG; break; }
             if (nbind++ > 0 && code == NDTX_NONE) code = NDTX_MULTI;
             break;
-        case OP_LOADBLOCK:
+        case ND_FS_LOADBLOCK:
             ntexop++;
             /* gDPLoadTextureBlock loads on the load tile 7 (its TMEM address is the tile 0 one). The load clears the stale LoadTile records of its range. */
             if (tile == 7 && have_set7) { lb_tm = tmem7; have_lb = 1; }
             else if (tile == 0 && have_set0) { lb_tm = tmem0; have_lb = 1; }
             else if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile;
             break;
-        case OP_LOADTLUT:
+        case ND_FS_LOADTLUT:
             ntexop++;
             if (tile != 7) { if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile; break; }
             if (!have_timg || !have_set7) { if (code == NDTX_NONE) code = NDTX_PAL; break; }
@@ -317,7 +295,7 @@ static int tex_decode_n(const uint32_t* l, unsigned nops, NdTexDec* o) {
             /* the palette bank of tile 0 is the 16 entry block at TMEM 256 + 16 * bank (the walker: slot = (tmem - 256) >> 4) */
             if (tmem7 >= 256u && ((tmem7 - 256u) >> 4) == pal0) have_pal = 1;
             break;
-        case OP_LOADTILE: /* the walker: ld_valid, the load window (ld_x, ld_y, ld_w, ld_h) and an ldrec record of (TMEM of the load tile, image) */
+        case ND_FS_LOADTILE: /* the walker: ld_valid, the load window (ld_x, ld_y, ld_w, ld_h) and an ldrec record of (TMEM of the load tile, image) */
             ntexop++;
             if (tile != 7 || !have_set7 || !have_timg) { if (code == NDTX_NONE) code = NDTX_TILE, o->bad_op = (op << 8) | tile; break; }
             if (((w0 >> 12) & 0xfffu) >= 4u || (w0 & 0xfffu) >= 4u) { if (code == NDTX_NONE) code = NDTX_WIN; break; } /* a load window origin is not 0 */
@@ -357,66 +335,29 @@ int nd_dlc_tex_decode(const uint32_t* l, NdTexDec* o) { return tex_decode_n(l, N
 
 /* S6-2c-1: the entity list segments (nd.h). */
 /* S6-2c-2: the entity lists carry their texture loads as plain words (the header is gone, TX-4). Neutral: the linear scan sees the words after it. */
-#define OP_PM_TEXI 0x0B
-static int ent_known(unsigned op) {
-    /* HC4e3: a typed unit (the gs macros type a static list at compile time), the class rule of nd_rec.c st_kind */
-    if (nd_op_typed(op)) return op <= NDO_COMB || nd_op_tex(op) || (op >= NDO_MTX && op <= NDO_MOVEMEM);
-    switch (op) {
-    case OP_VTX: case OP_TRI1: case OP_TRI2: case OP_PM_TEXI:
-    case OP_NOOP: case OP_PIPESYNC: case OP_LOADSYNC: case OP_TILESYNC: case OP_FULLSYNC:
-    case OP_GEOMETRYMODE: case OP_SETOTHERMODE_H: case OP_SETOTHERMODE_L: case OP_SETCOMBINE: case OP_TEXTURE:
-    case OP_SETPRIMCOLOR: case OP_SETENVCOLOR:
-    case OP_SETTIMG: case OP_SETTILE: case OP_SETTILESIZE: case OP_LOADBLOCK: case OP_LOADTLUT: case OP_LOADTILE:
-    /* SGEN-1: ops the walker runs in place between the native triangle ranges (matrix, lights and segments, scissor, colours, images, the render mode list op): the live walker state is the state of the next range */
-    case OP_MTX: case OP_POPMTX: case OP_MOVEMEM: case OP_MOVEWORD: case OP_SETSCISSOR: case OP_SETFOGCOLOR: case OP_SETBLENDCOLOR: case OP_SETFILLCOLOR:
-    case OP_SETPRIMDEPTH: case OP_RDPSETOTHERMODE: case OP_SETCIMG: case OP_SETZIMG: case OP_SETKEYGB: case OP_SETKEYR: case OP_SETCONVERT:
-        return 1;
-    default:
-        return 0;
-    }
+static int ent_known(uint32_t w0) { /* DEL1C: the state, texture, geometry, matrix and no-op units (the typed rule of nd_rec.c st_kind) */
+    const unsigned id = w0 >> 24;
+    return w0 == ND_NOP_A || (id >= ND_FS_BASE && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_MOVEMEM);
 }
 
 static void delta_clear(NdEntDelta* d) { memset(d, 0, sizeof *d); d->gand = 0xFFFFFFFFu; }
 
 static void delta_apply(NdEntDelta* d, uint32_t w0, uint32_t w1) {
     unsigned op = w0 >> 24;
-    if (nd_op_typed(op)) { /* HC4e3: the typed units of nd_op.h, a = the w0 low 24 bits where the raw word kept them */
-        switch (op) {
-        case NDO_GEOM: { uint32_t a = w0 & 0xFFFFFFu; d->gor = (d->gor & a) | w1; d->gand &= a; d->has_geom = 1; break; }
-        case NDO_OMH: case NDO_OML: {
-            uint32_t mask = nd_op_om_mask(w0 & 0xFFFFFFu);
-            if (op == NDO_OMH) { d->wh |= mask; d->vh = (d->vh & ~mask) | (w1 & mask); }
-            else { d->wl |= mask; d->vl = (d->vl & ~mask) | (w1 & mask); }
-            d->has_mode = 1;
-            break;
-        }
-        case NDO_COMB: d->has_comb = 1; d->cw0 = NDO_COMB_W0(w0); d->cw1 = w1; break;
-        case NDO_TEXTURE: d->has_tex = 1; d->tw0 = w0; d->tw1 = w1; break;
-        case NDO_PRIM: d->has_prim = 1; d->prim_lod = w0 & 0xFFFFu; d->prim = w1; break;
-        case NDO_ENV: d->has_env = 1; d->env = w1; break;
-        default: d->n_tex++; break;
-        }
-        return;
-    }
     switch (op) {
-    case OP_GEOMETRYMODE: {
-        uint32_t a = w0 & 0xFFFFFFu;
-        d->gor = (d->gor & a) | w1; d->gand &= a; d->has_geom = 1;
-        break;
-    }
-    case OP_SETOTHERMODE_H: case OP_SETOTHERMODE_L: {
-        unsigned len = (w0 & 0xFFu) + 1u, field = (w0 >> 8) & 0xFFu, sft = 32u - field - len;
-        uint32_t mask = len >= 32 ? 0xFFFFFFFFu : ((1u << len) - 1u) << sft;
-        if (op == OP_SETOTHERMODE_H) { d->wh |= mask; d->vh = (d->vh & ~mask) | (w1 & mask); }
+    case ND_FS_GEOM: { uint32_t a = w0 & 0xFFFFFFu; d->gor = (d->gor & a) | w1; d->gand &= a; d->has_geom = 1; break; }
+    case ND_FS_OMH: case ND_FS_OML: {
+        uint32_t mask = nd_op_om_mask(w0 & 0xFFFFFFu);
+        if (op == ND_FS_OMH) { d->wh |= mask; d->vh = (d->vh & ~mask) | (w1 & mask); }
         else { d->wl |= mask; d->vl = (d->vl & ~mask) | (w1 & mask); }
         d->has_mode = 1;
         break;
     }
-    case OP_SETCOMBINE: d->has_comb = 1; d->cw0 = w0; d->cw1 = w1; break;
-    case OP_TEXTURE: d->has_tex = 1; d->tw0 = w0; d->tw1 = w1; break;
-    case OP_SETPRIMCOLOR: d->has_prim = 1; d->prim_lod = w0 & 0xFFFFu; d->prim = w1; break;
-    case OP_SETENVCOLOR: d->has_env = 1; d->env = w1; break;
-    default: d->n_tex++; break; /* the texture state ops: their state is the tex desc of the segment */
+    case ND_FS_COMB: d->has_comb = 1; d->cw0 = ND_FS_COMB_W0(w0); d->cw1 = w1; break;
+    case ND_FS_TEXTURE: d->has_tex = 1; d->tw0 = w0; d->tw1 = w1; break;
+    case ND_FS_PRIM: d->has_prim = 1; d->prim_lod = w0 & 0xFFFFu; d->prim = w1; break;
+    case ND_FS_ENV: d->has_env = 1; d->env = w1; break;
+    default: d->n_tex++; break;
     }
 }
 
@@ -430,10 +371,10 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
     delta_clear(&pend);
     for (i = 0; i < ND_DLC_MAXOPS; i++) {
         uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
-        unsigned op = dlc_op(w0); /* HC4e3: a typed unit with a raw op (geometry, texture, no-op, end) is that op */
-        if (op == OP_ENDDL) break;
-        if (!ent_known(op)) { if (bad) *bad = op; return NDR_OP; }
-        if (op == OP_VTX || op == OP_TRI1 || op == OP_TRI2) {
+        unsigned op = (w0 >> 24); /* DEL1C: the typed id of the unit */
+        if (op == ND_FS_END) break;
+        if (!ent_known(w0)) { if (bad) *bad = op; return NDR_OP; }
+        if (op == ND_FS_VTX || op == ND_FS_TRI1 || op == ND_FS_TRI2) {
             NdEntSeg* s;
             if (ns == 0 || pend_n > 0) { /* a geometry op after state ops starts a segment */
                 if (ns >= maxseg) return NDR_LONG;
@@ -445,20 +386,20 @@ int nd_ent_segments(const uint32_t* l, NdEntSeg* seg, unsigned maxseg, unsigned*
             }
             s = &seg[ns - 1];
             s->op1 = i + 1;
-            if (op == OP_VTX) {
+            if (op == ND_FS_VTX) {
                 unsigned n = (w0 >> 12) & 0xFFu, e = (w0 >> 1) & 0x7Fu, v0 = e >= n ? e - n : 0;
                 if (n == 0 || n > 64 || v0 >= 64) return NDR_VTX;
                 if (v0 + n > 64) n = 64 - v0;
                 for (unsigned k = 0; k < n; k++) live[v0 + k] = 1;
             } else {
-                for (int t = 0; t < (op == OP_TRI2 ? 2 : 1); t++) {
+                for (int t = 0; t < (op == ND_FS_TRI2 ? 2 : 1); t++) {
                     uint32_t w = t ? w1 : w0;
                     int ix[3] = { (int)((w >> 16) & 0xFFu) / 2, (int)((w >> 8) & 0xFFu) / 2, (int)(w & 0xFFu) / 2 };
                     for (int k = 0; k < 3; k++) if (ix[k] > 63 || !live[ix[k]]) return NDR_SLOT;
                     s->ntri++; tri++;
                 }
             }
-        } else if (op == OP_NOOP || op == OP_PIPESYNC || op == OP_LOADSYNC || op == OP_TILESYNC || op == OP_FULLSYNC || op == OP_PM_TEXI) {
+        } else if (w0 == ND_NOP_A) {
             /* neutral: no segment, no delta */
         } else {
             if (pend_n == 0) pend0 = i;
@@ -484,10 +425,10 @@ unsigned nd_ent_strip(const uint32_t* l, uint32_t* out) {
     unsigned i, n = 0;
     for (i = 0; i < ND_DLC_MAXOPS; i++) {
         uint32_t w0 = l[2 * i], w1 = l[2 * i + 1];
-        unsigned op = dlc_op(w0);
-        if (op == OP_ENDDL) break;
-        if (op == OP_VTX || op == OP_TRI1 || op == OP_TRI2) { out[2 * n] = w0; out[2 * n + 1] = w1; n++; }
+        unsigned op = (w0 >> 24);
+        if (op == ND_FS_END) break;
+        if (op == ND_FS_VTX || op == ND_FS_TRI1 || op == ND_FS_TRI2) { out[2 * n] = w0; out[2 * n + 1] = w1; n++; }
     }
-    out[2 * n] = NDO_W0(NDO_END, 0); out[2 * n + 1] = 0;
+    out[2 * n] = ND_FS_W0(ND_FS_END, 0); out[2 * n + 1] = 0;
     return i;
 }
