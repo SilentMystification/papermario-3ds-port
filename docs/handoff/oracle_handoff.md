@@ -8,7 +8,7 @@ OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
 - HWFIX1 merged (nd_comb_core on a miss); user console check of 0f39de90cb: visual faults gone (FACT). TATTLEAR merged.
 ## Pages on main and their waits (chain: NST1 -> NST3 -> NST2A -> NST2B -> NST2C -> NST2D -> NST2E -> NST2F -> NDR0)
-- Merged: PSOFB, NST1, NST3, NST2A, HWFIX1, BOTSCR. NdDs holds lt[], lk, vp_*, tm. dschk switch and dschk_base.txt exist.
+- Merged: PSOFB, NST1, NST3, NST2A, HWFIX1, BOTSCR. Parallel (no chain file): ws_GFXT1 (C7 -5), ws_PSOCOV (pso miss harvest; fxchk_a at the 256 cap).
 - NSTO pages (oracle NSTO): NST2B model records (nd_ds_model; dschk adopts the groups a model cache hit skips), NST2C entity draw, sprite
   state, compiled def, particles (nd_ds_unit, nd_ds_feed), NST2D ranges (unit log of core 1 applies, marks, sub save/restore, R11 replay;
   dschk skips compares inside replays), NST2E the 6 direct-draw runners feed their fallback units, NST2F adopt after direct draws, box fold
@@ -25,7 +25,7 @@ OPMOVE reader -62, FXSLOT2 recdl -5, FLAMEDL build -2 gfxpos -2, TST13 build -1 
    box_fold_sync nd_comb.c:374, nd_mesh_* are VTX/TRI state-run units (nd_geo.c:29-37), not commands. Then NCONV1 (section 8), NREC1 (9).
 4. Add the listcen class core1 (UD1) in the first row that adds ND_FS_ ids (NCONV1).
 ## Facts that cost time
-- Every setter unit passes nd_rec_nr (nd_rec.c:375); core 0 runs it in nd_walk_state (nd_walk.c:390). reader falls only in S5-S7.
+- Every setter unit passes nd_rec_nr (nd_rec.c:375); core 0 runs it in nd_walk_state (nd_walk.c:390). reader, model, data, build fall only in S4-S7 (no row free of chain files: nd_cen.c callers are in nd_walk.c, nd_recs.c).
 - The F3 globals (conv_k4, dual_on, comb_set ...) have struct-field and parameter twins in 20+ files: never rename them by sed.
 - Core 0 never resets nd_ws (nd_state.c:11 static init only): nd_ds must not reset either.
 - fxslot_cap psochk (6ff72ad823): lk 5185 miss 26091 lkbad 0. Most decisions miss the table today. Keys come only from ND_PSO_DESC.
