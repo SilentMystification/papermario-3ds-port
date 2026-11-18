@@ -6,7 +6,7 @@ Start: read this file, docs/handoff/orchestrator_rules.md (its CORE block is pri
 ## First actions
 1. No dispatcher exists yet (build3ds/out/dispatch_state.md is absent). Start one: Agent, `subagent_type: general-purpose`, `model: haiku`, prompt `Dispatcher. Read docs/handoff/dispatcher.md and build3ds/out/dispatch_state.md (create it).` Then write the first orders by SendMessage: HOLD none, start coach NDR with quota 1 (row NDR0G2).
 2. The chain was tested at depth 3 with Haiku agents (proxy, lead, coder) and worked. The oracle type now has the Agent tool (COACH rule 7). The coach oracle path itself is untested: the first real run is NDR0G2.
-3. The user wants a cleanup row (stale plans in docs/handoff, 14 worktrees of 8 GB in build3ds/wt, 36 branches, 698 files in build3ds/out, duplicate memory notes). The user has not given the word for deletions.
+3. Cleanup done once: merged branches and 3 worktrees removed (36 to 17 branches, wt 8.0 to 4.7 GB), old files of build3ds/out pruned. Still open, not done: stale plan files in docs/handoff (47 files, 3234 lines: plan_native_system, design_native_draw, plan_hotcode, plan_endgame are the largest), dead tools in 3ds/tools (270 files), duplicate memory notes (42). Kept on purpose: worktrees with a .wt_keep marker (BOTHUD CONV2MIX FPS60FL LOOPT SEEDPROBE1 TSTSHK), WALKSRC, postmerge. CGFX is a leftover folder Windows holds busy. Unmerged branches: HC4e3 NST2A0 TEXKEY grey size1 ub1 dlc-compiler-c1c2. Delete only on the user's word.
 4. No console check until the last row (S9GATE). The O3DS build check list is docs/handoff/verify_list.md. Consoles: O3DS 192.168.1.170, N3DS .224, O3DS XL .131. Push only on the user's word.
 
 ## Work state
