@@ -42,3 +42,4 @@
 1290:#1273 dschk end f2292 cmds 400186 bad 43399 epbad 69906 fbad 44747 adopt 253966 adiff 1058907
 1291:#1274 dschk lg hw 119 over 0
 1294:#1276 dschk f2300 cmds 401587 bad 43399 epbad 70162 fbad 44747 adopt 254886 adiff 1062699
+# NDR0B gate: last dschk line of each scene log (build3ds/azt/logs/<scene>.txt): grep -a 'dschk f[0-9]* cmds\|dschk end' <log> | tail -1. Judge bad and fbad against the lines above, not higher. epbad is recorded only.
