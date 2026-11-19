@@ -1,0 +1,46 @@
+LIST: 2 scenarios, one kept slot, warm restart between them: spot_mac01_drec, spot_mac01_drec
+LIST: start spot_mac01_drec at 19:08:07
+queue: position 1 of 1 waiting (lane 'base_622ae19ab', speed normal, scenario spot_mac01_drec, want slot any)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario spot_mac01_drec, row BASECACHE, lane 'base_622ae19ab', slot 1, cap 35 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 63064 warm
+run: rc 0: slot1: stopped after 4s: matched 'drec f\d+ draws \d+ bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.5 s; end at 3.9 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+cap high: spot_mac01_drec cap 35 until 3.5
+PASS  prof on: #15 prof=1 log=off
+PASS  drec: #124 drec f201 draws 170 bytes 277942
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELGT\build3ds\azt\logs\spot_mac01_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELGT\build3ds\azt\shots\spot_mac01_drec\base_622ae19ab\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELGT\build3ds\lane-base_622ae19ab\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1975734, build 7054, commit 622ae19ab0a506126d2cc2e27a3ccd9185f396b9
+  scene -                              windows   0 fps - ft -
+LIST: spot_mac01_drec rc 0, wall 12.5 s
+LIST: start spot_mac01_drec at 19:08:20
+queue: position 1 of 1 waiting (lane 'base_622ae19ab', speed normal, scenario spot_mac01_drec, want slot 1)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario spot_mac01_drec, row BASECACHE, lane 'base_622ae19ab', slot 1, cap 35 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 63064 warm
+run: rc 0: slot1: stopped after 4s: matched 'drec f\d+ draws \d+ bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.5 s; end at 3.9 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+cap high: spot_mac01_drec cap 35 until 3.5
+PASS  prof on: #15 prof=1 log=off
+PASS  drec: #124 drec f201 draws 170 bytes 277942
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELGT\build3ds\azt\logs\spot_mac01_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELGT\build3ds\azt\shots\spot_mac01_drec\base_622ae19ab\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\DELGT\build3ds\lane-base_622ae19ab\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1976561, build 7054, commit 622ae19ab0a506126d2cc2e27a3ccd9185f396b9
+  scene -                              windows   0 fps - ft -
+LIST: spot_mac01_drec rc 0, wall 12.7 s
+LIST DONE: wall 25.3 s. spot_mac01_drec rc 0 12.5 s; spot_mac01_drec rc 0 12.7 s
+base spot_mac01_drec at 622ae19ab: not stored. One base build of that commit (lane base_622ae19ab), then the runs.
+base 622ae19ab: build from the basebin store (entry 83be3b30e0ffb369), no build
+list of 2 benches on one kept slot: spot_mac01_drec, spot_mac01_drec
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.
+base spot_mac01_drec at 622ae19ab: two runs equal, stored 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\622ae19ab0a506126d2cc2e27a3ccd9185f396b9\spot_mac01_drec
