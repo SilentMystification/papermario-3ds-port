@@ -1,5 +1,5 @@
 # ws_NAT3D (Haiku): a triangle epoch with no snap keeps the render state of the last snap: the walker render decision of gv_epoch_enter goes. Counter: c0gate calls -1, expected `c0gate calls 125 interp 37 state 23` (122 after NAT3A). Gate: drec byte-equal.
-Designer: oracle NATIVE. WAIT: `Merge NAT2J`, and its c0diff shows wdiff 0 (FACT NAT1D: wdiff above 0 in all 3 scenes).
+Designer: oracle NATIVE. WAIT: `Merge NAT3A` (the same drec scenes, one Azahar row at a time; the c0diff render cases of NAT2J are first-of-frame fills) (FACT NAT1D: wdiff above 0 in all 3 scenes).
 When one exists, oracle NATIVE rewrites this page before the start. Worktree build3ds/wt/NAT3D, branch NAT3D. PM_ROW=NAT3D PM_LANE=NAT3D. Wave W2b with NAT3A (no shared file).
 Edit only: 3ds/src/nd_geom.c line 221. No edit in nd_walk.c, nd_set.c, nd_comb.c, nd_direct.c.
 ## Facts (main b485faae44)
