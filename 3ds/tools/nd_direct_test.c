@@ -52,6 +52,7 @@ void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
 }
 void nd_comb_set(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
 void nd_rnd_sync(void) { n_render++; }
+extern unsigned nd_snap_render_n; /* NAT2A */
 void nd_sr_forget(void) { n_forget++; }
 void ens_clear(void) { n_end_clear++; }
 int pm_is_cfb(const void* p) { return p != NULL; }
@@ -139,7 +140,7 @@ int main(void) {
     CHECK(nd_ws.omode_l == (0x5u | 0x00504340u));
     CHECK(nd_ws.comb_w0 == 0xfc000010u && nd_ws.comb_w1 == 0x11111111u);
     CHECK(nd_ws.prim == 0xff804020u && last_prim == 0xff804020u && nd_ws.prim_lod == 0u && nd_ws.envc == 0x55u);
-    CHECK(n_leg == 1 && last_leg == 2u && leg_mode == 2 && n_plan == 0 && n_render >= 1);
+    CHECK(n_leg == 1 && last_leg == 2u && leg_mode == 2 && n_plan == 0 && nd_snap_render_n >= 1);
     CHECK(dual_on == 0);
     n_setcomb = 0;
     CHECK(nd_direct_bind(ia, 0xff804020u, 0x55u) == 1);

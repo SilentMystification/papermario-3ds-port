@@ -85,7 +85,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
     }
     nd_c0w &= ~1u; /* NAT1B: the core 1 decision, after the GPU calls */
     nd_sr_forget(); /* nd_comb_sync of the stream path clears it when the inputs change: the render state is made again */
-    nd_rnd_sync();
+    nd_snap_render(); /* NAT2A: the render state of the live snap (core 1, nd_snap_pso) */
     return 1;
 }
 
