@@ -1,0 +1,11 @@
+build3ds/azt/logs/fxparts_drec.txt:#363 drec frame 412 seq 0
+build3ds/azt/logs/fxparts_drec.txt:#386 drec frame 456 seq 116
+build3ds/azt/logs/fxparts_drec.txt:#409 drec frame 500 seq 239
+build3ds/azt/logs/fxparts_drec.txt:#412 partsnap f500
+build3ds/azt/logs/fxparts_drec.txt:#434 drec frame 544 seq 358
+build3ds/azt/logs/fxparts_drec.txt:#452 drec frame 588 seq 490
+build3ds/azt/logs/fxparts_drec.txt:#577 drec frame 632 seq 643
+build3ds/azt/logs/fxparts_drec.txt:#603 drec frame 676 seq 814
+build3ds/azt/logs/fxparts_drec.txt:#606 c0src f676 draws 531 mdl 399 wcomb 187 wrnd 219 wbind 71 snb 32214 snn 27298 snm 23770
+build3ds/azt/logs/spot_mac01_drec.txt:#124 c0src f201 draws 56 mdl 114 wcomb 26 wrnd 0 wbind 0 snb 4133 snn 3633 snm 2631
+build3ds/out/loop_NAT2E_cmp_fxparts_drec.txt:  drec draw 324 DIFF line 31292: base 'r 0cb f ffffffff', row 'r 0cb f 00000000'
