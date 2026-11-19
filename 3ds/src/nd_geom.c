@@ -367,6 +367,7 @@ void draw_tri(unsigned w) {
  * the GPU either. Lit and refused loads return 0 before any triangle: the caller runs the list. S7CONV: the list comes as its native table
  * (nd_gtab.h, NDG_F_PARTS: every load source mapped and inside 64 slots, every index inside the loads), read as sequential 8-byte ops; no
  * list word is read. */
+__attribute__((weak)) void nd_snap_plog(void) {} /* NAT2E: strong in nd_snap.c; weak for the host units that link nd_geom.c */
 int nd_part_draw(const NdNDev* t) {
     const unsigned tot = t->fl >> 16; /* S4MULTI: the room for every load of the list, checked before the first draw */
     memset(vert_live, 0, sizeof vert_live);
@@ -401,7 +402,7 @@ int nd_part_draw(const NdNDev* t) {
             if (nd_ls_on) { nd_ls_ord++; nd_lsr_tri(nd_ls_ord - 1u); } /* NREC4: the instance snap */
             const unsigned char sn = nd_ls_on && nd_snap_arm;
             if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;
-            nd_snap_rpend = nd_ls_on; if (sn) { nd_snap_arm = 0; if (ep_epoch == gv_epoch) nd_snap_rpend = 0; }
+            nd_snap_rpend = nd_ls_on; if (sn) { nd_snap_plog(); nd_snapchk_tri(); if (ep_epoch == gv_epoch) nd_snap_rpend = 0; } /* NAT2E: the instance snap combine, as draw_tri :353 */
             if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
             nd_snap_rpend = 0; /* NREC4 */
             if (ep_why >= 0) { gv_fb[ep_why]++; tri_drop[1]++; n_drop++; continue; }

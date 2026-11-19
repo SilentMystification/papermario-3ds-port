@@ -216,3 +216,14 @@ int nd_snap_spr(uint32_t o[9]) { /* NDR4: env prim omh oml geom cw0 cw1 mixk mix
         o[4] != nd_ws.geom || o[5] != nd_ws.comb_w0 || o[6] != nd_ws.comb_w1 || sc_cur.fogc != fogc || sc_cur.blendc != blendc)) { sc_sfr = pm_frame_count(); pm_log_d("sprsnap f%u", sc_sfr); }
     return 1;
 }
+
+/* NAT2E: one debug line per drec frame in which a particle instance snap gives another combine than the walker has now (UD-N2 expected diff) */
+void nd_snap_plog(void) {
+    static unsigned ps_fr = ~0u;
+    if (!pm_drec_now() || pm_frame_count() == ps_fr) return;
+    const NdCombOut* o = &sc_cur.o;
+    if (o->plan_on != plan_active || (o->plan_on ? memcmp(&o->plan, &cur_plan, sizeof cur_plan) != 0 : o->leg != leg_mode)) {
+        ps_fr = pm_frame_count();
+        pm_log_d("partsnap f%u", ps_fr);
+    }
+}
