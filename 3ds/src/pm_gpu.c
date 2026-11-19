@@ -3864,7 +3864,8 @@ void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k) {
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
     uint32_t* c = k->kc;
     c[0] = rec[-1];
-    c[1] = nd_ws.omode_h & kh; c[2] = nd_ws.omode_l & kl; c[3] = nd_ws.om_kh & kh; c[4] = nd_ws.om_kl & kl; c[5] = nd_ws.geom & gk & rm_ga[rmi];
+    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_ws.omode_h, nd_ws.omode_l, nd_ws.om_kh, nd_ws.om_kl, nd_ws.geom }; if (!kw) kw = w5; /* NAT2C: core 1 words, nd_ws only with no snap */
+      c[1] = kw[0] & kh; c[2] = kw[1] & kl; c[3] = kw[2] & kh; c[4] = kw[3] & kl; c[5] = kw[4] & gk & rm_ga[rmi]; }
     c[6] = nd_handle_gen(); c[7] = pm_dlc_gen;
     k->w[0] = rec[0]; k->w[1] = rec[1]; k->w[24] = rec[24]; /* the record words the hit reads (pm_gpu_model_hit, model_vis_same) */
     k->rp = (uint32_t)(uintptr_t)rec; /* S3N-7: the record address (PERF1-4a: the lookup memo, nd_mc_find_rec) */
