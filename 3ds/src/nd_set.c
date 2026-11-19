@@ -260,3 +260,11 @@ void nd_mw_run(const uint32_t* r) { const unsigned k = (r[0] >> 16) & 0xffu, g =
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_MW; if (mk) gv_epoch++; if (same) return;
     if (k == ND_FS_MW_NUMLIGHT) { lit_freeze(); lt_n = v; } else if (k == ND_FS_MW_LIGHTCOL && g < 9u) { lt[g].col[0] = (u8)(v >> 24); lt[g].col[1] = (u8)(v >> 16); lt[g].col[2] = (u8)(v >> 8); }
     else if (k == ND_FS_MW_FOG) { fog_fm = (s16)(v >> 16); fog_fo = (s16)v; } else if (k == ND_FS_MW_SEG && g < 16u) nd_ws.segbase[g] = v; }
+void nd_tex_run(const uint32_t* r) { const unsigned on = r[0] & 0xffffffu, ss = r[1] >> 16, ts = r[1] & 0xffffu; const int mk = (int)(r[0] >> 31); /* NAT4J: TEXTURE, nr_set + nd_unit_apply */
+    const int same = nd_ws.tex_on == (int)on && nd_ws.tex_ss == ss && nd_ws.tex_ts == ts && sc_ok && sc_sig_now() == sc_sig;
+    if (same && !mk) return; pm_gbi_cur_op = ND_FS_TEXTURE; if (mk) gv_epoch++; if (same) return;
+    nd_ws.tex_on = (int)on; nd_ws.tex_ss = ss; nd_ws.tex_ts = ts; nd_comb_sync(); }
+void nd_omh_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */
+    const int same = (v & m) == (nd_ws.omode_h & m) && sc_ok; if (same) nd_ws.om_kh |= m;
+    if (same && !mk) return; pm_gbi_cur_op = ND_FS_OMH; if (mk) gv_epoch++;
+    if (!same) set_om(1, r[0] & 0xffu, (r[0] >> 8) & 0xffu, m, v); }
