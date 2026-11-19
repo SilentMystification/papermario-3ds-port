@@ -1,4 +1,5 @@
 #include "pm_wide.h"
+void nd_c0fb_note(unsigned src, unsigned why); /* NAT5D: nd_direct.c */
 #include "nd_gtab.h"
 #include "common.h"
 #include "ld_addrs.h"
@@ -1743,6 +1744,7 @@ static void msg_glyph_run(const uint32_t* u) {
         return;
     }
     g_fb++;
+    nd_c0fb_note(3u, (unsigned)(30 - nd_direct_ready())); /* NAT5D */
     msg_glyph_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }

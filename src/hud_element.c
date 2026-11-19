@@ -547,12 +547,13 @@ static int hud_rect_direct(const NdHudRec* r, NdPsoN64* snap_pd, u32* snap_prim)
     return 0;
 }
 
+void nd_c0fb_note(unsigned src, unsigned why); /* NAT5D: nd_direct.c */
 /* core 0: one HUD element record, drawn directly (hud_rect_direct) or, when it cannot state the record, emitted into a local list and walked as state ops
  * (at most 9 prologue units + 32 pieces of 14 + 1 = 458 units). */
 static void hud_rect_run(const uint32_t* u) {
     static uint32_t buf[1024];
     uint32_t* nrp = buf;
-    { const int why = hud_rect_direct((const NdHudRec*)u, NULL, NULL); if (!why) return; if (why != 5) nd_direct_fallback((unsigned)why); }
+    { const int why = hud_rect_direct((const NdHudRec*)u, NULL, NULL); if (!why) return; nd_c0fb_note(1u, (unsigned)why); if (why != 5) nd_direct_fallback((unsigned)why); }
     nd_dir_drop(); /* NDR2C */
     hud_rect_emit((const NdHudRec*)u, &nrp, 0);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
@@ -636,6 +637,7 @@ __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
     {
         static uint32_t buf[64];
         uint32_t* nrp = buf;
+        nd_c0fb_note(2u, 0u); /* NAT5D */
         cplx_quad_emit(r, &nrp);
         nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
     }

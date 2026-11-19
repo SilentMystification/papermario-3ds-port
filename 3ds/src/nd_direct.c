@@ -20,6 +20,10 @@
 #include "nd_snap.h"
 #include "nd_fs.h"
 
+unsigned nd_c0fb_n[8]; /* NAT5D: core 0 fallback unit runs by source: 1 hud, 2 cplx, 3 glyph, 4 tsten, 5 spr, 6 fill, 7 trect */
+void nd_c0fb_note(unsigned src, unsigned why) { static uint64_t seen[8]; src &= 7u; nd_c0fb_n[src]++; /* NAT5D: one line per new source and why */
+    if (why < 64u && !((seen[src] >> why) & 1u)) { seen[src] |= 1ull << why; pm_log_evt("c0fb src %u why %u f%u", src, why, pm_frame_count()); } }
+
 #ifndef pm_gpu_flush
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__)
 #endif
@@ -219,6 +223,7 @@ static void nd_fill_walk(const NdFillRec* f, unsigned k) {
     uint32_t* nrp = buf;
     static unsigned nfb;
     if (nfb++ < 16u) pm_log_d("fill fallback f%u", pm_frame_count());
+    nd_c0fb_note(6u, k); /* NAT5D */
     nd_fill_emit(f, k, &nrp);
     nd_nr_exec(buf, 4u);
 }
@@ -321,6 +326,7 @@ void nd_trect_run(const uint32_t* u) {
     }
     nd_dir_drop(); /* NDR2B: the walk takes no pso snap */
     if (nfb++ < 16u) pm_log_d("trect fallback f%u", pm_frame_count());
+    nd_c0fb_note(7u, !ok ? 1u : nd_direct_ready() != 1 ? (unsigned)(30 - nd_direct_ready()) : 3u); /* NAT5D */
     trect_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
