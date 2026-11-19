@@ -273,6 +273,7 @@ static int nd_r11_op(uint32_t w0, uint32_t w1, int pre, int* pend, int* has_cb, 
     default: return 0;
     }
 }
+void nd_omh_run(const uint32_t* r); /* NAT4J: nd_set.c */
 static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo) {
     *nr = NULL; *has_cb = 0; *nmo = 0;
     if (!addr) return 1;
@@ -285,6 +286,7 @@ static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw
         case NDC_END: return !pend;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
         case NDC_NAPI:
+            if (p[1] == (uint32_t)(uintptr_t)nd_omh_run) { if ((p[2] >> 31) || i >= 16u || !nd_r11_op(ND_FS_W0(ND_FS_OMH, p[2] & 0xffffu), p[3], pre, &pend, has_cb, cw, mo, nmo)) return 0; i++; break; } /* NAT4J: an unmarked OMH record is the OMH unit; a marked one is refused as its mark was */
             if (p[1] != (uint32_t)(uintptr_t)nd_nr_run) return 0; /* NSTREAM2: only a run of native records */
             for (unsigned k = 0; k < n; k++, i++) {
                 if (i >= 16u) return 0;
