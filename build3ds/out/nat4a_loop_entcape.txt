@@ -1,0 +1,6 @@
+LOOP NAT4A host rc 0, build rc 0, 3 s
+STAGE key-inputs 2 s STAGE gen 0 s --- build up to date (key a326e18ba85d), skipping --- STAGE key 0 s 
+
+cmp entcape_kmr03_drec: 1/1 byte-equal 
+LOOP TIME host+build 3 s, run+cmp 49 s, total 52 s
+LOOP PASS

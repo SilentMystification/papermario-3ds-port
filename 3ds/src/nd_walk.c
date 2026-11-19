@@ -230,10 +230,12 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1) {
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_nr_list): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
+unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
-    if (nd_unit_same(u)) return;
+    const int same = nd_unit_same(u); { const unsigned i_ = u[0] >> 24; if (ep_stream && ex_depth == 0 && (i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB)) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) nd_epk_bad++; ep_mark = 0; } } /* NAT4A */
+    if (same) return; /* NAT4A */
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
     gv_epoch++; /* GV1b; NST2H source */
@@ -288,7 +290,7 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
     const unsigned op = id != ND_FS_MISC ? id : sub == ND_FS_MISC_LST ? (unsigned)G_PM_LST : sub == ND_FS_MISC_ND ? (unsigned)G_PM_ND : (unsigned)ND_FS_MISC;
     unsigned r = 0;
     pm_gbi_cur_op = op;
-    if (id != ND_FS_CALL && !(id == ND_FS_MISC && sub == ND_FS_MISC_MODVTX)) { gv_epoch++; } /* GV1b; no cut for a list call or a vertex modify */
+    if (id != ND_FS_CALL && !(id == ND_FS_MISC && (sub == ND_FS_MISC_MODVTX || sub == ND_FS_MISC_EP))) { gv_epoch++; } /* GV1b; no cut for a list call or a vertex modify */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, op, u[0], u[1]);
     switch (id) {
@@ -307,6 +309,7 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
         case ND_FS_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
         case ND_FS_MISC_MODVTX: nd_modvtx((a >> 8) & 0xffu, a & 0xffu); break;
         case ND_FS_MISC_CIMG: nd_cimg_set(a, b); break;
+        case ND_FS_MISC_EP: ep_mark = 1; nd_epk_mk++; break; /* NAT4A: no cut yet (measure) */
         default: break;
         }
         break;
@@ -344,7 +347,7 @@ void nd_nr_exec(const uint32_t* q, unsigned n) { /* DEL1D2: was nd_walk_state */
     }
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
-void nd_nr_run(const uint32_t* rec) { nd_nr_exec(rec, (rec[-2] >> 16) & 0xffu); }
+void nd_nr_run(const uint32_t* rec) { ep_stream = 1; nd_nr_exec(rec, (rec[-2] >> 16) & 0xffu); ep_stream = 0; } /* NAT4A */
 void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
     nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
 static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of a list with a snap table: nd_walk_state without the combine units */

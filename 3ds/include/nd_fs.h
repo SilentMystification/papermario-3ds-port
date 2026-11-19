@@ -45,7 +45,7 @@ enum {
 };
 enum { ND_FS_MW_NONE, ND_FS_MW_NUMLIGHT, ND_FS_MW_LIGHTCOL /* arg = light k */, ND_FS_MW_FOG, ND_FS_MW_SEG /* arg = segment */ };
 enum { ND_FS_RARE_CONV, ND_FS_RARE_KEYR, ND_FS_RARE_KEYGB };
-enum { ND_FS_MISC_NOP, ND_FS_MISC_LST, ND_FS_MISC_ND, ND_FS_MISC_MODVTX, ND_FS_MISC_CIMG };
+enum { ND_FS_MISC_NOP, ND_FS_MISC_LST, ND_FS_MISC_ND, ND_FS_MISC_MODVTX, ND_FS_MISC_CIMG, ND_FS_MISC_EP }; /* NAT4A: a core 1 cut mark, no state */
 #define ND_FS_RECT_TEX 0x80000000u /* texture flag of the rectangle b: a texture rectangle (else a fill) */
 
 #define ND_FS_W0(id, a) (((uint32_t)(id) << 24) | ((uint32_t)(a) & 0xffffffu))

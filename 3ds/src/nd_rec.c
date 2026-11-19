@@ -409,8 +409,11 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
     if ((w0 >> 24) == ND_FS_TRI1 || (w0 >> 24) == ND_FS_TRI2) nd_snap_mesh(); /* NAT2G: every stream triangle has a snap, or the memo says the last one holds */
     if ((w0 >> 24) == ND_FS_RECT && !(w1 & ND_FS_RECT_TEX)) nd_snap_rect(); /* NAT2H: a fill rectangle takes a snap, as a texture rectangle (nd_rec_texrect :264) */
-    nd_ds_unit(&nd_ds, w0, w1);
-    rec_op_t(t);
+    const unsigned id = w0 >> 24; const int lost = nd_ds.sc_lost, dirty = nd_ds.sc_dirty; /* NAT4A */
+    const unsigned ch = nd_ds_apply(&nd_ds, w0, w1); /* NAT4A: nd_ds_unit's work, with the change bit */
+    rec_open(); ndc_sw++; if (sh_drop(t)) return; /* NAT4A: rec_op_t, inline */
+    if ((id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) && nd_ds_ep_rule(w0, ch, lost, dirty)) st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), 0u); /* NAT4A: the core 1 cut */
+    st_put(t[0], t[1]); /* NAT4A */
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
