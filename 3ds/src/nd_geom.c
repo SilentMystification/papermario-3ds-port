@@ -217,8 +217,7 @@ void gv_epoch_enter(void) {
             nd_tile_bind(nd_ws.use_t1 ? 1 : 0);
             dual_bind();
         }
-        if (nd_snap_rpend) nd_snap_render(); /* NDR0F2: the snap of this triangle */
-        else nd_rnd_sync();
+        if (nd_snap_rpend) nd_snap_render(); /* NDR0F2: the snap of this triangle; NAT3D: no snap, the render state of the last snap stays */
         /* MERLON (B3b case 6 on the ring path): a model drawn into the z-buffer image (crystal ball depth mask, mac_01) tests its own depth against the world
          * and writes the constant depth of the PRIM word where it is nearer (pm_gpu zmark, two native passes). nd_rnd_sync turned it off.
          * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
