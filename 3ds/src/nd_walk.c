@@ -412,90 +412,18 @@ void nd_ent_units(const uint32_t* u, unsigned n) {
     gv_streak_flush(); tex_streak_flush();
     if (cen) ops_cen_end();
 }
-/* NATIVEAPI S4 (nd_api.h NdParts): the core 0 runner of a particle run. Per instance: the pre units on the walker, the list drawn natively
- * (nd_part_draw) or run as a list (nd_nr_list, keep), the post units on the walker. One list start for the run (gv_epoch once: the state
- * ops of the units bump it themselves). */
-static unsigned pr_v, pr_old, pr_next = 300u;
+/* NAT5E: a particle run is records in the stream (nd_parts_end, nd_rec.c): the begin record, per instance its units (the list drawn
+ * natively by nd_part_draw), the end record. The units are the stream units of core 0 (nd_rec_nr). */
+static unsigned pr_v, pr_next = 300u;
 static __attribute__((cold, noinline)) void pr_cen(void) {
     const unsigned f = pm_frame_count();
     pr_next = (f / 300u + 1u) * 300u;
-    pm_log_evt("partsrun f%u v %u old %u", f, pr_v, pr_old);
+    pm_log_evt("partsrun f%u v %u", f, pr_v);
 }
-static __attribute__((cold, noinline)) void pr_lsr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("lsnap parts f%u", pm_frame_count()); } } /* NREC4 */
-void nd_parts_run(const uint32_t* u) {
-    PM_WALK_OWN();
-    pr_old++;
-    if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
-    const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
-    pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4; NCONV2C: a parts run keeps its units */
-    gv_epoch++; /* GV1b */
-    dlc_on = 1;
-    gp_prev_op = -1;
-    extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; /* S4COL: the particle plan takes PRIM in the vertex slot */
-    const uint32_t* p = u + 2;
-    for (unsigned k = 0; k < n; k++, p += 2u * m) {
-        nd_nr_exec(p, pre);
-        const NdNDev* t = (const NdNDev*)(uintptr_t)p[2u * pre + 1u]; /* DEL5B2: nd_parts_add put the v2 entry in the call unit */
-        if (!nd_part_draw(t)) nd_ntab_run(t);
-        nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u);
-    }
-    nd_lsr_end(); /* NREC4 */
-    pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync(); /* S4COL: the normal plan is back in gs before the next walker draw */
-    pm_walk_side--;
-    gv_streak_flush();
-    tex_streak_flush();
-}
-/* NATIVEAPI S4 (S4PDIR): the runner of a run whose units are all MTX, PRIM, ENV, TILESIZE, POPMTX and the list call (nd_rec.c nd_parts_end).
- * The frame of nd_parts_run; each unit goes to its setter by id with what nd_walk_state does around it: the skip test and gv_epoch of a scalar
- * op (nr_set), pm_gbi_cur_op, the cold bad-matrix check of ND_FS_MTX (nr_geo: no gv_epoch for a matrix op). With a walker debug switch on, the
- * units take nd_walk_state (the census hooks live there). */
-static inline void part_units(const uint32_t* p, unsigned n) {
-    for (; n; n--, p += 2) {
-        const unsigned id = p[0] >> 24;
-        const u32 a = p[0] & 0xffffffu, b = p[1];
-        pm_gbi_cur_op = id;
-        switch (id) {
-        case ND_FS_MTX:
-            if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)p, (NdW2*)p + 1);
-            nd_xf_load(a, b, 0);
-            break;
-        case ND_FS_POPMTX: nd_xf_popb(b); break;
-        default:
-            if (nd_unit_same(p)) break;
-            gv_epoch++; /* GV1b */
-            if (id == ND_FS_PRIM) nd_set_prim(a, b);
-            else if (id == ND_FS_ENV) nd_envc_set(b);
-            else nd_tx_tsz(a, b);
-            break;
-        }
-    }
-}
-void nd_parts_run_v(const uint32_t* u) {
-    PM_WALK_OWN();
-    pr_v++;
-    if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen();
-    const unsigned n = u[0] & 0xffu, pre = (u[0] >> 8) & 0xffu, m = (u[0] >> 16) & 0xffu;
-    const unsigned dbg = pm_walk_dbg;
-    pm_walk_side++;
-    nd_lsr_begin((const uint32_t*)(uintptr_t)u[1]); if (u[1]) pr_lsr_note(); /* NREC4; NCONV2C: a parts run keeps its units */
-    gv_epoch++; /* GV1b */
-    dlc_on = 1;
-    gp_prev_op = -1;
-    extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; /* S4COL */
-    const uint32_t* p = u + 2;
-    for (unsigned k = 0; k < n; k++, p += 2u * m) {
-        if (__builtin_expect(dbg, 0)) nd_nr_exec(p, pre); else part_units(p, pre);
-        const NdNDev* t = (const NdNDev*)(uintptr_t)p[2u * pre + 1u]; /* DEL5B2: nd_parts_add put the v2 entry in the call unit */
-        if (!nd_part_draw(t)) nd_ntab_run(t);
-        if (__builtin_expect(dbg, 0)) nd_nr_exec(p + 2u * (pre + 1u), m - pre - 1u); else part_units(p + 2u * (pre + 1u), m - pre - 1u);
-    }
-    nd_lsr_end(); /* NREC4 */
-    pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync();
-    pm_walk_side--;
-    gv_streak_flush();
-    tex_streak_flush();
-}
+void nd_pbeg_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); pr_v++; if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen(); /* NAT5E: the start of the old parts runner */
+    pm_walk_side++; gv_epoch++; dlc_on = 1; gp_prev_op = -1; extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; }
+void nd_pdraw_run(const uint32_t* r) { const NdNDev* t = (const NdNDev*)(uintptr_t)r[0]; if (!nd_part_draw(t)) nd_ntab_run(t); } /* NAT5E: one instance list */
+void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */
 /* ENTRYCAP: the device switch entcap (PMDL). A static list without a v2 table logs its walker entry description (nd_walker_desc) once per
  * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 4096 keys. */
 static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {

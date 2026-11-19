@@ -352,18 +352,12 @@ void nd_parts_add(NdParts* b, const uint32_t* units) {
 }
 void nd_parts_end(NdParts* b) {
     if (!b->n) return;
-    b->u[0] = b->n | b->pre << 8 | b->m << 16;
-    b->u[1] = 0;
-    /* S4PDIR: a run whose every unit but the list call is MTX, PRIM, ENV, TILESIZE or POPMTX runs the setters by id */
-    int v = 1;
-    for (unsigned k = 0; v && k < b->n; k++)
-        for (unsigned j = 0; j < b->m; j++) {
-            const unsigned id = b->u[2u + 2u * (k * b->m + j)] >> 24;
-            if (j == b->pre ? id != ND_FS_CALL : !(id == ND_FS_MTX || id == ND_FS_PRIM || id == ND_FS_ENV || id == ND_FS_TILESIZE || id == ND_FS_POPMTX)) { v = 0; break; }
-        }
-    nd_rec_napi(v ? nd_parts_run_v : nd_parts_run, b->u, 1u + b->n * b->m);
-    nd_lsc_begin_v(1u); nd_ds_parts(&nd_ds, b->u, nd_ds_unit); nd_lsc_end_at(nd_rec_last_pay() + 1u); /* NST2C: the instances' state on core 1; NREC4: the instance snap table in payload word 1 */
-    nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NST2J: the parts runner ends with nd_comb_sync */
+    const unsigned n = b->n, pre = b->pre, m = b->m; static const uint32_t z[2] = { 0u, 0u };
+    nd_rec_napi(nd_pbeg_run, z, 1u); nd_ds.sc_lost = 1; nd_snap_vprim(1u); /* NAT5E: the run start (a command, as the old record): vprim 1, sc_ok 0 */
+    for (unsigned k = 0; k < n; k++) { const uint32_t* p = b->u + 2u + 2u * m * k;
+        for (unsigned j = 0; j < m; j++) { if (j == pre) { nd_snap_mesh(); nd_rec_nat(nd_pdraw_run, p[2u * j + 1u], 0u); } /* NAT5E: the instance snap and the list draw */
+            else if (p[2u * j] != ND_NOP_A) nd_rec_nr(p[2u * j], p[2u * j + 1u]); } }
+    nd_rec_nat(nd_pend_run, 0u, 0u); nd_snap_vprim(0u); nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NAT5E: the run end (nd_comb_sync on core 0) */
     b->n = 0;
 }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */
@@ -408,6 +402,7 @@ __attribute__((weak)) void nd_sci_run(const uint32_t* r) { (void)r; } __attribut
 static void rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { /* NAT4I: a native state record in the place of a stream unit; header flag 1 keeps the snap arm */
     st_take = 1; uint32_t* p = rec_take(4); st_take = 0; ndc_n[NDC_NRUN]++;
     p[0] = NDC_HDR(NDC_NAPI, 1, 1); p[1] = (uint32_t)(uintptr_t)run; p[2] = a; p[3] = b; }
+void nd_rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { rec_open(); rec_nat(run, a, b); } /* NAT5E */
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
@@ -568,6 +563,7 @@ __attribute__((weak)) void nd_msnap_pre(const NdDs* s) { (void)s; } /* NAT2C */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
 __attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
 __attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */
+__attribute__((weak)) void nd_snap_vprim(unsigned v) { (void)v; } __attribute__((weak)) void nd_pbeg_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_pdraw_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_pend_run(const uint32_t* r) { (void)r; } /* NAT5E */
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 unsigned char nd_snap_live __attribute__((weak)); /* NDR1C */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */

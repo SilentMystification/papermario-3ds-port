@@ -82,6 +82,7 @@ static unsigned char ls_ovl; /* NREC2: this list has more ranges than LS_MAX */
 static unsigned char ls_ep; void nd_lsc_ep(void) { ls_ep = 1; } /* NCONV2C */
 void nd_lsc_begin(void) { ls_n = 0; ls_sn = 0; ls_ord = 0; ls_chg = 1; ls_ovl = 0; ls_ep = 0; sn_cmds = ~0u; nd_lsc_on = 1; }
 void nd_lsc_begin_v(unsigned v) { nd_lsc_begin(); sn_vprim = v; } /* NREC4 */
+void nd_snap_vprim(unsigned v) { sn_vprim = v; sn_cmds = ~0u; } /* NAT5E: the particle plan of the next snaps; the next snap is new */
 void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_RMAX || ls_ord > 0xffffu) ls_ovl = 1; else if (snap_build(&nd_ds, 0, &ls_t)) { const unsigned k = ls_find(); if (k == ~0u) ls_ovl = 1; else { ls_f[ls_n++] = ls_ord | k << 16 | (ls_ep ? ND_LS_EP : 0u); sn_cmds = nd_rec_cmds(); } } else if (ls_ep && ls_n) { ls_f[ls_n] = ls_ord | (ls_f[ls_n - 1u] & 0x3fff0000u) | ND_LS_EP | ND_LS_DUP; ls_n++; } ls_ep = 0; } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
 void nd_lsc_tris(unsigned n) { if (!n) return; nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); ls_ord += n - 1u; } /* NREC4: n list triangles, one snap test */
 unsigned pm_frame_count(void); static __attribute__((cold, noinline)) void ls_over_note(void) { static unsigned n; if (n++ < 16u) pm_log_evt("lsover f%u ranges %u ord %u", pm_frame_count(), ls_n, ls_ord); } /* NAT2G */
