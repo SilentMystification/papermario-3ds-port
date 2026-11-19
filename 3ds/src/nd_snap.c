@@ -65,6 +65,7 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     return 1;
 }
 static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, zc, &r)) return; nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */ sn_cmds = nd_rec_cmds(); }
+const NdCombOut* nd_snap_now(void) { NdSnapChk t; (void)snap_build(&nd_ds, 0, &t); sn_cmds = ~0u; return &sn_last.o; } /* NAT2K: the decision of nd_ds now; the next snap_take records again */
 #define LS_SMAX 256u /* NAT2D: unique snaps, each in its own stream block */
 #define LS_RMAX 256u /* NAT2D: ranges */
 static NdSnapChk ls_t; static const NdSnapChk* ls_p[LS_SMAX]; static uint32_t ls_h[LS_SMAX], ls_f[LS_RMAX]; static unsigned ls_n, ls_sn, ls_ord; static unsigned char ls_chg;
