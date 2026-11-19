@@ -1,0 +1,7 @@
+LOOP NAT2D host rc 0, build rc 0, 19 s
+STAGE key-inputs 2 s STAGE gen 0 s STAGE key 0 s STAGE slot-wait 1 s STAGE asset-check 4 s STAGE romfs 0 s STAGE sync 0 s STAGE configure 1 s STAGE compile-link 6 s STAGE copy-out 1 s STAGE tail 2 s 
+
+cmp fxparts_drec: 1/1 byte-equal 
+cmp spot_mac01_drec: 1/1 byte-equal 
+LOOP TIME host+build 19 s, run+cmp 47 s, total 66 s
+LOOP PASS
