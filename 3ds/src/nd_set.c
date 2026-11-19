@@ -230,6 +230,7 @@ void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, 
     if (oml == 0x00504B50u && PMDL("orbdbg")) sr_orb_log(oml, rs); /* FX1-2b: the render state the glow's draws get, once per frame. HCCUT3: cold */
     pm_gpu_render_src(omh, oml, rs->depth);
 }
+int nd_snap_rdiff(const NdRender* rs, int mixk, unsigned mixc); extern unsigned char nd_c0d; /* NAT1D */
 void nd_rnd_sync(void) {
     const unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
     if (nd_sr_same(sg)) return;
@@ -245,5 +246,6 @@ void nd_rnd_sync(void) {
     }
     nd_render_state(nd_ws.omode_h, m, nd_img_role(0) == ROLE_DEPTH, &rs);
     nd_render_apply(&rs, mixk, mixc, nd_ws.omode_h, m, sg);
+    nd_c0d = (unsigned char)((nd_c0d & ~2u) | (nd_snap_rdiff(&rs, mixk, mixc) ? 2u : 0u)); /* NAT1D */
     nd_c0w |= 2u; nd_c0_src(); /* NAT1B */
 }

@@ -600,6 +600,7 @@ extern const uint32_t* nd_stream_cur; static uint32_t c0_wk, c0_k[8]; static uns
 void nd_c0_src(void) { const uint32_t* s = nd_stream_cur; c0_wk = !s ? 0u : (s[0] >> 24) == 10u ? s[1] : (s[0] >> 24); } /* NAT1B: op, or the runner of NDC_NAPI */
 static void c0_who(void) { for (unsigned i = 0; i < c0_kn; i++) if (c0_k[i] == c0_wk) { c0_kc[i]++; return; } /* NAT1B */
     if (c0_kn < 8u) { c0_k[c0_kn] = c0_wk; c0_kc[c0_kn++] = 1u; } else c0_ko++; }
+unsigned char nd_c0d; static uint32_t c0_dk[8]; static unsigned c0_dkc[8], c0_dkn, c0_wd; static void c0_dwho(void) { c0_wd++; for (unsigned i = 0; i < c0_dkn; i++) if (c0_dk[i] == c0_wk) { c0_dkc[i]++; return; } if (c0_dkn < 8u) { c0_dk[c0_dkn] = c0_wk; c0_dkc[c0_dkn++] = 1u; } } /* NAT1D */
 static NdDrecSpan drec_span[1 + OFF_N + SMALL_N]; static uint32_t drec_nspan; /* DRECTEX */
 #define DREC_REGS 640u
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
@@ -630,6 +631,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     fclose(drec_f); free(drec_vb); free(drec_regs); free(drec_idx);
     pm_log_evt("c0src f%u draws %u mdl %u wcomb %u wrnd %u wbind %u snb %u snn %u snm %u", pm_frame_count(), c0_d, c0_m, c0_c, c0_r, c0_b, nd_snb, nd_snn, nd_snm); /* NAT1 */
     for (unsigned i = 0; i < c0_kn; i++) pm_log_evt("c0who k %08x n %u", (unsigned)c0_k[i], c0_kc[i]); pm_log_evt("c0who over %u", c0_ko); /* NAT1B */
+    pm_log_evt("c0diff f%u wdiff %u", pm_frame_count(), c0_wd); for (unsigned i = 0; i < c0_dkn; i++) pm_log_evt("c0dwho k %08x n %u", (unsigned)c0_dk[i], c0_dkc[i]); /* NAT1D */
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
     drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_idx = NULL; drec_idx_cap = 0; drec_on = 0; drec_win = -1; /* one window per run */
 }
@@ -1328,7 +1330,7 @@ static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
 }
 static __attribute__((cold, noinline)) void c0_count(const NdDraw* d) { /* NAT1: one drec draw by the source of its state */
     if (!drec_f) return; if (ndt_mdl) { c0_m++; return; } /* NAT1 */
-    c0_d++; if (nd_c0w & 3u) c0_who(); /* NAT1B */ c0_c += nd_c0w & 1u; c0_r += (nd_c0w >> 1) & 1u; if (d->u[0].dim) c0_b += (nd_c0w >> 2) & 1u; } /* NAT1 */
+    c0_d++; if (nd_c0w & 3u) c0_who(); if (nd_c0w & nd_c0d & 3u) c0_dwho(); /* NAT1D */ /* NAT1B */ c0_c += nd_c0w & 1u; c0_r += (nd_c0w >> 1) & 1u; if (d->u[0].dim) c0_b += (nd_c0w >> 2) & 1u; } /* NAT1 */
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
     PH_ADD(C_NDRAW, 1); PH_ADD(C_NIDX, dp->nidx); /* FXCEN1 */
