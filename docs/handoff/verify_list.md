@@ -24,3 +24,6 @@ Row TATTLEAR (wide tattle view, cam_main.c set_cam_viewport, 16C8E0.c scissor). 
 ## d. Option rows (OPTIONS) and Speed x2
 Fix: Merge OPTIONS (pm_options.c, pm_dbg_game.c, pm_speedx2.h). Host test speedx2.sh.
 User: on an O3DS the C-Stick dead zone, ZL, ZR and C-Stick map rows are hidden. Stats and Position HUD show grey while HUD is off. Fixed Seed shows On or Off at restart. Speed x2: turn it on, change map: the walk speed stays at 2 x the base and does not grow.
+## e. Crystal ball depth mask (NAT3D)
+Fix: Merge NAT3D (nd_geom.c gv_epoch_enter: no walker render sync on an epoch with no snap; the snap memo holds the target role, so the zmark turns off at the next role change).
+User: in Toad Town, in the house with the crystal ball (Merlon), look at the ball: it draws whole, and the walls behind it show no depth holes.
