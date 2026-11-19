@@ -1,0 +1,27 @@
+build3ds/azt/logs/entcape_kmr03_drec.txt:#207 epbad f200 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/entcape_kmr03_drec.txt:#210 epbad f201 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/entcape_kmr03_drec.txt:#214 epchk f201 units 17674 bad 164 marks 10452
+build3ds/azt/logs/entcape_kmr03_drec.txt:#215 epbin id 33 dir 1 n 1
+build3ds/azt/logs/entcape_kmr03_drec.txt:#216 epbin id 45 dir 0 n 163
+build3ds/azt/logs/fxparts_drec.txt:#287 epbad f412 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/fxparts_drec.txt:#289 epbad f412 id 45 dir 0 mw 000 sc_ok 1 sig 1 gen 0 fold 1 a 117e60 b f5fff578
+build3ds/azt/logs/fxparts_drec.txt:#309 epbad f456 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/fxparts_drec.txt:#311 epbad f456 id 45 dir 0 mw 000 sc_ok 1 sig 1 gen 0 fold 1 a 117e60 b f5fff578
+build3ds/azt/logs/fxparts_drec.txt:#332 epbad f500 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/fxparts_drec.txt:#334 epbad f500 id 45 dir 0 mw 000 sc_ok 1 sig 1 gen 0 fold 1 a 117e60 b f5fff578
+build3ds/azt/logs/fxparts_drec.txt:#355 epbad f544 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/fxparts_drec.txt:#357 epbad f544 id 45 dir 0 mw 000 sc_ok 1 sig 1 gen 0 fold 1 a 117e60 b f5fff578
+build3ds/azt/logs/fxparts_drec.txt:#371 epbad f588 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/fxparts_drec.txt:#372 epbad f588 id 45 dir 0 mw 000 sc_ok 1 sig 1 gen 0 fold 1 a 117e60 b f5fff578
+build3ds/azt/logs/fxparts_drec.txt:#456 epbad f632 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/fxparts_drec.txt:#458 epbad f632 id 45 dir 0 mw 000 sc_ok 1 sig 1 gen 0 fold 1 a 117e60 b f5fff578
+build3ds/azt/logs/fxparts_drec.txt:#479 epbad f676 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/fxparts_drec.txt:#481 epbad f676 id 45 dir 0 mw 000 sc_ok 1 sig 1 gen 0 fold 1 a 117e60 b f5fff578
+build3ds/azt/logs/fxparts_drec.txt:#485 epchk f676 units 40680 bad 1024 marks 18643
+build3ds/azt/logs/fxparts_drec.txt:#486 epbin id 33 dir 1 n 1
+build3ds/azt/logs/fxparts_drec.txt:#487 epbin id 45 dir 0 n 1023
+build3ds/azt/logs/spot_mac01_drec.txt:#56 epbad f200 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/spot_mac01_drec.txt:#57 epbad f201 id 45 dir 0 mw 000 sc_ok 1 sig 0 gen 1 fold 0 a ffb3ff b ff2fffff
+build3ds/azt/logs/spot_mac01_drec.txt:#61 epchk f201 units 8928 bad 168 marks 4279
+build3ds/azt/logs/spot_mac01_drec.txt:#62 epbin id 33 dir 1 n 1
+build3ds/azt/logs/spot_mac01_drec.txt:#63 epbin id 45 dir 0 n 167
