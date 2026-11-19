@@ -178,7 +178,7 @@ void scm_store(unsigned sg) {
     if (plan_active) m->plan = cur_plan;
 }
 
-int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan); extern unsigned char nd_c0d; /* NAT1D */
+int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan, int mode5, int pat, int cc_on, unsigned cc, int env_on) /* NAT1F */; extern unsigned char nd_c0d; /* NAT1D */
 void scm_replay(const ScMemo* m) {
     sl_const = m->cc_on; sl_env = m->env_on; if (m->cc_on) sl_cc = m->cc; /* NREC2B: a memo hit leaves sl_* as nd_comb_apply does (snapchk sl) */
     if (m->cc_on) pm_gpu_set_const(m->cc);
@@ -188,7 +188,7 @@ void scm_replay(const ScMemo* m) {
     plan_active = m->plan_on;
     if (m->plan_on) { cur_plan = m->plan; pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1, nd_ws.use_t1); pm_gpu_set_plan(&cur_plan); }
     else pm_gpu_set_combine(leg_mode);
-    nd_c0d = (unsigned char)((nd_c0d & ~1u) | (unsigned)nd_snap_cdiff(m->plan_on, m->leg, &m->plan)); /* NAT1D */
+    nd_c0d = (unsigned char)((nd_c0d & ~1u) | (unsigned)nd_snap_cdiff(m->plan_on, m->leg, &m->plan, m->mode5, m->pat, m->cc_on, m->cc, m->env_on)); /* NAT1D */
     nd_c0w |= 1u; nd_c0_src(); /* NAT1B: after the GPU calls */
 }
 
@@ -338,7 +338,7 @@ void sync_combine_work(void) {
     nd_comb_pick(&in, &o);
     if (o.plan_on) pm_comb_colours(&o.plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
     nd_comb_apply(&o, nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.use_t1, nd_ws.envc);
-    nd_c0d = (unsigned char)((nd_c0d & ~1u) | (unsigned)nd_snap_cdiff(o.plan_on, o.leg, &o.plan)); /* NAT1D */
+    nd_c0d = (unsigned char)((nd_c0d & ~1u) | (unsigned)nd_snap_cdiff(o.plan_on, o.leg, &o.plan, o.mode5, o.pat, o.cc_on, o.cc, o.env_on)); /* NAT1D */
     nd_c0w |= 1u; nd_c0_src(); /* NAT1B: after the GPU calls */
 }
 
