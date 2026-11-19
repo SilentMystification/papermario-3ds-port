@@ -2,7 +2,7 @@
  * order) is compiled once into what it leaves for the next draw: the masked othermode and geometry writes, the texture fields, the combine words
  * and the combine decision (the pso of the range, keyed by the inherited decision inputs). Value units (scissor, viewport, matrix, colour image,
  * fill, fog, blend, prim depth, light and segment words) stay run-time ops and come with each record. Recorded on core 1 (nd_scomp_rec), run on
- * core 0 (nd_scomp_run, an NDC_NAPI runner). A def the compiler refuses is recorded as its ops (the old path). */
+ * core 0 (its units in the stream, then nd_scut_run). A def the compiler refuses is recorded as its ops (the old path). */
 #ifndef ND_SCOMP_H
 #define ND_SCOMP_H
 #include <stdint.h>
@@ -37,7 +37,6 @@ unsigned nd_scomp_find(NdSTab* t, unsigned def_id, const uint32_t key[ND_SC_KEYW
 
 /* Core 1: record def d with its nv value units v (typed units, made with the g macros into a local packet). */
 void nd_scomp_rec(NdSDef* d, const void* v, unsigned nv);
-/* Core 0: the NDC_NAPI runner. */
-void nd_scomp_run(const uint32_t* rec);
+void nd_scut_run(const uint32_t* r); /* NAT5C, core 0: the cut record of a compiled def */
 int nd_scomp_ok(NdSDef* d); /* NREC5, core 0: 1 when the compiler takes d */
 #endif
