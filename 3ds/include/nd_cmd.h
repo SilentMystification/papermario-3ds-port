@@ -8,6 +8,10 @@
 #define ND_CMD_H
 #include <stdint.h>
 
+/* DELGT: the 8-byte word pair of a record or a unit (the layout of the N64 display-list union: w0, w1, 8-byte aligned) */
+typedef union NdW2 { struct { unsigned int w0, w1; } words; long long force_structure_alignment; } NdW2;
+_Static_assert(sizeof(NdW2) == 8, "NdW2"); /* size only: the host -m32 aligns long long to 4 */
+
 enum {
     NDC_END = 0,  /* end of the task stream */
     NDC_JUMP = 1, /* arg2: the next chunk (the rest of this chunk is unused) */
@@ -25,7 +29,7 @@ enum {
 /* Record side (nd_rec.c). */
 const uint32_t* nd_rec_close(void); /* nuGfxTaskStart: NDC_END; returns the head of the task stream */
 
-void nd_rec_model(const void* rec, unsigned words); /* D1: a model record of `words` Gfx pairs (record and R13 words) */
+void nd_rec_model(const void* rec, unsigned words); /* D1: a model record of `words` word pairs (record and R13 words) */
 void nd_rec_spr(const void* rec, const void* geo); /* D2: a sprite record (4 pairs) and its 2 geometry words */
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form); /* D3: the entity draw of a static list (record and its G_DL) */
 void nd_rec_ent(const void* rec);                   /* D3: an entity record with no G_DL (the entcheck END record) */

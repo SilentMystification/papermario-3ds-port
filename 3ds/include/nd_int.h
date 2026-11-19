@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include "ultra64.h"
 #include "nd.h"
+#include "nd_cmd.h"
 
 typedef struct { int p0, p1; float u0, u1; } FoldSeg;
 
@@ -56,7 +57,7 @@ int pm_gpu_spr_native(const uint32_t* rec);
 const float (*pm_gbi_combined_ptr(void))[4];
 int clip_bits4(const float* p);
 int nd_sg_try(const void* l);
-int ent_draw(const Gfx* rec);
+int ent_draw(const NdW2* rec);
 int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
 #define gp_on() (pm_ph_cen) /* PG0 and PERF-GBI counters: phase mode only (PROF2-2: not in a prof sample) */
 int gv_lit_ok(void);
@@ -64,7 +65,7 @@ int is_host(u32 p);
 int lt_mem_same(u32 w0, u32 w1);
 int pm_gpu_spr_native(const uint32_t* rec);
 unsigned gv_matrix_id(int need_nm);
-unsigned rec_run(const Gfx* q);
+unsigned rec_run(const NdW2* q);
 int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
 unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
@@ -147,7 +148,7 @@ int nd_unit_same(const uint32_t* u);    /* HC4a: nd_set.c, the typed scalar ops 
 void nd_unit_apply(const uint32_t* u);
 void nd_bad_next(u32 w1, u32 w0, u32 list);
 void nd_bad_vtx(u32 w1, u32 w0, u32 list);
-void nd_bad_mtx(u32 w0, u32 w1, Gfx* list, Gfx* pc);
+void nd_bad_mtx(u32 w0, u32 w1, NdW2* list, NdW2* pc);
 void set_scissor(u32 w0, u32 w1);
 void set_blendcolor(u32 w1);
 void set_fogcolor(u32 w1);
@@ -165,7 +166,7 @@ void nd_light_count(u32 w1);                 /* ST-1: the former pm_gbi.c, G_MW_
 extern unsigned lt_n;                        /* the former pm_gbi.c, lights count (GM-1) */
 extern unsigned fogc, blendc;                /* ST-1: nd_state.c */
 extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
-int ent_gdl(const Gfx* l);
+int ent_gdl(const NdW2* l);
 extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
 extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside nd_eg_run; full combine and render syncs and walks run there (entsync line) */
@@ -271,7 +272,7 @@ void dlc_report(void);
 /* WK-3 (nd_target.c): the colour image role and the z helpers, read by the former pm_gbi.c and the rect and state modules. */
 unsigned word_5551(unsigned rgba);
 /* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
-void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list);
+void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list);
 void draw_tri(unsigned w);
 void gv_params_calc(unsigned tss, NdGvP* o);
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
@@ -330,7 +331,7 @@ typedef struct {
     u8 useseg; /* S SGEN-1: the list reads vertices through a segment address: its entries are keyed by the segment bases (ent_segkey) */
     u8 v2; /* EMIT4: flat words from device entries only: the hash covers the vertex span */
     u16 calls, pcalls; u32 cf; /* PBATCH1: calls in frame cf, calls in the frame before */
-    Gfx* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
+    NdW2* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
     struct NdSDef* tail; /* S6E: the units after the last segment, or NULL */
 } EntKey;
 enum { ENT_NEW, ENT_OK, ENT_REF, ENT_DYN };
@@ -346,20 +347,20 @@ void dlc_reset(void);
 unsigned dlc_gmi(void);
 int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi);
 void ent_reset(void);
-void nd_eg_build(EntKey* k, const Gfx* l0);
-EntKey* ent_lookup(const Gfx* l, u32 vb);
-EntKey* ent_find(const Gfx* l, u32 vb);
+void nd_eg_build(EntKey* k, const NdW2* l0);
+EntKey* ent_lookup(const NdW2* l, u32 vb);
+EntKey* ent_find(const NdW2* l, u32 vb);
 int ent_seg_native(const EntKey* k, const EntSeg* s);
 void ent_log(void);
-int nd_eg_run(const Gfx* l, EntKey* k, u32 segid);
+int nd_eg_run(const NdW2* l, EntKey* k, u32 segid);
 u32 ent_segkey(void);
 int entchk_on(void);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx);
 /* LS-2 (nd_ent.c): the entity record case of G_PM_ENT (the walk calls it). */
-int nd_ent_case(const Gfx* rec, u32 w0, u32 w1);
+int nd_ent_case(const NdW2* rec, u32 w0, u32 w1);
 void pm_gbi_ent_texchk(const uint32_t* dl);
 void pm_gbi_ent_segchk(const uint32_t* dl);
-extern Gfx ent_flat_buf[];
+extern NdW2 ent_flat_buf[];
 extern NdEntSeg ent_sbuf[];
 extern u32 dlc_words[];
 uint8_t* nd_env_valloc(unsigned n, unsigned* first);

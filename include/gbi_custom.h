@@ -2,6 +2,7 @@
 #define _GBI_CUSTOM_H_
 
 #include "ultra64.h"
+#include "nd_cmd.h"
 
 
 
@@ -13,15 +14,15 @@
 
 
 #define G_PM_REC 0x0D /* M4-2, S3F-4: producer record of a model (model.c), pm_gbi.c rec_run */
-/* S4-1: producer record of one sprite component (sprite.c spr_appendGfx_component, TARGET_3DS): 4 Gfx words after the header, the old words follow.
-  * w0 (header): G_PM_SPR << 24 | flags << 16 | alpha << 8 | offset (bits 0 to 7: words from the record to the final gSPVertex). w1: the render mode list (Gfx*).
+/* S4-1: producer record of one sprite component (sprite.c spr_appendGfx_component, TARGET_3DS): 4 NdW2 words after the header, the old words follow.
+  * w0 (header): G_PM_SPR << 24 | flags << 16 | alpha << 8 | offset (bits 0 to 7: words from the record to the final gSPVertex). w1: the render mode list (NdW2*).
   * word 1: w0 raster, w1 palette. word 2: w0 matrix (the matrixStack entry), w1 vertices (Quad*). word 3: w0 width << 16 | height. */
 #define G_PM_SPR 0x0F
 #define G_PM_SPR_WORDS 4
-/* S6-1: producer record of one entity model draw (entity_model.c appendGfx_entity_model, TARGET_3DS): 4 Gfx words before the draw's old words.
- * w0 (header): G_PM_ENT << 24 | render mode index << 16 | fog bit 0. w1: the model display list (Gfx*).
+/* S6-1: producer record of one entity model draw (entity_model.c appendGfx_entity_model, TARGET_3DS): 4 NdW2 words before the draw's old words.
+ * w0 (header): G_PM_ENT << 24 | render mode index << 16 | fog bit 0. w1: the model display list (NdW2*).
  * word 1: w0 segment id (vertex segment, 0 when none), w1 physical vertex array (0 when none). word 2: w0 matrix flags, w1 the matrixStack entry (Mtx*).
- * word 3: w1 the render mode list (Gfx*, the G_DL the switch emitted, 0 when none). The old words still draw (the dispatch skips the record). */
+ * word 3: w1 the render mode list (NdW2*, the G_DL the switch emitted, 0 when none). The old words still draw (the dispatch skips the record). */
 #define G_PM_ENT 0x11
 #define G_PM_ENT_WORDS 4
 /* S6-2a: w0 bit 8 on a record written after the entity model display list (entcheck only): the walker checks its tile 0 state against nd_dlc_tex_decode of that list. */
@@ -30,7 +31,7 @@
 #define G_PM_ENT_DRAW 0x200u
 /* S6-3: the draw record of a static list drawn with its own G_DL (item entities): writes the 4 words at pkt, the caller advances gMainGfxPos by G_PM_ENT_WORDS. segid and varray: the vertex segment and its array (0 when the list holds direct pointers). */
 #define gPmEntDrawRecord(pkt, list, segid, varray) do { \
-    Gfx* _pmr = (pkt); \
+    NdW2* _pmr = (pkt); \
     _pmr[0].words.w0 = ((u32)G_PM_ENT << 24) | (u32)G_PM_ENT_DRAW; _pmr[0].words.w1 = (u32)(uintptr_t)(list); \
     _pmr[1].words.w0 = (u32)(segid); _pmr[1].words.w1 = (u32)(varray); \
     _pmr[2].words.w0 = _pmr[2].words.w1 = _pmr[3].words.w0 = _pmr[3].words.w1 = 0; \

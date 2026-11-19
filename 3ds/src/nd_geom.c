@@ -440,7 +440,7 @@ int nd_part_draw(const NdNDev* t) {
     return 1;
 }
 
-void nd_geom_vtx(u32 w0, u32 w1, const Gfx* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */
+void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */
     unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
     ctr_live = 0; /* BTLUI3: a load ends the trace of the last one */
     unsigned n = (w0 >> 12) & 0xff;

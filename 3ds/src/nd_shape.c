@@ -945,7 +945,7 @@ int nd_sg_try(const void* lv) {
 EntKey* ent_tab[ENT_TAB];
 NdEntSeg ent_sbuf[ENT_SEGMAX];
 /* S6-5: the list with the nested lists inlined. 0: a nested target is not host memory, too deep or too long. */
-Gfx ent_flat_buf[ND_DLC_MAXOPS + 1];
+NdW2 ent_flat_buf[ND_DLC_MAXOPS + 1];
 
 __attribute__((cold, noinline)) void dlc_report(void) {
     pm_log_hw("dlc2 f%d tri %u opsrep %u | hashbad %u exitbad %u missing %u slotfix %u ringfail %u ents %u | static grp %u tri %u fail %u full %u batch %u kb %u skip %u grp %u xgrp %u", rm_frame, dlc_c.tri, dlc_c.opsrep, dlc_c.hashbad, dlc_c.exitbad, dlc_c.missing, dlc_c.slotfix, dlc_c.ringfail, dlc_nent, dlc_c.srep, dlc_c.stri, dlc_c.sfail, dlc_c.sfull, dlc_c.batch, pm_gpu_gstat_used() / 64u, dlc_c.skip, dlc_c.grp, dlc_c.xgrp);

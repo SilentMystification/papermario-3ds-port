@@ -1,0 +1,94 @@
+STAGE checks 0 s
+STAGE keys 3 s
+cache selftest ok (a changed byte misses)
+buildslot: slot 1 taken
+STAGE slot-wait 0 s
+STAGE tar-assets 4 s
+gfxcache: miss, build
+gen_gfx_syms: 260 sources 4480 symbols
+gconvobj: hit 120 miss 141
+In file included from 3ds/tools/nd_gfx_conv.c:188:
+3ds/include/nd_int.h:59:20: error: unknown type name 'NdW2'
+   59 | int ent_draw(const NdW2* rec);
+      |                    ^~~~
+3ds/include/nd_int.h:67:24: error: unknown type name 'NdW2'
+   67 | unsigned rec_run(const NdW2* q);
+      |                        ^~~~
+3ds/include/nd_int.h:150:33: error: unknown type name 'NdW2'; did you mean 'NdWs'?
+  150 | void nd_bad_mtx(u32 w0, u32 w1, NdW2* list, NdW2* pc);
+      |                                 ^~~~
+      |                                 NdWs
+3ds/include/nd_int.h:150:45: error: unknown type name 'NdW2'; did you mean 'NdWs'?
+  150 | void nd_bad_mtx(u32 w0, u32 w1, NdW2* list, NdW2* pc);
+      |                                             ^~~~
+      |                                             NdWs
+3ds/include/nd_int.h:168:19: error: unknown type name 'NdW2'
+  168 | int ent_gdl(const NdW2* l);
+      |                   ^~~~
+3ds/include/nd_int.h:274:40: error: unknown type name 'NdW2'
+  274 | void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list);
+      |                                        ^~~~
+3ds/include/nd_int.h:333:5: error: unknown type name 'NdW2'
+  333 |     NdW2* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
+      |     ^~~~
+3ds/include/nd_int.h:349:35: error: unknown type name 'NdW2'
+  349 | void nd_eg_build(EntKey* k, const NdW2* l0);
+      |                                   ^~~~
+3ds/include/nd_int.h:350:26: error: unknown type name 'NdW2'
+  350 | EntKey* ent_lookup(const NdW2* l, u32 vb);
+      |                          ^~~~
+3ds/include/nd_int.h:351:24: error: unknown type name 'NdW2'
+  351 | EntKey* ent_find(const NdW2* l, u32 vb);
+      |                        ^~~~
+3ds/include/nd_int.h:354:21: error: unknown type name 'NdW2'
+  354 | int nd_eg_run(const NdW2* l, EntKey* k, u32 segid);
+      |                     ^~~~
+3ds/include/nd_int.h:359:23: error: unknown type name 'NdW2'
+  359 | int nd_ent_case(const NdW2* rec, u32 w0, u32 w1);
+      |                       ^~~~
+3ds/include/nd_int.h:362:8: error: unknown type name 'NdW2'
+  362 | extern NdW2 ent_flat_buf[];
+      |        ^~~~
+In file included from 3ds/src/nd_texwin.c:6:
+3ds/include/nd_int.h:59:20: error: unknown type name 'NdW2'
+   59 | int ent_draw(const NdW2* rec);
+      |                    ^~~~
+3ds/include/nd_int.h:67:24: error: unknown type name 'NdW2'
+   67 | unsigned rec_run(const NdW2* q);
+      |                        ^~~~
+3ds/include/nd_int.h:150:33: error: unknown type name 'NdW2'; did you mean 'NdWs'?
+  150 | void nd_bad_mtx(u32 w0, u32 w1, NdW2* list, NdW2* pc);
+      |                                 ^~~~
+      |                                 NdWs
+3ds/include/nd_int.h:150:45: error: unknown type name 'NdW2'; did you mean 'NdWs'?
+  150 | void nd_bad_mtx(u32 w0, u32 w1, NdW2* list, NdW2* pc);
+      |                                             ^~~~
+      |                                             NdWs
+3ds/include/nd_int.h:168:19: error: unknown type name 'NdW2'
+  168 | int ent_gdl(const NdW2* l);
+      |                   ^~~~
+3ds/include/nd_int.h:274:40: error: unknown type name 'NdW2'
+  274 | void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list);
+      |                                        ^~~~
+3ds/include/nd_int.h:333:5: error: unknown type name 'NdW2'
+  333 |     NdW2* fw; /* the list with its nested G_DL lists inlined (S6-5), G_ENDDL last: the segment ops index it */
+      |     ^~~~
+3ds/include/nd_int.h:349:35: error: unknown type name 'NdW2'
+  349 | void nd_eg_build(EntKey* k, const NdW2* l0);
+      |                                   ^~~~
+3ds/include/nd_int.h:350:26: error: unknown type name 'NdW2'
+  350 | EntKey* ent_lookup(const NdW2* l, u32 vb);
+      |                          ^~~~
+3ds/include/nd_int.h:351:24: error: unknown type name 'NdW2'
+  351 | EntKey* ent_find(const NdW2* l, u32 vb);
+      |                        ^~~~
+3ds/include/nd_int.h:354:21: error: unknown type name 'NdW2'
+  354 | int nd_eg_run(const NdW2* l, EntKey* k, u32 segid);
+      |                     ^~~~
+3ds/include/nd_int.h:359:23: error: unknown type name 'NdW2'
+  359 | int nd_ent_case(const NdW2* rec, u32 w0, u32 w1);
+      |                       ^~~~
+3ds/include/nd_int.h:362:8: error: unknown type name 'NdW2'
+  362 | extern NdW2 ent_flat_buf[];
+      |        ^~~~
+gen_gfx_tab failed

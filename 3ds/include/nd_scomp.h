@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 typedef struct NdSDef {
-    const void* u;          /* the units (Gfx, typed gs forms) in stream order; a value slot holds a placeholder of its kind */
+    const void* u;          /* the units (NdW2, typed gs forms) in stream order; a value slot holds a placeholder of its kind */
     uint8_t n;              /* units, at most 32 */
     /* set by nd_scomp_analyse (core 1, the first record), read only after */
     uint8_t st;             /* 0 not analysed, 1 compiled form, 2 refused (recorded as ops) */

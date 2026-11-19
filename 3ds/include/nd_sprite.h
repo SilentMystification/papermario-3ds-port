@@ -5,15 +5,15 @@
 #include <stdint.h>
 #include "nd.h"
 
-/* record words (uint32, Gfx order w0 w1 per word): 0 header (flags << 16, alpha << 8), 1 render mode list, 2 raster, 3 palette,
+/* record words (uint32, NdW2 order w0 w1 per word): 0 header (flags << 16, alpha << 8), 1 render mode list, 2 raster, 3 palette,
  * 4 matrix, 5 vertices (Quad*), 6 width << 16 | height, 7 final state list (NULL without a viewport) */
 typedef struct NdSprRec {
     uint32_t flags;          /* bit 0 shading, bit 1 set viewport */
     uint32_t alpha;          /* opacity byte */
-    uint32_t rm;             /* render mode list (Gfx*) */
+    uint32_t rm;             /* render mode list (NdW2*) */
     uint32_t raster, palette;
     uint32_t w, h;
-    uint32_t fin;            /* final state list (Gfx*), 0 when none */
+    uint32_t fin;            /* final state list (NdW2*), 0 when none */
     uint32_t quad;           /* vertices (Quad*, four Vtx), 0 when none */
 } NdSprRec;
 
