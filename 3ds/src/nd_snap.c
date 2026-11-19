@@ -129,9 +129,9 @@ void nd_snapchk_run(const uint32_t* rec) {
 void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed snapshot, at the triangle epoch (nd_geom.c gv_epoch_enter) */
     const unsigned sg = sc_cur.oml ^ (sc_cur.in.omode_h * 2654435761u) ^ sc_cur.geom ^ (unsigned)sc_cur.role;
     nd_snap_rpend = 0; /* DEL3A: the rnd compare is deleted */
-    nd_c0w &= ~2u; /* NAT1 */
-    if (nd_sr_same(sg)) return;
+    if (nd_sr_same(sg)) { nd_c0w &= ~2u; return; } /* NAT1B */
     nd_render_apply(&sc_cur.rs, sc_cur.mixk, sc_cur.mixc, sc_cur.in.omode_h, sc_cur.oml, sg);
+    nd_c0w &= ~2u; /* NAT1B */
 }
 static unsigned char lr_geo; void nd_lsr_geo(void) { lr_geo = 1; } /* NCONV2D: the open list runs ls_run (nd_walk.c) */
 extern int sc_ok, box_folded, dual_on, box_prod, comb_set, comb_alpha_shade; extern unsigned keyc, keys, conv_k4; extern unsigned box_save[4]; /* nd_comb.c */
@@ -174,7 +174,7 @@ void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch sn
     sc_adopt(); /* NCONV2B */
 }
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
-void nd_snap_comb(void) { nd_c0w &= ~1u; /* NAT1 */ nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); }
+void nd_snap_comb(void) { nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); nd_c0w &= ~1u; /* NAT1B */ }
 const NdSnapBind* nd_snap_cur_b(void) { return sc_cur.b; } /* NDR1C */
 /* NDR1C: the render state log of a rectangle (drec runs): one line per frame that differs from the walker. */
 void nd_snap_rlog(void) {

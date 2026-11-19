@@ -66,7 +66,6 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
     if (!o || (o->plan_on && (o->plan.uses_tex1 || o->plan.uses_noise)) || o->pat) return 0; /* the ok test of the former pso decision: nothing it reads is changed */
     {   /* what nd_comb_sync does with the decision (scm_replay) */
         unsigned cc = 0;
-        nd_c0w &= ~1u; /* NAT1: the core 1 decision */
         leg_mode = o->leg; comb_mode5 = o->mode5; box_pat = o->pat; plan_active = o->plan_on;
         ls_use = o->use; ls_why = o->why; ls_cyc = o->cyc; ls_dual = o->dual; ls_frame = rm_frame;
         sl_const = o->cc_on; sl_env = o->env_on; if (o->cc_on) sl_cc = o->cc; /* NREC2B: as nd_comb_apply */
@@ -84,6 +83,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
             pm_gpu_set_combine(leg_mode);
         }
     }
+    nd_c0w &= ~1u; /* NAT1B: the core 1 decision, after the GPU calls */
     nd_sr_forget(); /* nd_comb_sync of the stream path clears it when the inputs change: the render state is made again */
     nd_rnd_sync();
     return 1;
@@ -91,7 +91,6 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
 
 /* Tile 0 = d: the state nd_tsz_set leaves for the bind (origin, quarter texel offsets, the repeated-load record) and the bind. */
 int nd_direct_tex(const NdBindDesc* d) {
-    nd_c0w &= ~4u; /* NAT1: a stated bind */
     nd_ws.tile_x0 = d->x0;
     nd_ws.tile_y0 = d->y0;
     nd_ws.tile_fx = (float)(d->sz[0] & 3) * 0.25f; /* PT38 */
@@ -99,7 +98,7 @@ int nd_direct_tex(const NdBindDesc* d) {
     tsz_last.ok = 0;
     tsz_last.src = (const u8*)d->src; tsz_last.fmt = d->fmt; tsz_last.siz = d->siz; tsz_last.w = d->w; tsz_last.h = d->h;
     tsz_last.stride = d->stride; tsz_last.pal = d->pal; tsz_last.pal_n = d->pal_n;
-    return nd_tex_bind_desc(d, 0);
+    { const int r = nd_tex_bind_desc(d, 0); nd_c0w &= ~4u; return r; } /* NAT1B */
 }
 
 /* One texture rectangle of tile 0: nd_trect_draw (nd_rect.c) for a 1 or 2 cycle rectangle with no tile shift, no tile 1 and a main colour image. */
