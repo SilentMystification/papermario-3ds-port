@@ -7,11 +7,11 @@ Edit only: 3ds/src/nd_rec.c (nd_rec_nr, the NAT4A/NAT4B mark line), 3ds/src/nd_w
 - FACT UD-N5 (user yes): a cut that moves to the core 1 mark passes when the first DIFF frame logs `epcut f<n>` (epk_note, NAT4C).
 ## Edits (changed lines end with `/* NAT4F */`)
 1. nd_rec.c, the mark line (NAT4B): the class test `id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB` gets `|| id == ND_FS_OMH || id == ND_FS_TEXTURE` added.
-2. nd_walk.c nr_set, the NAT4C/NAT4D block becomes (the count lines stay as they are):
+2. nd_walk.c nr_set, the NAT4C/NAT4D block becomes (FACT NAT4D: epchk bad rose to 2321, 1762, 8877, 2825 because nd_unit_same compares the stale combine-class fields: count only OMH and TEXTURE now):
 ```c
     { const unsigned i_ = u[0] >> 24; const int ca_ = i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB, cb_ = i_ == ND_FS_OMH || i_ == ND_FS_TEXTURE;
       if (ep_stream && ex_depth == 0 && (ca_ || cb_)) {
-        nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); }
+        if (cb_) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } } /* NAT4F: count only OMH, TEXTURE (the combine class fields are stale on core 0 since NAT4D) */
         const int mk_ = ep_mark != 0; ep_mark = 0;
         if (ca_) { if (mk_) gv_epoch++; return; } /* NAT4D: the combine class is not run */
         cut = mk_; } } /* NAT4F: OMH and TEXTURE cut on the mark and still run when they change a field */
