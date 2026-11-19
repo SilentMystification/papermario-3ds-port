@@ -236,6 +236,7 @@ int pm_drec_now(void); extern int sc_ok; extern unsigned sc_sig, comb_gen, cmb_g
 static __attribute__((cold, noinline)) void epk_note(unsigned id, int same, const uint32_t* u) { /* NAT4B: one disagreement */
     const unsigned dir = same ? 1u : 0u; /* 0: core 0 cuts with no mark, 1: a mark and core 0 skips */
     epk_h[id & 63u][dir]++;
+    { static unsigned fr = ~0u; if (pm_drec_now() && pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("epcut f%u", fr); } } /* NAT4C: one line per drec frame with a changed cut */
     if (epk_nl < 24u && pm_drec_now()) { epk_nl++; pm_log_evt("epbad f%u id %u dir %u mw %03x sc_ok %d sig %d gen %d fold %d a %06x b %08x", pm_frame_count(), id, dir, ep_mark ? (unsigned)ep_mw : 0u,
         sc_ok, sc_sig_now() == sc_sig, cmb_gen_seen == comb_gen, box_folded, (unsigned)(u[0] & 0xffffffu), (unsigned)u[1]); }
 }
@@ -243,14 +244,17 @@ void nd_epk_log(void) { for (unsigned i = 0; i < 64u; i++) for (unsigned d = 0; 
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
-    const int same = nd_unit_same(u); { const unsigned i_ = u[0] >> 24; if (ep_stream && ex_depth == 0 && (i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB)) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } ep_mark = 0; } } /* NAT4A */ /* NAT4B: note before ep_mark clears */
-    if (same) return; /* NAT4A */
+    const int same = nd_unit_same(u); int cut = !same; /* NAT4C: the cut of this unit */
+    { const unsigned i_ = u[0] >> 24; if (ep_stream && ex_depth == 0 && (i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB)) {
+        nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); }
+        cut = ep_mark != 0; ep_mark = 0; if (!cut) return; } } /* NAT4C: the core 1 mark decides the cut; no mark: no change (core 1 change bit 0) */
+    if (same && !cut) return;
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
-    gv_epoch++; /* GV1b; NST2H source */
+    if (cut) gv_epoch++; /* GV1b; NST2H source; NAT4C: the cut */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, id, u[0], u[1]);
-    nd_unit_apply(u);
+    if (!same) nd_unit_apply(u); /* NAT4C */
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
