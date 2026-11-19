@@ -51,6 +51,6 @@ Files are disjoint inside each wave, except NAT3C before NAT3D (nd_geom.c). W1 t
 - R3 core 0 falls in both placements (the interpreter and the copy of the syncs go). P2 adds (b) per new snap: GUESS the cost of nd_comb_sync today.
 - R4 a ring switch (X3) adds a vertex copy per entity vertex per frame on core 0. R5 the texel test on core 1 reads texture RAM one frame before the draw (FACT NDR0D took it with snapchk bad 0, plan_finish.md:24).
 ## 7. User decisions (defaults)
-- UD-N1 placement of (b): P1 (core 1) or P2 (core 0). Recommendation: P1 now, decide again with the NATM numbers (P2 when wwait is 2 ms or more).
+- UD-N1 placement of (b): P1 (core 1). FACT NATM (O3DS .170, build 9cd355b1af, f1618 w300): core 0 wks 52.60 ms, core 1 lgms 40.41 ms, wwait 0.54 ms. Core 0 is the long pole, so (b) stays off core 0. Both cores are over 33.4 ms (30 fps).
 - UD-N2 expected-diff gate for the particle vprim (X1). Default yes. UD-N3 one console prof capture now (capture_NATM.md, about 2 min). Default yes.
 - UD-N4 entity and shape draws keep the static pool (byte-equal) or move to the ring (diff, more core 0 work). Default keep.
