@@ -201,8 +201,7 @@ void nd_xf_popb(u32 w1) {
 void rec_lights(const Lightsn* L, unsigned k) {
     if (k > 7u) return;
     const unsigned n = k ? k : 1u; /* NUMLIGHTS_0 is 1 */
-    const uint32_t t[2] = { ND_FS_W0(ND_FS_MW, ND_FS_MW_NUMLIGHT << 16), NUML(n) };
-    if (!nd_unit_same(t)) nd_unit_apply(t);
+    nd_light_count(NUML(n)); /* NAT5F: set_mw NUMLIGHT (nd_set.c:110); nd_unit_same is 0 for it (:143) */
     for (unsigned i = 1; i <= n + 1u; i++) {
         const u32 a = (((u32)sizeof(Light) - 1u) / 8u) << 19 | ((i * 24u + 24u) / 8u) << 8 | G_MV_LIGHT;
         const u32 b = (u32)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a);

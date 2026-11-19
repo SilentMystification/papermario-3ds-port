@@ -13,6 +13,7 @@
 #include "nd_dual.h"
 #include "macros.h"
 #include "nd_fs.h"
+unsigned char nd_alt_raw_on; __attribute__((weak)) void nd_alt_put(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; } /* NAT5F */
 unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */ __attribute__((weak)) void nd_lsc_tris(unsigned n) { (void)n; } /* NREC4 */ __attribute__((weak)) void nd_lsc_ep(void) {} /* NCONV2C */
 
 extern int pm_wide;  /* nd_set.c set_scissor: the wide sign rule */
@@ -414,6 +415,7 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
     for (unsigned i = 0; i < n; i++) {
         const uint32_t w0 = u[2u * i], w1 = u[2u * i + 1u];
         if (raw && (w0 >> 24) == ND_FS_END) return;
+        if (nd_alt_raw_on && depth == 0u) nd_alt_put(w0, w1); /* NAT5F: the top units, raw, as core 0 runs them */
         if ((w0 >> 24) == ND_FS_CALL) {
             ds_list_at(s, w1, depth + 1u);
             if (w0 & 1u) return;

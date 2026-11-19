@@ -88,6 +88,7 @@ void nd_fill_run(const uint32_t* u); /* nd_direct.c, core 0: the NDC_NAPI runner
 void nd_fill_rec(const NdFillRec* f); /* nd_direct.c, core 1, NDR2A: a fill record: its pso snap, the record run and the feed of nd_ds */
 void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim); /* nd_direct.c, core 1, NDR2A: a direct record with its pso snap */
 void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost); /* nd_rec.c, core 1, NAT5R: a record and its fallback units as an alt range */
+uint32_t* nd_alt_open(void); void nd_alt_close(uint32_t* br, uint32_t* ab); extern unsigned char nd_alt_raw_on; /* NAT5F, nd_rec.c and nd_ds.c, core 1 */
 void nd_alt_run(const uint32_t* ab); /* nd_rec.c, core 0, NAT5R: the alt range [ab[0], ab[1]) of a record (a spare unit) */
 void nd_dir_rec_alt(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an); /* nd_direct.c, NAT5R */
 uint32_t nd_dir_prim1(void); /* nd_direct.c, core 1, NDR2A: nd_direct_prim at record time (game files do not include nd_ds.h) */

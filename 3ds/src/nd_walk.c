@@ -364,7 +364,8 @@ void nd_nr_exec(const uint32_t* q, unsigned n) { /* DEL1D2: was nd_walk_state */
     }
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
-void nd_nr_run(const uint32_t* rec) { ep_stream = 1; nd_nr_exec(rec, (rec[-2] >> 16) & 0xffu); ep_stream = 0; } /* NAT4A */
+static unsigned char alt_raw; static void ls_run(const uint32_t* q, unsigned n); /* NAT5F */
+void nd_nr_run(const uint32_t* rec) { const unsigned n = (rec[-2] >> 16) & 0xffu; if (alt_raw && nd_ls_on) ls_run(rec, n); else { ep_stream = !alt_raw; nd_nr_exec(rec, n); ep_stream = 0; } } /* NAT4A; NAT5F: a raw alt run takes the list executor */
 void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
     nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
 static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of a list with a snap table: nd_walk_state without the combine units */
@@ -472,7 +473,7 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
 unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
 void nd_ntab_run(const NdNDev* e) { if (nd_ls_on) { nd_lsr_geo(); ls_run(e->u, e->nu); } else nd_nr_exec(e->u, e->nu); } /* NCONV2D: a list with a snap table runs without its combine units */
-static void gt_body(const NdNDev* nt) { nd_gtr_ntab++; nd_ntab_run(nt); } /* DEL5B2: every list runs its v2 entry */
+static void gt_body(const uint32_t* rec) { nd_gtr_ntab++; if (nd_ls_on) nd_lsr_geo(); alt_raw++; nd_alt_run(rec + 6); alt_raw--; } /* NAT5F: as nd_ntab_run, from the stream copy */
 static __attribute__((cold, noinline)) void entcap_so(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
     const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap so l %08x s %08x", a, site); }
@@ -484,7 +485,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
         pm_walk_side++;
         pm_gbi_cur_op = G_PM_LST; gv_epoch++; ent_skipgen = 0; gp_prev_op = -1; /* NAT5W: the MISC_LST unit (nr_ctl) */
-        gt_body(nt);
+        gt_body(rec);
         pm_walk_side--;
         return;
     }
@@ -511,7 +512,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     gp_prev_op = -1;
     pm_walk_side++;
     ex_depth = d + 1;
-    gt_body(nt);
+    gt_body(rec);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();
