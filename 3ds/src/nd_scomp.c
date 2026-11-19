@@ -141,30 +141,19 @@ static __attribute__((cold, noinline)) void rec_ops(const NdSDef* d, const uint3
 }
 void nd_scomp_rec(NdSDef* d, const void* vv, unsigned nv) {
     const uint32_t* v = (const uint32_t*)vv;
-    uint32_t p[2u + 2u * 32u];
     if (!d->st) d->st = nd_scomp_analyse(d) ? 1u : 2u;
     if (d->st != 1u || nv != d->nv || nv > 32u) { rec_ops(d, v, nv); return; }
-    p[0] = (uint32_t)(uintptr_t)d;
-    p[1] = nv;
-    memcpy(p + 2, v, nv * 8u);
-    nd_rec_napi(nd_scomp_run, p, 1u + nv);
+    for (unsigned j = 0; j < d->pre; j++) if (v[2u * j] != ND_NOP_A) nd_rec_nr(v[2u * j], v[2u * j + 1u]); /* NAT5C: the order of the old nd_scomp_run: the pre value units */
+    { const uint32_t* t = (const uint32_t*)d->u; for (unsigned k = 0; k < d->n; k++) if (!(d->vmask >> k & 1u) && t[2u * k] != ND_NOP_A) nd_rec_nr(t[2u * k], t[2u * k + 1u]); } /* NAT5C: the static units */
+    { const uint32_t c[2] = { (uint32_t)d->last_op, 0u }; nd_rec_napi(nd_scut_run, c, 1u); } /* NAT5C: the cut and the render resync of the old run (a command, as the old record) */
+    for (unsigned j = d->pre; j < nv; j++) if (v[2u * j] != ND_NOP_A) nd_rec_nr(v[2u * j], v[2u * j + 1u]); /* NAT5C: the post value units */
     { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("scomp rec f%u", pm_frame_count()); } } /* DSDUP: a compiled record was taken */
-    nd_ds_scomp(&nd_ds, (const uint32_t*)d->u, d->n, d->vmask, v, nv, nd_ds_unit); /* NST2C */
 }
 
 /* ---- core 0: the run ---- */
 /* DEL3B: a compiled record in the order of the old sc_exec: the pre value units, the static and no-op units of d in def order (nd_walk_state
  * skips a no-op), the cut and the render resync, the post value units. The static units take the walker decision (nd_comb_sync), as a list def (NREC5). */
-static __attribute__((cold, noinline)) void sr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("scomp run f%u", pm_frame_count()); } } /* DEL3B: the path ran */
-void nd_scomp_run(const uint32_t* rec) {
-    const NdSDef* d = (const NdSDef*)(uintptr_t)rec[0];
-    const uint32_t* v = rec + 2, * t = (const uint32_t*)d->u;
-    sr_note();
-    if (d->pre) nd_nr_exec(v, d->pre);
-    for (unsigned k = 0; k < d->n; k++) if (!(d->vmask >> k & 1u)) nd_nr_exec(t + 2u * k, 1u);
-    sr_ok = 0; gv_epoch++; pm_gbi_cur_op = d->last_op; /* the cut of the old compiled run */
-    if (d->nv > d->pre) nd_nr_exec(v + 2u * d->pre, d->nv - d->pre);
-}
+void nd_scut_run(const uint32_t* r) { sr_ok = 0; gv_epoch++; pm_gbi_cur_op = r[0]; } /* NAT5C: the cut and the render resync of the old compiled run (DEL3B) */
 /* NREC5, core 0: 1 when the compiler takes d (st 1). The callers run the units of d and keep the cut and the render resync of the old compiled run (sc_exec). */
 int nd_scomp_ok(NdSDef* d) {
     if (__builtin_expect(!d->st, 0)) d->st = nd_scomp_analyse(d) ? 1u : 2u;
