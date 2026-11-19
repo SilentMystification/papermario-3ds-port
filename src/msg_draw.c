@@ -1730,6 +1730,8 @@ static void msg_glyph_emit(const NdGlyphRec* r, uint32_t** o) {
 
 static void msg_glyph_run(const uint32_t* u) {
     const NdGlyphRec* r = (const NdGlyphRec*)u;
+    uint32_t buf[48];
+    uint32_t* nrp = buf;
     static unsigned g_dir, g_fb, g_next;
 
     if (pm_frame_count() >= g_next) { /* census every 300 frames: glyphs drawn direct (gdir) and handed to the old list (gfb) */
@@ -1743,7 +1745,16 @@ static void msg_glyph_run(const uint32_t* u) {
     }
     g_fb++;
     nd_c0fb_note(3u, (unsigned)(30 - nd_direct_ready())); /* NAT5D */
-    nd_alt_run(u + 2u * (unsigned)(sizeof(NdGlyphRec) / 8u)); /* NAT5R */
+    msg_glyph_emit(r, &nrp);
+    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+}
+
+/* NST2E: the units of one glyph record feed core 1's nd_ds (record site msg_draw_char). */
+static void msg_glyph_feed(const uint32_t* u) {
+    uint32_t buf[48];
+    uint32_t* p = buf;
+    msg_glyph_emit((const NdGlyphRec*)u, &p);
+    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
 }
 
 void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 charIndex, s32 palette, s32 posX, s32 posY) {
@@ -1850,7 +1861,8 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
         rec.dsdx = dsdx;
         rec.dtdy = dtdy;
         nd_snap_mesh(); /* NDR3 */
-        { uint32_t au[48]; uint32_t* q = au; msg_glyph_emit(&rec, &q); nd_rec_alt(msg_glyph_run, &rec, sizeof rec / 8u, 1, au, (unsigned)(q - au) / 2u, 0); } /* NAT5R */
+        nd_rec_napi_s(msg_glyph_run, &rec, sizeof rec / 8u);
+        msg_glyph_feed((const uint32_t*)&rec);
     }
 
 #if VERSION_IQUE
