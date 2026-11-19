@@ -1,0 +1,2 @@
+build3ds/azt/logs/fxparts_drec.txt:#606 c0src f676 draws 531 mdl 399 wcomb 94 wrnd 0 wbind 0 snb 34208 snn 29151 snm 25623
+build3ds/azt/logs/spot_mac01_drec.txt:#124 c0src f201 draws 56 mdl 114 wcomb 22 wrnd 0 wbind 0 snb 4133 snn 3633 snm 2631

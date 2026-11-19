@@ -85,7 +85,8 @@ void nd_lsr_begin(const uint32_t* b); void nd_lsr_end(void); void nd_lsr_tri(uns
 unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #define ND_LS_EP 0x80000000u /* NCONV2C: a core 0 cut comes before this range start */
 #define ND_LS_DUP 0x40000000u /* NCONV2C: the range repeats the snap before it; core 0 does not arm it */
-#define ND_LS_ORD(f) ((f) & 0x3fffffffu)
+#define ND_LS_ORD(f) ((f) & 0xffffu) /* NAT2D: ord bits 0-15 */
+#define ND_LS_SNAP(f) (((f) >> 16) & 0x3fffu) /* NAT2D: the snap index of a range */
 #define ND_LS_DSB ((((unsigned)sizeof(NdDs)) + 7u) & ~7u) /* NCONV2D: the core 1 end state after the snaps of a list table */
 void nd_lsr_geo(void);
 #endif
