@@ -351,15 +351,7 @@ void nd_comb_sync(void) {
         sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
         nd_ent_cfull += nd_ent_in;
     }
-    int leg0 = leg_mode, pat0 = box_pat;
-    NdCombIn cin; int chk = combchk_on() ? (comb_in_walker(&cin), 1) : 0; /* S3N-3d: inputs before the work */
-    int hit = 0;
-    { unsigned sig = scm_sig(); ScMemo* m = scm_find(sig); if (m) { scm_replay(m); hit = 1; } else { sync_combine_work_timed(); scm_store(sig); } }
-    if (chk) combchk_run(&cin, !hit);
-    sc_ok = 1;
-    if (leg_mode != leg0 || box_pat != pat0) {   /* the work may change leg_mode and box_pat (inputs): the signature of the next call must start from the new value (PG4: no other input changes, so the hash is made again only then) */
-        sc_sig = sc_sig_now();
-    }
+    sc_ok = 1; /* NAT3A: the combine of each draw comes from its snap (core 1, plan_native.md P1). Core 0 keeps the skip state of nd_unit_same only. */
 }
 
 /* All texels of tile 0 are 1.0 (I4 0xF or I8 0xFF)? Then TEXEL0 * TEXEL1 is TEXEL1. */
