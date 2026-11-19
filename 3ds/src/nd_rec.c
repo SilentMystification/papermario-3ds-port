@@ -412,7 +412,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const unsigned id = w0 >> 24; const int lost = nd_ds.sc_lost, dirty = nd_ds.sc_dirty; /* NAT4A */
     const unsigned ch = nd_ds_apply(&nd_ds, w0, w1); /* NAT4A: nd_ds_unit's work, with the change bit */
     rec_open(); ndc_sw++; if (sh_drop(t)) return; /* NAT4A: rec_op_t, inline */
-    if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) { const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty); if (rc) st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); } /* NAT4B: the cut and its reason */
+    if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB || id == ND_FS_OMH || id == ND_FS_TEXTURE) { const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty); if (rc) st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); } /* NAT4B: the cut and its reason */
     st_put(t[0], t[1]); /* NAT4A */
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
