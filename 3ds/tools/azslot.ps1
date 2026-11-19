@@ -17,6 +17,8 @@ $script:SlotMutex = @{}
 # AZT3-4: the one idle time of a kept Azahar. azreap.ps1 (dot-sources this file) closes it after this many seconds without a run.
 # AZT13 (user, 2026-11-08: reuse instances): 60 min, so a session keeps its Azahars between runs (was 15 min).
 $script:AzIdleSec = 3600
+# AZWARM: the restart key goes to a kept Azahar only when it is this many seconds old (ws_AZWARM F1).
+$script:AzWarmMinAgeSec = 20
 
 # AZT4-1: the cap on live azahar.exe processes of the slot pool, all slots of all worktrees and agents. A constant, not an env value.
 # AZT12-4 (2026-11-08, Ryzen 3950X, RTX 2070 SUPER 8 GB, 64 GB RAM, with the user's apps open): a turbo load Azahar ran 4.2 % slower per
@@ -166,6 +168,11 @@ function Get-WarmState([int]$k, [bool]$turbo, [int]$turbolimit) {
     if (-not $info -or [int]$info.pid -ne $kept.Id) { return "no kept" }
     if ([string]$info.speed -ne (Get-SlotSpeed $k $turbo $turbolimit)) { return "speed" }
     return "warm"
+}
+
+function Get-WarmWaitSec([double]$ageSec) {
+    # AZWARM: seconds to wait before the restart key to a kept Azahar of age $ageSec (0 when it is old enough)
+    return [Math]::Max(0.0, $script:AzWarmMinAgeSec - $ageSec)
 }
 
 function Get-Slot([int]$want, [int]$waitSec, [bool]$turbo = $false, [int]$turbolimit = 0, [bool]$needCold = $false) {

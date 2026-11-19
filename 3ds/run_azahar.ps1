@@ -350,6 +350,12 @@ if ($warm) {
     # writer thread takes the boot lines from its queue, so log.txt starts at "#15 prof=1 log=off" (warmfail_log.txt, 2026-11-08). Every
     # prof run then failed its warm restart after a key that had restarted the game (warmfail_emu.txt: BootGame 0.1 s after the key) and
     # went cold as "restart failed": the "lost key" of pool.log was mostly this. The nonce stays the first switch word (shot lines anchor).
+    $azAge = ((Get-Date) - $kept.StartTime).TotalSeconds # AZWARM: a young Azahar drops the first key (ws_AZWARM F1)
+    $azWait = Get-WarmWaitSec $azAge
+    if ($azWait -gt 0) {
+        Write-PoolLog $slotK "warm age wait" $kept.Id $kept.Id ("age {0:N1} s, wait {1:N1} s before the key" -f $azAge, $azWait)
+        Start-Sleep -Milliseconds ([int][Math]::Ceiling($azWait * 1000))
+    }
     $hk = Get-SlotHotkey $slotK "Restart Emulation"
     $warmDone = $false
     Set-Content $pidFile $kept.Id
