@@ -153,6 +153,7 @@ void nd_walk_rec_model(const NdW2* q) {
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
+static void spr_geo_walk(const uint32_t* g); static void ent_dl_walk(unsigned dbg, const NdW2* c); /* NAT5W */
 /* DIRECT D2: NDC_SPR (nd_rec.c): the sprite record and its vertex and triangle words, at the point of its final draw (the walker state is the
  * draw state). Native, or else the walker loads and draws the two words, as the G_VTX arm. */
 void nd_walk_spr(const NdW2* q) {
@@ -166,7 +167,7 @@ void nd_walk_spr(const NdW2* q) {
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
     if (sh) { extern unsigned char nd_snap_arm; nd_snap_arm = 0; /* NDR4: the native sprite took its snap */ return; }
-    { extern int nd_spr_walk; nd_spr_walk = 1; nd_nr_list(q + G_PM_SPR_WORDS, 2u, 1); nd_spr_walk = 0; } /* WALLSHADE */
+    { extern int nd_spr_walk; nd_spr_walk = 1; spr_geo_walk((const uint32_t*)(q + G_PM_SPR_WORDS)); nd_spr_walk = 0; } /* WALLSHADE; NAT5W */
 }
 static __attribute__((cold, noinline)) void ent_lsr_note(void) { static unsigned char seen; if (!seen) { seen = 1; pm_log_evt("lsnap ent f%u", pm_frame_count()); } } /* NREC2 */
 /* DIRECT D3: NDC_ENT (nd_rec.c): an entity record. A DRAW record that the native path refuses leaves its G_DL to the walker (ent_skipgen,
@@ -183,7 +184,7 @@ void nd_walk_ent(const NdW2* q, unsigned words) {
     NDT_E(te, NDT_ENT);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
-    if (!drawn && words > G_PM_ENT_WORDS) nd_nr_list(q + G_PM_ENT_WORDS, 1u, 1); /* D10c: its G_DL on the op executor (nr_call) */
+    if (!drawn && words > G_PM_ENT_WORDS) ent_dl_walk(dbg, q + G_PM_ENT_WORDS); /* NAT5W */ /* D10c: its G_DL on the op executor (nr_call) */
     nd_lsr_end(); /* NREC2 */
 }
 /* DIRECT D10c: the list executor. A list (a G_DL target, a render mode list) runs on nd_walk_state from its first op to its G_ENDDL (no length:
@@ -400,6 +401,17 @@ void nd_nr_list(const void* l, unsigned n, int keep) {
     tex_streak_flush();
     if (cen) ops_cen_end();
 }
+/* NAT5W: the sprite fallback words VTX(4, 0) and TRI2 (sprite.c:314-317): the list start and end of nd_nr_list (keep 1), the arms of nr_geo. */
+static void spr_geo_walk(const uint32_t* g) {
+    PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
+    pm_gbi_cur_op = ND_FS_VTX; nd_geom_vtx(g[0] & 0xffffffu, g[1], (const NdW2*)g);
+    pm_gbi_cur_op = ND_FS_TRI2; tri_prep_ok = 0; draw_tri(g[2] & 0xffffffu); draw_tri(g[3]);
+    ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
+/* NAT5W: the G_DL unit of a refused entity record: the list start and end of nd_nr_list (keep 1), the CALL arm of nr_ctl. */
+static void ent_dl_walk(unsigned dbg, const NdW2* c) {
+    PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
+    const uint32_t* u_ = (const uint32_t*)c; pm_gbi_cur_op = ND_FS_CALL; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1]); /* NAT5W */
+    ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
 /* DEL1B: n flat units of an entity list (a gap, the loads and ops of a refused segment) with the list start and end of nd_nr_list (keep 1).
  * ENT_GBI (nd_ent.c) ran them with nd_nr_list; the steps and their order are the same. */
 void nd_ent_units(const uint32_t* u, unsigned n) {
@@ -470,9 +482,8 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     PM_WALK_OWN();
     if (rec[1] & 1u) { /* state-only */
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
-        static const uint32_t lst[2] = { ND_FS_W0(ND_FS_MISC, ND_FS_MISC_LST << 16), 0u };
         pm_walk_side++;
-        nd_nr_exec(lst, 1u);
+        pm_gbi_cur_op = G_PM_LST; gv_epoch++; ent_skipgen = 0; gp_prev_op = -1; /* NAT5W: the MISC_LST unit (nr_ctl) */
         gt_body(nt);
         pm_walk_side--;
         return;
