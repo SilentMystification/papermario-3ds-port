@@ -1,0 +1,16 @@
+c0gate file 3ds/src/nd_walk.c 30
+c0gate file 3ds/src/nd_set.c 28
+c0gate file 3ds/src/nd_recs.c 9
+c0gate file 3ds/src/nd_rect.c 6
+c0gate file 3ds/src/nd_tex_set.c 6
+c0gate file 3ds/src/nd_comb.c 5
+c0gate file 3ds/src/nd_direct.c 3
+c0gate file 3ds/src/nd_ent.c 3
+c0gate file 3ds/src/nd_geom.c 3
+c0gate file 3ds/src/nd_shape.c 2
+c0gate file 3ds/src/nd_snap.c 2
+c0gate file src/hud_element.c 1
+c0gate file src/msg_draw.c 1
+c0gate interp_syms box_fold_sync comb_in_walker gt_run ls_run nd_comb_set nd_comb_sync nd_ent_units nd_envc_set nd_list_run nd_nr_exec nd_nr_list nd_nr_run nd_ntab_run nd_range_run nd_rnd_sync nd_set_prim nd_tx_ldblk nd_tx_ldtile nd_tx_ldtlut nd_tx_texon nd_tx_tile nd_tx_timg nd_tx_tsz nd_unit_apply nd_unit_same nr_ctl nr_geo nr_set nr_unknown set_geom set_om set_primdepth set_rare set_scissor
+c0gate state_syms blendc box_folded box_prod box_save cmb_gen_seen comb_alpha_shade comb_gen comb_set conv_k4 dual_on fog_fm fog_fo fogc keyc keys nd_ws sc_ok sc_sig sci_x0 sci_x1 sci_y0 sci_y1 tst_f
+c0gate calls 99 interp 34 state 23
