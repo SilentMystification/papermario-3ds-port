@@ -193,9 +193,10 @@ static uint32_t* rec_take(unsigned n) {
     }
     return p;
 }
+void nd_snap_task(void); /* NAT2J: nd_snap.c */
 static void task_open(void) {
     rec_ctx_check();
-    if (!task_head) { task_head = wp; sh_all(); }
+    if (!task_head) { task_head = wp; sh_all(); nd_snap_task(); } /* NAT2J */
 }
 static void rec_open(void) { task_open(); } /* DEL3C1: no top-level packet on the device */
 static __attribute__((cold, noinline)) void model_bad(unsigned words) {
@@ -547,6 +548,7 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
     if (n++ < 4) pm_log_e("ndc: bad command %08x at %p", (unsigned)h, (const void*)p);
 }
 __attribute__((weak)) void nd_snap_mesh(void) {} /* NDR0E2: strong in nd_snap.c; weak for the host units that link nd_rec.c */
+__attribute__((weak)) void nd_snap_task(void) {} /* NAT2J: host units link nd_rec.c without nd_snap.c */
 __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
