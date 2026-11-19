@@ -386,7 +386,7 @@ function Get-AzaharProc([datetime]$since) {
         $id = [int]((Get-Content $pidFile -Raw).Trim())
         $pr = Get-Process -Id $id -ErrorAction Stop
         # AZFIX: only the Azahar that this run's run_azahar.ps1 started (its parent). A run that waits for the lock sees the other run's PID in the shared file.
-        $par = (Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction Stop).ParentProcessId
+        $par = (Get-CimInstance Win32_Process -Filter "ProcessId=$id" -OperationTimeoutSec 15 -ErrorAction Stop).ParentProcessId
         if ($pr.ProcessName -eq "azahar" -and $pr.StartTime -ge $since -and $par -eq $script:childPid) { return $pr }
     } catch {}
     return $null

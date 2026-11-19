@@ -1046,8 +1046,15 @@ def run_azahar_list(a):
 def queue_line():
     """AZT11-3: the one summary line of the Azahar run queue (azt.ps1 -Queue), printed on every start."""
     try:
-        out = subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(REPO / "3ds" / "tools" / "azt.ps1"), "-Queue"],
-                             cwd=REPO, capture_output=True, text=True, timeout=120).stdout
+        # AZHANG: a child that never exits keeps the pipe open; kill() then never returns on Windows. Wait 60 s, kill, and do not wait again.
+        p = subprocess.Popen(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-File", str(REPO / "3ds" / "tools" / "azt.ps1"), "-Queue"],
+                             cwd=REPO, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+        try:
+            out = p.communicate(timeout=60)[0]
+        except subprocess.TimeoutExpired:
+            p.kill()
+            print("QUEUE: no summary in 60 s (azt.ps1 -Queue killed)")
+            return
         first = [l for l in out.splitlines() if l.startswith("QUEUE:")]
         print(first[0] if first else "QUEUE: no summary from azt.ps1 -Queue")
     except (OSError, subprocess.SubprocessError) as e:
@@ -2934,4 +2941,5 @@ def main(argv):
 
 
 if __name__ == "__main__":
+    sys.stdout.reconfigure(line_buffering=True)  # AZHANG: a redirected run writes each line at once
     sys.exit(main(sys.argv[1:]))

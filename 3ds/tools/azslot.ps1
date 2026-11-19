@@ -36,8 +36,8 @@ function Get-SlotCount {
 }
 
 function Get-LiveAzahar {
-    # AZT4-1: every azahar.exe that runs from a slot folder (build3ds\azslots\slot<k>), of any worktree. Returns the CIM processes.
-    return @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -match '\\azslots\\slot\d+\\azahar\.exe$' })
+    # AZT4-1: every azahar.exe that runs from a slot folder (build3ds\azslots\slot<k>), of any worktree. Returns the processes (Get-Process: CIM hangs on this PC).
+    return @(Get-Process -Name azahar -ErrorAction SilentlyContinue | Where-Object { $_.Path -match '\\azslots\\slot\d+\\azahar\.exe$' })
 }
 
 # AZT6b-1: one line per pool event in build3ds\azslots\pool.log (shared by all worktrees): time, tree, slot, pid old -> new, event, reason.
@@ -55,15 +55,15 @@ function Close-IdleKept([int]$except = 0) {
     # Returns the number closed. A kept Azahar is one with a keep.json in its slot folder. Waits up to 5 s for each process to end.
     $closed = 0
     foreach ($pr in @(Get-LiveAzahar)) {
-        $dir = Split-Path -Parent $pr.ExecutablePath
+        $dir = Split-Path -Parent $pr.Path
         $num = [int]([regex]::Match($dir, 'slot(\d+)$').Groups[1].Value)
         if ($num -eq $except -or -not (Test-Path (Join-Path $dir "keep.json"))) { continue }
         if (-not (Enter-Slot $num 0)) { continue }
         try {
-            Stop-Process -Id $pr.ProcessId -Force -ErrorAction SilentlyContinue
-            for ($i = 0; $i -lt 50 -and (Get-Process -Id $pr.ProcessId -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 100 }
+            Stop-Process -Id $pr.Id -Force -ErrorAction SilentlyContinue
+            for ($i = 0; $i -lt 50 -and (Get-Process -Id $pr.Id -ErrorAction SilentlyContinue); $i++) { Start-Sleep -Milliseconds 100 }
             Remove-Item (Join-Path $dir "keep.json") -ErrorAction SilentlyContinue
-            Write-PoolLog $num "close" $pr.ProcessId "-" "close kept (cap or GPU fault retry)"
+            Write-PoolLog $num "close" $pr.Id "-" "close kept (cap or GPU fault retry)"
             $closed++
         } finally { Exit-Slot $num }
     }
@@ -128,8 +128,8 @@ function Sync-Slot([int]$k) {
 function Get-KeptAzahar([int]$k) {
     # A live azahar.exe of this slot that a run left open (-Keep): the process, else $null
     $s = Get-SlotPaths $k
-    $procs = @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -eq $s.exe })
-    if ($procs.Count) { return Get-Process -Id $procs[0].ProcessId -ErrorAction SilentlyContinue }
+    $procs = @(Get-Process -Name azahar -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $s.exe })
+    if ($procs.Count) { return $procs[0] }
     return $null
 }
 
@@ -290,7 +290,7 @@ function Test-ProcAlive([int]$id, [long]$start) {
     return ($start -eq 0 -or $ticks -eq $start)
 }
 function Get-ParentPid([int]$id) {
-    try { return [int](Get-CimInstance Win32_Process -Filter "ProcessId=$id" -ErrorAction Stop).ParentProcessId } catch { return 0 }
+    try { return [int](Get-CimInstance Win32_Process -Filter "ProcessId=$id" -OperationTimeoutSec 15 -ErrorAction Stop).ParentProcessId } catch { return 0 }
 }
 
 function Invoke-QLocked([scriptblock]$body) {

@@ -116,7 +116,7 @@ function End-Run([int]$rc, [string]$res, [string]$kind = "end") {
     exit $rc
 }
 # azahar.exe processes now: PID, start time, command line (the holder of a shared file is not named, this lists Azahar only)
-function Get-AzaharList { return (@(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue) | ForEach-Object { "pid $($_.ProcessId), started $($_.CreationDate), cmd: $($_.CommandLine)" }) -join " | " }
+function Get-AzaharList { return (@(Get-Process -Name azahar -ErrorAction SilentlyContinue) | ForEach-Object { "pid $($_.Id), started $($_.StartTime), path $($_.Path)" }) -join " | " }
 
 function Kill-Azahar([int]$procId, [string]$why = "kill") {
     # Scoped to the PID this script itself launched - never kills other azahar.exe processes (a
@@ -220,10 +220,10 @@ $sd = $sl.sd; $cfg = $sl.cfg; $exe = $sl.exe; $emuLog = $sl.emuLog; $log = "$sd\
 # The game then runs slowly, and the stall rule below (no new game log line for $Stall s) stops a run with few log lines (prof mode,
 # det audiohash every 120 frames) as silent. Refuse the run: the user closes that Azahar. Slot Azahars of other runs are allowed.
 $slotExeRx = '^' + [regex]::Escape((Join-Path $script:AzRepo "build3ds\azslots\slot")) + '\d+\\azahar\.exe$'
-$foreign = @(Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { -not $_.ExecutablePath -or $_.ExecutablePath -notmatch $slotExeRx })
+$foreign = @(Get-Process -Name azahar -ErrorAction SilentlyContinue | Where-Object { -not $_.Path -or $_.Path -notmatch $slotExeRx })
 if ($foreign.Count -and -not $Interactive) {
     Release-Lock
-    End-Run 3 ("HOST BUSY: azahar.exe not of a slot: {0}. Close it, then run again. Nothing was run." -f (($foreign | ForEach-Object { "pid $($_.ProcessId) $($_.ExecutablePath)" }) -join "; "))
+    End-Run 3 ("HOST BUSY: azahar.exe not of a slot: {0}. Close it, then run again. Nothing was run." -f (($foreign | ForEach-Object { "pid $($_.Id) $($_.Path)" }) -join "; "))
 }
 # AZT3-1: the 3dsx of every lane is copied to the slot rom path, and Azahar boots that path (cold) or restarts it (warm)
 $romFile = $sl.rom; $stopReq = "$($sl.dir)\stop.request" # stopReq: azt.ps1 ends this run early (marker, stall, attract, guard); the Azahar is kept (AZT3-2)
@@ -254,9 +254,9 @@ if (-not $warm -and (Test-Path $pidFile)) {
 if (Test-Path $cfgBak) { Write-Output "Recovery: restoring qt-config.ini saved by a killed run."; Restore-Cfg }
 if (Test-Path $optBak) { Write-Output "Recovery: restoring options.ini saved by a killed run."; Restore-Opt }
 # An azahar.exe of this slot that no run owns (a kill left it): the slot is ours, so stop it.
-foreach ($sp in @(if (-not $warm) { Get-CimInstance Win32_Process -Filter "Name='azahar.exe'" -ErrorAction SilentlyContinue | Where-Object { $_.ExecutablePath -eq $exe } })) {
-    Write-Output "Slot ${slotK}: stopping a stray azahar.exe (pid $($sp.ProcessId))."
-    Kill-Azahar ([int]$sp.ProcessId) "stray azahar of this slot" 
+foreach ($sp in @(if (-not $warm) { Get-Process -Name azahar -ErrorAction SilentlyContinue | Where-Object { $_.Path -eq $exe } })) {
+    Write-Output "Slot ${slotK}: stopping a stray azahar.exe (pid $($sp.Id))."
+    Kill-Azahar ([int]$sp.Id) "stray azahar of this slot" 
 }
 try {
     Set-Content $pidFile $PID # the script PID until Azahar starts, then the Azahar PID
