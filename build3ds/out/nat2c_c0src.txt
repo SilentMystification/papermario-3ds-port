@@ -1,0 +1,2 @@
+build3ds/azt/logs/spot_mac01_drec.txt:#136 c0src f201 draws 56 mdl 114 wcomb 22 wrnd 0 wbind 0 snb 4133 snn 3633 snm 2631
+build3ds/azt/logs/entcape_kmr03_drec.txt:#308 c0src f201 draws 98 mdl 74 wcomb 30 wrnd 0 wbind 4 snb 7190 snn 6538 snm 3996

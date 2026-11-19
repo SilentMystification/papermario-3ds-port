@@ -221,6 +221,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
     { uint32_t* j = p + 2u + 2u * (G_PM_REC_WORDS + keep); j[0] = NDC_HDR(NDC_JUMP, 0, 0); j[1] = (uint32_t)(uintptr_t)(j + 2u + 2u * ND_MSNAP_U); } /* NREC1B */
+    nd_msnap_pre(&nd_ds); /* NAT2C: the state before the record */
     { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
 }
@@ -549,6 +550,7 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
 __attribute__((weak)) void nd_snap_mesh(void) {} /* NDR0E2: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
+__attribute__((weak)) void nd_msnap_pre(const NdDs* s) { (void)s; } /* NAT2C */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
 __attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
 __attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */

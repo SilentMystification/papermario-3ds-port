@@ -8,6 +8,7 @@
 #define ND_MSNAP_MAGIC 0x4d534e50u
 typedef struct NdMSnap {
     uint32_t magic, prim, prim_lod, omh, oml, kh, kl, tss, geom, cw0, cw1, fogc, blendc, envc;
+    uint32_t k_omh, k_oml, k_kh, k_kl, k_geom, k_pad; /* NAT2C: core 1 state before the record (model key B) */
     NdSnapBind b[2];
 } NdMSnap;
 _Static_assert(sizeof(NdMSnap) % 8u == 0u, "units");
@@ -15,4 +16,5 @@ _Static_assert(sizeof(NdMSnap) % 8u == 0u, "units");
 void nd_msnap_take(const NdDs* s, NdMSnap* m);
 unsigned nd_msnap_diff(const NdMSnap* a, const NdMSnap* b, const char** nm, int max, int* nb);
 void nd_msnap_rec(uint32_t* p, unsigned units);
+void nd_msnap_pre(const NdDs* s); /* NAT2C */
 #endif
