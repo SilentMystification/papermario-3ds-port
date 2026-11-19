@@ -2,15 +2,15 @@ STAGE checks 1 s
 STAGE keys 2 s
 cache selftest ok (a changed byte misses)
 buildslot: slot 1 taken
-STAGE slot-wait 0 s
-STAGE tar-assets 5 s
+STAGE slot-wait 2 s
+STAGE tar-assets 7 s
 gfxcache: hit
-STAGE gfx-table 0 s
+STAGE gfx-table 1 s
 hostsel: hit 91 of 91 units, run 91 (PM_HOSTSEL=all: every unit runs)
 STAGE hostsel 2 s
-STAGE container-end 64 s
-STAGE hostsel-store 36 s
-STAGE crash-page 1 s
+STAGE container-end 81 s
+STAGE hostsel-store 49 s
+STAGE crash-page 80 s
 STAGE L26 0 s
 PASS decoder draws 1 line: draw 0 cull 2 tw0 00000011 00000022 00000033 00000044 tw1 00000000 00000000 00000000 00000000 ibuf 00000000 tris 3
 STAGE L27 0 s
@@ -31,10 +31,10 @@ STAGE L42 0 s
 nd_tex units 1087 (param with other bits 0)
 nd_tex: PASS
 STAGE L43 0 s
-STAGE L44 0 s
+STAGE L44 1 s
 pm_tex_idx_test: loads 62048 evicts 61024 reinserts 61024 lookups 814800 live 0
 PM_TEX_IDX TEST PASS
-STAGE L45 4 s
+STAGE L45 3 s
 3ds/tools/nd_cmd_test.c: In function 'main':
 3ds/tools/nd_cmd_test.c:236:72: warning: variable 'd_graw' set but not used [-Wunused-but-set-variable]
   236 |         uint32_t tk[19] = { 0 }, d_decal = 0, d_atest = 0, d_cull = 0, d_graw = 0, tw0[4] = { 0 }, tw1[4] = { 0 };
@@ -76,12 +76,12 @@ ok   ico: tex_on (set by the def) differs: same id
 ok   ico: cycle type (set by the def) differs: same id
 SCOMP TEST PASS
 STAGE L52 0 s
-STAGE L53 0 s
+STAGE L53 1 s
 stale unit0 draw 159: stream dim 00200020 param 00002206 addr 0304b340 | intended dim 00200040 param 00000006 addr 0304b680 lod 00000000
 nd_emit worst case: 628 words without the template, limit 768
 nd_emit: 231 raw draws, 9028 register compares, 6576 uniform word compares, 14858 words native, 1 stale texture draws not compared, 0 skipped PASS
 STAGE L54 0 s
-STAGE L55 1 s
+STAGE L55 0 s
 nd_gbi: 57 words PASS
 STAGE L56 0 s
 STAGE L57 0 s
@@ -89,7 +89,7 @@ nd_dlc ent: PASS
 nd_dlc: lists compiled 262 (groups 776, vertices 12920, triangles 7706), refused op 83 slot 0 vtx 0 long 0
 nd_dlc: PASS
 STAGE L58 0 s
-STAGE L68 0 s
+STAGE L68 1 s
 nd_gv: 200000 random cases, 0 differ PASS
 STAGE L69 0 s
 STAGE L70 1 s
@@ -2266,7 +2266,7 @@ hostd ok
 HOSTD 3ds/tests/host.d/00_hostd.sh 0 s
 host.d: 3ds/tests/host.d/barricade.sh
 barricade ok 2
-HOSTD 3ds/tests/host.d/barricade.sh 0 s
+HOSTD 3ds/tests/host.d/barricade.sh 1 s
 host.d: 3ds/tests/host.d/basebin.sh
 cache store: entry 88b552c499b23a78 failed its check (key or file hash), removed
 cache store: entry 88b552c499b23a78 failed its check (key or file hash), removed
@@ -2296,19 +2296,19 @@ host.d: 3ds/tests/host.d/buildlock.sh
 race: 12 builders, 4 slots, cleaner with planted dead slots: all exit 0, max overlap 4
 interleaving: a late reaper left the retaken slot to its holder
 buildlock test: ok
-HOSTD 3ds/tests/host.d/buildlock.sh 20 s
+HOSTD 3ds/tests/host.d/buildlock.sh 21 s
 host.d: 3ds/tests/host.d/caplog.sh
 caplog ok
 HOSTD 3ds/tests/host.d/caplog.sh 0 s
 host.d: 3ds/tests/host.d/captool.sh
-[logrecv] crash.txt -> /tmp/logrecv_test_w6wmvact/hw_A_crash.txt (10 bytes)
-[logrecv] log.txt -> /tmp/logrecv_test_w6wmvact/hw_A_log.txt (100000 bytes)
-[logrecv] crash.txt -> /tmp/logrecv_test_w6wmvact/hw_B_crash.txt (10 bytes)
-[logrecv] log.txt -> /tmp/logrecv_test_w6wmvact/hw_B_log.txt (100000 bytes)
-[logrecv] crash.txt -> /tmp/logrecv_test_w6wmvact/hw_C_crash.txt (10 bytes)
-[logrecv] log.txt -> /tmp/logrecv_test_w6wmvact/hw_C_log.txt (100000 bytes)
-[logrecv] crash.txt -> /tmp/logrecv_test_w6wmvact/hw_R1_crash.txt (10 bytes)
-[logrecv] log.txt -> /tmp/logrecv_test_w6wmvact/hw_R1_log.txt (100000 bytes)
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_A_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_A_log.txt (100000 bytes)
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_B_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_B_log.txt (100000 bytes)
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_C_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_C_log.txt (100000 bytes)
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_R1_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_R1_log.txt (100000 bytes)
 OK
 captool capture_check ok
 captool ok
@@ -2331,13 +2331,13 @@ ntab notri 595 of 1951
 ntab inherit 0 unsup 0 descs 404
 ntab seeded 356 bad 0
 ntab mesh 6
-HOSTD 3ds/tests/host.d/conv2c.sh 3 s
+HOSTD 3ds/tests/host.d/conv2c.sh 4 s
 host.d: 3ds/tests/host.d/conv2c2.sh
 ntab tables 2019 draws 37559 bad 0
 ntab inherit 0 unsup 0 descs 404
 ntab seeded 356 bad 0
 conv2c2 ok
-HOSTD 3ds/tests/host.d/conv2c2.sh 2 s
+HOSTD 3ds/tests/host.d/conv2c2.sh 1 s
 host.d: 3ds/tests/host.d/decdump.sh
 decdump ok
 HOSTD 3ds/tests/host.d/decdump.sh 0 s
@@ -2347,17 +2347,17 @@ decide entries 4171 bad 1064
 ndr0d core1 bad 0
 decide states 43 entries 4171 bad 0 (plans 1872, leg 4 48, textured 2107)
 decide entries 4171 bad 0
-HOSTD 3ds/tests/host.d/decide.sh 1 s
+HOSTD 3ds/tests/host.d/decide.sh 0 s
 host.d: 3ds/tests/host.d/dlcpre.sh
 dlcpre ok
 HOSTD 3ds/tests/host.d/dlcpre.sh 0 s
 host.d: 3ds/tests/host.d/drec.sh
 drec ok 3
 drec seed ok
-HOSTD 3ds/tests/host.d/drec.sh 1 s
+HOSTD 3ds/tests/host.d/drec.sh 0 s
 host.d: 3ds/tests/host.d/entsrc.sh
 entsrc ok
-HOSTD 3ds/tests/host.d/entsrc.sh 1 s
+HOSTD 3ds/tests/host.d/entsrc.sh 0 s
 host.d: 3ds/tests/host.d/fhash.sh
 fhframe ok 6/6
 fhash ok 6/6
@@ -2371,7 +2371,7 @@ fltgt ok
 HOSTD 3ds/tests/host.d/fltgt.sh 1 s
 host.d: 3ds/tests/host.d/fskip.sh
 fskip ok 12/12
-HOSTD 3ds/tests/host.d/fskip.sh 1 s
+HOSTD 3ds/tests/host.d/fskip.sh 0 s
 host.d: 3ds/tests/host.d/fxlit.sh
 fxlit ok
 HOSTD 3ds/tests/host.d/fxlit.sh 0 s
@@ -2386,26 +2386,26 @@ fxtype test ok
 HOSTD 3ds/tests/host.d/fxtype.sh 0 s
 host.d: 3ds/tests/host.d/gbiprune.sh
 gbiprune ok seed ok
-HOSTD 3ds/tests/host.d/gbiprune.sh 0 s
+HOSTD 3ds/tests/host.d/gbiprune.sh 1 s
 host.d: 3ds/tests/host.d/gconvw.sh
 gen_gfx_syms: 1 sources 2 symbols
 gen_gfx_syms: 1 sources 1 symbols
 gen_gfx_syms: 1 sources 1 symbols
 gconvw ok
-HOSTD 3ds/tests/host.d/gconvw.sh 0 s
+HOSTD 3ds/tests/host.d/gconvw.sh 1 s
 host.d: 3ds/tests/host.d/gdefren.sh
 gen_gfx_syms: 1 sources 3 symbols
 gdefren ok
-HOSTD 3ds/tests/host.d/gdefren.sh 0 s
+HOSTD 3ds/tests/host.d/gdefren.sh 1 s
 host.d: 3ds/tests/host.d/genkey.sh
 genkey ok (paths, reads, must, hit, unread hit, read miss, excl miss, K0, off, check, new file, deleted file, probe, byte)
-HOSTD 3ds/tests/host.d/genkey.sh 0 s
+HOSTD 3ds/tests/host.d/genkey.sh 1 s
 host.d: 3ds/tests/host.d/geounit.sh
 geounit ok 14/14
-HOSTD 3ds/tests/host.d/geounit.sh 2 s
+HOSTD 3ds/tests/host.d/geounit.sh 3 s
 host.d: 3ds/tests/host.d/gfxinc.sh
 gfxinc ok
-HOSTD 3ds/tests/host.d/gfxinc.sh 1 s
+HOSTD 3ds/tests/host.d/gfxinc.sh 2 s
 host.d: 3ds/tests/host.d/gne.sh
 gne ok
 HOSTD 3ds/tests/host.d/gne.sh 0 s
@@ -2414,10 +2414,10 @@ grabfl ok splits 5
 HOSTD 3ds/tests/host.d/grabfl.sh 0 s
 host.d: 3ds/tests/host.d/grabonce.sh
 grabonce ok
-HOSTD 3ds/tests/host.d/grabonce.sh 0 s
+HOSTD 3ds/tests/host.d/grabonce.sh 1 s
 host.d: 3ds/tests/host.d/gset.sh
 gset test ok
-HOSTD 3ds/tests/host.d/gset.sh 1 s
+HOSTD 3ds/tests/host.d/gset.sh 2 s
 host.d: 3ds/tests/host.d/gtin.sh
 gtin ok
 HOSTD 3ds/tests/host.d/gtin.sh 0 s
@@ -2430,7 +2430,7 @@ HOSTD 3ds/tests/host.d/hunit.sh 2 s
 host.d: 3ds/tests/host.d/hwfix.sh
 vpsnap ok 5/5
 scsig ok 10/10
-HOSTD 3ds/tests/host.d/hwfix.sh 1 s
+HOSTD 3ds/tests/host.d/hwfix.sh 0 s
 host.d: 3ds/tests/host.d/hwfix1.sh
 hwfix1 ok 3
 HOSTD 3ds/tests/host.d/hwfix1.sh 0 s
@@ -2439,7 +2439,7 @@ ientry ok
 HOSTD 3ds/tests/host.d/ientry.sh 0 s
 host.d: 3ds/tests/host.d/imgfxtab.sh
 imgfxtab ok 20 lists 746 units
-HOSTD 3ds/tests/host.d/imgfxtab.sh 1 s
+HOSTD 3ds/tests/host.d/imgfxtab.sh 0 s
 host.d: 3ds/tests/host.d/iseed.sh
 iseed ok
 HOSTD 3ds/tests/host.d/iseed.sh 0 s
@@ -2473,7 +2473,7 @@ mapconv seed detected
 HOSTD 3ds/tests/host.d/mapconv.sh 4 s
 host.d: 3ds/tests/host.d/maplag.sh
 maplag ok 5/5
-HOSTD 3ds/tests/host.d/maplag.sh 1 s
+HOSTD 3ds/tests/host.d/maplag.sh 0 s
 host.d: 3ds/tests/host.d/menufl.sh
 menufl ok
 HOSTD 3ds/tests/host.d/menufl.sh 0 s
@@ -2512,13 +2512,13 @@ nconv2c lsr bad 0
 HOSTD 3ds/tests/host.d/ndr0a.sh 0 s
 host.d: 3ds/tests/host.d/nmdl0.sh
 nmdl0 ok 30855
-HOSTD 3ds/tests/host.d/nmdl0.sh 12 s
+HOSTD 3ds/tests/host.d/nmdl0.sh 13 s
 host.d: 3ds/tests/host.d/noinc.sh
 noinc ok
 HOSTD 3ds/tests/host.d/noinc.sh 0 s
 host.d: 3ds/tests/host.d/nolist.sh
 nolist ok good 2 bad 5
-HOSTD 3ds/tests/host.d/nolist.sh 0 s
+HOSTD 3ds/tests/host.d/nolist.sh 1 s
 host.d: 3ds/tests/host.d/nrec1a.sh
 nrec1a seed ok
 nrec1a cases 3 bad 0
@@ -2528,7 +2528,7 @@ nrec2b ok 2
 HOSTD 3ds/tests/host.d/nrec2b.sh 0 s
 host.d: 3ds/tests/host.d/ns3unit.sh
 ns3unit ok 27/27
-HOSTD 3ds/tests/host.d/ns3unit.sh 3 s
+HOSTD 3ds/tests/host.d/ns3unit.sh 4 s
 host.d: 3ds/tests/host.d/nst1.sh
 nst1 seed ok
 nst2b model fields 20 bad 0
@@ -2541,7 +2541,7 @@ ndr0b cases 2 bad 0
 nconv2c ep bad 0
 nst2c fields 79 bad 0
 nst1 fields 79 bad 0
-HOSTD 3ds/tests/host.d/nst1.sh 1 s
+HOSTD 3ds/tests/host.d/nst1.sh 0 s
 host.d: 3ds/tests/host.d/ntab.sh
 ntab ok ops 4 draws 1 idx 3
 HOSTD 3ds/tests/host.d/ntab.sh 0 s
@@ -2561,19 +2561,19 @@ include/functions.h:271:5: warning: conflicting types for built-in function 'ata
 include/functions.h:271:5: note: 'atan2' is declared in header '<math.h>'
 ndev ok
 ntabfind ok
-HOSTD 3ds/tests/host.d/ntabfind.sh 1 s
+HOSTD 3ds/tests/host.d/ntabfind.sh 0 s
 host.d: 3ds/tests/host.d/ntgt.sh
 ntgt ok 16384
 HOSTD 3ds/tests/host.d/ntgt.sh 0 s
 host.d: 3ds/tests/host.d/nxf.sh
 nxf ok 9/9
-HOSTD 3ds/tests/host.d/nxf.sh 1 s
+HOSTD 3ds/tests/host.d/nxf.sh 0 s
 host.d: 3ds/tests/host.d/offpick.sh
 offpick ok 8/8
 HOSTD 3ds/tests/host.d/offpick.sh 0 s
 host.d: 3ds/tests/host.d/ovlimg.sh
 ovlimg ok
-HOSTD 3ds/tests/host.d/ovlimg.sh 1 s
+HOSTD 3ds/tests/host.d/ovlimg.sh 0 s
 host.d: 3ds/tests/host.d/pbuf.sh
 pbuf 54 cases bad 0
 pbuf ok
@@ -2603,22 +2603,22 @@ HOSTD 3ds/tests/host.d/psotab.sh 1 s
 host.d: 3ds/tests/host.d/rawimg.sh
 gen_gfx_syms: 1 sources 2 symbols
 rawimg ok
-HOSTD 3ds/tests/host.d/rawimg.sh 1 s
+HOSTD 3ds/tests/host.d/rawimg.sh 0 s
 host.d: 3ds/tests/host.d/readtrace.sh
 readtrace ok (sh, cat, sed, awk, grep, tar, python, gcc, as, 32-bit fopen, root2)
 HOSTD 3ds/tests/host.d/readtrace.sh 1 s
 host.d: 3ds/tests/host.d/romfscache.sh
 romfscache ok (first, hit, byte, key, off, missing entry, entry byte)
-HOSTD 3ds/tests/host.d/romfscache.sh 1 s
+HOSTD 3ds/tests/host.d/romfscache.sh 0 s
 host.d: 3ds/tests/host.d/selfapply.sh
 selfapply ok
-HOSTD 3ds/tests/host.d/selfapply.sh 1 s
+HOSTD 3ds/tests/host.d/selfapply.sh 0 s
 host.d: 3ds/tests/host.d/speedx2.sh
 speedx2 ok
-HOSTD 3ds/tests/host.d/speedx2.sh 1 s
+HOSTD 3ds/tests/host.d/speedx2.sh 0 s
 host.d: 3ds/tests/host.d/startlr.sh
 startlr ok
-HOSTD 3ds/tests/host.d/startlr.sh 1 s
+HOSTD 3ds/tests/host.d/startlr.sh 0 s
 host.d: 3ds/tests/host.d/stunit.sh
 stunit ok 20/20
 HOSTD 3ds/tests/host.d/stunit.sh 5 s
@@ -2651,7 +2651,7 @@ host.d: 3ds/tests/host.d/wscmb.sh
 wscmb 18 pairs bad 0
 wscmb ok
 HOSTD 3ds/tests/host.d/wscmb.sh 1 s
-STAGE L81 59 s
+STAGE L81 65 s
 hostsel cachecheck ok inline
 hostsel cachecheck ok 3ds/tests/host.d/00_hostd.sh
 hostsel cachecheck ok 3ds/tests/host.d/barricade.sh

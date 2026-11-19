@@ -1,0 +1,6 @@
+LOOP S9GATE host rc 0, build rc 0, 3 s
+STAGE key-inputs 2 s STAGE gen 0 s --- build up to date (key d994dce7a13f), skipping --- STAGE key 0 s 
+
+cmp fxparts_drec: no stored base of fxparts_drec at 30eaaef40. Run: bench.py base fxparts_drec 
+LOOP TIME host+build 3 s, run+cmp 21 s, total 24 s
+LOOP FAIL: cmp, read build3ds/out/loop_S9GATE_cmp_<bench>.txt
