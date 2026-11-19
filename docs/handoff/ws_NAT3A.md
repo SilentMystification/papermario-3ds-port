@@ -1,5 +1,5 @@
 # ws_NAT3A (Haiku): core 0 makes no combine decision: nd_comb_sync keeps only its skip state. Counter: c0gate calls -3, expected `c0gate calls 123 interp 37 or lower, state 23`. Gate: drec byte-equal.
-Designer: oracle NATIVE. WAIT: `Merge NAT1D` and `Merge NAT2D`, and the NAT1D hand-back shows `c0diff ... wdiff 0` in all 3 scenes with no c0dwho line for bit 0 draws.
+Designer: oracle NATIVE. WAIT: `Merge NAT2D` and the NAT1E c0dcase data. FACT NAT1D: wdiff 12, 4, 113 (keys nd_nr_run, nd_parts_run_v): this page as written changes those draws.
 When wdiff is above 0, oracle NATIVE rewrites this page before the start. Worktree build3ds/wt/NAT3A, branch NAT3A. PM_ROW=NAT3A PM_LANE=NAT3A. Wave W2b with NAT3D.
 Edit only: 3ds/src/nd_comb.c, function nd_comb_sync (main b485faae44 lines 342-361). nd_comb.c line overlap: NAT1D edits lines 181 and 339 (merged first). No edit in nd_walk.c, nd_set.c, nd_direct.c.
 ## Facts (main b485faae44)
