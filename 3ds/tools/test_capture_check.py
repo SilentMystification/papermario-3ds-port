@@ -17,6 +17,10 @@ def main():
     assert ok and d == "log gate on, proof grabw 2 fbbind 1", d
     ok, d = cc.judge("#1 build 5824-x git 6ef6af53c7 loglevel 3\n#2 fxtest: done\n", ["grabw"])  # seed: log_on 0 drops the gate line
     assert not ok and d == 'log gate OFF (no "options: levels run log_on=1" line), missing proof: grabw', d
+    ok, d = cc.judge("#1 prof f390 w300 wk 34.38\n#2 fxtest: done\n", ["wk "], prof=True)  # prof run: the prof line replaces log_on=1
+    assert ok and d.startswith("prof run, prof line and fxtest: done"), d
+    ok, d = cc.judge("#2 fxtest: done\n", [], prof=True)  # seed: a prof run with no prof line must FAIL
+    assert not ok and d == "prof run, no prof line", d
     print("captool capture_check ok")
     return 0
 

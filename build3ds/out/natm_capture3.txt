@@ -1,0 +1,17 @@
+QUEUE: 0 waiting, 1 running or granted, 2 Azahar slots
+queue: position 1 of 1 waiting (lane 'NATM', speed turbo, scenario capchk_mac01, want slot any)
+queue: granted slot 2 after 0.2 s (position 1 at enqueue)
+AZT: scenario capchk_mac01, row NATM, lane 'NATM', slot 2, cap 25 s, deadline 20 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 20 s (scenario deadline). The deadline clock runs
+azslot: slot 2 pid 65756 warm
+run: rc 0: slot2: stopped after 5s: matched 'fxtest: done' (Azahar running; stopped by this run) warm kept; until at 5.0 s; end at 5.4 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 2; shot files 0 of 0 full
+PASS  boot: #127 prof f390 w300 fps 29.1 | ft 34.42 max 60.4 o34 217 wk 34.36
+PASS  done: #155 fxtest: done
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NATM\build3ds\azt\logs\capchk_mac01.txt (copy of this run's log; slot 2)
+SUBJECT: mac_01 (entry 0, pos 0 0 200), fxtest=87 (fx_underwater) spawned at frame 402.
+SHOTS: 0 from this run
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\NATM\build3ds\lane-NATM\slot2\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2000551, build 7060, commit 82e8b59c86
+  scene mac_01 m4 sp-107 b0 e0         windows   1 fps 29.1 ft 34.4
+bench capchk: azt.ps1 exit 0. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl.
+CAPTURE CHECK OK: words "livelog warp=mac_01:0 pos=0:0:200 profdisk=1 prof=30 livelevel=err disklevel=off conlevel=off", prof run, prof line and fxtest: done, proof core2 lgms 1 cls rec 1 wk 2, bench rc 0 (run 2000551, build3ds/lane-NATM/slot2/last_log.txt)
