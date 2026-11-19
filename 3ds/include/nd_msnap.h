@@ -9,6 +9,7 @@
 typedef struct NdMSnap {
     uint32_t magic, prim, prim_lod, omh, oml, kh, kl, tss, geom, cw0, cw1, fogc, blendc, envc;
     uint32_t k_omh, k_oml, k_kh, k_kl, k_geom, k_pad; /* NAT2C: core 1 state before the record (model key B) */
+    uint32_t d_plan, d_mode5, d_vtx, d_vtxname, d_t1, d_pad; /* NAT2K: core 1 combine decision words (plan_on, mode5, plan vtx, vtxname, uses_tex1) */
     NdSnapBind b[2];
 } NdMSnap;
 _Static_assert(sizeof(NdMSnap) % 8u == 0u, "units");
