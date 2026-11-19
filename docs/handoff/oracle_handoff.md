@@ -6,7 +6,7 @@ State: main cb63f94d28, 2026-11-18. Counters FACT (DEL5B2 hand-back, start e41cf
 - User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
 - User 2026-11-17: at most 5 parallel Haiku coders. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0. No console check until the end.
 - User 2026-11-18 option A: NDR0G2 and NDR1C have an expected-diff gate (the correct bind from the snap, not the stale walker bind). Other rows stay byte-equal.
-## Chain NCONV coach: coders afc7b34e8d19be862 (NCONV1D1), aeaed982632fdec55 (NCONV1D2), a5b6acc6b4c73a61b (NCONV2A), all done. NCONV2A GATED ce1e571699: fxops f500 tsnap cmp 8821 wtss 0 tris 10 vtss 0, snapchk bad 469 = base 4d10b0ebb5.
+## Chain NATIVE (oracle NATIVE, user 2026-11-18): plan_native.md. Core 0 loses its running N64 state machine (unit interpreter, nd_ws, F3 globals). Pure decisions may stay on either core (UD-N1, measure first: capture_NATM.md). Pages ws_NAT0 (c0gate end proof tool), ws_NAT1 (c0src drec counter). W1 pages come from the NAT1 c0src lines.
 ## NREC2 sl fault: fixed by NREC2B (merged 3ff209aac8). FACT cause: scm_replay (nd_comb.c:181) and nd_direct_bind wrote no sl_*. fxops f500 bad 469 to 0.
 ## Merged on main: NST1, NST3, NST2A-K, FALLBK, NDR0A-F, NDR0G1-2, NDR1B-C, NDR2A-C, NDR3, NDR4, NDR5, NCONV1A, NCONV1D1, NCONV1D2, NREC1A, NDR2D, REN1-8, MREN, PSOFB, DEL4D34, BUILDO, NCONV2A-D, NREC1B-5, DEL4D12, NOLIST2, DELCEN, DELLC, DELT4, DELC2, DEL1B, DEL1C, DEL5A, DEL5B1, DEL3B.
 ## Chain NDR: done (coach a28bf24a1ad35b1c8). No NDR page is left. Snapchk data at the end (FACT NDR2D): nimgm f400 recs 14138 cmp 6286 wst 870; wscmb f200 recs 18047 cmp 13482 wst 12060.
