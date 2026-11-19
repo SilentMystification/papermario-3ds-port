@@ -250,3 +250,4 @@ int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan, int mode5, int pat, 
     return s->plan_on != plan_on || (plan_on ? nd_cd_off != 0xffffu : s->leg != leg) || s->mode5 != mode5 || s->pat != pat || s->cc_on != cc_on || (cc_on && s->cc != cc) || s->env_on != env_on; } /* NAT1F */
 int nd_snap_rdiff(const NdRender* rs, int mixk, unsigned mixc) { return memcmp(&sc_cur.rs, rs, sizeof *rs) != 0 || sc_cur.mixk != mixk || sc_cur.mixc != mixc; }
 unsigned nd_snap_primz(void) { return sc_cur.primz; } /* NAT4H: the sprite path */
+unsigned nd_snap_fill(void) { return sc_cur.fill; } /* NAT4H: the z-buffer clear */

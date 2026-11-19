@@ -34,6 +34,7 @@ extern const NdSnapBind* nd_ep_bs;
 #define ND_BSH(n) (nd_bsrc ? nd_bsrc[n].shift : nd_ws.tst1.tile_shift[n])
 /* NDR0G2, nd_snap_in.c: bit 1 << 2n when the td of tile n differs, 2 << 2n when its wrap, sz or shift words differ. */
 unsigned nd_snap_bdiff(const NdSnapBind* a, const NdSnapBind* b);
+unsigned nd_snap_fill(void); /* NAT4H */
 /* NDR0G2, nd_snap.c, core 0: 1 when the armed snapshot tile words differ from the blocks e (NULL = the walker tiles). */
 int nd_snap_bnew(const NdSnapBind* e);
 /* NDR0G2, nd_snap.c, core 0: the blocks of the armed snapshot for the open epoch (a copy kept until the next epoch). */
