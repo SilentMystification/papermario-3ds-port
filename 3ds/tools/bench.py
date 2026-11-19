@@ -2027,7 +2027,10 @@ def base_check(a):
     ents = sorted(p for p in root.glob("*/commit.txt")) if root.is_dir() else []
     live = []
     for c in ents:
-        commit = c.read_text(encoding="utf-8").strip()
+        try:
+            commit = c.read_text(encoding="utf-8").strip()
+        except FileNotFoundError:
+            continue  # another lane removed this entry between the glob and the read
         if c.parent.name != bb.entry_dir(root, basebin_key(commit)).name:
             print("cachecheck basebin %s: key changed (stale), removed" % commit[:9])
             shutil.rmtree(c.parent, ignore_errors=True)
