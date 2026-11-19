@@ -230,11 +230,20 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1) {
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_nr_list): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
-unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */
+unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; static unsigned epk_h[64][2], epk_nl; /* NAT4B */
+/* NAT4B: one disagreement: the unit id, the direction (1: a mark and core 0 skips, 0: core 0 cuts with no mark), the mark reason word and the core 0 skip inputs. */
+int pm_drec_now(void); extern int sc_ok; extern unsigned sc_sig, comb_gen, cmb_gen_seen; unsigned sc_sig_now(void); extern int box_folded;
+static __attribute__((cold, noinline)) void epk_note(unsigned id, int same, const uint32_t* u) { /* NAT4B: one disagreement */
+    const unsigned dir = same ? 1u : 0u; /* 0: core 0 cuts with no mark, 1: a mark and core 0 skips */
+    epk_h[id & 63u][dir]++;
+    if (epk_nl < 24u && pm_drec_now()) { epk_nl++; pm_log_evt("epbad f%u id %u dir %u mw %03x sc_ok %d sig %d gen %d fold %d a %06x b %08x", pm_frame_count(), id, dir, ep_mark ? (unsigned)ep_mw : 0u,
+        sc_ok, sc_sig_now() == sc_sig, cmb_gen_seen == comb_gen, box_folded, (unsigned)(u[0] & 0xffffffu), (unsigned)u[1]); }
+}
+void nd_epk_log(void) { for (unsigned i = 0; i < 64u; i++) for (unsigned d = 0; d < 2u; d++) if (epk_h[i][d]) pm_log_evt("epbin id %u dir %u n %u", i, d, epk_h[i][d]); } /* NAT4B */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
-    const int same = nd_unit_same(u); { const unsigned i_ = u[0] >> 24; if (ep_stream && ex_depth == 0 && (i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB)) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) nd_epk_bad++; ep_mark = 0; } } /* NAT4A */
+    const int same = nd_unit_same(u); { const unsigned i_ = u[0] >> 24; if (ep_stream && ex_depth == 0 && (i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB)) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } ep_mark = 0; } } /* NAT4A */ /* NAT4B: note before ep_mark clears */
     if (same) return; /* NAT4A */
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
@@ -309,7 +318,7 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
         case ND_FS_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
         case ND_FS_MISC_MODVTX: nd_modvtx((a >> 8) & 0xffu, a & 0xffu); break;
         case ND_FS_MISC_CIMG: nd_cimg_set(a, b); break;
-        case ND_FS_MISC_EP: ep_mark = 1; nd_epk_mk++; break; /* NAT4A: no cut yet (measure) */
+        case ND_FS_MISC_EP: ep_mark = 1; ep_mw = b; nd_epk_mk++; break; /* NAT4B: the mark and its reason word */
         default: break;
         }
         break;
