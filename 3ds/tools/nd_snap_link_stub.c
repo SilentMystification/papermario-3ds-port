@@ -2,5 +2,5 @@
  * nd_direct_test.c includes nd_direct.c and links no nd_snap.c. The snap is never armed on the host (nd_snap_arm stays 0). */
 unsigned char nd_snap_arm;
 void nd_snapchk_tri(void) {}
-void nd_snap_render(void) {}
+unsigned nd_snap_render_n; void nd_snap_render(void) { nd_snap_render_n++; } /* NAT2A: nd_direct_test.c counts it */
 unsigned char nd_c0w; /* NAT1: host link stub (nd_direct.c) */
