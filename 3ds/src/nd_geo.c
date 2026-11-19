@@ -37,11 +37,9 @@ __attribute__((weak)) void nd_snap_mesh(void) {}
 /* NDR0C: the target record of the snapshot (nd_snap.c, strong). Weak no-op for the host units. */
 __attribute__((weak)) void nd_snap_tgt(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; }
 void nd_mesh_tri1(unsigned a, unsigned b, unsigned c, unsigned f) {
-    nd_snap_mesh();
     NDGEO_TRI1(nd_nr, a, b, c, f);
 }
 void nd_mesh_tri2(unsigned a, unsigned b, unsigned c, unsigned f, unsigned d, unsigned e, unsigned g, unsigned h) {
-    nd_snap_mesh();
     NDGEO_TRI2(nd_nr, a, b, c, f, d, e, g, h);
 }
 void nd_lit_1(uint32_t l0, uint32_t a) {
