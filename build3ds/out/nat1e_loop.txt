@@ -1,0 +1,7 @@
+LOOP NAT1E host rc 0, build rc 0, 17 s
+STAGE key-inputs 3 s STAGE gen 0 s STAGE key 0 s STAGE slot-wait 1 s STAGE asset-check 0 s STAGE romfs 0 s STAGE sync 0 s STAGE configure 0 s STAGE compile-link 8 s STAGE copy-out 1 s STAGE tail 1 s 
+
+cmp spot_mac01_drec: 1/1 byte-equal 
+cmp fxparts_drec: 1/1 byte-equal 
+LOOP TIME host+build 17 s, run+cmp 58 s, total 75 s
+LOOP PASS

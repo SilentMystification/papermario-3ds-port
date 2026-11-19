@@ -1,0 +1,35 @@
+build3ds/azt/logs/spot_mac01_drec.txt:#124 c0dcase f200 wk 0014b6e4 dk 0014b6e4 c0d 3 w 000 s 002 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#125 c0dcase f200 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#126 c0dcase f200 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#127 c0dcase f200 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#128 c0dcase f200 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#129 c0dcase f200 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#130 c0dcase f201 wk 0014b6e4 dk 0014b6e4 c0d 3 w 000 s 002 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#131 c0dcase f201 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#132 c0dcase f201 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#133 c0dcase f201 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#134 c0dcase f201 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#135 c0dcase f201 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#136 c0src f201 draws 56 mdl 114 wcomb 22 wrnd 0 wbind 0 snb 4133 snn 3633 snm 2631
+build3ds/azt/logs/spot_mac01_drec.txt:#140 c0diff f201 wdiff 12
+build3ds/azt/logs/spot_mac01_drec.txt:#141 c0dwho k 0014b6e4 n 12
+build3ds/azt/logs/fxparts_drec.txt:#364 c0dcase f412 wk 0014b6e4 dk 0014b6e4 c0d 3 w 000 s 102 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#366 c0dcase f412 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#367 c0dcase f412 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#368 c0dcase f412 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#369 c0dcase f412 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#370 c0dcase f412 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#393 c0dcase f456 wk 0014b6e4 dk 0014b6e4 c0d 3 w 000 s 102 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#395 c0dcase f456 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#396 c0dcase f456 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#397 c0dcase f456 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#398 c0dcase f456 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#399 c0dcase f456 wk 0014b6e4 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#437 c0dcase f500 wk 0014b6e4 dk 0014b6e4 c0d 1 w 000 s 102 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#439 c0dcase f500 wk 0014b6e4 dk 00000005 c0d 1 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#440 c0dcase f500 wk 0014b6e4 dk 00000005 c0d 1 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#441 c0dcase f500 wk 0014b6e4 dk 00000005 c0d 1 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#638 c0src f676 draws 531 mdl 399 wcomb 165 wrnd 72 wbind 72 snb 32214 snn 27298 snm 23770
+build3ds/azt/logs/fxparts_drec.txt:#643 c0diff f676 wdiff 113
+build3ds/azt/logs/fxparts_drec.txt:#644 c0dwho k 0014b6e4 n 42
+build3ds/azt/logs/fxparts_drec.txt:#645 c0dwho k 0014bb24 n 71

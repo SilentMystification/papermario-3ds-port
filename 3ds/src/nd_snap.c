@@ -239,5 +239,9 @@ void nd_snap_plog(void) {
     }
 }
 /* NAT1D: 1 when a walker decision differs from the last snap core 0 took (sc_cur) */
-int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan) { const NdCombOut* s = &sc_cur.o; return s->plan_on != plan_on || (plan_on ? memcmp(&s->plan, plan, sizeof *plan) != 0 : s->leg != leg); }
+unsigned nd_cd_w, nd_cd_s, nd_cd_off; /* NAT1E: walker and snap words of the last compare (plan_on << 8 | leg), the first differing plan byte (0xffff none) */
+int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan) { const NdCombOut* s = &sc_cur.o; /* NAT1E: the detail words below */
+    nd_cd_w = (unsigned)plan_on << 8 | ((unsigned)leg & 0xffu); nd_cd_s = (unsigned)s->plan_on << 8 | ((unsigned)s->leg & 0xffu); nd_cd_off = 0xffffu;
+    if (plan_on && s->plan_on) { const unsigned char* a = (const unsigned char*)plan; const unsigned char* b = (const unsigned char*)&s->plan; for (unsigned i = 0; i < sizeof *plan; i++) if (a[i] != b[i]) { nd_cd_off = i; break; } }
+    return s->plan_on != plan_on || (plan_on ? nd_cd_off != 0xffffu : s->leg != leg); }
 int nd_snap_rdiff(const NdRender* rs, int mixk, unsigned mixc) { return memcmp(&sc_cur.rs, rs, sizeof *rs) != 0 || sc_cur.mixk != mixk || sc_cur.mixc != mixc; }
