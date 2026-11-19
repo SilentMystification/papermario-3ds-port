@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "azwarm_cold",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "AZWARM: forced cold start, the first run of the AZWARM gate list.",
+      "scenario": "azwarm_cold",
+      "cap": 35,
+      "until": "drec f\\d+ draws \\d+ bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

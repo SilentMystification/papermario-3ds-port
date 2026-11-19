@@ -170,6 +170,16 @@ if ($SelfTest) {
         if (-not $dlOk) { $fails++ }
         Write-Output ("{0} start deadline: {1} start, scenario {2} s -> {3} s (want {4} s)" -f $(if ($dlOk) { "PASS" } else { "FAIL" }), $d.k, $d.s, $got, $d.e)
     }
+    # AZWARM: the restart key waits for a young kept Azahar (Get-WarmWaitSec, ws_AZWARM F1)
+    $wwCases = @(
+        @{ a = 0; w = 20 }, @{ a = 14.5; w = 5.5 }, @{ a = 20; w = 0 }, @{ a = 300; w = 0 }
+    )
+    foreach ($c in $wwCases) {
+        $gotW = Get-WarmWaitSec $c.a
+        $wwOk = ($gotW -eq $c.w)
+        if (-not $wwOk) { $fails++ }
+        Write-Output ("{0} warm age wait: age {1} s -> wait {2} s (want {3} s)" -f $(if ($wwOk) { "PASS" } else { "FAIL" }), $c.a, $gotW, $c.w)
+    }
     # AZT11-1/2: the queue rules on fake entries in a temp folder (no Azahar, no slot mutex: the slot lane and the free slots are stubbed)
     $qdir = Join-Path $env:TEMP ("azq_selftest_" + [guid]::NewGuid().ToString("N"))
     $env:PM_AZQUEUE_DIR = $qdir

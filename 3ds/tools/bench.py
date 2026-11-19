@@ -1157,6 +1157,8 @@ def cmd_azstat(a):
             ev["warm restart key not taken"] += 1
         elif t.startswith("warm wait") and "log rotated no" in t:  # AZT13: booted, but the game did not rotate its log
             ev["warm restart booted, no game log"] += 1
+        elif t.startswith("warm age wait"):
+            ev["warm age wait"] += 1
         elif t.startswith("stale "):
             ev["stale run booted"] += 1
         elif t.startswith("close "):
