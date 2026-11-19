@@ -42,13 +42,13 @@ const NdPsoOut* nd_pso(NdPso id);  /* NPSO3: core 0, the table entry of a descri
 
 /* NATIVEAPI S4 (particles): one NDC_NAPI record for a run of effect draws, one instance per nd_parts_add. Each instance is m units of the
  * stream form (8 bytes each): pre state units, the ND_FS_CALL unit of its static flat list (a triangle list with one vertex load at slot 0),
- * post units. Core 0 (nd_parts_run) runs the pre units with the walker, draws the list natively (nd_part_draw) and runs the post units. */
+ * post units. Core 1 writes the instances into the stream (NAT5E); core 0 runs the pre units with the walker, draws the list natively (nd_part_draw) and runs the post units. */
 typedef struct NdParts { unsigned n, pre, m, ok; const void* list; uint32_t u[2u + 2u * 252u]; } NdParts;
 void nd_parts_begin(NdParts* b, unsigned pre, unsigned post); /* core 1 */
 void nd_parts_add(NdParts* b, const uint32_t* units);        /* core 1: units = m units (2 words each) */
 void nd_parts_end(NdParts* b);                               /* core 1: records the open run (no-op when empty) */
-void nd_parts_run(const uint32_t* rec);                      /* nd_walk.c, core 0: the NDC_NAPI runner of a run */
-void nd_parts_run_v(const uint32_t* rec);                    /* nd_walk.c, core 0: the runner of a run whose units are all typed setters (S4PDIR) */
+void nd_pbeg_run(const uint32_t* r); void nd_pdraw_run(const uint32_t* r); void nd_pend_run(const uint32_t* r); /* NAT5E, nd_walk.c, core 0 */
+void nd_rec_nat(NdNapiRun run, uint32_t a, uint32_t b); void nd_snap_vprim(unsigned v); /* NAT5E, core 1 */
 struct NdNDev;
 int nd_part_draw(const struct NdNDev* t);                    /* nd_geom.c, core 0: one flat particle list from its v2 entry units (DEL5B1); 0 = not drawn (run its units) */
 
