@@ -64,7 +64,7 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     return 1;
 }
 static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, zc, &r)) return; nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */ sn_cmds = nd_rec_cmds(); }
-#define LS_SMAX 16u /* NAT2D: unique snaps */
+#define LS_SMAX 48u /* NAT2D: unique snaps */
 #define LS_RMAX 256u /* NAT2D: ranges */
 static NdSnapChk ls_s[LS_SMAX], ls_t; static uint32_t ls_f[LS_RMAX]; static unsigned ls_n, ls_sn, ls_ord; static unsigned char ls_chg;
 _Static_assert(ND_LS_HDR(LS_RMAX) + LS_SMAX * sizeof(NdSnapChk) + ND_LS_DSB <= 32744u, "NAT2D: a table fits one nd_rec_data_st block");
