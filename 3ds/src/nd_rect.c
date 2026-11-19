@@ -335,7 +335,8 @@ __attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) {
     unsigned color = (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
         ? rgba_from_5551(nd_ws.fill & 0xffff) : nd_ws.prim;
     nd_img_check();
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) nd_rnd_sync(); /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
+    const unsigned char fsn = nd_snap_live; if (fsn) { nd_snap_arm = 0; nd_snap_comb(); } /* NAT2H: the combine of the fill snap */
+    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) { if (fsn) nd_snap_render(); else nd_rnd_sync(); } /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
     pm_gpu_set_replace(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
     if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER))
         nd_fillrect_zs(ulx, uly, lrx, lry, color);
