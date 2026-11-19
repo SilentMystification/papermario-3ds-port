@@ -10,6 +10,7 @@ Exit 0 OK, 1 FAIL, 2 tool fault.
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -27,8 +28,20 @@ def words_from_dry(out):
     return None
 
 
-def judge(text, proof):
-    """(ok, detail) for a game log text and a list of proof substrings."""
+PROF_LINE = re.compile(r"prof f\d+ w\d+")
+
+
+def judge(text, proof, prof=False):
+    """(ok, detail) for a game log text and a list of proof substrings. prof: the launch words set prof=<n>, which turns logging off
+    (pm_options.c:284), so the gate is a prof line and the fxtest: done line instead of log_on=1."""
+    if prof:
+        miss = [p for p in proof if p not in text]
+        if PROF_LINE.search(text) and "fxtest: done" in text and not miss:
+            return True, "prof run, prof line and fxtest: done, proof " + " ".join("%s %d" % (p, text.count(p)) for p in proof)
+        why = ["prof run, no prof line" if not PROF_LINE.search(text) else "prof run, no fxtest: done line"]
+        if miss:
+            why.append("missing proof: " + ", ".join(miss))
+        return False, ", ".join(why)
     gate = GATE in text
     miss = [p for p in proof if p not in text]
     if gate and not miss:
@@ -72,6 +85,11 @@ def main(argv=None):
             return 2
     scen = REPO / "3ds" / "tools" / "azt.d" / "CAPCHK.json"
     keep = scen.read_bytes() if scen.exists() else None
+    prof = any(w.startswith("prof=") and w not in ("prof=off", "prof=0") for w in words.split())
+    if prof and keep is not None:  # a prof run has no log_on line: its boot check is the prof line (judge prof=True)
+        bs = bytes([92])  # one backslash byte: the JSON file escapes each one
+        scen.write_bytes(keep.replace(b'"regex": "build ' + bs * 2 + b'd+' + bs * 2 + b'S* git"',
+                                      b'"regex": "prof f' + bs * 2 + b'd+ w' + bs * 2 + b'd+"', 1))
     before = last_run("capchk", a.row)
     env = dict(os.environ, PM_DEBUG_ADD=words, PM_OPT_WORST="1", PM_ROW=a.row)
     rc = subprocess.run([sys.executable, "3ds/tools/bench.py", "run", "capchk", "--row", a.row, "--why", "capture check: " + words],
@@ -85,7 +103,7 @@ def main(argv=None):
     log = Path(rec["log_path"])
     if not log.is_absolute():
         log = REPO / log
-    ok, detail = judge(log.read_text(encoding="utf-8", errors="replace") if log.exists() else "", proof)
+    ok, detail = judge(log.read_text(encoding="utf-8", errors="replace") if log.exists() else "", proof, prof=prof)
     if ok and rc != 0:
         print("CAPTURE CHECK TOOL FAULT: bench.py run capchk rc %d with every proof line (run %s, %s)" % (rc, rec.get("run_id"), rec["log_path"]))
         return 2
