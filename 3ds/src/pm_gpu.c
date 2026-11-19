@@ -632,6 +632,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     pm_log_evt("c0src f%u draws %u mdl %u wcomb %u wrnd %u wbind %u snb %u snn %u snm %u", pm_frame_count(), c0_d, c0_m, c0_c, c0_r, c0_b, nd_snb, nd_snn, nd_snm); /* NAT1 */
     for (unsigned i = 0; i < c0_kn; i++) pm_log_evt("c0who k %08x n %u", (unsigned)c0_k[i], c0_kc[i]); pm_log_evt("c0who over %u", c0_ko); /* NAT1B */
     pm_log_evt("c0diff f%u wdiff %u", pm_frame_count(), c0_wd); for (unsigned i = 0; i < c0_dkn; i++) pm_log_evt("c0dwho k %08x n %u", (unsigned)c0_dk[i], c0_dkc[i]); /* NAT1D */
+    { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A */
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
     drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_idx = NULL; drec_idx_cap = 0; drec_on = 0; drec_win = -1; /* one window per run */
 }
