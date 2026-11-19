@@ -1,6 +1,6 @@
-# ws_NAT3D (Haiku): a triangle epoch with no snap keeps the render state of the last snap: the walker render decision of gv_epoch_enter goes. Counter: c0gate calls -1, expected `c0gate calls 125 interp 37 state 23` (122 after NAT3A). Gate: drec byte-equal.
-Designer: oracle NATIVE. WAIT: `Merge NAT3A` (the same drec scenes, one Azahar row at a time; the c0diff render cases of NAT2J are first-of-frame fills) (FACT NAT1D: wdiff above 0 in all 3 scenes).
-When one exists, oracle NATIVE rewrites this page before the start. Worktree build3ds/wt/NAT3D, branch NAT3D. PM_ROW=NAT3D PM_LANE=NAT3D. Wave W2b with NAT3A (no shared file).
+# ws_NAT3D (Haiku): a triangle epoch with no snap keeps the render state of the last snap: the walker render decision of gv_epoch_enter goes. Counter: c0gate calls -1, expected `c0gate calls 122 interp 34 state 23` (base main 33ffbb995a: 123 34 23). Gate: drec byte-equal.
+Designer: oracle NATIVE. Branch from main 33ffbb995a or later (NAT3A and NAT2K merged). No WAIT. The render bit of NAT1F c0diff showed only first-of-frame fills (they set their own render state, pm_gpu_rect.c:182-190).
+Worktree build3ds/wt/NAT3D, branch NAT3D. PM_ROW=NAT3D PM_LANE=NAT3D.
 Edit only: 3ds/src/nd_geom.c line 221. No edit in nd_walk.c, nd_set.c, nd_comb.c, nd_direct.c.
 ## Facts (main b485faae44)
 - FACT gv_epoch_enter (nd_geom.c:208) sets the render state at the first triangle of an epoch: `if (nd_snap_rpend) nd_snap_render();` (:220), `else nd_rnd_sync();` (:221, the walker decision on nd_ws).
@@ -17,7 +17,7 @@ Add the comment ` NAT3D: no snap, the render state of the last snap stays` insid
 4. `grep -H "c0src f\|c0diff\|drec frame\|drec draw .* DIFF" build3ds/azt/logs/spot_mac01_drec.txt build3ds/azt/logs/entcape_kmr03_drec.txt build3ds/azt/logs/fxparts_drec.txt build3ds/out/loop_NAT3D_cmp_*.txt > build3ds/out/nat3d_c0src.txt`.
 5. `python 3ds/tools/c0gate.py build3ds/lane-NAT3D/pm_3ds.elf > build3ds/out/nat3d_c0gate.txt 2>&1`.
 ## Gate (exact)
-Host PASS. Rowloop exit 0 (3 drec equal). c0gate: calls 125 (122 when the branch holds NAT3A), interp 37 or lower, state 23. Report the 3 c0src wrnd values.
+Host PASS. Rowloop exit 0 (3 drec equal). c0gate: `calls 122 interp 34 state 23`. Report the 3 c0src wrnd values.
 Fix rights: compile errors. A DIFF or a tool fault: stop, send build3ds/out/nat3d_c0src.txt to oracle NATIVE with SendMessage, and wait.
 ## Hand-back
 Last commit `NAT3D 2: gate. 3 drec equal; c0gate calls <c>` with `git add -f build3ds/out/nat3d_c0src.txt build3ds/out/nat3d_loop.txt`. It deletes this page. One SubagentHandback: hash, c0gate last line, the 3 c0src lines.
