@@ -47,9 +47,10 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     nd_snap_rnd(s, &r);
     r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, s->w.omode_l, s->w.omode_h, zc);
     r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of nd_rnd_sync */
+    r.fill = s->w.fill; r.primz = s->w.prim_z; /* NAT4H */
     nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of nd_rnd_sync */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
-    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.plod == sn_last.plod && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
+    if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.plod == sn_last.plod && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b) && r.fill == sn_last.fill && r.primz == sn_last.primz) return 0; /* no new command, same inputs; NAT4H fill and prim_z */
     nd_snn++; /* NAT1 */
     r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
     r.plan_on = -1;
@@ -180,6 +181,7 @@ static void sc_adopt(void) {
     nd_ws.tex_on = i->tex_on; nd_ws.use_t1 = i->use_t1; dual_on = i->dual_on; box_prod = i->box_prod; box_folded = i->box_folded;
     comb_set = i->comb_set; comb_alpha_shade = i->comb_alpha_shade;
     nd_ws.omode_l = sc_cur.oml; fogc = sc_cur.fogc; blendc = sc_cur.blendc;
+    nd_ws.fill = sc_cur.fill; nd_ws.prim_z = sc_cur.primz; /* NAT4H */
 }
 void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
     nd_snap_arm = 0;
@@ -247,3 +249,4 @@ int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan, int mode5, int pat, 
     if (plan_on && s->plan_on) { const unsigned char* a = (const unsigned char*)plan; const unsigned char* b = (const unsigned char*)&s->plan; for (unsigned i = 0; i < sizeof *plan; i++) if (a[i] != b[i]) { nd_cd_off = i; break; } }
     return s->plan_on != plan_on || (plan_on ? nd_cd_off != 0xffffu : s->leg != leg) || s->mode5 != mode5 || s->pat != pat || s->cc_on != cc_on || (cc_on && s->cc != cc) || s->env_on != env_on; } /* NAT1F */
 int nd_snap_rdiff(const NdRender* rs, int mixk, unsigned mixc) { return memcmp(&sc_cur.rs, rs, sizeof *rs) != 0 || sc_cur.mixk != mixk || sc_cur.mixc != mixc; }
+unsigned nd_snap_primz(void) { return sc_cur.primz; } /* NAT4H: the sprite path */

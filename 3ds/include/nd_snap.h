@@ -20,6 +20,7 @@ typedef struct NdSnapChk {
     NdRender rs; /* NDR0F1: nd_render_state of the snapshot (core 1) */
     int32_t mixk; unsigned mixc; /* NDR0F1: nd_snap_mix of the snapshot (kind, colour) */
     uint32_t pad3; /* NDR0F1: size to a multiple of 8 (the rs and mix words) */
+    uint32_t fill, primz; /* NAT4H: nd_ws.fill and prim_z of core 1 */
     NdSnapBind b[2]; /* NDR0G1: tiles 0 and 1 */
 } NdSnapChk;
 _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");

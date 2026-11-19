@@ -245,7 +245,7 @@ void nd_epk_log(void) { for (unsigned i = 0; i < 64u; i++) for (unsigned d = 0; 
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
     const int same = nd_unit_same(u); int cut = !same; /* NAT4C: the cut of this unit */
-    { const unsigned i_ = u[0] >> 24; const int ca_ = i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB, cb_ = !ca_ && ((i_ >= ND_FS_OMH && i_ <= ND_FS_COMB) || (i_ >= ND_FS_TIMG && i_ <= ND_FS_LOADTLUT)); /* NAT4G all other scalar units */
+    { const unsigned i_ = u[0] >> 24; const int ca_ = i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB || i_ == ND_FS_FILL || i_ == ND_FS_PRIMZ /* NAT4H */, cb_ = !ca_ && ((i_ >= ND_FS_OMH && i_ <= ND_FS_COMB) || (i_ >= ND_FS_TIMG && i_ <= ND_FS_LOADTLUT)); /* NAT4G all other scalar units */
       if (ep_stream && ex_depth == 0 && (ca_ || cb_)) {
         if (cb_) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } } /* NAT4F: count only OMH, TEXTURE (the combine class fields are stale on core 0 since NAT4D) */
         const int mk_ = ep_mark != 0; ep_mark = 0;
