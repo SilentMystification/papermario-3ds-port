@@ -1,0 +1,12 @@
+cmp entcape_kmr03_drec: row NAT4F run at commit 6b8667b2e build 7192, base c89c7ae7a (1 shots)
+  drec 172 draws equal
+1/1 byte-equal
+cmp fxparts_drec: row NAT4F run at commit 6b8667b2e build 7192, base c89c7ae7a (1 shots)
+  drec 930 draws equal
+1/1 byte-equal
+cmp spot_mac01_drec: row NAT4F run at commit 6b8667b2e build 7192, base c89c7ae7a (1 shots)
+  drec 170 draws equal
+1/1 byte-equal
+cmp wscmb_pause_drec: row NAT4F run at commit 6b8667b2e build 7192, base c89c7ae7a (1 shots)
+  drec 208 draws equal
+1/1 byte-equal
