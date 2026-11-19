@@ -247,7 +247,7 @@ static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
     const int same = nd_unit_same(u); int cut = !same; /* NAT4C: the cut of this unit */
     { const unsigned i_ = u[0] >> 24; if (ep_stream && ex_depth == 0 && (i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB)) {
         nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); }
-        cut = ep_mark != 0; ep_mark = 0; if (!cut) return; } } /* NAT4C: the core 1 mark decides the cut; no mark: no change (core 1 change bit 0) */
+        if (ep_mark) gv_epoch++; ep_mark = 0; return; } } /* NAT4D: a stream class unit is not run on core 0: the mark cuts, the next snap adopt sets its fields */ /* NAT4C: the core 1 mark decides the cut; no mark: no change (core 1 change bit 0) */
     if (same && !cut) return;
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */

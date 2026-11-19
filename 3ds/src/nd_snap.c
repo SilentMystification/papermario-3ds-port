@@ -173,7 +173,7 @@ static void sc_adopt(void) {
     extern unsigned keyc, keys, conv_k4; /* nd_comb.c:24-25 */
     extern int dual_on, box_prod, box_folded, comb_set, comb_alpha_shade; /* nd_comb.c:26-32 */
     const NdCombIn* i = &sc_cur.in;
-    if (lr_geo) ls_gpu(i->w0, i->w1, i->comb_set, i->prim, sc_cur.plod, i->env, i->conv_k4); /* NCONV2D */
+    ls_gpu(i->w0, i->w1, i->comb_set, i->prim, sc_cur.plod, i->env, i->conv_k4); /* NCONV2D; NAT4D: also for stream snaps */
     nd_ws.comb_w0 = i->w0; nd_ws.comb_w1 = i->w1; nd_ws.omode_h = i->omode_h; nd_ws.prim = i->prim; nd_ws.envc = i->env;
     keyc = i->key_c; keys = i->key_s; conv_k4 = i->conv_k4;
     for (int k = 0; k < 16; k++) *tst_f[k] = i->tst[k];
