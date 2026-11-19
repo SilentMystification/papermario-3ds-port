@@ -26,7 +26,8 @@ End state: core 0 runs native records only (snap apply, transform, vertex and in
 - FACT core 1 runs under the app limit 80 % (pm_log.c:1128). FACT targets (not measured): core 1 logic 3.3 + list build 4.4 ms, core 0 emit 2.0 + frame end 1.5 ms (frame_budget.md:15-19).
 - FACT perf_history.csv holds rows of 2026-11-04 only (before the core split). No `core2 lgms` line exists in build3ds/hw_live_log_131.txt. So no per-core value of a current build exists.
 - Replay (nd_cmd.h:5-6): P1 replays recorded outputs (exact). P2 must save the 3 history words at the pass start and restore them for eye 2 and the key frame.
-- Reading: only a console measurement decides. Row NATM (capture_NATM.md) measures first. Rule: `wwait` (core 0 waits for core 1, pm_phase.c:669) at 2 ms or more (GUESS threshold) supports P2, else P1.
+- Standing gate (user 2026-11-18, even load): after each wave W1 to W5, one console prof capture (capture_NATM.md words) compares wks (core 0) with lgms (core 1). When lgms is more than about 20 % above wks, the next wave is NAT7 (P2: pure decisions move to core 0).
+- Split after W5 (GUESS from NATM f1618: wks 52.60, lgms 40.41, cls comb 3.24, rest 4.74 ms): core 1 builds every snap and runs the pure decisions (snap_build, about +1.5 ms for the NAT2G and W3 snaps), expected lgms about 42 ms. Core 0 applies the snaps and submits (nd emit, no interpreter, no syncs: minus comb and about half of rest), expected wks about 45 ms. Ratio about 1.07: inside the gate.
 ## 4. Rows (all Haiku, closed pages. Gate default: drec byte-equal against `git merge-base HEAD main`, host PASS)
 | wave | rows (files, FACT lines) | counter |
 |---|---|---|
