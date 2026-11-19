@@ -1,0 +1,7 @@
+LOOP NAT5R host rc 0, build rc 0, 3 s
+STAGE key-inputs 3 s STAGE gen 0 s --- build up to date (key 87c3e4e24935), skipping --- STAGE key 0 s 
+
+cmp entcape_kmr03_drec: 1/1 byte-equal 
+LOOP TIME host+build 3 s, run+cmp 19 s, total 22 s
+LOOP PASS
+exit 0
