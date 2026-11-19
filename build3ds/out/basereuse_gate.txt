@@ -1,0 +1,16 @@
+adopt BASEREUSE spot_mac01_drec: refused: the measure tools changed since the cmp
+D=41d6b369cb90c0fee1f4df0e58566716e0847d60 M=a240d296953bdad9b345283c54b130cf57886c4e
+cmp spot_mac01_drec: row BASEREUSE run at commit 1478dc2bb build 7221, base a240d2969 (1 shots)
+  drec 170 draws equal
+1/1 byte-equal
+cmp_rc=0
+adopt BASEREUSE spot_mac01_drec: stored at 41d6b369c, copy of a240d2969 (adoption 1 of 4)
+adopt_rc=0
+base spot_mac01_drec at 41d6b369c: stored, 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\41d6b369cb90c0fee1f4df0e58566716e0847d60\spot_mac01_drec. No build, no run.
+base_rc=0
+D2=830c2886fb9655dcd92d1cc3f8dc9c9df2b58e5c
+base spot_mac01_drec at 830c2886f: same inputs as 41d6b369c: copied. No build, no run.
+base spot_mac01_drec at 830c2886f: stored, 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\830c2886fb9655dcd92d1cc3f8dc9c9df2b58e5c\spot_mac01_drec. No build, no run.
+alias_rc=0
+base spot_mac01_drec at 830c2886f: dropped. Store folder /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/build3ds/basecache/830c2886fb9655dcd92d1cc3f8dc9c9df2b58e5c/spot_mac01_drec removed.
+base spot_mac01_drec at 41d6b369c: dropped. Store folder /c/Users/Andrew/Documents/GitHub/papermario-3ds-port/build3ds/basecache/41d6b369cb90c0fee1f4df0e58566716e0847d60/spot_mac01_drec removed.
