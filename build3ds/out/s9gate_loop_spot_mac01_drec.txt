@@ -1,0 +1,6 @@
+LOOP S9GATE host rc 0, build rc 0, 4 s
+STAGE key-inputs 2 s STAGE gen 1 s --- build up to date (key d994dce7a13f), skipping --- STAGE key 0 s 
+
+cmp spot_mac01_drec: no stored base of spot_mac01_drec at 30eaaef40. Run: bench.py base spot_mac01_drec 
+LOOP TIME host+build 4 s, run+cmp 19 s, total 23 s
+LOOP FAIL: cmp, read build3ds/out/loop_S9GATE_cmp_<bench>.txt

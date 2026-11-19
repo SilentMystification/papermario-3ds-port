@@ -1,0 +1,1 @@
+FAULT s9gate base spot_mac01_drec: bench.py base spot_mac01_drec --commit f2ab50d38d. Output 0 bytes after 5+ min. Harness moved job by4kz7e6s to background at 180 s. Job output file 0 bytes. No drec compare run. Other 3 drec benches not run.

@@ -1,0 +1,48 @@
+LIST: 2 scenarios, one kept slot, warm restart between them: wscmb_pause_drec, wscmb_pause_drec
+LIST: start wscmb_pause_drec at 20:53:25
+queue: position 1 of 1 waiting (lane 'base_f2ab50d38', speed normal, scenario wscmb_pause_drec, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario wscmb_pause_drec, row BASECACHE, lane 'base_f2ab50d38', slot 1, cap 30 s, deadline 25 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 25 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 25 s)
+azslot: slot 1 pid 44456 warm
+run: rc 0: slot1: stopped after 7s: matched 'drec f141 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 6.6 s; end at 7.0 s; 0.5 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+cap high: wscmb_pause_drec cap 30 until 6.6
+PASS  warp: #134 warp: mac_00 entry 4 (area 1 map 1) story -107 flag 0
+PASS  pause mode: #240 game mode 10 frame 96
+PASS  drec: #368 drec f141 draws 206 bytes 339600
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\S9GATE\build3ds\azt\logs\wscmb_pause_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town (preset toad), START opens the pause menu at frame 80, cold det start with the drec switch: the draw records of frames 140 and 141 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\S9GATE\build3ds\azt\shots\wscmb_pause_drec\base_f2ab50d38\drec.txt
+LOG CHECKS PASS (3 of 3). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\S9GATE\build3ds\lane-base_f2ab50d38\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1986488, build 6969, commit f2ab50d38db893d7366af372f98eddc7860a58a1
+  scene -                              windows   0 fps - ft -
+LIST: wscmb_pause_drec rc 0, wall 16.7 s
+LIST: start wscmb_pause_drec at 20:53:42
+queue: position 1 of 1 waiting (lane 'base_f2ab50d38', speed normal, scenario wscmb_pause_drec, want slot 1)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario wscmb_pause_drec, row BASECACHE, lane 'base_f2ab50d38', slot 1, cap 30 s, deadline 25 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 25 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.1 s (deadline kind warm, 25 s)
+azslot: slot 1 pid 44456 warm
+run: rc 0: slot1: stopped after 6s: matched 'drec f141 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 5.8 s; end at 6.2 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+cap high: wscmb_pause_drec cap 30 until 5.8
+PASS  warp: #134 warp: mac_00 entry 4 (area 1 map 1) story -107 flag 0
+PASS  pause mode: #240 game mode 10 frame 96
+PASS  drec: #368 drec f141 draws 206 bytes 339600
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\S9GATE\build3ds\azt\logs\wscmb_pause_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town (preset toad), START opens the pause menu at frame 80, cold det start with the drec switch: the draw records of frames 140 and 141 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\S9GATE\build3ds\azt\shots\wscmb_pause_drec\base_f2ab50d38\drec.txt
+LOG CHECKS PASS (3 of 3). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\S9GATE\build3ds\lane-base_f2ab50d38\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 1987315, build 6969, commit f2ab50d38db893d7366af372f98eddc7860a58a1
+  scene -                              windows   0 fps - ft -
+LIST: wscmb_pause_drec rc 0, wall 16.7 s
+LIST DONE: wall 33.5 s. wscmb_pause_drec rc 0 16.7 s; wscmb_pause_drec rc 0 16.7 s
+base wscmb_pause_drec at f2ab50d38: not stored. One base build of that commit (lane base_f2ab50d38), then the runs.
+base f2ab50d38: build from the basebin store (entry 1ead535f950cd89a), no build
+list of 2 benches on one kept slot: wscmb_pause_drec, wscmb_pause_drec
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.
+base wscmb_pause_drec at f2ab50d38: two runs equal, stored 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\f2ab50d38db893d7366af372f98eddc7860a58a1\wscmb_pause_drec

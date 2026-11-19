@@ -1,0 +1,6 @@
+LOOP S9GATE host rc 0, build rc 0, 3 s
+STAGE key-inputs 2 s STAGE gen 0 s --- build up to date (key d994dce7a13f), skipping --- STAGE key 1 s 
+
+cmp wscmb_pause_drec: no stored base of wscmb_pause_drec at 30eaaef40. Run: bench.py base wscmb_pause_drec 
+LOOP TIME host+build 3 s, run+cmp 18 s, total 21 s
+LOOP FAIL: cmp, read build3ds/out/loop_S9GATE_cmp_<bench>.txt

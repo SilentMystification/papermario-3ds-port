@@ -1,0 +1,2747 @@
+STAGE checks 1 s
+STAGE keys 2 s
+cache selftest ok (a changed byte misses)
+buildslot: slot 1 taken
+STAGE slot-wait 2 s
+STAGE tar-assets 7 s
+gfxcache: hit
+STAGE gfx-table 1 s
+hostsel: hit 91 of 91 units, run 91 (PM_HOSTSEL=all: every unit runs)
+STAGE hostsel 2 s
+STAGE container-end 81 s
+STAGE hostsel-store 49 s
+STAGE crash-page 80 s
+STAGE L26 0 s
+PASS decoder draws 1 line: draw 0 cull 2 tw0 00000011 00000022 00000033 00000044 tw1 00000000 00000000 00000000 00000000 ibuf 00000000 tris 3
+STAGE L27 0 s
+STAGE L28 0 s
+stubs compile
+SELFTEST PASS identity: equal; one texture word changed: draw 23 field tw0: native [2097185, 8710, 0, 50641664] reference (2097184, 8710, 0, 50641664)
+STAGE L30 0 s
+STAGE L32 1 s
+STAGE L33 0 s
+nd_mtx: PASS
+STAGE L34 0 s
+STAGE L35 0 s
+STAGE L36 0 s
+nd_tmpl files 8 states 689 (pass 0:657 1:16 2:16 3:0) combine8 347 stencil-on 32 templates 42 render rules equal 682 override 7
+nd_tmpl state and TEV words: PASS
+STAGE L37 0 s
+STAGE L42 0 s
+nd_tex units 1087 (param with other bits 0)
+nd_tex: PASS
+STAGE L43 0 s
+STAGE L44 1 s
+pm_tex_idx_test: loads 62048 evicts 61024 reinserts 61024 lookups 814800 live 0
+PM_TEX_IDX TEST PASS
+STAGE L45 3 s
+3ds/tools/nd_cmd_test.c: In function 'main':
+3ds/tools/nd_cmd_test.c:236:72: warning: variable 'd_graw' set but not used [-Wunused-but-set-variable]
+  236 |         uint32_t tk[19] = { 0 }, d_decal = 0, d_atest = 0, d_cull = 0, d_graw = 0, tw0[4] = { 0 }, tw1[4] = { 0 };
+      |                                                                        ^~~~~~
+STAGE L46 1 s
+nd_op: 1664 unit cases PASS
+nd_cmd: 689 draws, 12824 register compares (632 texture unit blocks, 1 stale), 22258 skipped PASS
+STAGE L47 0 s
+STAGE L48 0 s
+nd_api ok
+STAGE L49 0 s
+STAGE L50 0 s
+nd_direct ok
+STAGE L51 0 s
+ok   cam def compiles
+ok   cam value units 3 (viewport, scissor, matrix), 2 before the first static
+ok   cam folds: cycle mask, render mode mask, geometry clear, combine, texture
+ok   ico def compiles
+ok   a def with a vertex load is refused
+ok   prim before the first static compiles
+ok   prim between static units is refused
+ok   texture units after the last static compile
+ok   scissor between static units is refused
+ok   MW none is a no-op: the matrix is a pre value
+ok   RM list form: one sync unit at index 1
+ok   cam sync units: texture, cycle type, combine
+ok   first run of a key is a miss
+ok   same inputs: same id, a hit
+ok   cam: inherited prim (read) differs: other id
+ok   cam: inherited env (read) differs: other id
+ok   cam: inherited vprim (read) differs: other id
+ok   cam: combine words and fields (set by the def) differ: same id
+ok   cam: cycle type (set by the def) differs: same id
+ok   cam: tex_on (set by the def) differs: same id
+ok   ico: other def, other id
+ok   ico: inherited combine word (read) differs: other id
+ok   ico: inherited combine field (read) differs: other id
+ok   ico: tex_on (set by the def) differs: same id
+ok   ico: cycle type (set by the def) differs: same id
+SCOMP TEST PASS
+STAGE L52 0 s
+STAGE L53 1 s
+stale unit0 draw 159: stream dim 00200020 param 00002206 addr 0304b340 | intended dim 00200040 param 00000006 addr 0304b680 lod 00000000
+nd_emit worst case: 628 words without the template, limit 768
+nd_emit: 231 raw draws, 9028 register compares, 6576 uniform word compares, 14858 words native, 1 stale texture draws not compared, 0 skipped PASS
+STAGE L54 0 s
+STAGE L55 0 s
+nd_gbi: 57 words PASS
+STAGE L56 0 s
+STAGE L57 0 s
+nd_dlc ent: PASS
+nd_dlc: lists compiled 262 (groups 776, vertices 12920, triangles 7706), refused op 83 slot 0 vtx 0 long 0
+nd_dlc: PASS
+STAGE L58 0 s
+STAGE L68 1 s
+nd_gv: 200000 random cases, 0 differ PASS
+STAGE L69 0 s
+STAGE L70 1 s
+nd_model: PASS
+STAGE L71 0 s
+STAGE L75 0 s
+gtab def D_09000F20_338EE0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000F20_338EE0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000240_37D3C0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000240_37D3C0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000C00_38DC70+1 n 1 inherit 0x3b ctx 0x7
+gtab def D_09000C10_38DC80+0 n 17 inherit 0x3c ctx 0x7
+gtab def D_09000C10_38DC80+17 n 9 inherit 0x3f ctx 0x7
+gtab def D_09000C10_38DC80+26 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000C10_38DC80+34 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001000_3B3D90+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_09001000_3B3D90+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000300_3B6EF0+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000300_3B6EF0+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_090003B0_3B6FA0+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_090003B0_3B6FA0+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000280_3DC1C0+1 n 7 inherit 0x39 ctx 0x7
+gtab def D_09000280_3DC1C0+9 n 10 inherit 0x3e ctx 0x7
+gtab def D_09000280_3DC1C0+19 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000280_3DC1C0+27 n 2 inherit 0x3f ctx 0x7
+gtab def D_0900C328_3F8188+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900BE40_3F7CA0+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900BE88_3F7CE8+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900BED0_3F7D30+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900BF18_3F7D78+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900BF60_3F7DC0+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900BFA8_3F7E08+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900BFF0_3F7E50+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C038_3F7E98+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C080_3F7EE0+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_0900C080_3F7EE0+20 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C168_3F7FC8+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C1B0_3F8010+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C1F8_3F8058+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C240_3F80A0+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_0900C240_3F80A0+20 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C370_3F81D0+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_0900C370_3F81D0+20 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C458_3F82B8+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_0900C458_3F82B8+20 n 8 inherit 0x3f ctx 0x7
+gtab def D_0900C540_3F83A0+0 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureFace+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureFace+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureKeyhole+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureKeyhole+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureKeyhole+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureBody+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureBody+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockBlueFace_LoadTextureBody+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_RenderShackleMain+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_PadlockBlueFace_RenderKeyhole+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockBlueFace_RenderKeyhole+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_RenderFace+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockBlueFace_RenderFace+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockBlueFace_RenderBody+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockBlueFace_RenderBody+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureFace+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureFace+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureKeyhole+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureKeyhole+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureKeyhole+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureBody+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureBody+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockRedFace_LoadTextureBody+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_RenderShackleMain+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_PadlockRedFace_RenderKeyhole+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockRedFace_RenderKeyhole+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_RenderFace+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockRedFace_RenderFace+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFace_RenderBody+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockRedFace_RenderBody+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_LoadTextureKeyhole+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_LoadTextureKeyhole+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockRedFrame_LoadTextureKeyhole+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_LoadTextureFace+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_LoadTextureFace+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PadlockRedFrame_LoadTextureFace+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderShackleMain+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderShackleMain+20 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderShackleMain+23 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderKeyhole+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderKeyhole+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderFace+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderFace+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PadlockRedFrame_RenderBody+1 n 6 inherit 0x38 ctx 0x7
+gtab def D_0A0007C0_E3D590+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A0007C0_E3D590+12 n 4 inherit 0x3f ctx 0x7
+gtab def D_0A000968_E3D738+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A000968_E3D738+12 n 8 inherit 0x3f ctx 0x7
+gtab def D_0A000968_E3D738+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A000A60_E3D830+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_0A000A60_E3D830+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A000AA8_E3D878+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_0A000AA8_E3D878+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000800_3543B0+1 n 18 inherit 0x39 ctx 0x7
+gtab def D_09000800_3543B0+19 n 3 inherit 0x3e ctx 0x7
+gtab def D_090009E0_354590+0 n 6 inherit 0x3e ctx 0x7
+gtab def D_090009E0_354590+10 n 1 inherit 0x3e ctx 0x7
+gtab def D_090009E0_354590+15 n 11 inherit 0x3e ctx 0x7
+gtab def D_09000918_3544C8+1 n 23 inherit 0x39 ctx 0x7
+gtab def D_09002000_379F80+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002000_379F80+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09002000_379F80+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_090020E8_37A068+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090020E8_37A068+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_090020E8_37A068+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_090021D0_37A150+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_090021D0_37A150+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001280_3958F0+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_09001280_3958F0+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001358_3959C8+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_09001358_3959C8+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001430_395AA0+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_09001430_395AA0+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000F20_327330+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09000FA0_3273B0+1 n 21 inherit 0x3f ctx 0x7
+gtab def D_09001060_327470+1 n 21 inherit 0x3f ctx 0x7
+gtab def D_09001120_327530+1 n 21 inherit 0x3f ctx 0x7
+gtab def D_090011E0_3275F0+1 n 21 inherit 0x3f ctx 0x7
+gtab def D_090012A0_3276B0+1 n 21 inherit 0x3f ctx 0x7
+gtab def D_09001360_327770+1 n 21 inherit 0x3f ctx 0x7
+gtab def D_09001420_327830+1 n 21 inherit 0x3f ctx 0x7
+gtab def D_09000900_3641C0+1 n 17 inherit 0x3c ctx 0x7
+gtab def D_09000900_3641C0+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000900_3641C0+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_090009E8_3642A8+0 n 1 inherit 0x3b ctx 0x7
+gtab def D_09000A10_3642D0+0 n 1 inherit 0x3b ctx 0x7
+gtab def D_09001300_37ECD0+1 n 13 inherit 0x38 ctx 0x7
+gtab def D_090017D0_37F1A0+1 n 10 inherit 0x39 ctx 0x7
+gtab def D_090017D0_37F1A0+11 n 15 inherit 0x3e ctx 0x7
+gtab def D_090017D0_37F1A0+26 n 3 inherit 0x3f ctx 0x7
+gtab def D_09001C80_37F650+1 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001CC8_37F698+1 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001D00_37F6D0+1 n 1 inherit 0x3f ctx 0x7
+gtab def D_09000400_403FF0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000400_403FF0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001400_37C1D0+1 n 9 inherit 0x38 ctx 0x7
+gtab def D_09001400_37C1D0+10 n 10 inherit 0x3d ctx 0x7
+gtab def D_09001400_37C1D0+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_090014B8_37C288+1 n 9 inherit 0x38 ctx 0x7
+gtab def D_090014B8_37C288+10 n 10 inherit 0x3d ctx 0x7
+gtab def D_090014B8_37C288+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001570_37C340+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001570_37C340+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001618_37C3E8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001618_37C3E8+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090016C0_37C490+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090016C0_37C490+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003880_3AE8B0+0 n 14 inherit 0x38 ctx 0x7
+gtab def D_09001040_398080+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001040_398080+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090010E8_398128+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090010E8_398128+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090000E0_32ED30+0 n 16 inherit 0x38 ctx 0x7
+gtab def D_090000E0_32ED30+16 n 8 inherit 0x3f ctx 0x7
+gtab def D_090000E0_32ED30+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002000_3DB100+1 n 20 inherit 0x38 ctx 0x7
+gtab def D_09002000_3DB100+21 n 2 inherit 0x3f ctx 0x7
+gtab def D_090022A0_3DB3A0+1 n 20 inherit 0x38 ctx 0x7
+gtab def D_090022A0_3DB3A0+21 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000940_38C4E0+1 n 8 inherit 0x39 ctx 0x7
+gtab def D_09000940_38C4E0+9 n 9 inherit 0x3f ctx 0x7
+gtab def D_09000940_38C4E0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001D40_351F60+1 n 16 inherit 0x39 ctx 0x7
+gtab def D_09001D40_351F60+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001DE0_352000+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_090004C0_343500+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_090004C0_343500+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000570_3435B0+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_09000240_364E40+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000240_364E40+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002100_3884B0+1 n 15 inherit 0x39 ctx 0x7
+gtab def D_09002100_3884B0+16 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002198_388548+1 n 15 inherit 0x39 ctx 0x7
+gtab def D_09002198_388548+16 n 2 inherit 0x3f ctx 0x7
+gtab def D_090022B0_388660+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_09001180_33E790+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001180_33E790+18 n 3 inherit 0x3f ctx 0x7
+gtab def D_09000CC0_33FCC0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000CC0_33FCC0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000D68_33FD68+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000D68_33FD68+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000420_38EDB0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000420_38EDB0+18 n 3 inherit 0x3f ctx 0x7
+gtab def D_090003A0_38ED30+1 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001A08_3CF0E8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001A08_3CF0E8+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001A08_3CF0E8+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001AF0_3CF1D0+0 n 15 inherit 0x3f ctx 0x7
+gtab def D_09001B70_3CF250+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001B70_3CF250+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001B70_3CF250+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000400_3D15E0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000400_3D15E0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001910_3E4270+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09001910_3E4270+19 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001910_3E4270+27 n 2 inherit 0x3f ctx 0x7
+gtab def D_090016D0_3E4030+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001738_3E4098+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090017A0_3E4100+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000800_415860+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000800_415860+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002170_336DE0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002170_336DE0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002238_336EA8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002238_336EA8+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002308_336F78+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002308_336F78+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090023D8_337048+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090023D8_337048+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090024A8_337118+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090024A8_337118+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002578_3371E8+1 n 6 inherit 0x38 ctx 0x7
+gtab def D_09001F78_36CE58+1 n 16 inherit 0x38 ctx 0x7
+gtab def D_09001F78_36CE58+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002078_36CF58+1 n 20 inherit 0x38 ctx 0x7
+gtab def D_09002078_36CF58+21 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000200_3D6130+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000200_3D6130+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001000_3A5320+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001000_3A5320+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090010A8_3A53C8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090010A8_3A53C8+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000DC0_3762D0+1 n 1 inherit 0x3f ctx 0x7
+gtab def D_09000E60_376370+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000E60_376370+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000E60_376370+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000840_3447B0+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000840_3447B0+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000910_344880+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09000978_3448E8+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_090009D8_344948+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000A38_3449A8+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001100_3601E0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001100_3601E0+18 n 3 inherit 0x3f ctx 0x7
+gtab def D_09000A00_373DE0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000A00_373DE0+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000A00_373DE0+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000C20_374000+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000C20_374000+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000B88_373F68_body+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000D40_3810E0+1 n 14 inherit 0x39 ctx 0x7
+gtab def D_09000D40_3810E0+15 n 4 inherit 0x3e ctx 0x7
+gtab def D_09000DE0_381180+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_09000DE0_381180+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000940_38AC90+1 n 20 inherit 0x38 ctx 0x7
+gtab def D_09000940_38AC90+21 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000080_3E53D0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000080_3E53D0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000600_3936A0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000600_3936A0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000950_3939F0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000950_3939F0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000FF8_394098+1 n 2 inherit 0x3e ctx 0x7
+gtab def D_09000FF8_394098+31 n 2 inherit 0x3e ctx 0x7
+gtab def D_09000080_3D4F10+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000080_3D4F10+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090002F0_330750+0 n 13 inherit 0x3a ctx 0x7
+gtab def D_090002F0_330750+13 n 8 inherit 0x3f ctx 0x7
+gtab def D_090002F0_330750+21 n 6 inherit 0x3d ctx 0x7
+gtab def D_090002F0_330750+33 n 5 inherit 0x38 ctx 0x7
+gtab def D_09000450_3308B0+1 n 4 inherit 0x3a ctx 0x7
+gtab def D_09000450_396540+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09000B50_32DA10+0 n 4 inherit 0x3a ctx 0x7
+gtab def D_09000B50_32DA10+4 n 9 inherit 0x3f ctx 0x7
+gtab def D_09000B50_32DA10+13 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000B50_32DA10+21 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000C10_32DAD0+0 n 4 inherit 0x3a ctx 0x7
+gtab def D_09000C10_32DAD0+4 n 9 inherit 0x3f ctx 0x7
+gtab def D_09000C10_32DAD0+13 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000C10_32DAD0+21 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000CD0_32DB90+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_09000CD0_32DB90+12 n 4 inherit 0x3f ctx 0x7
+gtab def D_09000D58_32DC18+1 n 3 inherit 0x3d ctx 0x7
+gtab def D_09000D90_32DC50+1 n 3 inherit 0x3d ctx 0x7
+gtab def D_09000D90_32DC50+7 n 2 inherit 0x3a ctx 0x7
+gtab def D_09000D90_32DC50+11 n 1 inherit 0x3f ctx 0x7
+gtab def D_09000240_32FD90+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_09000240_32FD90+13 n 2 inherit 0x3f ctx 0x7
+gtab def D_09008BE0_3CA780+1 n 22 inherit 0x38 ctx 0x7
+gtab def D_09008BE0_3CA780+23 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000E28_33C9F8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000E28_33C9F8+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000E28_33C9F8+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001138_33CD08+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_09001138_33CD08+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000DA0_33C970+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090010B0_33CC80+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000080_38F790+1 n 16 inherit 0x38 ctx 0x7
+gtab def D_09000080_38F790+17 n 3 inherit 0x3f ctx 0x7
+gtab def D_09008100_34DC40+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_090005A0_365F50+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_090005A0_365F50+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001000_3DDD50+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001000_3DDD50+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000400_3D84C0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000400_3D84C0+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000400_3D84C0+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001000_40B1C0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001000_40B1C0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001000_3F9CC0+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_09001000_3F9CC0+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002780_32B620+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002780_32B620+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09002780_32B620+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002868_32B708+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002868_32B708+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09002868_32B708+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002950_32B7F0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002950_32B7F0+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09002950_32B7F0+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002A38_32B8D8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09002A38_32B8D8+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09002A38_32B8D8+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002EF0_32BD90+0 n 13 inherit 0x3a ctx 0x7
+gtab def D_09002EF0_32BD90+13 n 1 inherit 0x3f ctx 0x7
+gtab def D_09002F68_32BE08+0 n 5 inherit 0x3f ctx 0x7
+gtab def D_09000240_345420+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000240_345420+18 n 1 inherit 0x3f ctx 0x7
+gtab def D_09000130_36E0C0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000130_36E0C0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090001D8_36E168+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09003280_371FE0+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090032F8_372058+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003378_3720D8+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003778_3724D8+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003888_3725E8+1 n 8 inherit 0x39 ctx 0x7
+gtab def D_09003888_3725E8+9 n 12 inherit 0x3e ctx 0x7
+gtab def D_09003888_3725E8+21 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003948_3726A8+1 n 9 inherit 0x39 ctx 0x7
+gtab def D_09003948_3726A8+10 n 16 inherit 0x3e ctx 0x7
+gtab def D_09003948_3726A8+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_090033E0_372140+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003580_3722E0+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001000_3BBEA0+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_09001000_3BBEA0+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002D70_401FC0+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09002DD8_402028+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09002DD8_402028+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_09002E70_4020C0+0 n 4 inherit 0x3e ctx 0x7
+gtab def D_09002E98_4020E8+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09002E98_4020E8+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_09002F30_402180+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09002F30_402180+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_09002FC8_402218+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09002FC8_402218+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_09003060_4022B0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09003060_4022B0+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_090030F8_402348+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090030F8_402348+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_09003190_4023E0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09003190_4023E0+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_09003228_402478+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09003228_402478+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_090032C0_402510+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090032C0_402510+14 n 4 inherit 0x3e ctx 0x7
+gtab def D_090005A0_3FF7F0+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090005A0_3FF7F0+6 n 1 inherit 0x3f ctx 0x7
+gtab def D_09000790_3FF9E0+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000790_3FF9E0+6 n 1 inherit 0x3f ctx 0x7
+gtab def D_09000980_3FFBD0+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000980_3FFBD0+6 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001178_4003C8+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001178_4003C8+6 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001378_4005C8+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001378_4005C8+6 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001578_4007C8+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001578_4007C8+6 n 1 inherit 0x3f ctx 0x7
+gtab def D_09001000_3A6BE0+0 n 28 inherit 0x39 ctx 0x7
+gtab def D_09001000_3A6BE0+28 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001580_3E03E0+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09001580_3E03E0+19 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001580_3E03E0+27 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001670_3E04D0+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_09001670_3E04D0+20 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001670_3E04D0+28 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001768_3E05C8+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09001768_3E05C8+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001818_3E0678+1 n 19 inherit 0x38 ctx 0x7
+gtab def D_09001818_3E0678+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001A80_3E08E0+0 n 1 inherit 0x3e ctx 0x7
+gtab def D_09001A80_3E08E0+4 n 1 inherit 0x3e ctx 0x7
+gtab def D_09000200_3A35D0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000200_3A35D0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090002A8_3A3678+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_090002A8_3A3678+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000358_3A3728+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000358_3A3728+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000100_3E1DD0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000100_3E1DD0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000FC0_35B5A0+1 n 13 inherit 0x38 ctx 0x7
+gtab def D_09001800_406740+1 n 20 inherit 0x3d ctx 0x7
+gtab def D_09001800_406740+21 n 14 inherit 0x3f ctx 0x7
+gtab def D_09001800_406740+35 n 14 inherit 0x3f ctx 0x7
+gtab def D_09001800_406740+49 n 2 inherit 0x3f ctx 0x7
+gtab def D_090019A0_4068E0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09001A18_406958+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09001A90_4069D0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09001B08_406A48+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09001B80_406AC0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004FE8_3EAF18+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09004FE8_3EAF18+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09005168_3EB098+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090051E0_3EB110+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09005258_3EB188+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090052D0_3EB200+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09005348_3EB278+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090053C0_3EB2F0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09005438_3EB368+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09000280_3E61B0+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090002B8_3E61E8+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090002E8_3E6218+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090054B0_3EB3E0+2 n 2 inherit 0x3e ctx 0x7
+gtab def D_09005090_3EAFC0_body+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_090050F0_3EB020+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09000200_352EE0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000200_352EE0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000400_3A2840+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000400_3A2840+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090004A8_3A28E8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090004A8_3A28E8+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002400_409480+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09002528_4095A8+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090025B8_409638+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09002648_4096C8+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090026D8_409758+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090026D8_409758+17 n 14 inherit 0x3f ctx 0x7
+gtab def D_090027F0_409870+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090027F0_409870+17 n 14 inherit 0x3f ctx 0x7
+gtab def D_09000400_3A7BA0+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09000400_3A7BA0+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000870_3A8010+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09000870_3A8010+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000CE0_3A8480+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09000CE0_3A8480+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001150_3A88F0+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09001150_3A88F0+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_090015C0_3A8D60+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_090015C0_3A8D60+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001A30_3A91D0+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09001A30_3A91D0+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001EA0_3A9640+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09001EA0_3A9640+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002310_3A9AB0+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09002310_3A9AB0+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002780_3A9F20+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09002780_3A9F20+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002BF0_3AA390+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09002BF0_3AA390+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002EE0_3AA680+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002F18_3AA6B8+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002F50_3AA6F0+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002F88_3AA728+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002FC0_3AA760+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002FF8_3AA798+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003030_3AA7D0+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003068_3AA808+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_090030A0_3AA840+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_090030D8_3AA878+2 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003110_3AA8B0+0 n 13 inherit 0x38 ctx 0x7
+gtab def D_09000218_398DD8+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09000218_398DD8+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001518_39A0D8+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_09001518_39A0D8+7 n 10 inherit 0x3b ctx 0x7
+gtab def D_09001518_39A0D8+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09007230_39FDF0+1 n 11 inherit 0x39 ctx 0x7
+gtab def D_090072D8_39FE98+0 n 12 inherit 0x38 ctx 0x7
+gtab def D_09001288_399E48+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09001288_399E48+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_090017B8_39A378+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_090017B8_39A378+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001C48_39A808+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_09001C48_39A808+7 n 10 inherit 0x3b ctx 0x7
+gtab def D_09001C48_39A808+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002CE8_39B8A8+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09002CE8_39B8A8+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003578_39C138+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_09003578_39C138+7 n 10 inherit 0x3b ctx 0x7
+gtab def D_09003578_39C138+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003E18_39C9D8+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09003E18_39C9D8+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_090040A8_39CC68+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_090040A8_39CC68+7 n 10 inherit 0x3b ctx 0x7
+gtab def D_090040A8_39CC68+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09004A68_39D628+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_09004A68_39D628+7 n 10 inherit 0x3b ctx 0x7
+gtab def D_09004A68_39D628+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09005308_39DEC8+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09005308_39DEC8+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006378_39EF38+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_09006378_39EF38+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_090069E8_39F5A8+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_090069E8_39F5A8+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006A48_39F608+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006A48_39F608+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006AA8_39F668+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006AA8_39F668+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006B08_39F6C8+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006B08_39F6C8+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006BA8_39F768+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006BA8_39F768+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006C08_39F7C8+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006C08_39F7C8+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006C98_39F858+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006C98_39F858+7 n 1 inherit 0x3f ctx 0x7
+gtab def D_09006CF0_39F8B0+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006CF0_39F8B0+7 n 1 inherit 0x3f ctx 0x7
+gtab def D_09006DA0_39F960+0 n 8 inherit 0x3d ctx 0x7
+gtab def D_09006E28_39F9E8+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006E28_39F9E8+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006EB8_39FA78+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006EB8_39FA78+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006F48_39FB08+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09006F48_39FB08+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09006FD8_39FB98+0 n 8 inherit 0x3d ctx 0x7
+gtab def D_09007030_39FBF0+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09007030_39FBF0+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09007090_39FC50+0 n 8 inherit 0x3d ctx 0x7
+gtab def D_090070E8_39FCA8+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_090070E8_39FCA8+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003340_36A0A0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09003340_36A0A0+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09003340_36A0A0+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003428_36A188+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_09003428_36A188+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003508_36A268+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_09003508_36A268+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_090035E8_36A348+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_090035E8_36A348+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_090036C8_36A428+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_090036C8_36A428+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003830_36A590+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090039A8_36A708+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_090039A8_36A708+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003A88_36A7E8+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_09003A88_36A7E8+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_090037A8_36A508+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090038B8_36A618+1 n 9 inherit 0x39 ctx 0x7
+gtab def D_090038B8_36A618+12 n 15 inherit 0x3e ctx 0x7
+gtab def D_090038B8_36A618+27 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001200_3A1F60+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001200_3A1F60+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090012A8_3A2008+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090012A8_3A2008+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003200_385000+1 n 15 inherit 0x39 ctx 0x7
+gtab def D_09003200_385000+16 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003298_385098+1 n 15 inherit 0x39 ctx 0x7
+gtab def D_09003298_385098+16 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003330_385130+1 n 16 inherit 0x39 ctx 0x7
+gtab def D_09003330_385130+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_090034D0_3852D0+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_09001040_3583E0+1 n 18 inherit 0x39 ctx 0x7
+gtab def D_09001040_3583E0+19 n 3 inherit 0x3f ctx 0x7
+gtab def D_09000200_356730+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000200_356730+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000200_356730+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000308_356838+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000308_356838+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000308_356838+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001080_33AFE0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001080_33AFE0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000C00_341480+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000C00_341480+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000240_3D79B0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000240_3D79B0+18 n 1 inherit 0x3f ctx 0x7
+gtab def D_090009A0_359D50+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_090009A0_359D50+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000A80_359E30+1 n 26 inherit 0x38 ctx 0x7
+gtab def D_09000A80_359E30+27 n 2 inherit 0x3f ctx 0x7
+gtab def D_090002E0_35D7F0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090002E0_35D7F0+18 n 3 inherit 0x3f ctx 0x7
+gtab def D_09000390_35D8A0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000390_35D8A0+18 n 3 inherit 0x3f ctx 0x7
+gtab def D_09000440_35D950+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000440_35D950+18 n 3 inherit 0x3f ctx 0x7
+gtab def D_090002C0_392700+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_09000900_331800+1 n 17 inherit 0x3c ctx 0x7
+gtab def D_09000900_331800+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000900_331800+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_090009E8_3318E8+0 n 1 inherit 0x3b ctx 0x7
+gtab def D_09000A10_331910+0 n 1 inherit 0x3b ctx 0x7
+gtab def D_090037A8_3C1148+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_09000800_3BE1A0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_09000800_3BE1A0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000A98_3BE438+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_09000A98_3BE438+7 n 11 inherit 0x3a ctx 0x7
+gtab def D_09000A98_3BE438+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002860_3C0200+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_09002860_3C0200+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_090029A0_3C0340+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_090029A0_3C0340+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002AE0_3C0480+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_09002AE0_3C0480+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002B68_3C0508+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_09002B68_3C0508+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002CE8_3C0688+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_09002CE8_3C0688+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003148_3C0AE8+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_09003148_3C0AE8+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003398_3C0D38+1 n 6 inherit 0x38 ctx 0x7
+gtab def D_09003510_3C0EB0+1 n 6 inherit 0x38 ctx 0x7
+gtab def D_09000440_34EBB0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000440_34EBB0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09003F98_3FE448+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004010_3FE4C0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004088_3FE538+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004100_3FE5B0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004178_3FE628+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_090041F0_3FE6A0+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004268_3FE718+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004360_3FE810+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004508_3FE9B8+0 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004508_3FE9B8+14 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004508_3FE9B8+28 n 2 inherit 0x3e ctx 0x7
+gtab def D_090042E0_3FE790+1 n 12 inherit 0x39 ctx 0x7
+gtab def D_090042E0_3FE790+13 n 2 inherit 0x3f ctx 0x7
+gtab def D_09004458_3FE908+0 n 2 inherit 0x3e ctx 0x7
+gtab def D_09004458_3FE908+4 n 14 inherit 0x3f ctx 0x7
+gtab def D_09004458_3FE908+18 n 1 inherit 0x3e ctx 0x7
+gtab def D_09000800_3B5B40+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000800_3B5B40+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090008A8_3B5BE8+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090008A8_3B5BE8+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001530_333BD0+1 n 18 inherit 0x39 ctx 0x7
+gtab def D_09001530_333BD0+19 n 3 inherit 0x3e ctx 0x7
+gtab def D_09001530_333BD0+25 n 1 inherit 0x3e ctx 0x7
+gtab def D_09001530_333BD0+30 n 5 inherit 0x3c ctx 0x7
+gtab def D_09001650_333CF0+1 n 20 inherit 0x39 ctx 0x7
+gtab def D_09001650_333CF0+21 n 3 inherit 0x3e ctx 0x7
+gtab def D_09001650_333CF0+27 n 1 inherit 0x3e ctx 0x7
+gtab def D_09001650_333CF0+32 n 5 inherit 0x3c ctx 0x7
+gtab def D_09001780_333E20+0 n 9 inherit 0x3f ctx 0x7
+gtab def D_090017D0_333E70+0 n 9 inherit 0x3f ctx 0x7
+gtab def D_09000800_4147A0+1 n 16 inherit 0x38 ctx 0x7
+gtab def D_09000800_4147A0+17 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000B20_414AC0+1 n 1 inherit 0x3e ctx 0x7
+gtab def D_09000B90_414B30+1 n 1 inherit 0x3e ctx 0x7
+gtab def D_09004E00_412090+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09005168_4123F8+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_090051C8_412458+0 n 9 inherit 0x3f ctx 0x7
+gtab def D_090051C8_412458+50 n 2 inherit 0x3f ctx 0x7
+gtab def D_09005370_412600+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_090053D0_412660+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_09005440_4126D0+1 n 5 inherit 0x3c ctx 0x7
+gtab def D_09000440_363090+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000440_363090+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000440_360E70+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000440_360E70+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002700_3B1E00+1 n 15 inherit 0x39 ctx 0x7
+gtab def D_09002700_3B1E00+16 n 2 inherit 0x3f ctx 0x7
+gtab def D_09002798_3B1E98+1 n 21 inherit 0x39 ctx 0x7
+gtab def D_09002798_3B1E98+22 n 2 inherit 0x3f ctx 0x7
+gtab def D_090028E0_3B1FE0+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_09000280_3E1550+1 n 24 inherit 0x38 ctx 0x7
+gtab def D_09000280_3E1550+25 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000E00_362470+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000E00_362470+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000E00_362470+26 n 3 inherit 0x3f ctx 0x7
+gtab def D_09001000_3CC890+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09001000_3CC890+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001000_3CC890+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000898_40C438+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000898_40C438+18 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000898_40C438+26 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000200_35C750+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000200_35C750+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_090002C8_35C818+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_090002C8_35C818+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000390_35C8E0+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000390_35C8E0+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000460_35C9B0+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000460_35C9B0+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000800_3D02F0+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_09000800_3D02F0+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_090008D8_3D03C8+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_090008D8_3D03C8+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000000_3B46A0+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09000400_3D2980+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_09000400_3D2980+24 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000278_3B9CE8+2 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000278_3B9CE8+19 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000278_3B9CE8+27 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000278_3B9CE8+35 n 1 inherit 0x3f ctx 0x7
+gtab def D_09000200_3B9C70+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_090003E8_3B9E58+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000528_3B9F98+1 n 2 inherit 0x3b ctx 0x7
+gtab def D_09000528_3B9F98+3 n 5 inherit 0x3d ctx 0x7
+gtab def D_09000570_3B9FE0+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_09000280_3B8AE0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000280_3B8AE0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000100_3BCB90+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000100_3BCB90+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000200_3B7AD0+1 n 17 inherit 0x38 ctx 0x7
+gtab def D_09000200_3B7AD0+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_09000400_3D3D30+1 n 18 inherit 0x38 ctx 0x7
+gtab def D_09000400_3D3D30+19 n 8 inherit 0x3f ctx 0x7
+gtab def D_09000400_3D3D30+27 n 2 inherit 0x3f ctx 0x7
+gtab def D_09001500_3918D0+1 n 16 inherit 0x38 ctx 0x7
+gtab def D_09001500_3918D0+17 n 3 inherit 0x3f ctx 0x7
+gtab def D_090015A8_391978+1 n 11 inherit 0x38 ctx 0x7
+gtab def D_09001610_3919E0+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001658_391A28+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_090016A0_391A70+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_090016E8_391AB8+0 n 8 inherit 0x3f ctx 0x7
+gtab def D_09001730_391B00+0 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_ArrowSign_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_ArrowSign_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_ArrowSign_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ArrowSign_RenderPole+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_ArrowSign_RenderRotatedSign+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_ArrowSign_RenderRotatedSign+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode5+0 n 10 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode5+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode5+16 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode4+0 n 10 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode4+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode4+41 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode3+0 n 10 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode3+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode3+16 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode2+0 n 10 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode2+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode2+41 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode1+0 n 10 inherit 0x3a ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode1+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_BellbellPlant_RenderNode1+51 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_BlueSwitch_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_BlueSwitch_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_BlueSwitch_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BlueSwitch_LoadExclMark+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_BlueSwitch_LoadExclMark+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BlueSwitch_RenderBlueBubble+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_BlueSwitch_RenderExclMark+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_BlueSwitch_RenderExclMark+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BlueSwitch_RenderBase2+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_BlueSwitch_RenderBase+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_BlueSwitch_RenderBase+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BlueWarpPipe_LoadTextureBase+0 n 11 inherit 0x3b ctx 0x7
+gtab def Entity_BlueWarpPipe_LoadTextureBase+11 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_BlueWarpPipe_LoadTextureBase+19 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BlueWarpPipe_LoadTexturePipe+0 n 11 inherit 0x3b ctx 0x7
+gtab def Entity_BlueWarpPipe_LoadTexturePipe+11 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_BlueWarpPipe_LoadTexturePipe+19 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BlueWarpPipe_RenderBase+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BlueWarpPipe_RenderPipe+1 n 3 inherit 0x3b ctx 0x7
+gtab def D_0A002400_E50BF0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A002400_E50BF0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002778_E50F68+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002778_E50F68+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0027F8_E50FE8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0027F8_E50FE8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002868_E51058+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002868_E51058+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0028E8_E510D8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0028E8_E510D8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002968_E51158+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002968_E51158+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002A00_E511F0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002A00_E511F0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002A98_E51288+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002A98_E51288+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002B18_E51308+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002B18_E51308+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002B98_E51388+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002B98_E51388+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002C38_E51428+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002C38_E51428+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002CD8_E514C8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002CD8_E514C8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002D78_E51568+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002D78_E51568+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001060_E9E6B0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A001060_E9E6B0+12 n 8 inherit 0x3f ctx 0x7
+gtab def D_0A001060_E9E6B0+20 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001258_E9E8A8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001258_E9E8A8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001308_E9E958+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001308_E9E958+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0013B8_E9EA08+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0013B8_E9EA08+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001468_E9EAB8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001468_E9EAB8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001518_E9EB68+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001518_E9EB68+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BrickBlock_LoadTexture+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_BrickBlock_LoadTexture+12 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_BrickBlock_LoadTexture+20 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_BrickBlock_InitTexture+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_BrickBlock_InitTexture+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_LoadTexture1+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_Chest_LoadTexture1+12 n 4 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_LoadTexture2+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_Chest_LoadTexture2+12 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_LoadTexture2+20 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_LoadTextureLock+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_Chest_LoadTextureLock+12 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_LoadTextureLock+20 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_RenderLidLock+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_Chest_RenderLidLock+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_RenderLidWooden+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_Chest_RenderLidWooden+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_RenderLidWooden+8 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_RenderBoxLock+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_Chest_RenderBoxLock+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Chest_RenderBoxWooden+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_Chest_RenderBoxWooden+4 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_CymbalPlant_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_CymbalPlant_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_CymbalPlant_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode3+1 n 3 inherit 0x3d ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode3+5 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode4+1 n 3 inherit 0x3d ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode4+5 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode5+1 n 7 inherit 0x38 ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode7+1 n 3 inherit 0x3d ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode7+5 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode9+1 n 3 inherit 0x3d ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode9+5 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode8+1 n 7 inherit 0x38 ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode10+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_CymbalPlant_RenderNode1+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_GreenStompSwitch_LoadTexture+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_GreenStompSwitch_LoadTexture+12 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_GreenStompSwitch_LoadTexture+20 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_GreenStompSwitch_LoadExclMark+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_GreenStompSwitch_LoadExclMark+12 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_GreenStompSwitch_LoadExclMark+20 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_GreenStompSwitch_RenderBase+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_GreenStompSwitch_RenderBase+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_GreenStompSwitch_RenderExclMark+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_GreenStompSwitch_RenderExclMark+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer1Block_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer1Block_LoadTexture+7 n 10 inherit 0x3b ctx 0x7
+gtab def Entity_Hammer1Block_LoadTexture+17 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer1Block_RenderFaces+2 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer2Block_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer2Block_LoadTexture+7 n 10 inherit 0x3b ctx 0x7
+gtab def Entity_Hammer2Block_LoadTexture+17 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer2Block_RenderFaces+2 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer3Block_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer3Block_LoadTexture+7 n 10 inherit 0x3b ctx 0x7
+gtab def Entity_Hammer3Block_LoadTexture+17 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Hammer3Block_RenderBlock+2 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_HeartBlock_LoadTexture+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_HeartBlock_LoadTexture+12 n 4 inherit 0x3f ctx 0x7
+gtab def Entity_HeartBlock_RenderBlock+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_HeartBlock_RenderBlock+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_HeartBlockContent_LoadPalette+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_HeartBlockContent_LoadPalette+7 n 6 inherit 0x3b ctx 0x7
+gtab def Entity_HeartBlockContent_RenderImage+0 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_HeartBlockContent_RenderImage+2 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_HeartBlockContent_RenderHeartSleeping+1 n 8 inherit 0x3f ctx 0x7
+gtab def D_0A000758_E4A598+1 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_HeartBlockContent_RenderHeartAwake+1 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_HeartBlockContent_RenderHeartHappy+1 n 8 inherit 0x3f ctx 0x7
+gtab def Gfx_HiddenPanel_RenderHole+0 n 7 inherit 0x38 ctx 0x7
+gtab def Gfx_HiddenPanel_RenderTop+1 n 2 inherit 0x3f ctx 0x7
+gtab def Gfx_AltHiddenPanel_RenderTop+1 n 2 inherit 0x3f ctx 0x7
+gtab def Gfx_HiddenPanel_RenderBottom+0 n 7 inherit 0x38 ctx 0x7
+gtab def Entity_HitFloatingYellowBlock_RenderBlock2+0 n 10 inherit 0x39 ctx 0x7
+gtab def Entity_HitFloatingYellowBlock_RenderBlock2+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_HitFloatingYellowBlock_RenderBlock2+19 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_HitFloatingYellowBlock_RenderBlock1+0 n 10 inherit 0x39 ctx 0x7
+gtab def Entity_HitFloatingYellowBlock_RenderBlock1+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_HitFloatingYellowBlock_RenderBlock1+19 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_HitRedBlock_RenderBlock2+0 n 12 inherit 0x39 ctx 0x7
+gtab def Entity_HitRedBlock_RenderBlock2+12 n 3 inherit 0x3f ctx 0x7
+gtab def Entity_HitRedBlock_RenderBlock2+23 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_HitRedBlock_RenderBlock1+0 n 12 inherit 0x39 ctx 0x7
+gtab def Entity_HitRedBlock_RenderBlock1+12 n 3 inherit 0x3f ctx 0x7
+gtab def Entity_HitRedBlock_RenderBlock1+23 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_HitYellowBlock_RenderBlock2+0 n 10 inherit 0x39 ctx 0x7
+gtab def Entity_HitYellowBlock_RenderBlock2+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_HitYellowBlock_RenderBlock2+19 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_HitYellowBlock_RenderBlock1+0 n 10 inherit 0x39 ctx 0x7
+gtab def Entity_HitYellowBlock_RenderBlock1+10 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_HitYellowBlock_RenderBlock1+19 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_InertRedBlock_LoadTexture+0 n 11 inherit 0x3b ctx 0x7
+gtab def Entity_InertRedBlock_LoadTexture+11 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_InertRedBlock_RenderTopBottom+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_InertRedBlock_RenderTopBottom+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_InertRedBlock_RenderFaces+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_InertRedBlock_RenderFaces+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_InertYellowBlock_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_InertYellowBlock_LoadTexture+7 n 10 inherit 0x3b ctx 0x7
+gtab def Entity_InertYellowBlock_LoadTexture+17 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_InertYellowBlock_RenderTopBottom+1 n 4 inherit 0x39 ctx 0x7
+gtab def Entity_InertYellowBlock_RenderFaces+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_InertYellowBlock_RenderFaces+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaBeginChew_Render+0 n 13 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaBeginChew_Render+13 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaBeginChew_Render+141 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaChewing_Render+0 n 13 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaChewing_Render+13 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaChewing_Render+141 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaEnvelop_Render+0 n 13 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaEnvelop_Render+13 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaEnvelop_Render+141 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaGrab_Render+0 n 13 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaGrab_Render+13 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaGrab_Render+141 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaReset1_Render+0 n 13 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaReset1_Render+13 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaReset1_Render+141 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaReset_Render+0 n 13 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaReset_Render+13 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaReset_Render+141 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaSpitOut_Render+0 n 13 inherit 0x3a ctx 0x7
+gtab def Entity_MunchlesiaSpitOut_Render+13 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_MunchlesiaSpitOut_Render+141 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_Padlock_LoadTextureFace+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_LoadTextureFace+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_Padlock_LoadTextureFace+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_LoadTextureKeyhole+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_LoadTextureKeyhole+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_Padlock_LoadTextureKeyhole+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_LoadTextureBody+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_LoadTextureBody+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_Padlock_LoadTextureBody+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_RenderShackleMain+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_Padlock_RenderKeyhole+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_Padlock_RenderKeyhole+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_RenderFace+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_Padlock_RenderFace+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Padlock_RenderBody+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_Padlock_RenderBody+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001020_E9C520+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A001020_E9C520+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PinkFlower_RenderNode3+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_PinkFlower_RenderNode2+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_PinkFlower_RenderNode1+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_PinkFlower_RenderNode5+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PinkFlower_RenderNode5+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0007B0_E9BCB0+0 n 11 inherit 0x3b ctx 0x7
+gtab def D_0A0007B0_E9BCB0+11 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0013B8_E9C8B8+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_0A0013B8_E9C8B8+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PowBlock_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PowBlock_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PowBlock_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PowBlock_RenderTopBottom+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PowBlock_RenderTopBottom+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PowBlock_RenderSides+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PowBlock_RenderSides+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PushBlock_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_PushBlock_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_PushBlock_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_PushBlock_RenderFaces+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_PushBlock_RenderFaces+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_RedBlock_LoadTexture+0 n 11 inherit 0x3b ctx 0x7
+gtab def Entity_RedBlock_LoadTexture+11 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_RedBlock_RenderTopBottom+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_RedBlock_RenderTopBottom+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_RedBlock_RenderSides+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_RedBlock_RenderSides+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_RedSwitch_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_RedSwitch_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_RedSwitch_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_RedSwitch_LoadExclMark+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_RedSwitch_LoadExclMark+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_RedSwitch_RenderRedBubble+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_RedSwitch_RenderExclMark+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_RedSwitch_RenderExclMark+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_RedSwitch_RenderBase+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_RedSwitch_RenderBase+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_LoadTexture1+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_LoadTexture1+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_ScriptSpring_LoadTexture1+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_LoadTexture2+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_LoadTexture2+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_ScriptSpring_LoadTexture2+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_LoadTextureStar+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_LoadTextureStar+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_ScriptSpring_LoadTextureStar+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart2+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart2+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart6+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart6+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart1+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart1+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart3+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart4+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart5+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart7+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_ScriptSpring_RenderPart7+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0022A0_E40500+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A0022A0_E40500+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002998_E40BF8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002A20_E40C80+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002A20_E40C80+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002A80_E40CE0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002B18_E40D78+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002B18_E40D78+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002B70_E40DD0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002C00_E40E60+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002C00_E40E60+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002C60_E40EC0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002CF0_E40F50+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002CF0_E40F50+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002D48_E40FA8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002DF8_E41058+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002E88_E410E8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002E88_E410E8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002EE0_E41140+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002F48_E411A8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002F48_E411A8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002FA8_E41208+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003010_E41270+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003010_E41270+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003068_E412C8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0030D0_E41330+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0030D0_E41330+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003130_E41390+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0031B0_E41410+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0031B0_E41410+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003210_E41470+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0032A8_E41508+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0032A8_E41508+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003300_E41560+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003388_E415E8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003388_E415E8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0033E8_E41648+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003478_E416D8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003478_E416D8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0034D0_E41730+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003560_E417C0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003560_E417C0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0035B8_E41818+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003618_E41878+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003618_E41878+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003678_E418D8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0036E0_E41940+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0036E0_E41940+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003738_E41998+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003798_E419F8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003798_E419F8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0037F8_E41A58+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003878_E41AD8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003878_E41AD8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0038D8_E41B38+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003970_E41BD0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003970_E41BD0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0039C8_E41C28+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003A50_E41CB0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003A50_E41CB0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003AB0_E41D10+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003B40_E41DA0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003B40_E41DA0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003B98_E41DF8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003C48_E41EA8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003CD8_E41F38+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003CD8_E41F38+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003D30_E41F90+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003D90_E41FF0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003D90_E41FF0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003DF0_E42050+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003E58_E420B8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003E58_E420B8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003EB0_E42110+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003F10_E42170+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003F10_E42170+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001460_E33880+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_0A001460_E33880+7 n 11 inherit 0x3a ctx 0x7
+gtab def D_0A001460_E33880+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001B88_E33FA8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001C00_E34020+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001C00_E34020+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001C78_E34098+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001D10_E34130+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001D10_E34130+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001D80_E341A0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001E00_E34220+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001E00_E34220+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001E78_E34298+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001EF0_E34310+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001EF0_E34310+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001F58_E34378+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001FD8_E343F8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001FD8_E343F8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002030_E34450+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0020A0_E344C0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0020A0_E344C0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002108_E34528+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002170_E34590+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002170_E34590+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0021D8_E345F8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002248_E34668+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002248_E34668+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0022A8_E346C8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002308_E34728+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002308_E34728+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002370_E34790+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002400_E34820+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002400_E34820+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002460_E34880+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002508_E34928+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002508_E34928+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002560_E34980+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0025F0_E34A10+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0025F0_E34A10+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002650_E34A70+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0026C8_E34AE8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0026C8_E34AE8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002720_E34B40+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002790_E34BB0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002790_E34BB0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0027E8_E34C08+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002850_E34C70+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002850_E34C70+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0028B0_E34CD0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002920_E34D40+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002920_E34D40+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002978_E34D98+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0029D8_E34DF8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0029D8_E34DF8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002A38_E34E58+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002AB8_E34ED8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002AB8_E34ED8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002B28_E34F48+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002BC0_E34FE0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002BC0_E34FE0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002C28_E35048+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002CA8_E350C8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002CA8_E350C8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002D18_E35138+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002D88_E351A8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002D88_E351A8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002DF0_E35210+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002E68_E35288+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002E68_E35288+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002EC0_E352E0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002F28_E35348+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002F28_E35348+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002F90_E353B0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002FF0_E35410+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002FF0_E35410+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003058_E35478+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0030C0_E354E0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0030C0_E354E0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003120_E35540+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003178_E35598+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003178_E35598+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001460_E36AD0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A001460_E36AD0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001B58_E371C8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001BD0_E37240+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001BD0_E37240+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001C48_E372B8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001CE0_E37350+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001CE0_E37350+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001D50_E373C0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001DD0_E37440+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001DD0_E37440+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001E48_E374B8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001EC0_E37530+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001EC0_E37530+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001F28_E37598+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001FA8_E37618+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001FA8_E37618+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002000_E37670+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002070_E376E0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002070_E376E0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0020D8_E37748+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002140_E377B0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002140_E377B0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0021A8_E37818+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002218_E37888+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002218_E37888+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002278_E378E8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0022D8_E37948+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0022D8_E37948+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002340_E379B0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0023D0_E37A40+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0023D0_E37A40+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002430_E37AA0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0024D8_E37B48+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0024D8_E37B48+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002530_E37BA0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0025C0_E37C30+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0025C0_E37C30+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002620_E37C90+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002698_E37D08+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002698_E37D08+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0026F0_E37D60+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002760_E37DD0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002760_E37DD0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0027B8_E37E28+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002820_E37E90+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002820_E37E90+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002880_E37EF0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0028F0_E37F60+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0028F0_E37F60+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002948_E37FB8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0029A8_E38018+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0029A8_E38018+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002A08_E38078+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002A88_E380F8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002A88_E380F8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002AF8_E38168+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002B90_E38200+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002B90_E38200+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002BF8_E38268+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002C78_E382E8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002C78_E382E8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002CE8_E38358+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002D58_E383C8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002D58_E383C8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002DC0_E38430+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002E38_E384A8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002E38_E384A8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002E90_E38500+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002EF8_E38568+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002EF8_E38568+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002F60_E385D0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002FC0_E38630+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002FC0_E38630+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003028_E38698+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003090_E38700+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003090_E38700+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0030F0_E38760+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A003148_E387B8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003148_E387B8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001170_E39A00+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_0A001170_E39A00+7 n 11 inherit 0x3a ctx 0x7
+gtab def D_0A001170_E39A00+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001898_E3A128+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001918_E3A1A8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001918_E3A1A8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001990_E3A220+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001A30_E3A2C0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001A30_E3A2C0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001AA0_E3A330+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001B28_E3A3B8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001B28_E3A3B8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001BA0_E3A430+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001C20_E3A4B0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001C20_E3A4B0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001C88_E3A518+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001D10_E3A5A0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001D10_E3A5A0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001D68_E3A5F8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001DE8_E3A678+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001DE8_E3A678+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001E50_E3A6E0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001EC0_E3A750+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001EC0_E3A750+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001F28_E3A7B8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A001FA0_E3A830+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A001FA0_E3A830+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002000_E3A890+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002060_E3A8F0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002060_E3A8F0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0020C8_E3A958+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002160_E3A9F0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002160_E3A9F0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0021C0_E3AA50+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002270_E3AB00+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002270_E3AB00+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0022C8_E3AB58+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002360_E3ABF0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002360_E3ABF0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0023C0_E3AC50+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002440_E3ACD0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002440_E3ACD0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002498_E3AD28+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002518_E3ADA8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002518_E3ADA8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002570_E3AE00+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0025E0_E3AE70+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0025E0_E3AE70+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002640_E3AED0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A0026B8_E3AF48+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0026B8_E3AF48+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002710_E3AFA0+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002770_E3B000+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002770_E3B000+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0027D0_E3B060+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002850_E3B0E0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002850_E3B0E0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0028C0_E3B150+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002958_E3B1E8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002958_E3B1E8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0029C0_E3B250+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002A40_E3B2D0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002A40_E3B2D0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002AB0_E3B340+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002B20_E3B3B0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002B20_E3B3B0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002B88_E3B418+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002C00_E3B490+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002C00_E3B490+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002C58_E3B4E8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002CC0_E3B550+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002CC0_E3B550+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002D28_E3B5B8+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002D88_E3B618+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002D88_E3B618+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002DF0_E3B680+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002E58_E3B6E8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002E58_E3B6E8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A002EB8_E3B748+1 n 5 inherit 0x38 ctx 0x7
+gtab def D_0A002F10_E3B7A0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A002F10_E3B7A0+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Signpost_LoadTexture+0 n 11 inherit 0x3b ctx 0x7
+gtab def Entity_Signpost_LoadTexture+11 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_Signpost_LoadTexture+19 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Signpost_RenderSign+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Signpost_RenderSign+29 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_Signpost_RenderSign+32 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_Signpost_RenderSign+46 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_Signpost_RenderPole+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_LoadTexture1+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_LoadTexture1+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_SimpleSpring_LoadTexture1+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_LoadTexture2+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_SimpleSpring_LoadTexture2+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_LoadTextureStar+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_LoadTextureStar+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_SimpleSpring_LoadTextureStar+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart2+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart2+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart6+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart6+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart1+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart1+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart3+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart4+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart5+1 n 6 inherit 0x38 ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart7+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_SimpleSpring_RenderPart7+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A000280_E9CB80+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A000280_E9CB80+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A000AF8_E9D3F8+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_0A000AF8_E9D3F8+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A000BB0_E9D4B0+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_0A000BB0_E9D4B0+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A000C00_E9D500+1 n 6 inherit 0x38 ctx 0x7
+gtab def D_0A000C78_E9D578+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_0A000C78_E9D578+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A000CC8_E9D5C8+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_0A000CC8_E9D5C8+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureFace+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureFace+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureFace+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureLink+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureLink+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureBox+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureBox+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_StarBoxLauncher_LoadTextureBox+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_RenderChain+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_StarBoxLauncher_RenderChain+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_RenderFace+1 n 4 inherit 0x3d ctx 0x7
+gtab def Entity_StarBoxLauncher_RenderBoxCover+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_StarBoxLauncher_RenderBoxCover+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_StarBoxLauncher_RenderBox+1 n 2 inherit 0x3d ctx 0x7
+gtab def Entity_StarBoxLauncher_RenderBox+4 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_SuperBlock_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_RenderTop+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SuperBlock_RenderTop+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_RenderRightFrontEdge+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SuperBlock_RenderRightFrontEdge+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_RenderLeftFrontEdge+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SuperBlock_RenderLeftFrontEdge+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_RenderRightBackEdge+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SuperBlock_RenderRightBackEdge+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_RenderLeftBackEdge+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SuperBlock_RenderLeftBackEdge+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlock_RenderBottom+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SuperBlock_RenderBottom+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlockContent_Prepare+0 n 6 inherit 0x3b ctx 0x7
+gtab def Entity_SuperBlockContent_RenderImage+0 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SuperBlockContent_RenderImage+2 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlockContent_Render+1 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_SuperBlockContent_Render2+1 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_TrumpetPlant_RenderNode2+0 n 10 inherit 0x3a ctx 0x7
+gtab def Entity_TrumpetPlant_RenderNode2+83 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_TrumpetPlant_RenderNode1+0 n 10 inherit 0x3a ctx 0x7
+gtab def Entity_TrumpetPlant_RenderNode1+25 n 2 inherit 0x3a ctx 0x7
+gtab def Entity_Tweester_LoadTextureFace+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_Tweester_LoadTextureFace+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_Tweester_LoadTextureFace+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_Tweester_LoadTextures+0 n 19 inherit 0x3a ctx 0x7
+gtab def Entity_Tweester_LoadTextures+19 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0019E8_E58848+1 n 2 inherit 0x3d ctx 0x7
+gtab def D_0A0019E8_E58848+4 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A001B10_E58970+1 n 4 inherit 0x3d ctx 0x7
+gtab def Entity_Tweester_RenderOuterWhirl+1 n 4 inherit 0x3d ctx 0x7
+gtab def Entity_Tweester_RenderInnerWhirl+1 n 4 inherit 0x3d ctx 0x7
+gtab def Entity_WoodenCrate_LoadTexture2+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_WoodenCrate_LoadTexture2+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_WoodenCrate_LoadTexture2+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A004140_E55780+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A004140_E55780+3 n 1 inherit 0x3f ctx 0x7
+gtab def D_0A004268_E558A8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A004268_E558A8+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_WoodenCrate_LoadTexture1+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_WoodenCrate_LoadTexture1+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_WoodenCrate_LoadTexture1+18 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003270_E548B0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003270_E548B0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0032C0_E54900+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0032C0_E54900+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003328_E54968+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003328_E54968+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003398_E549D8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003398_E549D8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0033F0_E54A30+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0033F0_E54A30+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003448_E54A88+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003448_E54A88+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003498_E54AD8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003498_E54AD8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0034E8_E54B28+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0034E8_E54B28+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003538_E54B78+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003538_E54B78+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0035A0_E54BE0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0035A0_E54BE0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003610_E54C50+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003610_E54C50+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003668_E54CA8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003668_E54CA8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0036C0_E54D00+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0036C0_E54D00+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003710_E54D50+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003710_E54D50+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003760_E54DA0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003760_E54DA0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0037B0_E54DF0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0037B0_E54DF0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003818_E54E58+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003818_E54E58+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003888_E54EC8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003888_E54EC8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0038E0_E54F20+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0038E0_E54F20+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003938_E54F78+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003938_E54F78+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003988_E54FC8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003988_E54FC8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0039D8_E55018+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0039D8_E55018+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003A28_E55068+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003A28_E55068+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003A90_E550D0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003A90_E550D0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003B00_E55140+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003B00_E55140+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003B58_E55198+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003B58_E55198+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003BB0_E551F0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003BB0_E551F0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003C00_E55240+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003C00_E55240+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003C50_E55290+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003C50_E55290+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003CA0_E552E0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003CA0_E552E0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003D08_E55348+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003D08_E55348+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003D78_E553B8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003D78_E553B8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003DD0_E55410+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003DD0_E55410+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003E28_E55468+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003E28_E55468+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003E78_E554B8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003E78_E554B8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003EC8_E55508+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003EC8_E55508+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003F18_E55558+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003F18_E55558+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003F80_E555C0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003F80_E555C0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A003FF0_E55630+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A003FF0_E55630+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A004048_E55688+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A004048_E55688+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0040A0_E556E0+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0040A0_E556E0+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_0A0040F0_E55730+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_0A0040F0_E55730+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_YellowBlock_LoadTexture+0 n 11 inherit 0x3b ctx 0x7
+gtab def Entity_YellowBlock_LoadTexture+11 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_YellowBlock_RenderTopBottom+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_YellowBlock_RenderTopBottom+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_YellowBlock_RenderSides+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_YellowBlock_RenderSides+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SaveBlock_LoadTextureStar+0 n 11 inherit 0x3b ctx 0x7
+gtab def Entity_SaveBlock_LoadTextureStar+11 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SaveBlock_LoadTextureFace+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_SaveBlock_LoadTextureFace+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SaveBlock_LoadTextureLetterS+0 n 12 inherit 0x3a ctx 0x7
+gtab def Entity_SaveBlock_LoadTextureLetterS+12 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SaveBlock_RenderLetterS+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SaveBlock_RenderLetterS+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SaveBlock_RenderStar+1 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_SaveBlock_RenderStar+3 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_SaveBlock_RenderFaces+1 n 5 inherit 0x38 ctx 0x7
+gtab def Entity_UltraBlock_LoadTexture+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlock_LoadTexture+7 n 11 inherit 0x3a ctx 0x7
+gtab def Entity_UltraBlock_LoadTexture+18 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlock_RenderTop+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlock_RenderRightFrontEdge+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlock_RenderLeftFrontEdge+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlock_RenderRightBackEdge+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlock_RenderLeftBackEdge+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlock_RenderBottom+2 n 2 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlockContent_LoadPalette+0 n 7 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlockContent_LoadPalette+7 n 5 inherit 0x3b ctx 0x7
+gtab def Entity_UltraBlockContent_RenderImage+0 n 1 inherit 0x3d ctx 0x7
+gtab def Entity_UltraBlockContent_RenderImage+2 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlockContent_Render4+1 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlockContent_Render2+1 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlockContent_Render3+1 n 8 inherit 0x3f ctx 0x7
+gtab def Entity_UltraBlockContent_Render+1 n 8 inherit 0x3f ctx 0x7
+gtab def D_8021CF40_5A3620+1 n 23 inherit 0x38 ctx 0x7
+gtab def D_8021CF40_5A3620+24 n 2 inherit 0x3f ctx 0x7
+gtab def hos_03_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def hos_03_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def hos_03_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def jan_03_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def jan_03_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def jan_03_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def kkj_20_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def kkj_20_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def kkj_20_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def kpa_91_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def kpa_91_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def kpa_91_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def kpa_95_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def kpa_95_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def kpa_95_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def mac_01_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def mac_01_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def mac_01_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def nok_01_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def nok_01_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def nok_01_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def sam_02_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def sam_02_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def sam_02_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def sam_06_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def sam_06_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def sam_06_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def kmr_02_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def kmr_02_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def kmr_02_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def kmr_20_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def kmr_20_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def kmr_20_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def dgb_01_D_8024B770_C08FF0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024B770_C08FF0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024B8F8_C09178+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024B8F8_C09178+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024BAA0_C09320+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024BAA0_C09320+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024BC48_C094C8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024BC48_C094C8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024BCF8_C09578+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024BCF8_C09578+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024BDC8_C09648+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024BDC8_C09648+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024BE60_C096E0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024BE60_C096E0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024BEF8_C09778+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024BEF8_C09778+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024BFC8_C09848+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024BFC8_C09848+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C030_C098B0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C030_C098B0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C098_C09918+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C098_C09918+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C100_C09980+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C100_C09980+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C1F0_C09A70+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C1F0_C09A70+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C2E0_C09B60+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C2E0_C09B60+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C420_C09CA0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C420_C09CA0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C4C0_C09D40+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C4C0_C09D40+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C560_C09DE0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C560_C09DE0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C670_C09EF0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C670_C09EF0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C808_C0A088+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C808_C0A088+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C918_C0A198+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C918_C0A198+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024C998_C0A218+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024C998_C0A218+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024CAF0_C0A370+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024CAF0_C0A370+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024CB68_C0A3E8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024CB68_C0A3E8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024CC28_C0A4A8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024CC28_C0A4A8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024CCA0_C0A520+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024CCA0_C0A520+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024CD10_C0A590+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024CD10_C0A590+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024CD98_C0A618+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024CD98_C0A618+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024CE08_C0A688+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024CE08_C0A688+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D060_C0A8E0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D060_C0A8E0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D2B8_C0AB38+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D2B8_C0AB38+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D3C8_C0AC48+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D3C8_C0AC48+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D448_C0ACC8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D448_C0ACC8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D580_C0AE00+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D580_C0AE00+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D608_C0AE88+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D608_C0AE88+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D680_C0AF00+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D680_C0AF00+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D700_C0AF80+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D700_C0AF80+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D788_C0B008+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D788_C0B008+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D828_C0B0A8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D828_C0B0A8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024D8D0_C0B150+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024D8D0_C0B150+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024DC50_C0B4D0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024DC50_C0B4D0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024DD60_C0B5E0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024DD60_C0B5E0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024DEF8_dgb_01+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024DEF8_dgb_01+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024DFA0_C0B820+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024DFA0_C0B820+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E020_C0B8A0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E020_C0B8A0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E0A8_C0B928+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E0A8_C0B928+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E120_C0B9A0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E120_C0B9A0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E1A8_C0BA28+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E1A8_C0BA28+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E4D8_C0BD58+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E4D8_C0BD58+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E5B0_C0BE30+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E5B0_C0BE30+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E6D8_C0BF58+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E6D8_C0BF58+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E800_C0C080+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E800_C0C080+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E8C0_C0C140+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E8C0_C0C140+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E968_C0C1E8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E968_C0C1E8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024E9D8_C0C258+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024E9D8_C0C258+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024EA60_C0C2E0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024EA60_C0C2E0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024EAD0_C0C350+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024EAD0_C0C350+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024ECB0_C0C530+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024ECB0_C0C530+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024EE18_C0C698+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024EE18_C0C698+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024EF00_C0C780+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024EF00_C0C780+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024EF98_C0C818+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024EF98_C0C818+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F030_C0C8B0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F030_C0C8B0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F0C8_C0C948+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F0C8_C0C948+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F160_C0C9E0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F160_C0C9E0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F1F8_C0CA78+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F1F8_C0CA78+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F290_C0CB10+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F290_C0CB10+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F328_C0CBA8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F328_C0CBA8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F3C0_C0CC40+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F3C0_C0CC40+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F4C0_C0CD40+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F4C0_C0CD40+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F558_C0CDD8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F558_C0CDD8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F5F0_C0CE70+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F5F0_C0CE70+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F688_C0CF08+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F688_C0CF08+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F720_C0CFA0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F720_C0CFA0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F7B8_C0D038+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F7B8_C0D038+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F850_C0D0D0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F850_C0D0D0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F8E8_C0D168+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F8E8_C0D168+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024F980_C0D200+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024F980_C0D200+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024FA18_C0D298+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024FA18_C0D298+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024FAB0_C0D330+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024FAB0_C0D330+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024FBC0_C0D440+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024FBC0_C0D440+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024FC48_C0D4C8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024FC48_C0D4C8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_8024FEE0_C0D760+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_8024FEE0_C0D760+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250108_C0D988+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250108_C0D988+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250168_C0D9E8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250168_C0D9E8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250220_C0DAA0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250220_C0DAA0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250290_C0DB10+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250290_C0DB10+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_802502F8_C0DB78+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_802502F8_C0DB78+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250360_C0DBE0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250360_C0DBE0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250698_C0DF18+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250698_C0DF18+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250720_C0DFA0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250720_C0DFA0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250798_C0E018+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250798_C0E018+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250820_C0E0A0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250820_C0E0A0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250898_C0E118+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250898_C0E118+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250910_C0E190+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250910_C0E190+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250DE0_C0E660+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250DE0_C0E660+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250E88_C0E708+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250E88_C0E708+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250F40_C0E7C0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250F40_C0E7C0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80250FC8_C0E848+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80250FC8_C0E848+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80251050_C0E8D0+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80251050_C0E8D0+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_802510C8_C0E948+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_802510C8_C0E948+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_802515B0_C0EE30+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_802515B0_C0EE30+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80251638_C0EEB8+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80251638_C0EEB8+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_802516A8_C0EF28+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_802516A8_C0EF28+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80251710_C0EF90+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80251710_C0EF90+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_D_80251798_C0F018+0 n 6 inherit 0x3d ctx 0x7
+gtab def dgb_01_D_80251798_C0F018+7 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img0_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img0_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img1_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img1_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img2_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img2_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img3_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img3_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img4_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img4_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img5_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img5_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img6_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img6_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def dgb_01_img7_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def dgb_01_img7_gfx+12 n 2 inherit 0x3f ctx 0x7
+gtab def kkj_03_setup_gfx_candle_lights+1 n 10 inherit 0x39 ctx 0x7
+gtab def kkj_03_setup_gfx_candle_lights+11 n 4 inherit 0x3e ctx 0x7
+gtab def kkj_13_setup_gfx_candle_lights+1 n 10 inherit 0x39 ctx 0x7
+gtab def kkj_13_setup_gfx_candle_lights+11 n 4 inherit 0x3e ctx 0x7
+gtab def kkj_14_setup_gfx_candle_lights+1 n 10 inherit 0x39 ctx 0x7
+gtab def kkj_14_setup_gfx_candle_lights+11 n 4 inherit 0x3e ctx 0x7
+gtab def kkj_15_setup_gfx_candle_lights+1 n 10 inherit 0x39 ctx 0x7
+gtab def kkj_15_setup_gfx_candle_lights+11 n 4 inherit 0x3e ctx 0x7
+gtab def kkj_18_setup_gfx_candle_lights+1 n 10 inherit 0x39 ctx 0x7
+gtab def kkj_18_setup_gfx_candle_lights+11 n 4 inherit 0x3e ctx 0x7
+gtab def kkj_27_setup_gfx_candle_lights+1 n 10 inherit 0x39 ctx 0x7
+gtab def kkj_27_setup_gfx_candle_lights+11 n 4 inherit 0x3e ctx 0x7
+gtab def kmr_21_Gfx_TexSetup_TitleImage+1 n 15 inherit 0x38 ctx 0x7
+gtab def isk_01_HazePreGfx+0 n 1 inherit 0x3f ctx 0x7
+gtab def nok_04_ThreadGfx+0 n 8 inherit 0x38 ctx 0x7
+gtab def tst_13_shockwave_gfx+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_80293970+1 n 8 inherit 0x39 ctx 0x7
+gtab def BtlCursorModelGfx+0 n 23 inherit 0x3a ctx 0x7
+gtab def BtlCursorModelGfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def BtlBonkModelGfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def BtlBonkModelGfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def BtlStarModelGfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def BtlStarModelGfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_coconut_displayList+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_coconut_displayList+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_dusty_hammer_DustyHammerGfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_dusty_hammer_DustyHammerGfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_egg_missile_Frame1Gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_egg_missile_Frame1Gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_egg_missile_Frame2Gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_egg_missile_Frame2Gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_egg_missile_Frame3Gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_egg_missile_Frame3Gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_egg_missile_Frame4Gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_egg_missile_Frame4Gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_insecticide_herb_displayList+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_insecticide_herb_displayList+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_mystery_displayList+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_mystery_displayList+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_pebble_displayList+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_pebble_displayList+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_sleepy_sheep_frame1_displayList+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_sleepy_sheep_frame1_displayList+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_sleepy_sheep_frame2_displayList+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_sleepy_sheep_frame2_displayList+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_item_sleepy_sheep_frame3_displayList+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_item_sleepy_sheep_frame3_displayList+23 n 2 inherit 0x3f ctx 0x7
+gtab def filemenu_dl_copyarrow+1 n 18 inherit 0x38 ctx 0x7
+gtab def filemenu_dl_copyarrow+19 n 2 inherit 0x3f ctx 0x7
+gtab def filemenu_dl_draw_char_init+1 n 11 inherit 0x38 ctx 0x7
+gtab def PauseGfxBannerHp+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxBannerHp+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxBannerFp+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxBannerFp+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxBannerBp+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxBannerBp+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxBannerBoots+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxBannerBoots+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxBannerHammer+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxBannerHammer+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxBannerStarEnergy+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxBannerStarEnergy+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxStatsBar+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxStatsBar+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxWorldMap+1 n 14 inherit 0x39 ctx 0x7
+gtab def PauseGfxWorldMap+15 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxPathPoints+1 n 17 inherit 0x38 ctx 0x7
+gtab def PauseGfxPathPoints+18 n 8 inherit 0x3f ctx 0x7
+gtab def PauseGfxPathPoints+26 n 2 inherit 0x3f ctx 0x7
+gtab def PauseGfxArrows+1 n 15 inherit 0x39 ctx 0x7
+gtab def PauseGfxArrows+16 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxOrbs+1 n 15 inherit 0x39 ctx 0x7
+gtab def PauseGfxOrbs+16 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxAvailable+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxAvailable+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxCheckAbilities+1 n 21 inherit 0x39 ctx 0x7
+gtab def PauseGfxCheckAbilities+22 n 4 inherit 0x3e ctx 0x7
+gtab def PauseGfxSpiritsBg+1 n 14 inherit 0x39 ctx 0x7
+gtab def PauseGfxSpiritsBg+15 n 4 inherit 0x3e ctx 0x7
+gtab def gPausePartnersDL+1 n 12 inherit 0x38 ctx 0x7
+gtab def D_800778C8+1 n 6 inherit 0x3c ctx 0x7
+gtab def D_80077908+1 n 6 inherit 0x3c ctx 0x7
+gtab def D_80074580+1 n 8 inherit 0x39 ctx 0x7
+gtab def Entity_RenderSquareShadow+0 n 17 inherit 0x3a ctx 0x7
+gtab def Entity_RenderSquareShadow+17 n 1 inherit 0x3f ctx 0x7
+gtab def Entity_RenderCircularShadow+0 n 17 inherit 0x3a ctx 0x7
+gtab def Entity_RenderCircularShadow+17 n 3 inherit 0x3e ctx 0x7
+gtab def DefaultImgFXSetupGfx+0 n 5 inherit 0x39 ctx 0x7
+gtab def D_8014C620+1 n 9 inherit 0x3a ctx 0x7
+gtab def D_8014C678+0 n 1 inherit 0x3f ctx 0x7
+gtab def D_8014C6A0+0 n 1 inherit 0x3f ctx 0x7
+gtab def D_8014C2D8+0 n 12 inherit 0x38 ctx 0x7
+gtab def gMsgDlistInitDrawNumber+1 n 9 inherit 0x39 ctx 0x7
+gtab def dro_02_card_setup_gfx+1 n 27 inherit 0x38 ctx 0x7
+gtab def dro_02_card_setup_gfx+28 n 1 inherit 0x3f ctx 0x7
+gtab def dro_02_card_1_gfx+1 n 3 inherit 0x3e ctx 0x7
+gtab def dro_02_card_1_gfx+9 n 3 inherit 0x3e ctx 0x7
+gtab def dro_02_card_2_gfx+1 n 3 inherit 0x3e ctx 0x7
+gtab def dro_02_card_2_gfx+6 n 2 inherit 0x3f ctx 0x7
+gtab def dro_02_toad_house_blanket_gfx+0 n 10 inherit 0x3a ctx 0x7
+gtab def dro_02_toad_house_blanket_gfx+10 n 1 inherit 0x3f ctx 0x7
+gtab def dro_02_toad_house_blanket_gfx+42 n 2 inherit 0x3a ctx 0x7
+gtab def D_80219D50_5A0430+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_80219E20_5A0500+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_80219E60_5A0540+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_80219EB0_5A0590+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_80219F00_5A05E0+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_80219F50_5A0630+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_80219FB0_5A0690+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_8021A000_5A06E0+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_8021A040_5A0720+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_8021A090_5A0770+0 n 2 inherit 0x37 ctx 0x7
+gtab def D_8021A0D0_5A07B0+0 n 2 inherit 0x37 ctx 0x7
+gtab def battle_move_hammer_throw_dusty_hammer_gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_move_hammer_throw_dusty_hammer_gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_move_hammer_throw_basic_hammer_gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_move_hammer_throw_basic_hammer_gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_move_hammer_throw_super_hammer_gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_move_hammer_throw_super_hammer_gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def battle_move_hammer_throw_ultra_hammer_gfx+1 n 22 inherit 0x3a ctx 0x7
+gtab def battle_move_hammer_throw_ultra_hammer_gfx+23 n 2 inherit 0x3f ctx 0x7
+gtab def ispy_icon_gfx+1 n 13 inherit 0x39 ctx 0x7
+gtab def inspect_icon_gfx+1 n 13 inherit 0x39 ctx 0x7
+gtab def pulse_stone_icon_gfx+1 n 13 inherit 0x39 ctx 0x7
+gtab def speech_bubble_gfx+1 n 13 inherit 0x39 ctx 0x7
+gtab def D_80109710+1 n 21 inherit 0x38 ctx 0x7
+gtab def D_80109710+22 n 2 inherit 0x3f ctx 0x7
+gtab def iwa_01_splash_gfx+1 n 15 inherit 0x38 ctx 0x7
+gtab def iwa_01_splash_gfx+16 n 6 inherit 0x3f ctx 0x7
+gtab def kmr_20_records_screen_gfx+0 n 9 inherit 0x3c ctx 0x7
+gtab def kmr_22_lava_piranha_vine_gfx+1 n 10 inherit 0x38 ctx 0x7
+gtab def kmr_22_lava_piranha_vine_gfx+11 n 14 inherit 0x3f ctx 0x7
+gtab def kmr_22_lava_piranha_vine_gfx+25 n 2 inherit 0x3f ctx 0x7
+gtab def kzn_19_lava_piranha_vine_gfx+1 n 10 inherit 0x38 ctx 0x7
+gtab def kzn_19_lava_piranha_vine_gfx+11 n 14 inherit 0x3f ctx 0x7
+gtab def kzn_19_lava_piranha_vine_gfx+25 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_01_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_01_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_03_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_03_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_05_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_05_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_07_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_07_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_09_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_09_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_11_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_11_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_13_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_13_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_15_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_15_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_17_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_17_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_19_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_19_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_21_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_21_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_23_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_23_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_25_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_25_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_27_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_27_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_28_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_28_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_unk_29_gfx+0 n 6 inherit 0x3d ctx 0x7
+gtab def pra_31_unk_29_gfx+7 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_texture_1_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def pra_31_texture_1_gfx+12 n 8 inherit 0x3f ctx 0x7
+gtab def pra_31_texture_1_gfx+20 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_texture_2_gfx+0 n 7 inherit 0x3f ctx 0x7
+gtab def pra_31_texture_2_gfx+7 n 11 inherit 0x3a ctx 0x7
+gtab def pra_31_texture_2_gfx+18 n 2 inherit 0x3f ctx 0x7
+gtab def pra_31_texture_3_gfx+0 n 12 inherit 0x3a ctx 0x7
+gtab def pra_31_texture_3_gfx+12 n 4 inherit 0x3f ctx 0x7
+gtab def mgm_00_Gfx_RecordDisplay_Init+0 n 9 inherit 0x3c ctx 0x7
+gtab def hos_05_gfx_setup_story_viewport+0 n 11 inherit 0x38 ctx 0x7
+gtab def hos_05_gfx_setup_story_viewport+11 n 5 inherit 0x3f ctx 0x7
+gtab def Gfx_LoadStencilTex_CommonParams+0 n 14 inherit 0x38 ctx 0x7
+gtab def Gfx_LoadStencilTex_SharpCircle+1 n 9 inherit 0x3f ctx 0x7
+gtab def Gfx_LoadStencilTex_Mario+1 n 8 inherit 0x3f ctx 0x7
+gtab def Gfx_LoadStencilTex_Star+1 n 9 inherit 0x3f ctx 0x7
+gtab def Gfx_LoadStencilTex_BlurryCircle+1 n 9 inherit 0x3f ctx 0x7
+gtab def D_8014E8F0+0 n 5 inherit 0x39 ctx 0x7
+gtab def D_8014E8F0+5 n 10 inherit 0x3e ctx 0x7
+gtab def D_8014E8F0+21 n 1 inherit 0x3f ctx 0x7
+gtab def D_8014E9A8+1 n 2 inherit 0x3f ctx 0x7
+gtab def D_8014E9A8+3 n 12 inherit 0x3c ctx 0x7
+gtab def D_8014E9A8+16 n 3 inherit 0x3f ctx 0x7
+gtab def D_8014EA48+0 n 2 inherit 0x3f ctx 0x7
+gtab def D_8014EA48+2 n 12 inherit 0x3a ctx 0x7
+gtab def D_8014EA48+104 n 1 inherit 0x3f ctx 0x7
+gtab def D_800746E0+0 n 9 inherit 0x3b ctx 0x7
+gtab def D_80075730+0 n 9 inherit 0x3b ctx 0x7
+gtab def D_800758A0+0 n 7 inherit 0x3f ctx 0x7
+gtab def D_800758A0+7 n 8 inherit 0x3b ctx 0x7
+gtab def TheaterWallShadowsGfx+1 n 2 inherit 0x3e ctx 0x7
+gtab def TheaterCurtainGfx+1 n 2 inherit 0x3e ctx 0x7
+gtab def TheaterInsetShadowsGfx+1 n 3 inherit 0x3a ctx 0x7
+gtab def TheaterFloorGfx+1 n 2 inherit 0x3e ctx 0x7
+gtab def TheaterRightWallGfx+1 n 2 inherit 0x3e ctx 0x7
+gtab def TheaterLeftWallGfx+1 n 2 inherit 0x3e ctx 0x7
+gtab def NoControllerSetupTexGfx+1 n 17 inherit 0x38 ctx 0x7
+gtab def NoControllerSetupTexGfx+18 n 2 inherit 0x3f ctx 0x7
+gtab def TheaterInitGfx+0 n 10 inherit 0x3d ctx 0x7
+gtab def TheaterInitGfx+10 n 5 inherit 0x3f ctx 0x7
+gtab def OpaqueSpriteGfx+0 n 6 inherit 0x38 ctx 0x7
+gtab def TranslucentSpriteGfx+0 n 6 inherit 0x38 ctx 0x7
+gtab def OpaqueShadedSpriteGfx+0 n 5 inherit 0x39 ctx 0x7
+gtab def TranslucentShadedSpriteGfx+0 n 5 inherit 0x39 ctx 0x7
+gtab def SprFinalA255+0 n 2 inherit 0x3e ctx 0x7
+gtab def SprFinalAT+0 n 2 inherit 0x3e ctx 0x7
+gtab def SprFinalB255+0 n 3 inherit 0x3e ctx 0x7
+gtab def SprFinalBT+0 n 3 inherit 0x3e ctx 0x7
+gtab def D_8014C500+0 n 15 inherit 0x38 ctx 0x7
+gtab def HudElemBackInitGfx+0 n 4 inherit 0x3d ctx 0x7
+gtab def HudElemFrontInitGfx+0 n 4 inherit 0x3d ctx 0x7
+gtab def TitleSetupGfx+1 n 16 inherit 0x38 ctx 0x7
+gtab def D_802A76E8_7A5628+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A76E8_7A5628+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A7750_7A5690+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A7750_7A5690+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A77B8_7A56F8+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A77B8_7A56F8+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A7820_7A5760+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A7820_7A5760+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A7888_7A57C8+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A7888_7A57C8+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A78F0_7A5830+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A78F0_7A5830+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A7958_7A5898+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A7958_7A5898+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A79C0_7A5900+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A79C0_7A5900+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A4508_7A2448+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A4508_7A2448+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A2418_7A0358+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A2418_7A0358+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A3490_7A13D0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A3490_7A13D0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A5580_7A34C0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A5580_7A34C0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A65F8_7A4538+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A65F8_7A4538+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A7670_7A55B0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A7670_7A55B0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A20D0_7A9A70+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A20D0_7A9A70+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A3250_7AABF0+0 n 6 inherit 0x3d ctx 0x7
+gtab def D_802A3250_7AABF0+7 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A2018_7A99B8+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A2018_7A99B8+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A31D8_7AAB78+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A31D8_7AAB78+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A4340_7ABCE0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A4340_7ABCE0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A43B8_7ABD58+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802A43B8_7ABD58+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A5460_7ACE00+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A5460_7ACE00+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A54D8_7ACE78+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802A54D8_7ACE78+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A6580_7ADF20+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A6580_7ADF20+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A65F8_7ADF98+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802A65F8_7ADF98+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A76A0_7AF040+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A76A0_7AF040+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A7718_7AF0B8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802A7718_7AF0B8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A87C0_7B0160+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A87C0_7B0160+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A8838_7B01D8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802A8838_7B01D8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A98E0_7B1280+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802A98E0_7B1280+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802A9958_7B12F8+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802A9958_7B12F8+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802AAA00_7B23A0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802AAA00_7B23A0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802AAA78_7B2418+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802AAA78_7B2418+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802ABB20_7B34C0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802ABB20_7B34C0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802ABB98_7B3538+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802ABB98_7B3538+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802ACC40_7B45E0+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802ACC40_7B45E0+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802ACCB8_7B4658+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802ACCB8_7B4658+3 n 2 inherit 0x3f ctx 0x7
+gtab def D_802ADD60_7B5700+0 n 12 inherit 0x3a ctx 0x7
+gtab def D_802ADD60_7B5700+12 n 2 inherit 0x3f ctx 0x7
+gtab def D_802ADDD8_7B5778+1 n 1 inherit 0x3d ctx 0x7
+gtab def D_802ADDD8_7B5778+3 n 2 inherit 0x3f ctx 0x7
+gtab def Gfx_RM1_SURFACE_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_DECAL_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_INTERSECTING_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_ALPHATEST+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_SURFACE_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_DECAL_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_INTERSECTING_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_SURFACE_OPA_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_DECAL_OPA_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_INTERSECTING_OPA_NO_AA+0 n 4 inherit 0x3e ctx 0x7
+gtab def Gfx_RM1_ALPHATEST_ONESIDED+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_SURFACE_XLU_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_DECAL_XLU_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_PASS_THROUGH+0 n 3 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_SURFACE_XLU_AA_ZB_ZUPD+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_SURFACE_OPA_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_ALPHATEST_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_SURFACE_XLU_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_SURFACE_XLU_ZB_ZUPD+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_CLOUD_NO_ZCMP+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_CLOUD+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM1_CLOUD_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_SURFACE_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_DECAL_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_INTERSECTING_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_ALPHATEST+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_SURFACE_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_DECAL_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_INTERSECTING_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_SURFACE_OPA_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_DECAL_OPA_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_INTERSECTING_OPA_NO_AA+0 n 5 inherit 0x3c ctx 0x7
+gtab def Gfx_RM2_ALPHATEST_ONESIDED+0 n 3 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_SURFACE_XLU_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_DECAL_XLU_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_PASS_THROUGH+0 n 3 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_SURFACE_XLU_AA_ZB_ZUPD+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_SURFACE_OPA_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_ALPHATEST_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_SURFACE_XLU_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_CLOUD+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM2_CLOUD_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_SURFACE_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_DECAL_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_INTERSECTING_OPA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_ALPHATEST+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_SURFACE_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_DECAL_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_INTERSECTING_XLU+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_SURFACE_OPA_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_DECAL_OPA_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_INTERSECTING_OPA_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_ALPHATEST_ONESIDED+0 n 3 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_SURFACE_XLU_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_DECAL_XLU_NO_AA+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_PASS_THROUGH+0 n 3 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_SURFACE_XLU_AA_ZB_ZUPD+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_SURFACE_OPA_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_ALPHATEST_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_SURFACE_XLU_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_CLOUD+0 n 4 inherit 0x3d ctx 0x7
+gtab def Gfx_RM3_CLOUD_NO_ZB+0 n 4 inherit 0x3d ctx 0x7
+gtab lists 1951 parts 182 draws 699 defs 2133 ops 21080 bad 0
+STAGE L76 0 s
+seam fixture: matrix receiver point at object (20,0,0) PASS
+seam step 1: mac_01 4062 loaded, 1687 distinct; mac_02 2928 loaded, 1439 distinct; shared positions 67
+seam step 2: 8 files, 237 palette products, 0 differ from the old path; 7772 shared position dp4 checks, 0 differ
+seam step 2: PASS
+seam step 3: mac_01 lists id 93 int 11 other 44, triangles 2210, positions 1699, boundary edges 1319, far 0; T points 365: inserted id 284 int 16 matrix 65, refused list 0
+seam step 3: mac_01 compiled 148 lists (refused 0): T points in the compiled output 258
+seam step 4: camera game matrix 0 (25 draws)
+seam step 3: mac_01 with the T points: inserted 365 of 365, T points in the compiled output 20 (before 258)
+seam step 4: mac_01 holes before 23 (on T-point edges 10, other 13), after 15 (on T-point edges 2, other 13); triangles 1841, near or guard skip 263, T edges 339
+seam step 3: mac_00 lists id 135 int 9 other 30, triangles 2034, positions 1847, boundary edges 1702, far 0; T points 666: inserted id 544 int 32 matrix 90, refused list 0
+seam step 3: mac_00 compiled 174 lists (refused 0): T points in the compiled output 488
+seam step 3: mac_00 with the T points: inserted 666 of 666, T points in the compiled output 31 (before 488)
+seam step 3: kkj_14 lists id 94 int 5 other 4, triangles 1689, positions 1426, boundary edges 1116, far 0; T points 268: inserted id 246 int 22 matrix 0, refused list 0
+seam step 3: kkj_14 compiled 103 lists (refused 0): T points in the compiled output 272
+seam step 3: kkj_14 with the T points: inserted 268 of 268, T points in the compiled output 17 (before 272)
+seam step 3: iwa_10 lists id 52 int 12 other 16, triangles 1484, positions 1318, boundary edges 1013, far 0; T points 285: inserted id 255 int 4 matrix 26, refused list 0
+seam step 3: iwa_10 compiled 80 lists (refused 0): T points in the compiled output 259
+seam step 3: iwa_10 with the T points: inserted 285 of 285, T points in the compiled output 1 (before 259)
+seam step 3: kmr_20 lists id 180 int 2 other 22, triangles 3669, positions 2975, boundary edges 2124, far 0; T points 520: inserted id 506 int 6 matrix 8, refused list 0
+seam step 3: kmr_20 compiled 204 lists (refused 0): T points in the compiled output 508
+seam step 3: kmr_20 with the T points: inserted 520 of 520, T points in the compiled output 12 (before 508)
+seam step 3: nok_11 lists id 71 int 0 other 0, triangles 750, positions 871, boundary edges 796, far 0; T points 50: inserted id 50 int 0 matrix 0, refused list 0
+seam step 3: nok_11 compiled 71 lists (refused 0): T points in the compiled output 50
+seam step 3: nok_11 with the T points: inserted 50 of 50, T points in the compiled output 2 (before 50)
+seam steps 3 and 4: PASS
+STAGE L77 1 s
+STAGE L78 0 s
+STAGE L79 0 s
+kccmd ok 3/3
+STAGE L80 0 s
+host.d: 3ds/tests/host.d/00_hostd.sh
+hostd ok
+HOSTD 3ds/tests/host.d/00_hostd.sh 0 s
+host.d: 3ds/tests/host.d/barricade.sh
+barricade ok 2
+HOSTD 3ds/tests/host.d/barricade.sh 1 s
+host.d: 3ds/tests/host.d/basebin.sh
+cache store: entry 88b552c499b23a78 failed its check (key or file hash), removed
+cache store: entry 88b552c499b23a78 failed its check (key or file hash), removed
+cache store: a file to store is missing, nothing stored
+basebin ok
+HOSTD 3ds/tests/host.d/basebin.sh 0 s
+host.d: 3ds/tests/host.d/basecheck.sh
+cachecheck shots main_bench c1: the stored entry is kept
+CACHECHECK FAIL shots main_bench c1: the new run was not stored (rc 1)
+base row_bench at c1: stored for other inputs (content key differs): stale, removed
+cachecheck shots main_bench c1: the stored entry is kept
+CACHECHECK FAIL shots main_bench c1: the new run was not stored (rc 1)
+CACHECHECK FAIL shots main_bench c1: the new run was not stored (rc 1)
+basecheck ok
+HOSTD 3ds/tests/host.d/basecheck.sh 0 s
+host.d: 3ds/tests/host.d/blanket.sh
+gen_gfx_syms: 1 sources 3 symbols
+blanket ok
+HOSTD 3ds/tests/host.d/blanket.sh 0 s
+host.d: 3ds/tests/host.d/botscr.sh
+botscr ok
+HOSTD 3ds/tests/host.d/botscr.sh 0 s
+host.d: 3ds/tests/host.d/buildkey.sh
+buildkey ok (shell entry hit, unread hit, read miss, byte miss, check, inc_scan if0 shadow macro, stat size racy)
+HOSTD 3ds/tests/host.d/buildkey.sh 1 s
+host.d: 3ds/tests/host.d/buildlock.sh
+race: 12 builders, 4 slots, cleaner with planted dead slots: all exit 0, max overlap 4
+interleaving: a late reaper left the retaken slot to its holder
+buildlock test: ok
+HOSTD 3ds/tests/host.d/buildlock.sh 21 s
+host.d: 3ds/tests/host.d/caplog.sh
+caplog ok
+HOSTD 3ds/tests/host.d/caplog.sh 0 s
+host.d: 3ds/tests/host.d/captool.sh
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_A_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_A_log.txt (100000 bytes)
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_B_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_B_log.txt (100000 bytes)
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_C_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_C_log.txt (100000 bytes)
+[logrecv] crash.txt -> /tmp/logrecv_test_jrrmdens/hw_R1_crash.txt (10 bytes)
+[logrecv] log.txt -> /tmp/logrecv_test_jrrmdens/hw_R1_log.txt (100000 bytes)
+OK
+captool capture_check ok
+captool ok
+HOSTD 3ds/tests/host.d/captool.sh 6 s
+host.d: 3ds/tests/host.d/coin.sh
+coin ok 4/4
+HOSTD 3ds/tests/host.d/coin.sh 1 s
+host.d: 3ds/tests/host.d/conv2c.sh
+seeded fault (one NDN_COL value + 1), bad above 0 expected:
+ntab tables 2019 draws 37559 bad 2989
+sort gtab n 1951 diff 0 dup 0
+sort ntab n 1951 diff 0 dup 0
+gtab lists 1951 parts 182 draws 699 defs 2133 ops 21080 bad 0
+ntab tables 2019 draws 37559 bad 0
+ntab dev entries 1951 bad 0
+ntab dev flag bad 0
+ntab moved 2019
+ntab flat v2 2013 words 0 bad 0
+ntab notri 595 of 1951
+ntab inherit 0 unsup 0 descs 404
+ntab seeded 356 bad 0
+ntab mesh 6
+HOSTD 3ds/tests/host.d/conv2c.sh 4 s
+host.d: 3ds/tests/host.d/conv2c2.sh
+ntab tables 2019 draws 37559 bad 0
+ntab inherit 0 unsup 0 descs 404
+ntab seeded 356 bad 0
+conv2c2 ok
+HOSTD 3ds/tests/host.d/conv2c2.sh 1 s
+host.d: 3ds/tests/host.d/decdump.sh
+decdump ok
+HOSTD 3ds/tests/host.d/decdump.sh 0 s
+host.d: 3ds/tests/host.d/decide.sh
+seeded fault (tex_on not copied), bad above 0 expected:
+decide entries 4171 bad 1064
+ndr0d core1 bad 0
+decide states 43 entries 4171 bad 0 (plans 1872, leg 4 48, textured 2107)
+decide entries 4171 bad 0
+HOSTD 3ds/tests/host.d/decide.sh 0 s
+host.d: 3ds/tests/host.d/dlcpre.sh
+dlcpre ok
+HOSTD 3ds/tests/host.d/dlcpre.sh 0 s
+host.d: 3ds/tests/host.d/drec.sh
+drec ok 3
+drec seed ok
+HOSTD 3ds/tests/host.d/drec.sh 0 s
+host.d: 3ds/tests/host.d/entsrc.sh
+entsrc ok
+HOSTD 3ds/tests/host.d/entsrc.sh 0 s
+host.d: 3ds/tests/host.d/fhash.sh
+fhframe ok 6/6
+fhash ok 6/6
+HOSTD 3ds/tests/host.d/fhash.sh 0 s
+host.d: 3ds/tests/host.d/fliplog.sh
+fliplog ok 6/6
+fliplog gate ok
+HOSTD 3ds/tests/host.d/fliplog.sh 0 s
+host.d: 3ds/tests/host.d/fltgt.sh
+fltgt ok
+HOSTD 3ds/tests/host.d/fltgt.sh 1 s
+host.d: 3ds/tests/host.d/fskip.sh
+fskip ok 12/12
+HOSTD 3ds/tests/host.d/fskip.sh 0 s
+host.d: 3ds/tests/host.d/fxlit.sh
+fxlit ok
+HOSTD 3ds/tests/host.d/fxlit.sh 0 s
+host.d: 3ds/tests/host.d/fxloc.sh
+fxloc test ok
+HOSTD 3ds/tests/host.d/fxloc.sh 0 s
+host.d: 3ds/tests/host.d/fxlt.sh
+fxlt ok
+HOSTD 3ds/tests/host.d/fxlt.sh 3 s
+host.d: 3ds/tests/host.d/fxtype.sh
+fxtype test ok
+HOSTD 3ds/tests/host.d/fxtype.sh 0 s
+host.d: 3ds/tests/host.d/gbiprune.sh
+gbiprune ok seed ok
+HOSTD 3ds/tests/host.d/gbiprune.sh 1 s
+host.d: 3ds/tests/host.d/gconvw.sh
+gen_gfx_syms: 1 sources 2 symbols
+gen_gfx_syms: 1 sources 1 symbols
+gen_gfx_syms: 1 sources 1 symbols
+gconvw ok
+HOSTD 3ds/tests/host.d/gconvw.sh 1 s
+host.d: 3ds/tests/host.d/gdefren.sh
+gen_gfx_syms: 1 sources 3 symbols
+gdefren ok
+HOSTD 3ds/tests/host.d/gdefren.sh 1 s
+host.d: 3ds/tests/host.d/genkey.sh
+genkey ok (paths, reads, must, hit, unread hit, read miss, excl miss, K0, off, check, new file, deleted file, probe, byte)
+HOSTD 3ds/tests/host.d/genkey.sh 1 s
+host.d: 3ds/tests/host.d/geounit.sh
+geounit ok 14/14
+HOSTD 3ds/tests/host.d/geounit.sh 3 s
+host.d: 3ds/tests/host.d/gfxinc.sh
+gfxinc ok
+HOSTD 3ds/tests/host.d/gfxinc.sh 2 s
+host.d: 3ds/tests/host.d/gne.sh
+gne ok
+HOSTD 3ds/tests/host.d/gne.sh 0 s
+host.d: 3ds/tests/host.d/grabfl.sh
+grabfl ok splits 5
+HOSTD 3ds/tests/host.d/grabfl.sh 0 s
+host.d: 3ds/tests/host.d/grabonce.sh
+grabonce ok
+HOSTD 3ds/tests/host.d/grabonce.sh 1 s
+host.d: 3ds/tests/host.d/gset.sh
+gset test ok
+HOSTD 3ds/tests/host.d/gset.sh 2 s
+host.d: 3ds/tests/host.d/gtin.sh
+gtin ok
+HOSTD 3ds/tests/host.d/gtin.sh 0 s
+host.d: 3ds/tests/host.d/hostsel.sh
+hostsel ok (empty, store, hit, unit, K0, unread hit, read miss, removed read, new file, deleted file, probe, byte, must, no trace, needs, prep, read list)
+HOSTD 3ds/tests/host.d/hostsel.sh 0 s
+host.d: 3ds/tests/host.d/hunit.sh
+hunit ok 7/7
+HOSTD 3ds/tests/host.d/hunit.sh 2 s
+host.d: 3ds/tests/host.d/hwfix.sh
+vpsnap ok 5/5
+scsig ok 10/10
+HOSTD 3ds/tests/host.d/hwfix.sh 0 s
+host.d: 3ds/tests/host.d/hwfix1.sh
+hwfix1 ok 3
+HOSTD 3ds/tests/host.d/hwfix1.sh 0 s
+host.d: 3ds/tests/host.d/ientry.sh
+ientry ok
+HOSTD 3ds/tests/host.d/ientry.sh 0 s
+host.d: 3ds/tests/host.d/imgfxtab.sh
+imgfxtab ok 20 lists 746 units
+HOSTD 3ds/tests/host.d/imgfxtab.sh 0 s
+host.d: 3ds/tests/host.d/iseed.sh
+iseed ok
+HOSTD 3ds/tests/host.d/iseed.sh 0 s
+host.d: 3ds/tests/host.d/lcen.sh
+lkey census ok files 9 lines 101
+lkey census test ok
+HOSTD 3ds/tests/host.d/lcen.sh 1 s
+host.d: 3ds/tests/host.d/lcnobuild.sh
+lcnobuild ok
+HOSTD 3ds/tests/host.d/lcnobuild.sh 0 s
+host.d: 3ds/tests/host.d/lit1.sh
+lit1 ok
+HOSTD 3ds/tests/host.d/lit1.sh 0 s
+host.d: 3ds/tests/host.d/lkey.sh
+lkey ok
+HOSTD 3ds/tests/host.d/lkey.sh 0 s
+host.d: 3ds/tests/host.d/mapconv.sh
+3ds/tools/nd_shape_conv.c: In function 'main':
+3ds/tools/nd_shape_conv.c:386:43: warning: '.bin' directive output may be truncated writing 4 bytes into a region of size between 0 and 4095 [-Wformat-truncation=]
+  386 |         snprintf(path, sizeof path, "%s/%s.bin", bin_dir, name);
+      |                                           ^~~~
+In function 'convert_one',
+    inlined from 'main' at 3ds/tools/nd_shape_conv.c:743:9:
+3ds/tools/nd_shape_conv.c:386:9: note: 'snprintf' output 6 or more bytes (assuming 4101) into a destination of size 4096
+  386 |         snprintf(path, sizeof path, "%s/%s.bin", bin_dir, name);
+      |         ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+shapeconv maps 489 bytes 18042720 reloc 341966 nop 0 dlc sections 33610 bytes 5018064
+dlc lists 24786 sections 33610 refused 0 missing 0 fullbad 0 maxkb 61 maxlists 204
+mapconv ok 33610 (maps 489 refusals 0)
+mapconv seed detected
+HOSTD 3ds/tests/host.d/mapconv.sh 4 s
+host.d: 3ds/tests/host.d/maplag.sh
+maplag ok 5/5
+HOSTD 3ds/tests/host.d/maplag.sh 0 s
+host.d: 3ds/tests/host.d/menufl.sh
+menufl ok
+HOSTD 3ds/tests/host.d/menufl.sh 0 s
+host.d: 3ds/tests/host.d/meshst.sh
+In file included from include/common.h:8,
+                 from 3ds/tools/nd_mesh_test.c:5:
+include/functions.h:270:5: warning: conflicting types for built-in function 'round'; expected 'double(double)' [-Wbuiltin-declaration-mismatch]
+  270 | s32 round(f32);
+      |     ^~~~~
+include/functions.h:10:1: note: 'round' is declared in header '<math.h>'
+    9 | #include "libc/xstdio.h"
+  +++ |+#include <math.h>
+   10 | 
+include/functions.h:271:5: warning: conflicting types for built-in function 'atan2'; expected 'double(double,  double)' [-Wbuiltin-declaration-mismatch]
+  271 | f32 atan2(f32 startX, f32 startZ, f32 endX, f32 endZ);
+      |     ^~~~~
+include/functions.h:271:5: note: 'atan2' is declared in header '<math.h>'
+mesh ok
+HOSTD 3ds/tests/host.d/meshst.sh 0 s
+host.d: 3ds/tests/host.d/modelrm.sh
+modelrm ok 61 (defs 62)
+HOSTD 3ds/tests/host.d/modelrm.sh 3 s
+host.d: 3ds/tests/host.d/moon.sh
+moon ok 10/10
+HOSTD 3ds/tests/host.d/moon.sh 0 s
+host.d: 3ds/tests/host.d/ndr0a.sh
+ndr0a seed ok
+ndr0c rnd bad 0
+ndr0a in bad 0
+ndr0d fold bad 0
+ndr0f mix bad 0
+ndr0g bind bad 0
+ndr0g2 bdiff bad 0
+nconv1d1 lsr bad 0
+nconv2c lsr bad 0
+HOSTD 3ds/tests/host.d/ndr0a.sh 0 s
+host.d: 3ds/tests/host.d/nmdl0.sh
+nmdl0 ok 30855
+HOSTD 3ds/tests/host.d/nmdl0.sh 13 s
+host.d: 3ds/tests/host.d/noinc.sh
+noinc ok
+HOSTD 3ds/tests/host.d/noinc.sh 0 s
+host.d: 3ds/tests/host.d/nolist.sh
+nolist ok good 2 bad 5
+HOSTD 3ds/tests/host.d/nolist.sh 1 s
+host.d: 3ds/tests/host.d/nrec1a.sh
+nrec1a seed ok
+nrec1a cases 3 bad 0
+HOSTD 3ds/tests/host.d/nrec1a.sh 0 s
+host.d: 3ds/tests/host.d/nrec2b.sh
+nrec2b ok 2
+HOSTD 3ds/tests/host.d/nrec2b.sh 0 s
+host.d: 3ds/tests/host.d/ns3unit.sh
+ns3unit ok 27/27
+HOSTD 3ds/tests/host.d/ns3unit.sh 4 s
+host.d: 3ds/tests/host.d/nst1.sh
+nst1 seed ok
+nst2b model fields 20 bad 0
+nst2c parts fields 3 bad 0
+nrec4 parts tris 4 units 4 bad 0
+nst2c def fields 3 bad 0
+nst2d cases 2 bad 0
+nst2f shaded bad 0
+ndr0b cases 2 bad 0
+nconv2c ep bad 0
+nst2c fields 79 bad 0
+nst1 fields 79 bad 0
+HOSTD 3ds/tests/host.d/nst1.sh 0 s
+host.d: 3ds/tests/host.d/ntab.sh
+ntab ok ops 4 draws 1 idx 3
+HOSTD 3ds/tests/host.d/ntab.sh 0 s
+host.d: 3ds/tests/host.d/ntabfind.sh
+In file included from include/common.h:8,
+                 from 3ds/tools/nd_ndev_rec_test.c:6:
+include/functions.h:270:5: warning: conflicting types for built-in function 'round'; expected 'double(double)' [-Wbuiltin-declaration-mismatch]
+  270 | s32 round(f32);
+      |     ^~~~~
+include/functions.h:10:1: note: 'round' is declared in header '<math.h>'
+    9 | #include "libc/xstdio.h"
+  +++ |+#include <math.h>
+   10 | 
+include/functions.h:271:5: warning: conflicting types for built-in function 'atan2'; expected 'double(double,  double)' [-Wbuiltin-declaration-mismatch]
+  271 | f32 atan2(f32 startX, f32 startZ, f32 endX, f32 endZ);
+      |     ^~~~~
+include/functions.h:271:5: note: 'atan2' is declared in header '<math.h>'
+ndev ok
+ntabfind ok
+HOSTD 3ds/tests/host.d/ntabfind.sh 0 s
+host.d: 3ds/tests/host.d/ntgt.sh
+ntgt ok 16384
+HOSTD 3ds/tests/host.d/ntgt.sh 0 s
+host.d: 3ds/tests/host.d/nxf.sh
+nxf ok 9/9
+HOSTD 3ds/tests/host.d/nxf.sh 0 s
+host.d: 3ds/tests/host.d/offpick.sh
+offpick ok 8/8
+HOSTD 3ds/tests/host.d/offpick.sh 0 s
+host.d: 3ds/tests/host.d/ovlimg.sh
+ovlimg ok
+HOSTD 3ds/tests/host.d/ovlimg.sh 0 s
+host.d: 3ds/tests/host.d/pbuf.sh
+pbuf 54 cases bad 0
+pbuf ok
+HOSTD 3ds/tests/host.d/pbuf.sh 1 s
+host.d: 3ds/tests/host.d/pmove.sh
+pmove ok 0
+HOSTD 3ds/tests/host.d/pmove.sh 0 s
+host.d: 3ds/tests/host.d/psochk.sh
+psochk ok 4/4
+HOSTD 3ds/tests/host.d/psochk.sh 0 s
+host.d: 3ds/tests/host.d/psodesc.sh
+psodesc ok size 44 cw0 fc121824 oml 00552048 tex_on 1
+HOSTD 3ds/tests/host.d/psodesc.sh 0 s
+host.d: 3ds/tests/host.d/psolk.sh
+gen_pso_main: descs 2 keys 2 plans 0
+gen_pso_tab: 2 descs -> /tmp/psolk/nd_pso_tab.c
+psolk entries 66048 neq 0 bad 360
+psolk find 4 bad 0
+psolk entries 66048 neq 0 bad 0
+HOSTD 3ds/tests/host.d/psolk.sh 1 s
+host.d: 3ds/tests/host.d/psotab.sh
+gen_pso_main: descs 2 keys 2 plans 0
+gen_pso_tab: 2 descs -> /tmp/psotab/nd_pso_tab.c
+psotab entries 2 bad 2
+psotab entries 2 bad 0
+HOSTD 3ds/tests/host.d/psotab.sh 1 s
+host.d: 3ds/tests/host.d/rawimg.sh
+gen_gfx_syms: 1 sources 2 symbols
+rawimg ok
+HOSTD 3ds/tests/host.d/rawimg.sh 0 s
+host.d: 3ds/tests/host.d/readtrace.sh
+readtrace ok (sh, cat, sed, awk, grep, tar, python, gcc, as, 32-bit fopen, root2)
+HOSTD 3ds/tests/host.d/readtrace.sh 1 s
+host.d: 3ds/tests/host.d/romfscache.sh
+romfscache ok (first, hit, byte, key, off, missing entry, entry byte)
+HOSTD 3ds/tests/host.d/romfscache.sh 0 s
+host.d: 3ds/tests/host.d/selfapply.sh
+selfapply ok
+HOSTD 3ds/tests/host.d/selfapply.sh 0 s
+host.d: 3ds/tests/host.d/speedx2.sh
+speedx2 ok
+HOSTD 3ds/tests/host.d/speedx2.sh 0 s
+host.d: 3ds/tests/host.d/startlr.sh
+startlr ok
+HOSTD 3ds/tests/host.d/startlr.sh 0 s
+host.d: 3ds/tests/host.d/stunit.sh
+stunit ok 20/20
+HOSTD 3ds/tests/host.d/stunit.sh 5 s
+host.d: 3ds/tests/host.d/tattlear.sh
+tattlear ok 7
+HOSTD 3ds/tests/host.d/tattlear.sh 1 s
+host.d: 3ds/tests/host.d/texunit.sh
+texunit ok 36/36
+HOSTD 3ds/tests/host.d/texunit.sh 4 s
+host.d: 3ds/tests/host.d/vcopy.sh
+vcopy ok 6
+HOSTD 3ds/tests/host.d/vcopy.sh 1 s
+host.d: 3ds/tests/host.d/vcount.sh
+vcount ok
+HOSTD 3ds/tests/host.d/vcount.sh 0 s
+host.d: 3ds/tests/host.d/volgen.sh
+volgen gencache ok
+HOSTD 3ds/tests/host.d/volgen.sh 0 s
+host.d: 3ds/tests/host.d/vpsym.sh
+gen_gfx_syms: 1 sources 2 symbols
+vpsym ok
+HOSTD 3ds/tests/host.d/vpsym.sh 0 s
+host.d: 3ds/tests/host.d/vrom.sh
+vrom ok
+HOSTD 3ds/tests/host.d/vrom.sh 1 s
+host.d: 3ds/tests/host.d/vslot.sh
+vslot ok 10/10
+HOSTD 3ds/tests/host.d/vslot.sh 0 s
+host.d: 3ds/tests/host.d/wscmb.sh
+wscmb 18 pairs bad 0
+wscmb ok
+HOSTD 3ds/tests/host.d/wscmb.sh 1 s
+STAGE L81 65 s
+hostsel cachecheck ok inline
+hostsel cachecheck ok 3ds/tests/host.d/00_hostd.sh
+hostsel cachecheck ok 3ds/tests/host.d/barricade.sh
+hostsel cachecheck ok 3ds/tests/host.d/basebin.sh
+hostsel cachecheck ok 3ds/tests/host.d/basecheck.sh
+hostsel cachecheck ok 3ds/tests/host.d/blanket.sh
+hostsel cachecheck ok 3ds/tests/host.d/botscr.sh
+hostsel cachecheck ok 3ds/tests/host.d/buildkey.sh
+hostsel cachecheck ok 3ds/tests/host.d/buildlock.sh
+hostsel cachecheck ok 3ds/tests/host.d/caplog.sh
+hostsel cachecheck ok 3ds/tests/host.d/captool.sh
+hostsel cachecheck ok 3ds/tests/host.d/coin.sh
+hostsel cachecheck ok 3ds/tests/host.d/conv2c.sh
+hostsel cachecheck ok 3ds/tests/host.d/conv2c2.sh
+hostsel cachecheck ok 3ds/tests/host.d/decdump.sh
+hostsel cachecheck ok 3ds/tests/host.d/decide.sh
+hostsel cachecheck ok 3ds/tests/host.d/dlcpre.sh
+hostsel cachecheck ok 3ds/tests/host.d/drec.sh
+hostsel cachecheck ok 3ds/tests/host.d/entsrc.sh
+hostsel cachecheck ok 3ds/tests/host.d/fhash.sh
+hostsel cachecheck ok 3ds/tests/host.d/fliplog.sh
+hostsel cachecheck ok 3ds/tests/host.d/fltgt.sh
+hostsel cachecheck ok 3ds/tests/host.d/fskip.sh
+hostsel cachecheck ok 3ds/tests/host.d/fxlit.sh
+hostsel cachecheck ok 3ds/tests/host.d/fxloc.sh
+hostsel cachecheck ok 3ds/tests/host.d/fxlt.sh
+hostsel cachecheck ok 3ds/tests/host.d/fxtype.sh
+hostsel cachecheck ok 3ds/tests/host.d/gbiprune.sh
+hostsel cachecheck ok 3ds/tests/host.d/gconvw.sh
+hostsel cachecheck ok 3ds/tests/host.d/gdefren.sh
+hostsel cachecheck ok 3ds/tests/host.d/genkey.sh
+hostsel cachecheck ok 3ds/tests/host.d/geounit.sh
+hostsel cachecheck ok 3ds/tests/host.d/gfxinc.sh
+hostsel cachecheck ok 3ds/tests/host.d/gne.sh
+hostsel cachecheck ok 3ds/tests/host.d/grabfl.sh
+hostsel cachecheck ok 3ds/tests/host.d/grabonce.sh
+hostsel cachecheck ok 3ds/tests/host.d/gset.sh
+hostsel cachecheck ok 3ds/tests/host.d/gtin.sh
+hostsel cachecheck ok 3ds/tests/host.d/hostsel.sh
+hostsel cachecheck ok 3ds/tests/host.d/hunit.sh
+hostsel cachecheck ok 3ds/tests/host.d/hwfix.sh
+hostsel cachecheck ok 3ds/tests/host.d/hwfix1.sh
+hostsel cachecheck ok 3ds/tests/host.d/ientry.sh
+hostsel cachecheck ok 3ds/tests/host.d/imgfxtab.sh
+hostsel cachecheck ok 3ds/tests/host.d/iseed.sh
+hostsel cachecheck ok 3ds/tests/host.d/lcen.sh
+hostsel cachecheck ok 3ds/tests/host.d/lcnobuild.sh
+hostsel cachecheck ok 3ds/tests/host.d/lit1.sh
+hostsel cachecheck ok 3ds/tests/host.d/lkey.sh
+hostsel cachecheck ok 3ds/tests/host.d/mapconv.sh
+hostsel cachecheck ok 3ds/tests/host.d/maplag.sh
+hostsel cachecheck ok 3ds/tests/host.d/menufl.sh
+hostsel cachecheck ok 3ds/tests/host.d/meshst.sh
+hostsel cachecheck ok 3ds/tests/host.d/modelrm.sh
+hostsel cachecheck ok 3ds/tests/host.d/moon.sh
+hostsel cachecheck ok 3ds/tests/host.d/ndr0a.sh
+hostsel cachecheck ok 3ds/tests/host.d/nmdl0.sh
+hostsel cachecheck ok 3ds/tests/host.d/noinc.sh
+hostsel cachecheck ok 3ds/tests/host.d/nolist.sh
+hostsel cachecheck ok 3ds/tests/host.d/nrec1a.sh
+hostsel cachecheck ok 3ds/tests/host.d/nrec2b.sh
+hostsel cachecheck ok 3ds/tests/host.d/ns3unit.sh
+hostsel cachecheck ok 3ds/tests/host.d/nst1.sh
+hostsel cachecheck ok 3ds/tests/host.d/ntab.sh
+hostsel cachecheck ok 3ds/tests/host.d/ntabfind.sh
+hostsel cachecheck ok 3ds/tests/host.d/ntgt.sh
+hostsel cachecheck ok 3ds/tests/host.d/nxf.sh
+hostsel cachecheck ok 3ds/tests/host.d/offpick.sh
+hostsel cachecheck ok 3ds/tests/host.d/ovlimg.sh
+hostsel cachecheck ok 3ds/tests/host.d/pbuf.sh
+hostsel cachecheck ok 3ds/tests/host.d/pmove.sh
+hostsel cachecheck ok 3ds/tests/host.d/psochk.sh
+hostsel cachecheck ok 3ds/tests/host.d/psodesc.sh
+hostsel cachecheck ok 3ds/tests/host.d/psolk.sh
+hostsel cachecheck ok 3ds/tests/host.d/psotab.sh
+hostsel cachecheck ok 3ds/tests/host.d/rawimg.sh
+hostsel cachecheck ok 3ds/tests/host.d/readtrace.sh
+hostsel cachecheck ok 3ds/tests/host.d/romfscache.sh
+hostsel cachecheck ok 3ds/tests/host.d/selfapply.sh
+hostsel cachecheck ok 3ds/tests/host.d/speedx2.sh
+hostsel cachecheck ok 3ds/tests/host.d/startlr.sh
+hostsel cachecheck ok 3ds/tests/host.d/stunit.sh
+hostsel cachecheck ok 3ds/tests/host.d/tattlear.sh
+hostsel cachecheck ok 3ds/tests/host.d/texunit.sh
+hostsel cachecheck ok 3ds/tests/host.d/vcopy.sh
+hostsel cachecheck ok 3ds/tests/host.d/vcount.sh
+hostsel cachecheck ok 3ds/tests/host.d/volgen.sh
+hostsel cachecheck ok 3ds/tests/host.d/vpsym.sh
+hostsel cachecheck ok 3ds/tests/host.d/vrom.sh
+hostsel cachecheck ok 3ds/tests/host.d/vslot.sh
+hostsel cachecheck ok 3ds/tests/host.d/wscmb.sh
+crash page: glyph pixels 1492, PC line 463, below the text 0
+ND HOST TESTS PASS
