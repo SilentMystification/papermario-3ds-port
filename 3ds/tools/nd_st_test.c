@@ -149,8 +149,8 @@ int main(void) {
         ok++;
     }
     run_one(n_cyc, &b);
-    if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 0) || b.w[1] != (uint32_t)(uintptr_t)nd_nr_run || b.nu != 2u
-        || b.u[0] != ND_FS_W0(ND_FS_OMH, G_MDSFT_CYCLETYPE | 2u << 8) || b.u[1] != G_CYC_1CYCLE) { printf("stunit FAIL run\n"); return 1; }
+    if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 2, 0) || b.w[1] != (uint32_t)(uintptr_t)nd_nr_run || b.w[2] != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16) /* NAT4F: the OMH unit follows its core 1 mark */
+        || b.w[4] != ND_FS_W0(ND_FS_OMH, G_MDSFT_CYCLETYPE | 2u << 8) || b.w[5] != G_CYC_1CYCLE || b.nu != 4u || b.u[2] != b.w[4] || b.u[3] != b.w[5]) { printf("stunit FAIL run\n"); return 1; }
     printf("stunit ok %u/%u\n", ok, n);
     return 0;
 }

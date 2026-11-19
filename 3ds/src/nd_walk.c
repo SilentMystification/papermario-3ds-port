@@ -245,9 +245,12 @@ void nd_epk_log(void) { for (unsigned i = 0; i < 64u; i++) for (unsigned d = 0; 
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
     const int same = nd_unit_same(u); int cut = !same; /* NAT4C: the cut of this unit */
-    { const unsigned i_ = u[0] >> 24; if (ep_stream && ex_depth == 0 && (i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB)) {
-        nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); }
-        if (ep_mark) gv_epoch++; ep_mark = 0; return; } } /* NAT4D: a stream class unit is not run on core 0: the mark cuts, the next snap adopt sets its fields */ /* NAT4C: the core 1 mark decides the cut; no mark: no change (core 1 change bit 0) */
+    { const unsigned i_ = u[0] >> 24; const int ca_ = i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB, cb_ = i_ == ND_FS_OMH || i_ == ND_FS_TEXTURE;
+      if (ep_stream && ex_depth == 0 && (ca_ || cb_)) {
+        if (cb_) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } } /* NAT4F: count only OMH, TEXTURE (the combine class fields are stale on core 0 since NAT4D) */
+        const int mk_ = ep_mark != 0; ep_mark = 0;
+        if (ca_) { if (mk_) gv_epoch++; return; } /* NAT4D: the combine class is not run */
+        cut = mk_; } } /* NAT4F: OMH and TEXTURE cut on the mark and still run when they change a field */
     if (same && !cut) return;
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
