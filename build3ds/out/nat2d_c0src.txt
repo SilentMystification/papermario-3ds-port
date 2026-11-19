@@ -1,25 +1,25 @@
 build3ds/azt/logs/fxparts_drec.txt:#363 drec frame 412 seq 0
 build3ds/azt/logs/fxparts_drec.txt:#386 drec frame 456 seq 116
 build3ds/azt/logs/fxparts_drec.txt:#409 drec frame 500 seq 239
-build3ds/azt/logs/fxparts_drec.txt:#422 lsover f534 ranges 20 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#427 lsover f535 ranges 19 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#428 lsover f536 ranges 19 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#429 lsover f537 ranges 18 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#430 lsover f538 ranges 19 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#439 drec frame 544 seq 358
-build3ds/azt/logs/fxparts_drec.txt:#442 lsover f554 ranges 19 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#443 lsover f555 ranges 19 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#444 lsover f556 ranges 17 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#445 lsover f557 ranges 18 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#446 lsover f558 ranges 16 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#447 lsover f559 ranges 17 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#448 lsover f560 ranges 19 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#449 lsover f561 ranges 16 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#465 drec frame 588 seq 490
-build3ds/azt/logs/fxparts_drec.txt:#588 lsover f625 ranges 16 ord 42
-build3ds/azt/logs/fxparts_drec.txt:#589 lsover f626 ranges 16 ord 52
-build3ds/azt/logs/fxparts_drec.txt:#590 lsover f627 ranges 16 ord 62
-build3ds/azt/logs/fxparts_drec.txt:#593 drec frame 632 seq 643
+build3ds/azt/logs/fxparts_drec.txt:#434 drec frame 544 seq 358
+build3ds/azt/logs/fxparts_drec.txt:#452 drec frame 588 seq 490
+build3ds/azt/logs/fxparts_drec.txt:#577 drec frame 632 seq 643
+build3ds/azt/logs/fxparts_drec.txt:#578 lsover f632 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#581 lsover f633 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#582 lsover f635 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#583 lsover f636 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#584 lsover f638 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#585 lsover f639 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#586 lsover f640 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#587 lsover f642 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#588 lsover f643 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#589 lsover f644 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#590 lsover f645 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#591 lsover f646 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#592 lsover f648 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#594 lsover f649 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#595 lsover f650 ranges 49 ord 100
+build3ds/azt/logs/fxparts_drec.txt:#598 lsover f652 ranges 49 ord 100
 build3ds/azt/logs/fxparts_drec.txt:#619 drec frame 676 seq 814
 build3ds/azt/logs/fxparts_drec.txt:#622 c0src f676 draws 531 mdl 399 wcomb 143 wrnd 50 wbind 50 snb 34208 snn 29151 snm 25623
 build3ds/azt/logs/fxparts_drec.txt:#623 c0who k 0014b42c n 78
