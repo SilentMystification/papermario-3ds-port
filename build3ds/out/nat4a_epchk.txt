@@ -1,0 +1,6 @@
+build3ds/azt/logs/entcape_kmr03_drec.txt:#209 c0src f201 draws 94 mdl 78 wcomb 0 wrnd 0 wbind 0 snb 14525 snn 13873 snm 9535
+build3ds/azt/logs/entcape_kmr03_drec.txt:#212 epchk f201 units 17674 bad 164 marks 10452
+build3ds/azt/logs/fxparts_drec.txt:#468 c0src f676 draws 489 mdl 441 wcomb 0 wrnd 0 wbind 0 snb 95685 snn 90628 snm 87091
+build3ds/azt/logs/fxparts_drec.txt:#471 epchk f676 units 40680 bad 1024 marks 18643
+build3ds/azt/logs/spot_mac01_drec.txt:#56 c0src f201 draws 44 mdl 126 wcomb 0 wrnd 0 wbind 0 snb 20010 snn 19510 snm 18499
+build3ds/azt/logs/spot_mac01_drec.txt:#59 epchk f201 units 8928 bad 168 marks 4279
