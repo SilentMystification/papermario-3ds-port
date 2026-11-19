@@ -31,6 +31,7 @@ exit 0
 STUB
 export POST_MERGE="$T/post_stub.sh"
 export POSTMERGE_BG="$ROOT/3ds/tools/postmerge_bg.sh"
+export BASE_ADOPT="echo adopt stub"  # BASEREUSE
 
 mk() {
     d="$T/r$1"; mkdir -p "$d"; cd "$d" || exit 2
@@ -60,7 +61,7 @@ git checkout -q main; echo m > main.txt; git add main.txt; git commit -q -m "mai
 rc=$(run)
 p=no
 if [ "$rc" = 0 ] && [ -f g.txt ] && [ -z "$(git rev-parse --verify -q refs/heads/X)" ] \
-   && [ "$(git cat-file -p HEAD | grep -c '^parent')" = 2 ]; then p=yes; fi
+   && [ "$(git cat-file -p HEAD | grep -c '^parent')" = 2 ] && grep -q "base adopt: adopt stub X --commit $(git rev-parse HEAD) --parent $(git rev-parse HEAD^1)" "$OUT"; then p=yes; fi  # BASEREUSE
 result $p "(a) clean branch merged, branch deleted rc=$rc"
 
 # (b) branch deleted the row file, main edited it: merged, file gone

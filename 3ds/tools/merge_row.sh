@@ -8,6 +8,7 @@
 # 8 refused: the post-merge check of main failed (build3ds/out/postmerge_FAIL.txt, POSTASYNC).
 # WT_GC: a wt_gc.sh replacement read by the host test (run as: sh "$WT_GC" --apply --only <row>).
 # POSTMERGE_BG: a postmerge_bg.sh path read by the host test (run as: sh "$POSTMERGE_BG" --queue <commit>).
+# BASE_ADOPT: a bench.py base --adopt replacement read by the host test (BASEREUSE; run as: <cmd> <row> --commit <c> --parent <p>).
 set -u
 row=${1:-}; msg=${2:-}
 if [ -z "$row" ]; then echo "usage: sh 3ds/tools/merge_row.sh <row> [<message-file>]" >&2; exit 2; fi
@@ -136,6 +137,11 @@ if [ -s "$tmpd/src" ]; then
     fi
 fi
 
+# BASEREUSE: the cmp pass records of the row give its benches a base at the merge commit (bench.py base --adopt). Before step 6:
+# the branch ref is still there. Refusals are printed; the exit code does not change.
+PY=python; command -v python >/dev/null 2>&1 || PY=python3
+adtxt=$(${BASE_ADOPT:-$PY 3ds/tools/bench.py base --adopt} "$row" --commit "$(git rev-parse HEAD)" --parent "$(git rev-parse "$mhash^1")" 2>&1 | tr "\n" " " | cut -c1-600)
+
 # 6. remove the row worktree (wt_gc) and the branch (-d: only when merged)
 if [ -n "${WT_GC:-}" ]; then sh "$WT_GC" --apply --only "$row"; else sh 3ds/tools/wt_gc.sh --apply --only "$row"; fi
 gcrc=$?
@@ -153,6 +159,7 @@ fi
 
 # 7. summary
 echo "merge_row: merge $mhash of $row; runs lines added $added, known skipped $skipped; wt_gc rc $gcrc; branch $row $bstate; $pmtxt"
+echo "merge_row: base adopt: $adtxt"  # BASEREUSE
 if [ "$bstate" = kept ]; then
     echo "merge_row: branch $row kept: not merged into main, or still checked out" >&2
     exit 6
