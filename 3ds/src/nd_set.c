@@ -232,7 +232,6 @@ void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, 
 }
 void nd_rnd_sync(void) {
     const unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
-    nd_c0w |= 2u; /* NAT1 */
     if (nd_sr_same(sg)) return;
     const unsigned m = nd_ws.omode_l, p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
     /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
@@ -246,4 +245,5 @@ void nd_rnd_sync(void) {
     }
     nd_render_state(nd_ws.omode_h, m, nd_img_role(0) == ROLE_DEPTH, &rs);
     nd_render_apply(&rs, mixk, mixc, nd_ws.omode_h, m, sg);
+    nd_c0w |= 2u; nd_c0_src(); /* NAT1B */
 }

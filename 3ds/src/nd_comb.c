@@ -179,7 +179,6 @@ void scm_store(unsigned sg) {
 }
 
 void scm_replay(const ScMemo* m) {
-    nd_c0w |= 1u; /* NAT1 */
     sl_const = m->cc_on; sl_env = m->env_on; if (m->cc_on) sl_cc = m->cc; /* NREC2B: a memo hit leaves sl_* as nd_comb_apply does (snapchk sl) */
     if (m->cc_on) pm_gpu_set_const(m->cc);
     if (m->env_on) pm_gpu_set_env(nd_ws.envc);
@@ -188,6 +187,7 @@ void scm_replay(const ScMemo* m) {
     plan_active = m->plan_on;
     if (m->plan_on) { cur_plan = m->plan; pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1, nd_ws.use_t1); pm_gpu_set_plan(&cur_plan); }
     else pm_gpu_set_combine(leg_mode);
+    nd_c0w |= 1u; nd_c0_src(); /* NAT1B: after the GPU calls */
 }
 
 /* R2B: the nd_comb_sync input hash (the fields the skip test reads); nd_comb_sync and the g2_same skip use the same value */
@@ -335,8 +335,8 @@ void sync_combine_work(void) {
     comb_in_walker(&in);
     nd_comb_pick(&in, &o);
     if (o.plan_on) pm_comb_colours(&o.plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
-    nd_c0w |= 1u; /* NAT1 */
     nd_comb_apply(&o, nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.use_t1, nd_ws.envc);
+    nd_c0w |= 1u; nd_c0_src(); /* NAT1B: after the GPU calls */
 }
 
 void nd_comb_sync(void) {
