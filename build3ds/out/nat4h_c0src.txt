@@ -13,6 +13,3 @@ build3ds/azt/logs/spot_mac01_drec.txt:#64 c0src f201 draws 44 mdl 126 wcomb 0 wr
 build3ds/azt/logs/wscmb_pause_drec.txt:#274 drec frame 140 seq 0
 build3ds/azt/logs/wscmb_pause_drec.txt:#277 drec frame 141 seq 104
 build3ds/azt/logs/wscmb_pause_drec.txt:#280 c0src f141 draws 208 mdl 0 wcomb 0 wrnd 0 wbind 52 snb 16564 snn 16213 snm 14817
-build3ds/out/loop_NAT4H_cmp_entcape_kmr03_drec.txt:  drec draw 0 DIFF line 59: base 'r 1008 f b8000000', row 'r 1008 f bf800000'
-build3ds/out/loop_NAT4H_cmp_fxparts_drec.txt:  drec draw 0 DIFF line 60: base 'r 1008 f b8000000', row 'r 1008 f bf800000'
-build3ds/out/loop_NAT4H_cmp_spot_mac01_drec.txt:  drec draw 0 DIFF line 59: base 'r 1008 f b8000000', row 'r 1008 f bf800000'
