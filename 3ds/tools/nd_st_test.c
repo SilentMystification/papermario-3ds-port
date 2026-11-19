@@ -15,6 +15,7 @@
 #include "nd_cmd.h"
 #include "nd_gbi.h"
 #include "nd_st.h"
+#include "nd_ds.h" /* NAT4A: the test state of run_one */
 _Static_assert(ND_SOM_H == G_SETOTHERMODE_H, "ND_SOM_H");
 
 /* the redirect target of the macro form: gMainGfxPos is the top-level packet pointer (nd_gbi.h D9) */
@@ -105,6 +106,7 @@ typedef struct {
 
 static void run_one(void (*fn)(void), Res* out) {
     memset(out, 0, sizeof *out);
+    { static NdDs d0; static int have; if (!have) { d0 = nd_ds; have = 1; } nd_ds = d0; } /* NAT4A: each run starts from the same core 1 state */
     gMainGfxPos = nd_rec_task();
     const uint32_t* mk = nd_rec_mark();
     fn();
