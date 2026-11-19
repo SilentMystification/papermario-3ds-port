@@ -85,9 +85,11 @@ uint32_t nd_direct_env(void);                  /* core 0: the walker's environme
  * translucent. nd_fill_run (nd_direct.c, core 0) states the combine and render mode of the kind and fills. */
 typedef struct { int32_t x0, y0, x1, y1; uint32_t rgba, kind; } NdFillRec;
 void nd_fill_run(const uint32_t* u); /* nd_direct.c, core 0: the NDC_NAPI runner of an NdFillRec */
-void nd_fill_feed(const uint32_t* u); /* nd_direct.c, core 1: the units of an NdFillRec feed nd_ds (NST2E) */
 void nd_fill_rec(const NdFillRec* f); /* nd_direct.c, core 1, NDR2A: a fill record: its pso snap, the record run and the feed of nd_ds */
 void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim); /* nd_direct.c, core 1, NDR2A: a direct record with its pso snap */
+void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost); /* nd_rec.c, core 1, NAT5R: a record and its fallback units as an alt range */
+void nd_alt_run(const uint32_t* ab); /* nd_rec.c, core 0, NAT5R: the alt range [ab[0], ab[1]) of a record (a spare unit) */
+void nd_dir_rec_alt(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an); /* nd_direct.c, NAT5R */
 uint32_t nd_dir_prim1(void); /* nd_direct.c, core 1, NDR2A: nd_direct_prim at record time (game files do not include nd_ds.h) */
 void nd_dir_drop(void); /* nd_direct.c, core 0, NDR2A: a fallback walk never takes the pso snap */
 
@@ -101,7 +103,6 @@ typedef struct NdTRect {
 } NdTRect;
 _Static_assert(sizeof(NdTRect) % 8 == 0 && sizeof(NdTRect) == 104, "NdTRect: 13 whole 8-byte units");
 void nd_trect_run(const uint32_t* u);
-void nd_trect_feed(const uint32_t* u); /* nd_direct.c, core 1: the units of an NdTRect feed nd_ds (NST2E) */
 void nd_trect_rec(const NdTRect* r); /* nd_direct.c, core 1, NDR2B: pso snap, record (nd_rec_napi_s) and feed of one texture rectangle */
 void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c, core 1 (NST2E) */
 void nd_ds_feed_dir(const uint32_t* u, unsigned n); /* nd_rec.c, NST2J: nd_ds_feed for a direct draw (sc_lost 1) */

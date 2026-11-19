@@ -96,14 +96,12 @@ void pm_tsten_run(const uint32_t* u) {
     static const unsigned wrapT[3][4] = { { 2, 2, 6, 6 }, { 3, 2, 5, 6 }, { 3, 3, 5, 5 } };
     static const int strideT[3] = { 32, 16, 16 }, ldwT[3] = { 32, 16, 16 }, ldhT[3] = { 64, 64, 32 };
     static const int sizeT[3] = { 0xFC, 0xFC, 0xFC };
-    static uint32_t buf[16];
     static unsigned n;
     const NdTStenRec* r = (const NdTStenRec*)u;
     const int id = (int)((r->full_and_id >> 1) & 3u);
     const void* img = id == 0 ? (const void*)ui_stencil_mario_png : id == 1 ? (const void*)ui_stencil_star_png : (const void*)ui_stencil_sharp_circle_png;
     NdBindDesc d;
     NdPsoN64 pd;
-    uint32_t* nrp = buf;
     unsigned wrap[4];
     int ok = 0, k;
 
@@ -128,17 +126,11 @@ void pm_tsten_run(const uint32_t* u) {
 
     nd_dir_drop(); /* NDR2C */
     nd_c0fb_note(4u, 0u); /* NAT5D */
-    tsten_emit(r, &nrp);
-    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+    nd_alt_run(u + 6u); /* NAT5R */
 }
 
-/* NST2E: the units of one transition stencil record feed core 1's nd_ds (record site screen_render_util.c). */
-void pm_tsten_feed(const uint32_t* u) {
-    uint32_t buf[16];
-    uint32_t* p = buf;
-    tsten_emit((const NdTStenRec*)u, &p);
-    nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
-}
+/* NAT5R, core 1: the transition stencil record (3 units) as nd_dir_rec_alt: its pso, the record and the fallback units as an alt range. */
+void pm_tsten_rec(const uint32_t* u) { uint32_t au[16]; uint32_t* q = au; NdPsoN64 pd; pm_tsten_pso(u, &pd); tsten_emit((const NdTStenRec*)u, &q); nd_dir_rec_alt(pm_tsten_run, u, 3u, &pd, u[4], au, (unsigned)(q - au) / 2u); }
 
 void _render_transition_stencil(u8 stencilType, f32 progress, ScreenOverlay* overlay) {
     Camera* camera = &gCameras[gCurrentCameraID];

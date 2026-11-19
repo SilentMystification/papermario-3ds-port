@@ -219,22 +219,10 @@ static void nd_fill_emit(const NdFillRec* f, unsigned k, uint32_t** o) {
 
 static void nd_fill_walk(const NdFillRec* f, unsigned k) {
     nd_dir_drop(); /* NDR2A */
-    static uint32_t buf[8];
-    uint32_t* nrp = buf;
     static unsigned nfb;
     if (nfb++ < 16u) pm_log_d("fill fallback f%u", pm_frame_count());
     nd_c0fb_note(6u, k); /* NAT5D */
-    nd_fill_emit(f, k, &nrp);
-    nd_nr_exec(buf, 4u);
-}
-
-/* NST2E: the units of one fill record feed core 1's nd_ds (record sites screen_overlays.c, battle/190B20.c). */
-void nd_fill_feed(const uint32_t* u) {
-    const NdFillRec* f = (const NdFillRec*)u;
-    uint32_t buf[8];
-    uint32_t* p = buf;
-    nd_fill_emit(f, f->kind & 3u, &p);
-    nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
+    nd_alt_run((const uint32_t*)f + 6u); /* NAT5R: the fallback units are the alt range after the record */
 }
 
 /* NDR2A: the primitive colour, combine and render mode words of a fill kind (nd_fill_run, nd_fill_rec). */
@@ -267,8 +255,10 @@ void nd_fill_run(const uint32_t* u) {
 
 /* NDR2A, core 1: one direct record with its pso snap (nd_snap_pso), then the record (nd_rec_napi_s: the runner takes the snap). */
 void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_napi_s(run, rec, units); }
+/* NAT5R, core 1: as nd_dir_rec, with the fallback units au as an alt range of the record (nd_rec_alt). */
+void nd_dir_rec_alt(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_alt(run, rec, units, 1, au, an, 1); } /* NAT5R */
 /* NDR2A, core 1: a fill record: its pso snap and record, then the feed of nd_ds. */
-void nd_fill_rec(const NdFillRec* f) { NdPsoN64 d; fill_pso(f->kind & 3u, &d); nd_dir_rec(nd_fill_run, f, 3u, &d, f->rgba); nd_fill_feed((const uint32_t*)f); }
+void nd_fill_rec(const NdFillRec* f) { NdPsoN64 d; uint32_t au[8]; uint32_t* q = au; fill_pso(f->kind & 3u, &d); nd_fill_emit(f, f->kind & 3u, &q); nd_dir_rec_alt(nd_fill_run, f, 3u, &d, f->rgba, au, (unsigned)(q - au) / 2u); } /* NAT5R */
 /* NDR2A, core 1: nd_direct_prim at record time (game files do not include nd_ds.h). */
 uint32_t nd_dir_prim1(void) { return nd_ds.w.prim; }
 /* NDR2A, core 0: a fallback walk never takes the pso snap (its tiles predate the record feed). */
@@ -301,7 +291,6 @@ static void trect_emit(const NdTRect* r, uint32_t** o) {
 static void trect_pso(const NdTRect* r, NdPsoN64* pd) { pd->cw0 = r->cw0; pd->cw1 = r->cw1; pd->oml = r->oml; pd->omh = r->omh; pd->omh_m = (3u << G_MDSFT_TEXTLUT) | (3u << G_MDSFT_TEXTFILT); }
 
 void nd_trect_run(const uint32_t* u) {
-    static uint32_t buf[32];
     static unsigned nfb;
     const NdTRect* r = (const NdTRect*)u;
     const int is4 = r->siz == G_IM_SIZ_4b;
@@ -310,7 +299,6 @@ void nd_trect_run(const uint32_t* u) {
     const int32_t lu = r->uls << sh, ll = r->lrs << sh;
     const unsigned wrap[4] = { r->cms, r->cmt, r->masks, r->maskt };
     NdBindDesc d;
-    uint32_t* nrp = buf;
     const int ok = nd_tex_win_desc(&d, r->img, stride, r->fmt, r->siz, wrap, lu >> 2, r->ult, ((ll - lu) >> 2) + 1, r->lrt - r->ult + 1,
                                    r->uls << 2, r->ult << 2, r->lrs << 2, r->lrt << 2, r->pal, (int)r->pal_n);
     if (ok && nd_direct_ready() == 1) {
@@ -327,20 +315,12 @@ void nd_trect_run(const uint32_t* u) {
     nd_dir_drop(); /* NDR2B: the walk takes no pso snap */
     if (nfb++ < 16u) pm_log_d("trect fallback f%u", pm_frame_count());
     nd_c0fb_note(7u, !ok ? 1u : nd_direct_ready() != 1 ? (unsigned)(30 - nd_direct_ready()) : 3u); /* NAT5D */
-    trect_emit(r, &nrp);
-    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
-}
-
-/* NST2E: the units of one texture rectangle record feed core 1's nd_ds (record sites draw_img_util.c, msg.c, state_title_screen.c). */
-void nd_trect_feed(const uint32_t* u) {
-    uint32_t buf[32];
-    uint32_t* p = buf;
-    trect_emit((const NdTRect*)u, &p);
-    nd_ds_feed_dir(buf, (unsigned)(p - buf) / 2u);
+    nd_alt_run(u + 2u * (unsigned)(sizeof(NdTRect) / 8u)); /* NAT5R */
 }
 
 /* NDR2B, core 1: one texture rectangle: its pso snap and record (nd_dir_rec), then the feed of nd_ds. */
-void nd_trect_rec(const NdTRect* r) { NdPsoN64 pd; trect_pso(r, &pd); nd_dir_rec(nd_trect_run, r, sizeof *r / 8u, &pd, (r->pad & 1u) ? nd_ds.w.prim : r->prim); nd_trect_feed((const uint32_t*)r); }
+void nd_trect_rec(const NdTRect* r) { NdPsoN64 pd; uint32_t au[32]; uint32_t* q = au; trect_pso(r, &pd); trect_emit(r, &q); /* NAT5R */
+    nd_dir_rec_alt(nd_trect_run, r, sizeof *r / 8u, &pd, (r->pad & 1u) ? nd_ds.w.prim : r->prim, au, (unsigned)(q - au) / 2u); }
 
 /* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by
  * nd_direct_end: gv_epoch_enter (nd_geom.c) then skips nd_tile_bind and dual_bind, which would rebind tile 0 from the walker's stale td[0] over

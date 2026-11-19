@@ -300,6 +300,7 @@ void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { /* NDR3: as
     p[0] = NDC_HDR(NDC_NAPI, units, 1);
     p[1] = (uint32_t)(uintptr_t)run;
     memcpy(p + 2, rec, units * 8u);
+    napi_last = p + 2u; /* NAT5R */
 }
 /* NDR5: a transform record is taken as a state op: the shadow stays, no dschk record, nd_ds.sc_lost stays (rec_take :188-201) */
 void nd_rec_xf(NdNapiRun run, const uint32_t* rec) {
@@ -423,6 +424,21 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
         if (rc) { st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason */
             if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
     st_put(t[0], t[1]); /* NAT4A */
+}
+/* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
+ * The spare unit holds the range bounds (nd_alt_run). The units feed nd_ds (nd_rec_nr); the snap memo restarts at both ends. */
+void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost) {
+    if (units + 1u > 255u) napi_bad(units + 1u); /* NAT5R */
+    rec_open(); uint32_t* p = rec_take(4u + 2u * units); ndc_n[NDC_NAPI]++; if (s) ndc_snapc++; /* NAT5R */
+    p[0] = NDC_HDR(NDC_NAPI, units + 1u, s ? 1u : 0u); p[1] = (uint32_t)(uintptr_t)run; memcpy(p + 2, rec, units * 8u); napi_last = p + 2u; /* NAT5R */
+    uint32_t* const ab = p + 2u + 2u * units; ab[0] = ab[1] = 0u;
+    uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; ab[0] = (uint32_t)(uintptr_t)wp; nd_snap_task(); /* NAT5R */
+    for (unsigned k = 0; k < an; k++) { const uint32_t w0 = au[2u * k], w1 = au[2u * k + 1u];
+        if (w0 == ND_NOP_A) continue;
+        if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && k + 2u < an) { nd_rec_texrect(w0, w1 & ~ND_FS_RECT_TEX, au[2u * k + 3u], au[2u * k + 5u]); k += 2u; continue; } /* as nd_rec_list */
+        nd_rec_nr(w0, w1); }
+    st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp; /* NAT5R */
+    if (lost) nd_ds.sc_lost = 1; /* the old nd_ds_feed_dir */
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
@@ -602,3 +618,4 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
     }
 }
 void nd_stream_run(const uint32_t* p) { stream_run(p, NULL); }
+void nd_alt_run(const uint32_t* ab) { nd_ds_rpl++; stream_run((const uint32_t*)(uintptr_t)ab[0], (const uint32_t*)(uintptr_t)ab[1]); nd_ds_rpl--; } /* NAT5R */
