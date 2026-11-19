@@ -1,0 +1,27 @@
+build3ds/azt/logs/curt_title_drec.txt:#151 c0fb src 5 why 0 f35
+build3ds/azt/logs/curt_title_drec.txt:#177 c0fb src 1 why 5 f49
+build3ds/azt/logs/curt_title_drec.txt:#324 c0fb f540 hud 4360 cplx 0 glyph 0 tsten 0 spr 1392 fill 0 trect 0
+build3ds/azt/logs/entcape_kmr03_drec.txt:#151 c0fb src 5 why 0 f39
+build3ds/azt/logs/entcape_kmr03_drec.txt:#172 c0fb src 1 why 5 f53
+build3ds/azt/logs/entcape_kmr03_drec.txt:#236 c0fb f201 hud 2980 cplx 0 glyph 0 tsten 0 spr 326 fill 0 trect 0
+build3ds/azt/logs/fxparts_drec.txt:#152 c0fb src 5 why 0 f35
+build3ds/azt/logs/fxparts_drec.txt:#178 c0fb src 1 why 5 f49
+build3ds/azt/logs/fxparts_drec.txt:#390 c0fb src 1 why 34 f589
+build3ds/azt/logs/fxparts_drec.txt:#513 c0fb f676 hud 5447 cplx 0 glyph 0 tsten 0 spr 3852 fill 0 trect 0
+build3ds/azt/logs/imgovl_drec.txt:#151 c0fb src 5 why 0 f39
+build3ds/azt/logs/imgovl_drec.txt:#180 c0fb src 1 why 5 f53
+build3ds/azt/logs/imgovl_drec.txt:#308 c0fb f440 hud 2000 cplx 0 glyph 0 tsten 0 spr 792 fill 0 trect 0
+build3ds/azt/logs/miscp_drec.txt:#152 c0fb src 5 why 0 f35
+build3ds/azt/logs/miscp_drec.txt:#186 c0fb src 1 why 5 f49
+build3ds/azt/logs/miscp_drec.txt:#442 c0fb f632 hud 4907 cplx 0 glyph 0 tsten 0 spr 3588 fill 0 trect 0
+build3ds/azt/logs/spot_mac01_drec.txt:#25 c0fb src 5 why 0 f35
+build3ds/azt/logs/spot_mac01_drec.txt:#35 c0fb src 1 why 5 f49
+build3ds/azt/logs/spot_mac01_drec.txt:#73 c0fb f201 hud 3060 cplx 0 glyph 0 tsten 0 spr 1002 fill 0 trect 0
+build3ds/azt/logs/wscmb_fsel_drec.txt:#199 c0fb f301 hud 0 cplx 0 glyph 0 tsten 0 spr 0 fill 0 trect 0
+build3ds/azt/logs/wscmb_pause_drec.txt:#152 c0fb src 5 why 0 f37
+build3ds/azt/logs/wscmb_pause_drec.txt:#180 c0fb src 1 why 5 f51
+build3ds/azt/logs/wscmb_pause_drec.txt:#195 c0fb src 1 why 31 f102
+build3ds/azt/logs/wscmb_pause_drec.txt:#198 c0fb src 3 why 31 f102
+build3ds/azt/logs/wscmb_pause_drec.txt:#201 c0fb src 7 why 31 f102
+build3ds/azt/logs/wscmb_pause_drec.txt:#235 c0fb src 3 why 29 f105
+build3ds/azt/logs/wscmb_pause_drec.txt:#293 c0fb f141 hud 952 cplx 0 glyph 408 tsten 0 spr 1215 fill 0 trect 60

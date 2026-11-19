@@ -1,4 +1,5 @@
 #include "common.h"
+void nd_c0fb_note(unsigned src, unsigned why); /* NAT5D: nd_direct.c */
 #include "nd_gtab.h"
 #include "overlay.h"
 #include "include_asset.h"
@@ -126,6 +127,7 @@ void pm_tsten_run(const uint32_t* u) {
     if (ok) return;
 
     nd_dir_drop(); /* NDR2C */
+    nd_c0fb_note(4u, 0u); /* NAT5D */
     tsten_emit(r, &nrp);
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }

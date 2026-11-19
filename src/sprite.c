@@ -1,4 +1,5 @@
 #include "sprite.h"
+void nd_c0fb_note(unsigned src, unsigned why); /* NAT5D: nd_direct.c */
 #include "nd_gtab.h"
 #include "sprite/player.h"
 #include "pm_interp_fi.h"
@@ -281,6 +282,7 @@ static void spr_state_run(const uint32_t* u) {
     uint32_t* nrp = buf;
     spr_flat_gfx(&nrp, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
                  (s32)(u[6] & 0xffu), (u32)(u[6] >> 8), (Vp*)(uintptr_t)u[3], (Vp*)(uintptr_t)u[4]);
+    nd_c0fb_note(5u, 0u); /* NAT5D */
     nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
 }
 /* NST2C: the same units as spr_state_run, fed to core 1 (nd_ds) at record time. */
