@@ -249,3 +249,14 @@ void nd_rnd_sync(void) {
     nd_c0d = (unsigned char)((nd_c0d & ~2u) | (nd_snap_rdiff(&rs, mixk, mixc) ? 2u : 0u)); /* NAT1D */
     nd_c0w |= 2u; nd_c0_src(); /* NAT1B */
 }
+/* NAT4I: the native state records of nd_rec.c rec_nat (core 1 values after the unit; bit 31 = the core 1 mark) */
+void nd_sci_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_SCISSOR; gv_epoch++; sci_x0 = (int16_t)r[0]; sci_y0 = (int16_t)(r[0] >> 16); sci_x1 = (int16_t)r[1]; sci_y1 = (int16_t)(r[1] >> 16); pm_gpu_set_scissor(sci_x0, sci_y0, sci_x1, sci_y1); }
+void nd_geo_run(const uint32_t* r) { const unsigned g = r[0]; const int mk = (int)(r[1] >> 31);
+    const int same = g == nd_ws.geom && pm_gpu_mode_is((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+    if (same && !mk) return; pm_gbi_cur_op = ND_FS_GEOM; if (mk) gv_epoch++;
+    if (!same) { nd_ws.geom = g; pm_gpu_set_mode((g & G_ZBUFFER) != 0, (g & G_LIGHTING) != 0); } }
+void nd_mw_run(const uint32_t* r) { const unsigned k = (r[0] >> 16) & 0xffu, g = r[0] & 0xffffu; const uint32_t v = r[1]; const int mk = (int)(r[0] >> 31);
+    const int same = k == ND_FS_MW_LIGHTCOL && g < 9u && lt[g].col[0] == (u8)(v >> 24) && lt[g].col[1] == (u8)(v >> 16) && lt[g].col[2] == (u8)(v >> 8);
+    if (same && !mk) return; pm_gbi_cur_op = ND_FS_MW; if (mk) gv_epoch++; if (same) return;
+    if (k == ND_FS_MW_NUMLIGHT) { lit_freeze(); lt_n = v; } else if (k == ND_FS_MW_LIGHTCOL && g < 9u) { lt[g].col[0] = (u8)(v >> 24); lt[g].col[1] = (u8)(v >> 16); lt[g].col[2] = (u8)(v >> 8); }
+    else if (k == ND_FS_MW_FOG) { fog_fm = (s16)(v >> 16); fog_fo = (s16)v; } else if (k == ND_FS_MW_SEG && g < 16u) nd_ws.segbase[g] = v; }
