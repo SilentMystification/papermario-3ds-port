@@ -1,0 +1,32 @@
+build3ds/azt/logs/entcape_kmr03_drec.txt:#206 drec frame 200 seq 0
+build3ds/azt/logs/entcape_kmr03_drec.txt:#207 epcut f200
+build3ds/azt/logs/entcape_kmr03_drec.txt:#210 drec frame 201 seq 86
+build3ds/azt/logs/entcape_kmr03_drec.txt:#211 epcut f201
+build3ds/azt/logs/entcape_kmr03_drec.txt:#213 c0src f201 draws 94 mdl 78 wcomb 0 wrnd 0 wbind 0 snb 14525 snn 13873 snm 9535
+build3ds/azt/logs/entcape_kmr03_drec.txt:#216 epchk f201 units 17674 bad 164 marks 10452
+build3ds/azt/logs/entcape_kmr03_drec.txt:#217 epbin id 33 dir 1 n 1
+build3ds/azt/logs/entcape_kmr03_drec.txt:#218 epbin id 45 dir 0 n 163
+build3ds/azt/logs/fxparts_drec.txt:#284 drec frame 412 seq 0
+build3ds/azt/logs/fxparts_drec.txt:#287 epcut f412
+build3ds/azt/logs/fxparts_drec.txt:#307 drec frame 456 seq 116
+build3ds/azt/logs/fxparts_drec.txt:#310 epcut f456
+build3ds/azt/logs/fxparts_drec.txt:#331 drec frame 500 seq 239
+build3ds/azt/logs/fxparts_drec.txt:#334 epcut f500
+build3ds/azt/logs/fxparts_drec.txt:#355 drec frame 544 seq 358
+build3ds/azt/logs/fxparts_drec.txt:#358 epcut f544
+build3ds/azt/logs/fxparts_drec.txt:#372 drec frame 588 seq 490
+build3ds/azt/logs/fxparts_drec.txt:#375 epcut f588
+build3ds/azt/logs/fxparts_drec.txt:#458 drec frame 632 seq 643
+build3ds/azt/logs/fxparts_drec.txt:#461 epcut f632
+build3ds/azt/logs/fxparts_drec.txt:#482 drec frame 676 seq 814
+build3ds/azt/logs/fxparts_drec.txt:#485 epcut f676
+build3ds/azt/logs/fxparts_drec.txt:#489 c0src f676 draws 489 mdl 441 wcomb 0 wrnd 0 wbind 0 snb 95685 snn 90628 snm 87091
+build3ds/azt/logs/fxparts_drec.txt:#492 epchk f676 units 40680 bad 1024 marks 18643
+build3ds/azt/logs/fxparts_drec.txt:#493 epbin id 33 dir 1 n 1
+build3ds/azt/logs/fxparts_drec.txt:#494 epbin id 45 dir 0 n 1023
+build3ds/azt/logs/spot_mac01_drec.txt:#56 epcut f200
+build3ds/azt/logs/spot_mac01_drec.txt:#58 epcut f201
+build3ds/azt/logs/spot_mac01_drec.txt:#60 c0src f201 draws 44 mdl 126 wcomb 0 wrnd 0 wbind 0 snb 20010 snn 19510 snm 18499
+build3ds/azt/logs/spot_mac01_drec.txt:#63 epchk f201 units 8928 bad 168 marks 4279
+build3ds/azt/logs/spot_mac01_drec.txt:#64 epbin id 33 dir 1 n 1
+build3ds/azt/logs/spot_mac01_drec.txt:#65 epbin id 45 dir 0 n 167
