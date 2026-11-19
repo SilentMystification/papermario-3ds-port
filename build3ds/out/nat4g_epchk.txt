@@ -1,0 +1,42 @@
+build3ds/azt/logs/entcape_kmr03_drec.txt:#206 drec frame 200 seq 0
+build3ds/azt/logs/entcape_kmr03_drec.txt:#207 epcut f200
+build3ds/azt/logs/entcape_kmr03_drec.txt:#217 drec frame 201 seq 86
+build3ds/azt/logs/entcape_kmr03_drec.txt:#218 epcut f201
+build3ds/azt/logs/entcape_kmr03_drec.txt:#227 c0src f201 draws 94 mdl 78 wcomb 0 wrnd 0 wbind 0 snb 14525 snn 13873 snm 9535
+build3ds/azt/logs/entcape_kmr03_drec.txt:#230 epchk f201 units 52793 bad 1178 marks 43760
+build3ds/azt/logs/entcape_kmr03_drec.txt:#231 epbin id 32 dir 1 n 6
+build3ds/azt/logs/entcape_kmr03_drec.txt:#232 epbin id 42 dir 0 n 806
+build3ds/azt/logs/entcape_kmr03_drec.txt:#233 epbin id 42 dir 1 n 366
+build3ds/azt/logs/fxparts_drec.txt:#284 drec frame 412 seq 0
+build3ds/azt/logs/fxparts_drec.txt:#286 epcut f412
+build3ds/azt/logs/fxparts_drec.txt:#309 drec frame 456 seq 116
+build3ds/azt/logs/fxparts_drec.txt:#311 epcut f456
+build3ds/azt/logs/fxparts_drec.txt:#335 drec frame 500 seq 239
+build3ds/azt/logs/fxparts_drec.txt:#337 epcut f500
+build3ds/azt/logs/fxparts_drec.txt:#361 drec frame 544 seq 358
+build3ds/azt/logs/fxparts_drec.txt:#363 epcut f544
+build3ds/azt/logs/fxparts_drec.txt:#380 drec frame 588 seq 490
+build3ds/azt/logs/fxparts_drec.txt:#382 epcut f588
+build3ds/azt/logs/fxparts_drec.txt:#468 drec frame 632 seq 643
+build3ds/azt/logs/fxparts_drec.txt:#470 epcut f632
+build3ds/azt/logs/fxparts_drec.txt:#494 drec frame 676 seq 814
+build3ds/azt/logs/fxparts_drec.txt:#496 epcut f676
+build3ds/azt/logs/fxparts_drec.txt:#503 c0src f676 draws 489 mdl 441 wcomb 0 wrnd 0 wbind 0 snb 95685 snn 90628 snm 87091
+build3ds/azt/logs/fxparts_drec.txt:#506 epchk f676 units 129891 bad 1933 marks 110387
+build3ds/azt/logs/fxparts_drec.txt:#507 epbin id 32 dir 1 n 6
+build3ds/azt/logs/fxparts_drec.txt:#508 epbin id 42 dir 0 n 1284
+build3ds/azt/logs/fxparts_drec.txt:#509 epbin id 42 dir 1 n 643
+build3ds/azt/logs/spot_mac01_drec.txt:#56 epcut f200
+build3ds/azt/logs/spot_mac01_drec.txt:#60 epcut f201
+build3ds/azt/logs/spot_mac01_drec.txt:#64 c0src f201 draws 44 mdl 126 wcomb 0 wrnd 0 wbind 0 snb 20010 snn 19510 snm 18499
+build3ds/azt/logs/spot_mac01_drec.txt:#67 epchk f201 units 24819 bad 508 marks 20332
+build3ds/azt/logs/spot_mac01_drec.txt:#68 epbin id 32 dir 1 n 6
+build3ds/azt/logs/spot_mac01_drec.txt:#69 epbin id 42 dir 0 n 334
+build3ds/azt/logs/spot_mac01_drec.txt:#70 epbin id 42 dir 1 n 168
+build3ds/azt/logs/wscmb_pause_drec.txt:#274 drec frame 140 seq 0
+build3ds/azt/logs/wscmb_pause_drec.txt:#277 drec frame 141 seq 104
+build3ds/azt/logs/wscmb_pause_drec.txt:#280 c0src f141 draws 208 mdl 0 wcomb 0 wrnd 0 wbind 52 snb 16564 snn 16213 snm 14817
+build3ds/azt/logs/wscmb_pause_drec.txt:#283 epchk f141 units 32341 bad 214 marks 21109
+build3ds/azt/logs/wscmb_pause_drec.txt:#284 epbin id 32 dir 1 n 30
+build3ds/azt/logs/wscmb_pause_drec.txt:#285 epbin id 42 dir 0 n 183
+build3ds/azt/logs/wscmb_pause_drec.txt:#286 epbin id 42 dir 1 n 1
