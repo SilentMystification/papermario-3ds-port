@@ -552,21 +552,11 @@ void nd_c0fb_note(unsigned src, unsigned why); /* NAT5D: nd_direct.c */
 /* core 0: one HUD element record, drawn directly (hud_rect_direct) or, when it cannot state the record, emitted into a local list and walked as state ops
  * (at most 9 prologue units + 32 pieces of 14 + 1 = 458 units). */
 static void hud_rect_run(const uint32_t* u) {
-    static uint32_t buf[1024];
-    uint32_t* nrp = buf;
     { const int why = hud_rect_direct((const NdHudRec*)u, NULL, NULL); if (!why) return; nd_c0fb_note(1u, (unsigned)why); if (why != 5) nd_direct_fallback((unsigned)why); }
     nd_dir_drop(); /* NDR2C */
-    hud_rect_emit((const NdHudRec*)u, &nrp, 0);
-    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+    nd_alt_run(u + 2u * (8u + 6u * (unsigned)((const NdHudRec*)u)->npc)); /* NAT5R */
 }
 
-/* NST2E: the units of one HUD element record feed core 1's nd_ds (record site hud_element.c, core 1 only: the static buffer is not shared). */
-static void hud_rect_feed(const uint32_t* u) {
-    static uint32_t fb[1024];
-    uint32_t* p = fb;
-    hud_rect_emit((const NdHudRec*)u, &p, 0);
-    nd_ds_feed_dir(fb, (unsigned)(p - fb) / 2u);
-}
 void nd_rec_nr(uint32_t w0, uint32_t w1); /* NAT5S: nd_rec.c */
 static void hud_rect_stream(const NdHudRec* r) { static uint32_t sb[1024]; uint32_t* p = sb; hud_rect_emit(r, &p, 0); /* NAT5S: core 1 only: a record with no piece as stream units */
     for (const uint32_t* q = sb; q < p; q += 2) if (q[0] != ND_NOP_A) nd_rec_nr(q[0], q[1]); }
@@ -888,7 +878,8 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
     } else {
         { NdPsoN64 pd; u32 prim; const int hw = hud_rect_direct(&rec, &pd, &prim);
           if (hw == 5) hud_rect_stream(&rec); /* NAT5S */
-          else { if (!hw) nd_dir_rec(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc, &pd, prim); else nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc); hud_rect_feed((const uint32_t*)&rec); } } /* NDR2C */
+          else { static uint32_t ab_[1024]; uint32_t* p_ = ab_; hud_rect_emit(&rec, &p_, 0); const unsigned nu_ = 8u + 6u * (unsigned)rec.npc, an_ = (unsigned)(p_ - ab_) / 2u; /* NAT5R: core 1 only */
+          if (!hw) nd_dir_rec_alt(hud_rect_run, &rec, nu_, &pd, prim, ab_, an_); else nd_rec_alt(hud_rect_run, &rec, nu_, 0, ab_, an_, 1); } } /* NDR2C */
     }
 
 }

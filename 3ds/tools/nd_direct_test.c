@@ -96,6 +96,8 @@ unsigned char nd_snap_live; /* NDR2A */
 /* nd_rec.c is not linked here; NST2E feeds (nd_fill_feed, nd_trect_feed) */
 /* NSTREAM3: the native record runner of the direct fallbacks (nd_walk.c); the same count as the op walker */
 void nd_nr_exec(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
+static int n_alt; void nd_alt_run(const uint32_t* ab) { (void)ab; n_alt++; } /* NAT5R */
+void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost) { (void)run; (void)rec; (void)units; (void)s; (void)au; (void)an; (void)lost; } /* NAT5R */
 void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
 void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }
@@ -200,8 +202,9 @@ int main(void) {
         /* not ready (a slot role): the same ops go to the walker in a local list */
         fake_role_set(ROLE_SLOT);
         n_win = n_gx = n_walk = 0; n_rect = 0;
+        n_alt = 0;
         nd_trect_run((const uint32_t*)&t);
-        CHECK(n_win == 1 && n_rect == 0 && n_walk >= 4 && n_gx == 0); /* n_walk counts native records (nd_nr_exec): the load records and the 3 rectangle records; the O forms make no gbi call (n_gx) */
+        CHECK(n_win == 1 && n_rect == 0 && n_alt == 1 && n_gx == 0); /* NAT5R: the fallback is the alt range (nd_alt_run) */
         fake_role_set(ROLE_MAIN);
     }
     /* S5CHUDA: nd_direct_quad runs MTX, VTX, TRI, TRI, POP with the words the typed recorder makes of the old ops (low 24 bits of w0, as op_geo passes them) */
