@@ -30,6 +30,9 @@ This is the entry point for every test and profiling run (it replaces the text t
         base build for all named benches (BASEBIN: from the store <main folder>/build3ds/basebin/, else built once as lane
         base_<short> and stored), runs the benches, stores the shots. The store keeps the last 5 commits (index.json).
         Cache safety: each stored base and each basebin entry holds its content key and file hashes; every use checks both.
+  python 3ds/tools/bench.py base --adopt <row> --commit C --parent P
+        BASEREUSE: at a merge of <row> into main (merge_row.sh): the cmp pass records of <row> give each bench a base at the merge
+        commit C, a copy of the base at the parent P, when every check of base_adopt holds (else each refusal is printed). No build, no run.
   python 3ds/tools/bench.py base --prebuild [--commit C]
         BASEBIN: puts the base build of the merge-base (or C) into the basebin store. No Azahar run. MAINBIN runs it at each merge.
   python 3ds/tools/bench.py base --check [--cold] [--shots] [--commit C] [--row R]
@@ -1596,6 +1599,131 @@ def store_base(commit, bench, scenario_name, shots, log, info):
     return names
 
 
+BASE_ADOPT_MAX = 4  # BASEREUSE: after this many adoptions of a bench the next row runs a full base (base_adopt)
+NONINPUT = ("docs/", "3ds/logs/", ".claude/", "CLAUDE.md")  # BASEREUSE: paths that no run or base reads (inputs_equal)
+MEASURE_TOOLS = ("3ds/tools/bench.py", "3ds/tools/basebin.py", "3ds/tools/bench_defs.json", "3ds/tools/azt_scenarios.json")  # BASEREUSE: the tools of a measure (tools_hash)
+
+
+def changed_paths(a, b):  # BASEREUSE: the paths that differ between commits a and b; None when git cannot compare them
+    r = subprocess.run(["git", "diff", "--name-only", a, b], cwd=REPO, capture_output=True, text=True)
+    return [x for x in r.stdout.splitlines() if x] if r.returncode == 0 else None
+
+
+def inputs_equal(a, b):  # BASEREUSE: True when a and b differ in NONINPUT paths only (False when git cannot tell)
+    ps = changed_paths(a, b)
+    return ps is not None and all(p.startswith(NONINPUT) for p in ps)
+
+
+def shot_sha(c, b):  # BASEREUSE: the sha1 of every stored file of the base of b at c, run.log left out
+    m = json.loads((store_root() / c / b / "meta.json").read_text(encoding="utf-8"))
+    return {k: v for k, v in (m.get("out_sha1") or {}).items() if k != "run.log"}
+
+
+def tools_hash():  # BASEREUSE: the sha1 of the measure tools (path and content; "none" when a file is missing)
+    txt = "".join("%s %s\n" % (p, bb.sha1_file(REPO / p) if (REPO / p).exists() else "none") for p in MEASURE_TOOLS)
+    return bb.sha1_bytes(txt.encode("utf-8"))
+
+
+def ledger(upd=None):  # BASEREUSE: adoptions since the last full base, per bench (adopt.json in the store); upd adds to it
+    try:
+        d = json.loads((store_root() / "adopt.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        d = {}
+    if upd is not None:
+        d.update(upd)
+        store_root().mkdir(parents=True, exist_ok=True)
+        (store_root() / "adopt.json").write_text(json.dumps(d, indent=1) + "\n", encoding="utf-8")
+    return d
+
+
+def copy_entry(src, dst, b, info):  # BASEREUSE: the stored base of b at src copied to dst (store_base, src meta kept, info added)
+    sd = store_root() / src / b
+    meta = json.loads((sd / "meta.json").read_text(encoding="utf-8"))
+    tmp = store_root() / ("copy.tmp.%d" % os.getpid())
+    shutil.rmtree(tmp, ignore_errors=True)
+    tmp.mkdir(parents=True)
+    try:
+        for n in shot_names(sd):
+            shutil.copy2(sd / n, tmp / n)
+        keep = {k: meta.get(k) for k in ("row", "label", "build_no", "run_log_path", "scen_hash", "tools")}
+        store_base(dst, b, meta.get("scenario"), tmp, sd / "run.log", dict(keep, **info))
+    finally:
+        shutil.rmtree(tmp, ignore_errors=True)
+
+
+def cmppass_put(row, bench, base, rr, ok):  # BASEREUSE: the cmp pass record of bench under row (base_adopt reads it); a failed cmp removes it
+    f = store_root() / "cmppass" / row / (bench + ".json")
+    if not ok:
+        f.unlink(missing_ok=True)
+        return
+    f.parent.mkdir(parents=True, exist_ok=True)
+    rec = {"row": row, "bench": bench, "base": base, "run_commit": (rr or {}).get("commit") or "", "dirty": (rr or {}).get("dirty"),
+           "tools": tools_hash(), "shots": shot_sha(base, bench), "time": now_iso()}
+    f.write_text(json.dumps(rec, indent=1) + "\n", encoding="utf-8")
+
+
+def base_of(c, b):  # BASEREUSE: the stored commit whose base of b holds for c: c, else the newest stored commit with the same inputs
+    if not stored_why(c, b):
+        return c
+    idx = load_index()["commits"]
+    return next((s for s in reversed(list(idx)) if s != c and b in idx[s]["benches"] and not stored_why(s, b) and inputs_equal(s, c)), None)
+
+
+def base_alias(c, b):  # BASEREUSE: True when a copy gave c its base of b (base_of finds a stored commit with the same inputs)
+    s = base_of(c, b)
+    if not s or s == c:
+        return False
+    copy_entry(s, c, b, {"alias_of": s})
+    print("base %s at %s: same inputs as %s: copied. No build, no run." % (b, c[:9], s[:9]))
+    return True
+
+
+def adopt_why(rec, tip, par, n):  # BASEREUSE: "" when the cmp pass rec may give its bench a base at the merge, else the reason
+    b = rec["bench"]
+    run_c = base_commit(rec["run_commit"]) if rec.get("run_commit") else None
+    pb = base_of(par, b)
+    if n >= BASE_ADOPT_MAX:
+        return "full base due (%d adoptions since the last full base)" % n
+    if rec.get("tools") != tools_hash():
+        return "the measure tools changed since the cmp"
+    if rec.get("dirty") is not False:
+        return "the row run had uncommitted changes (dirty %s)" % rec.get("dirty")
+    if not (tip and run_c and inputs_equal(run_c, tip)):
+        return "the row run is not at the inputs of the branch tip"
+    if not pb:
+        return "main before the merge (%s) has no stored base" % par[:9]
+    if shot_sha(pb, b) != rec.get("shots"):
+        return "the base at %s differs from the base of the row cmp" % pb[:9]
+    if json.loads((store_root() / pb / b / "meta.json").read_text(encoding="utf-8")).get("tools") != rec["tools"]:
+        return "the base at %s was made by other measure tools" % pb[:9]
+    return ""
+
+
+def base_adopt(a):  # BASEREUSE: the cmp pass records of row give its benches a base at the merge commit a.commit (parent a.parent)
+    row = a.adopt
+    dst = base_commit(a.commit)
+    par = base_commit(a.parent) if a.parent else None
+    tip = base_commit("refs/heads/" + row)
+    d = store_root() / "cmppass" / row
+    recs = sorted(d.glob("*.json")) if d.is_dir() else []
+    if not dst or not par or not recs:
+        print("adopt %s: nothing adopted (no merge commit, parent or cmp pass record of the row)" % row)
+        return 0
+    for f in recs:
+        rec = json.loads(f.read_text(encoding="utf-8"))
+        b = rec["bench"]
+        why = adopt_why(rec, tip, par, ledger().get(b, 0))
+        if why:
+            print("adopt %s %s: refused: %s" % (row, b, why))
+            continue
+        pb = base_of(par, b)
+        copy_entry(pb, dst, b, {"adopted_from": {"row": row, "base": rec["base"], "parent_base": pb}})
+        n = ledger({b: ledger().get(b, 0) + 1})[b]
+        print("adopt %s %s: stored at %s, copy of %s (adoption %d of %d)" % (row, b, dst[:9], pb[:9], n, BASE_ADOPT_MAX))
+    shutil.rmtree(d, ignore_errors=True)
+    return 0
+
+
 def base_records(bench, row, label, commit, since):
     """The run records of bench under row with this label at commit, written at or after since (an ISO time), in file order."""
     return [r for r in read_runs() if r.get("bench") == bench and r.get("row") == row and r.get("label") == label
@@ -1791,8 +1919,9 @@ def base_run(bds, commit, build_no, row, lane, label, why):
             continue
         names = store_base(commit, bd["name"], s["name"], Path(last["shot_path"]), REPO / "build3ds" / "azt" / "logs" / (s["name"] + ".txt"),
                            {"row": row, "label": label, "build_no": build_no, "run_log_path": last.get("log_path"),
-                            "two_runs_log_paths": [first.get("log_path"), last.get("log_path")], "scen_hash": scen_hash(s)})
+                            "two_runs_log_paths": [first.get("log_path"), last.get("log_path")], "scen_hash": scen_hash(s), "tools": tools_hash()})  # BASEREUSE
         print("base %s at %s: two runs equal, stored %d shots at %s" % (bd["name"], commit[:9], len(names), store_root() / commit / bd["name"]))
+        ledger({bd["name"]: 0})  # BASEREUSE: a full base resets the adoption count
     shutil.rmtree(snap, ignore_errors=True)
     return rc if rc else (1 if bad else 0)
 
@@ -2113,7 +2242,8 @@ def base_check_shots(a, live, random):
     if not cands:
         print("cachecheck shots: no stored bench of a commit with a basebin entry")
         return 0
-    commit, b = random.choice(cands)
+    ad = [x for x in cands if "adopted_from" in json.loads((store_root() / x[0] / x[1] / "meta.json").read_text(encoding="utf-8"))]  # BASEREUSE
+    commit, b = random.choice(ad or cands)  # BASEREUSE: an adopted entry first
     old = store_root() / commit / b
     keep = store_root() / commit / (b + ".chk.%d" % os.getpid())
     shutil.rmtree(keep, ignore_errors=True)
@@ -2152,6 +2282,8 @@ def base_drop(a):
 
 
 def cmd_base(a):
+    if a.adopt:  # BASEREUSE
+        return base_adopt(a)  # BASEREUSE
     if a.fill:
         return base_fill(a)
     if a.prebuild:
@@ -2174,7 +2306,7 @@ def cmd_base(a):
         return 5
     todo = []
     for bd in bds:
-        if stored(commit, bd["name"]):
+        if stored(commit, bd["name"]) or base_alias(commit, bd["name"]):  # BASEREUSE: an alias copy counts as stored
             n = len(shot_names(store_root() / commit / bd["name"]))
             print("base %s at %s: stored, %d shots at %s. No build, no run." % (bd["name"], commit[:9], n, store_root() / commit / bd["name"]))
         else:
@@ -2298,7 +2430,7 @@ def cmd_cmp(a):
     if rr is not None and (Path(rr["shot_path"]) / "STALE.txt").exists():
         print("cmp %s: the row run is void: %s" % (a.bench, (Path(rr["shot_path"]) / "STALE.txt").read_text(encoding="utf-8").strip()))
         return 5
-    if not stored(commit, a.bench):
+    if not stored(commit, a.bench) and not base_alias(commit, a.bench):  # BASEREUSE
         print("no stored base of %s at %s. Run: bench.py base %s" % (a.bench, commit[:9], a.bench))
         return 5
     if rr is None:
@@ -2350,7 +2482,9 @@ def cmd_cmp(a):
     if bad:
         for c in stored_matches(a.bench, row_dir):
             print("row shots equal stored base %s" % c[:9])
-    return 0 if bad == 0 and equal == len(base_names) and base_names else 1
+    ok = bad == 0 and equal == len(base_names) and bool(base_names)  # BASEREUSE
+    cmppass_put(a.row, a.bench, commit, rr, ok)  # BASEREUSE
+    return 0 if ok else 1  # BASEREUSE
 
 
 def stored_matches(bench, row_dir):
@@ -2918,6 +3052,7 @@ def main(argv):
     x.add_argument("--check", action="store_true", help="cachecheck: stale basebin entries (with --cold: one cold rebuild; --shots: one shot rerun)")
     x.add_argument("--cold", action="store_true", help="base --check: rebuild the entry of --commit (else a random one) cold, compare the 3dsx bytes")
     x.add_argument("--shots", action="store_true", help="base --check: run one random stored bench again, compare the shots")
+    x.add_argument("--adopt", metavar="ROW"); x.add_argument("--parent")  # BASEREUSE
     x.add_argument("--commit"); x.add_argument("--row", default=BASE_ROW); x.set_defaults(f=cmd_base)
     x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit")
     x.set_defaults(f=cmd_cmp)
