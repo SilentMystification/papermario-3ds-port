@@ -43,7 +43,7 @@ State: main cb63f94d28, 2026-11-18. Counters FACT (DEL5B2 hand-back, start e41cf
 - Host seed scripts sed source files: before a rename row, grep 3ds/tests/host.d/*.sh for sed lines on the row's files.
 - box_fold_sync (nd_comb.c:377) folds tst1 on core 0 at a new epoch only. SETCOMBINE resets box_folded.
 - snapchk benches: nimgm_strip_snapchk (until f400), wscmb_pause_snapchk (until f200), bench.d/NDR0A.json. drec windows: nimgm 400:2:20, wscmb_pause 140:2, wscmb_fsel 300:2, spot 200:2.
-- bench.py run does not build: `sh 3ds/build.sh` before a capture run. A new debug switch of a gate scene must be on main before the gate row.
+- bench.py run does not build: `sh 3ds/build.sh` before a capture run. A new debug switch of a gate scene must be on main before the gate row. BASEREUSE (ws_BASEREUSE): `bench.py base` copies a base of a commit with the same inputs, merge_row adopts a base from a byte-equal row cmp (4 per bench, then a full base); an entry with no tools field adopts nothing.
 - Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
 - Other oracles edit this file: read `git log -- <file>` and the file before a write.
 - A row that deletes a reader line fails host.d/lcen.sh (`lkey census bad <file> <n> listed <m>`): the fix is the count in 3ds/tests/lkey/allow.txt. The 3 lines `CACHECHECK FAIL shots main_bench` do not fail the suite.

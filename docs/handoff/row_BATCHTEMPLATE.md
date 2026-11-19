@@ -31,7 +31,7 @@ New names: {SCENE}, {FNCOV}. Host link: none.
 - Host test: 1 run per row, after the change. No baseline host run (user 2026-11-16, loop time; plan_buildspeed.md PAGEHOST).
    --lane {ID} {PATHS}`: each file `sites h/t` with 10 h >= 9 t. A file below that: revert its edits, take it out of cov.d and of
    the scene ids (fix it in the scenes too), and name it in the hand-back; the gate goes on with the others.
-4. `bench.py base {SCENE}` (merge-base build), `bench.py run {SCENE} --row {ID} --why "{ID} drec gate"`, `bench.py cmp
+4. `bench.py base {SCENE}` (merge-base; no run when the store holds, copies or adopted that base), `bench.py run {SCENE} --row {ID} --why "{ID} drec gate"`, `bench.py cmp
    {SCENE} --row {ID}`: drec.txt byte-equal.
 5. One seeded fault for the batch (a value change, then undo): {SEED}. The ELF sha1 must differ from the real edit. Run
    {SCENE} again and cmp: it must differ.

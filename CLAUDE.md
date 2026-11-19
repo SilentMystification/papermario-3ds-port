@@ -21,7 +21,9 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
    PUSH (orchestrator, on the user's word only): docs/handoff/push_runbook.md is the one source. `powershell -NoProfile -File 3ds/go.ps1 push <o|n> -ip <addr> -NoBuild -Seconds 75`. No broadcast probe
    (it fails on this PC). The user's word that the console is ready is fact. A probe or send failure is not a console state: read the log. Coders never touch the console.
 4. TOOL FAULTS STOP THE GATE: a base run that fails or hangs, an abnormal exit, a stale build, a shot copy failure, two runs
-   that disagree. Hand back the exact output. Never skip a scene, change the base or reset the budget to pass. The orchestrator
+   that disagree. Hand back the exact output. Never skip a scene, change the base or reset the budget to pass. A base comes
+   only from `bench.py base`: two equal runs, or a copy the tool makes (same inputs; or adopted at a merge from a byte-equal
+   row cmp, one full base per bench after 4 adoptions). Never copy or edit a base by hand. The orchestrator
    resets a task's budget once per designer correction. Every compare is exact: one differing bit fails the
    gate, no rounding exception.
 5. STOP RULE. Fix a mechanical fault of the goal page or of a tool yourself and note it in the commit. Any other failed gate or
