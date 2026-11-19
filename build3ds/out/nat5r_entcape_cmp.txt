@@ -1,0 +1,2 @@
+no run of entcape_kmr03_drec under row NAT5R with shots. Run the bench first.
+exit 5

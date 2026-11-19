@@ -1,0 +1,7 @@
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+queue: position 1 of 1 waiting (lane 'NAT5R', speed normal, scenario entcape_kmr03_drec, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario entcape_kmr03_drec, row NAT5R, lane 'NAT5R', slot 1, cap 25 s, deadline 20 s after the Azahar start
+BUDGET: row NAT5R has no starts left. Nothing more was run. The orchestrator resets a row with run_azahar.ps1 -ResetBudget <row>.
+bench entcape_kmr03_drec: azt.ps1 exit 9. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl.
+exit 9
