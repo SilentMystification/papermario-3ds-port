@@ -1,0 +1,41 @@
+build3ds/azt/logs/spot_mac01_drec.txt:#124 c0dcase f200 wk 0014b840 dk 0014b840 c0d 3 w 000 s 002 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#125 c0dcase f200 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#126 c0dcase f200 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#127 c0dcase f200 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#128 c0dcase f200 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#129 c0dcase f200 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#130 c0dcase f201 wk 0014b840 dk 0014b840 c0d 3 w 000 s 002 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#131 c0dcase f201 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#132 c0dcase f201 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#133 c0dcase f201 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#134 c0dcase f201 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#135 c0dcase f201 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/spot_mac01_drec.txt:#136 c0src f201 draws 56 mdl 114 wcomb 22 wrnd 0 wbind 0 snb 4300 snn 3800 snm 2798
+build3ds/azt/logs/spot_mac01_drec.txt:#140 c0diff f201 wdiff 12
+build3ds/azt/logs/spot_mac01_drec.txt:#141 c0dwho k 0014b840 n 12
+build3ds/azt/logs/fxparts_drec.txt:#363 drec frame 412 seq 0
+build3ds/azt/logs/fxparts_drec.txt:#364 c0dcase f412 wk 0014b840 dk 0014b840 c0d 3 w 000 s 102 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#366 c0dcase f412 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#367 c0dcase f412 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#368 c0dcase f412 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#369 c0dcase f412 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#370 c0dcase f412 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#392 drec frame 456 seq 116
+build3ds/azt/logs/fxparts_drec.txt:#393 c0dcase f456 wk 0014b840 dk 0014b840 c0d 3 w 000 s 102 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#395 c0dcase f456 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#396 c0dcase f456 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#397 c0dcase f456 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#398 c0dcase f456 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#399 c0dcase f456 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#421 drec frame 500 seq 239
+build3ds/azt/logs/fxparts_drec.txt:#422 c0dcase f500 wk 0014b840 dk 0014b840 c0d 3 w 000 s 102 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#424 c0dcase f500 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#425 c0dcase f500 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#426 c0dcase f500 wk 0014b840 dk 00000005 c0d 3 w 102 s 003 off 65535 sz 192
+build3ds/azt/logs/fxparts_drec.txt:#450 drec frame 544 seq 358
+build3ds/azt/logs/fxparts_drec.txt:#468 drec frame 588 seq 490
+build3ds/azt/logs/fxparts_drec.txt:#593 drec frame 632 seq 643
+build3ds/azt/logs/fxparts_drec.txt:#619 drec frame 676 seq 814
+build3ds/azt/logs/fxparts_drec.txt:#622 c0src f676 draws 531 mdl 399 wcomb 94 wrnd 0 wbind 0 snb 34850 snn 29793 snm 26265
+build3ds/azt/logs/fxparts_drec.txt:#627 c0diff f676 wdiff 42
+build3ds/azt/logs/fxparts_drec.txt:#628 c0dwho k 0014b840 n 42
