@@ -595,7 +595,7 @@ static int drec_win = -2; static unsigned drec_first, drec_count, drec_step = 1u
 static int drec_on;
 int pm_drec_now(void) { return drec_on; } /* NDR0G2 */
 static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
-unsigned char nd_c0w; static unsigned c0_d, c0_m, c0_c, c0_r, c0_b; extern unsigned nd_snb, nd_snn, nd_snm; /* NAT1 */
+unsigned char nd_c0w; static unsigned c0_d, c0_m, c0_c, c0_r, c0_b; extern unsigned nd_snb, nd_snn, nd_snm; /* NAT1 */ static unsigned char c0_spr; /* NAT2J: a native sprite submit */
 extern const uint32_t* nd_stream_cur; static uint32_t c0_wk, c0_k[8]; static unsigned c0_kc[8], c0_kn, c0_ko; /* NAT1B */
 void nd_c0_src(void) { const uint32_t* s = nd_stream_cur; c0_wk = !s ? 0u : (s[0] >> 24) == 10u ? s[1] : (s[0] >> 24); } /* NAT1B: op, or the runner of NDC_NAPI */
 static void c0_who(void) { for (unsigned i = 0; i < c0_kn; i++) if (c0_k[i] == c0_wk) { c0_kc[i]++; return; } /* NAT1B */
@@ -1329,7 +1329,7 @@ static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
     return n;
 }
 static __attribute__((cold, noinline)) void c0_count(const NdDraw* d) { /* NAT1: one drec draw by the source of its state */
-    if (!drec_f) return; if (ndt_mdl) { c0_m++; return; } /* NAT1 */
+    if (!drec_f) return; if (ndt_mdl || c0_spr) { c0_m++; return; } /* NAT1 */
     c0_d++; if (nd_c0w & 3u) c0_who(); if (nd_c0w & nd_c0d & 3u) c0_dwho(); /* NAT1D */ /* NAT1B */ c0_c += nd_c0w & 1u; c0_r += (nd_c0w >> 1) & 1u; if (d->u[0].dim) c0_b += (nd_c0w >> 2) & 1u; } /* NAT1 */
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
@@ -4664,7 +4664,7 @@ int pm_gpu_spr_submit(NdDraw* d, const void* quad, int tex) {
     d->pal_k = pm_tw_on ? (const float(*)[16])pm_pal0_k : NULL; d->nrm_k = NULL; /* INTERPB2: pal0 of the sprite is the last pcomp_native (pm_gpu_spr_build) */
     d->idx_word = 0x80000000u | ((uint32_t)osConvertVirtToPhys(ix) - 0x18000000u);
     d->nidx = 6;
-    nd_native_submit(d, tex);
+    c0_spr = 1; nd_native_submit(d, tex); c0_spr = 0; /* NAT2J */
     return 1;
 }
 const char* pm_gpu_last_flush(int* line) { *line = fl_line; return fl_fn; } /* the hang watchdog prints it */

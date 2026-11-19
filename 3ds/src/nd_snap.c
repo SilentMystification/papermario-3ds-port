@@ -23,6 +23,7 @@ extern int pm_nofog; /* NDR0F1: the option (pm_options.c), read only */
 static int sn_leg, sn_mode5, sn_pat;
 static NdSnapChk sn_last;
 static unsigned sn_cmds = ~0u;
+void nd_snap_task(void) { sn_cmds = ~0u; } /* NAT2J: a task stream starts with its own snap */
 static NdTgt sn_tgt;
 static unsigned sn_vprim; /* NREC4: 1 while a particle table is taken */
 unsigned nd_snb, nd_snn, nd_snm; /* NAT1: core 1 snap_build calls, new snaps, table misses */
