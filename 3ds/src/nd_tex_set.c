@@ -441,6 +441,7 @@ int nd_tex_bind_desc(const NdBindDesc* d, int n) {
 }
 
 void nd_tile_bind(int n) {
+    if (nd_bsrc) nd_c0w &= ~4u; else nd_c0w |= 4u; /* NAT1 */
     if (ND_BTD(n)->valid && tile_bound(n) && !fb_cand(n)) {
         nd_ws.tile_fx = (float)(ND_BSZ(n)[0] & 3) * 0.25f; /* PT38 */
         nd_ws.tile_fy = (float)(ND_BSZ(n)[1] & 3) * 0.25f;

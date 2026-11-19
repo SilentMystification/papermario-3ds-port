@@ -169,6 +169,7 @@ extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor
 int ent_gdl(const NdW2* l);
 extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
+extern unsigned char nd_c0w; /* NAT1: bit 0 combine, bit 1 render, bit 2 bind set by the walker (pm_gpu.c) */
 extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside nd_eg_run; full combine and render syncs and walks run there (entsync line) */
 
 

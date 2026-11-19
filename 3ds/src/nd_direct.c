@@ -66,6 +66,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
     if (!o || (o->plan_on && (o->plan.uses_tex1 || o->plan.uses_noise)) || o->pat) return 0; /* the ok test of the former pso decision: nothing it reads is changed */
     {   /* what nd_comb_sync does with the decision (scm_replay) */
         unsigned cc = 0;
+        nd_c0w &= ~1u; /* NAT1: the core 1 decision */
         leg_mode = o->leg; comb_mode5 = o->mode5; box_pat = o->pat; plan_active = o->plan_on;
         ls_use = o->use; ls_why = o->why; ls_cyc = o->cyc; ls_dual = o->dual; ls_frame = rm_frame;
         sl_const = o->cc_on; sl_env = o->env_on; if (o->cc_on) sl_cc = o->cc; /* NREC2B: as nd_comb_apply */
@@ -90,6 +91,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
 
 /* Tile 0 = d: the state nd_tsz_set leaves for the bind (origin, quarter texel offsets, the repeated-load record) and the bind. */
 int nd_direct_tex(const NdBindDesc* d) {
+    nd_c0w &= ~4u; /* NAT1: a stated bind */
     nd_ws.tile_x0 = d->x0;
     nd_ws.tile_y0 = d->y0;
     nd_ws.tile_fx = (float)(d->sz[0] & 3) * 0.25f; /* PT38 */

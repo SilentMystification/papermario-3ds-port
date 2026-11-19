@@ -595,6 +595,7 @@ static int drec_win = -2; static unsigned drec_first, drec_count, drec_step = 1u
 static int drec_on;
 int pm_drec_now(void) { return drec_on; } /* NDR0G2 */
 static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
+unsigned char nd_c0w; static unsigned c0_d, c0_m, c0_c, c0_r, c0_b; extern unsigned nd_snb, nd_snn, nd_snm; /* NAT1 */
 static NdDrecSpan drec_span[1 + OFF_N + SMALL_N]; static uint32_t drec_nspan; /* DRECTEX */
 #define DREC_REGS 640u
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
@@ -623,6 +624,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     if (!drec_f || pm_frame_count() < drec_first + (drec_count - 1u) * drec_step) return;
     const long bytes = ftell(drec_f);
     fclose(drec_f); free(drec_vb); free(drec_regs); free(drec_idx);
+    pm_log_evt("c0src f%u draws %u mdl %u wcomb %u wrnd %u wbind %u snb %u snn %u snm %u", pm_frame_count(), c0_d, c0_m, c0_c, c0_r, c0_b, nd_snb, nd_snn, nd_snm); /* NAT1 */
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
     drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_idx = NULL; drec_idx_cap = 0; drec_on = 0; drec_win = -1; /* one window per run */
 }
@@ -1319,6 +1321,9 @@ static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
     nd_shadow_reset(&ndn_sh);
     return n;
 }
+static __attribute__((cold, noinline)) void c0_count(const NdDraw* d) { /* NAT1: one drec draw by the source of its state */
+    if (!drec_f) return; if (ndt_mdl) { c0_m++; return; } /* NAT1 */
+    c0_d++; c0_c += nd_c0w & 1u; c0_r += (nd_c0w >> 1) & 1u; if (d->u[0].dim) c0_b += (nd_c0w >> 2) & 1u; } /* NAT1 */
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
     PH_ADD(C_NDRAW, 1); PH_ADD(C_NIDX, dp->nidx); /* FXCEN1 */
@@ -1346,6 +1351,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
       GPUCMD_SetBufferOffset(coff + (ndn_bq && !d->use5 && !d->no_uni && d->npal == 1u ? blk_put(cb + coff, ndn_bq, d) : nd_emit_draw(cb + coff, &ndn_sh, d))); } /* HC6 step 4: a cache hit copies its block */
     if (tex) ndunit_after();
+    if (__builtin_expect(drec_on, 0)) c0_count(d); /* NAT1 */
     if (__builtin_expect(drec_on, 0)) drec_draw(d, ndt_mdl || nb.gi_kind == 1); /* HOSTCORE2: the golden record of this draw */
     *(volatile unsigned*)(__C3D_Context + 32) |= 2u; /* C3DiF_DrawUsed, as the citro3d draw sets it: citro3d then sends the framebuffer flush at a target change, a split and the frame end */
     if (ndref_on) ndref_cmd();
