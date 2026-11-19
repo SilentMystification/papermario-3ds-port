@@ -102,6 +102,7 @@ typedef struct {
     uint32_t w[256]; unsigned nw;
     uint32_t u[512]; unsigned nu;
     int r; uint32_t cw[2]; int hcb; uint32_t mo[8]; unsigned nmo;
+    NdDs ds; /* NAT4K: core 1 state after the shape (a dropped unit still changes it) */
 } Res;
 
 static void run_one(void (*fn)(void), Res* out) {
@@ -111,6 +112,7 @@ static void run_one(void (*fn)(void), Res* out) {
     const uint32_t* mk = nd_rec_mark();
     fn();
     nd_rec_end();
+    memcpy(&out->ds, &nd_ds, sizeof nd_ds); /* NAT4K */
     const uint32_t* en = nd_rec_pos();
     out->nw = (unsigned)(en - mk);
     if (out->nw > 256u) out->nw = 256u;
@@ -127,7 +129,7 @@ static int same(const Res* a, const Res* b) {
     return a->nw == b->nw && memcmp(a->w, b->w, a->nw * sizeof(uint32_t)) == 0
         && a->nu == b->nu && memcmp(a->u, b->u, a->nu * sizeof(uint32_t)) == 0
         && a->r == b->r && memcmp(a->cw, b->cw, sizeof a->cw) == 0 && a->hcb == b->hcb
-        && a->nmo == b->nmo && memcmp(a->mo, b->mo, sizeof a->mo) == 0;
+        && a->nmo == b->nmo && memcmp(a->mo, b->mo, sizeof a->mo) == 0 && memcmp(&a->ds, &b->ds, sizeof a->ds) == 0; /* NAT4K */
 }
 
 typedef struct { const char* name; void (*mac)(void); void (*nat)(void); } Shape;
@@ -152,8 +154,7 @@ int main(void) {
     }
     run_one(n_rm, &b); /* NAT4K: the mark only; a marked OML is not recorded */
     if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 0) || b.w[1] != (uint32_t)(uintptr_t)nd_nr_run || b.w[2] != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16)
-        || b.nu != 2u || b.u[0] != b.w[2]) { printf("stunit FAIL run
-"); return 1; } /* NAT4K: a marked OML is not recorded */
+        || b.nu != 2u || b.u[0] != b.w[2]) { printf("stunit FAIL run\n"); return 1; } /* NAT4K: a marked OML is not recorded */
     run_one(n_scis, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_sci_run || b.w[2] != (10u | 20u << 16) || b.w[3] != (300u | 200u << 16) || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4I */
     run_one(n_cyc, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_omh_run || b.w[2] != (0x80000000u | G_MDSFT_CYCLETYPE | 2u << 8) || b.w[3] != G_CYC_1CYCLE || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4J */
     printf("stunit ok %u/%u\n", ok, n);

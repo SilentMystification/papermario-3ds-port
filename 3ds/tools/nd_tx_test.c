@@ -134,6 +134,7 @@ typedef struct {
     uint32_t w[256]; unsigned nw;
     uint32_t u[512]; unsigned nu;
     int r; uint32_t cw[2]; int hcb; uint32_t mo[8]; unsigned nmo;
+    NdDs ds; /* NAT4K: core 1 state after the shape (a dropped unit still changes it) */
 } Res;
 
 static void run_one(void (*fn)(void), Res* out) {
@@ -143,6 +144,7 @@ static void run_one(void (*fn)(void), Res* out) {
     const uint32_t* mk = nd_rec_mark();
     fn();
     nd_rec_end();
+    memcpy(&out->ds, &nd_ds, sizeof nd_ds); /* NAT4K */
     const uint32_t* en = nd_rec_pos();
     out->nw = (unsigned)(en - mk);
     if (out->nw > 256u) out->nw = 256u;
@@ -159,7 +161,7 @@ static int same(const Res* a, const Res* b) {
     return a->nw == b->nw && memcmp(a->w, b->w, a->nw * sizeof(uint32_t)) == 0
         && a->nu == b->nu && memcmp(a->u, b->u, a->nu * sizeof(uint32_t)) == 0
         && a->r == b->r && memcmp(a->cw, b->cw, sizeof a->cw) == 0 && a->hcb == b->hcb
-        && a->nmo == b->nmo && memcmp(a->mo, b->mo, sizeof a->mo) == 0;
+        && a->nmo == b->nmo && memcmp(a->mo, b->mo, sizeof a->mo) == 0 && memcmp(&a->ds, &b->ds, sizeof a->ds) == 0; /* NAT4K */
 }
 
 typedef struct { const char* name; void (*mac)(void); void (*nat)(void); } Shape;
