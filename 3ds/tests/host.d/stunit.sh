@@ -14,6 +14,11 @@ LIBS_RS=$(echo "$LIBS" | sed 's#3ds/src/nd_rec.c#/tmp/nd_rec_seed.c#')
 gcc $FL $FP -o /tmp/stunit_rseed 3ds/tools/nd_st_test.c 3ds/src/nd_st.c $LIBS_RS || exit 1
 got=$(/tmp/stunit_rseed)
 if [ "$got" != "stunit FAIL run" ]; then echo "stunit run seed FAIL: got [$got], want [stunit FAIL run]"; exit 1; fi
+sed 's/p\[0\] = NDC_HDR(NDC_NAPI, 1, 1);/p[0] = NDC_HDR(NDC_NRUN, 1, 1);/' 3ds/src/nd_rec.c > /tmp/nd_rec_nseed.c # NAT4I
+LIBS_NS=$(echo "$LIBS" | sed 's#3ds/src/nd_rec.c#/tmp/nd_rec_nseed.c#')
+gcc $FL $FP -o /tmp/stunit_nseed 3ds/tools/nd_st_test.c 3ds/src/nd_st.c $LIBS_NS || exit 1
+got=$(/tmp/stunit_nseed)
+if [ "$got" != "stunit FAIL nat" ]; then echo "stunit nat seed FAIL: got [$got], want [stunit FAIL nat]"; exit 1; fi
 sed 's/if (x0 == ND_NOP_A) return;/(void)0;/' 3ds/src/nd_st.c > /tmp/nd_st_useed.c # GFXPOS7: nd_pso_unit records the no-op unit
 gcc $FL $FP -o /tmp/stunit_useed 3ds/tools/nd_st_test.c /tmp/nd_st_useed.c $LIBS || exit 1
 got=$(/tmp/stunit_useed)
