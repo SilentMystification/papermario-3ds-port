@@ -600,7 +600,7 @@ extern const uint32_t* nd_stream_cur; static uint32_t c0_wk, c0_k[8]; static uns
 void nd_c0_src(void) { const uint32_t* s = nd_stream_cur; c0_wk = !s ? 0u : (s[0] >> 24) == 10u ? s[1] : (s[0] >> 24); } /* NAT1B: op, or the runner of NDC_NAPI */
 static void c0_who(void) { for (unsigned i = 0; i < c0_kn; i++) if (c0_k[i] == c0_wk) { c0_kc[i]++; return; } /* NAT1B */
     if (c0_kn < 8u) { c0_k[c0_kn] = c0_wk; c0_kc[c0_kn++] = 1u; } else c0_ko++; }
-unsigned char nd_c0d; static uint32_t c0_dk[8]; static unsigned c0_dkc[8], c0_dkn, c0_wd; static void c0_dwho(void) { c0_wd++; { extern unsigned nd_cd_w, nd_cd_s, nd_cd_off, pm_frame_count(void); static unsigned nc; if (nc < 16u) { nc++; const uint32_t* s = nd_stream_cur; pm_log_evt("c0dcase f%u wk %08x dk %08x c0d %u w %03x s %03x off %u sz %u", pm_frame_count(), (unsigned)c0_wk, !s ? 0u : (s[0] >> 24) == 10u ? (unsigned)s[1] : (unsigned)(s[0] >> 24), (unsigned)nd_c0d, nd_cd_w, nd_cd_s, nd_cd_off, (unsigned)sizeof(PmPlan)); } } /* NAT1E: dk = the command at the draw */ for (unsigned i = 0; i < c0_dkn; i++) if (c0_dk[i] == c0_wk) { c0_dkc[i]++; return; } if (c0_dkn < 8u) { c0_dk[c0_dkn] = c0_wk; c0_dkc[c0_dkn++] = 1u; } } /* NAT1D */
+unsigned char nd_c0d; static uint32_t c0_dk[8]; static unsigned c0_dkc[8], c0_dkn, c0_wd; static void c0_dwho(void) { c0_wd++; { extern unsigned nd_cd_w, nd_cd_s, nd_cd_off, nd_cd_x, pm_frame_count(void); static unsigned nc; if (nc < 16u) { nc++; const uint32_t* s = nd_stream_cur; pm_log_evt("c0dcase f%u wk %08x dk %08x c0d %u w %03x s %03x x %03x off %u sz %u", pm_frame_count(), (unsigned)c0_wk, !s ? 0u : (s[0] >> 24) == 10u ? (unsigned)s[1] : (unsigned)(s[0] >> 24), (unsigned)nd_c0d, nd_cd_w, nd_cd_s, nd_cd_x, nd_cd_off, (unsigned)sizeof(PmPlan)); } } /* NAT1E: dk = the command at the draw */ for (unsigned i = 0; i < c0_dkn; i++) if (c0_dk[i] == c0_wk) { c0_dkc[i]++; return; } if (c0_dkn < 8u) { c0_dk[c0_dkn] = c0_wk; c0_dkc[c0_dkn++] = 1u; } } /* NAT1D */
 static NdDrecSpan drec_span[1 + OFF_N + SMALL_N]; static uint32_t drec_nspan; /* DRECTEX */
 #define DREC_REGS 640u
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
@@ -4614,6 +4614,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     if (sn) { sw_geo = sv[4]; sw_cw0 = sv[5]; sw_cw1 = sv[6]; }
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
+    { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; } } /* NAT2K: the sprite snap decision */
     pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
     if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; }
         if (PMDL("shadecen")) { shc[12]++; for (int q = 0; q < 3; q++) { const int v = (int)(dual_f[q] * 255.f); if (v < shd_min[q]) shd_min[q] = v; if (v > shd_max[q]) shd_max[q] = v; } } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */
