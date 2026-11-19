@@ -208,7 +208,7 @@ void spr_clear_quad_cache(void) {
 
 static u32* spr_geo_out; /* DIRECT D6: set by spr_appendGfx_component around the flat path of a recorded sprite */
 /* S5SPR: the state ops of one sprite component. Core 1 runs them on gMainGfxPos for a shaded component (create_shading_palette writes ops too);
- * core 0 runs them for an unshaded component into a local list (spr_state_run), so core 1 records one state record in place of the ops.
+ * core 1 writes them for an unshaded component into the stream as units (NAT5S).
  * flags, vpAlt and vpMain are the facts of the component that the ops read from game state (the caller took them). The final vertex and
  * triangle ops are not here (spr_appendGfx_component_flat adds them). */
 #define HO(k, v) nd_nr_o(o, (k), (v))
@@ -274,25 +274,7 @@ static void spr_flat_gfx(uint32_t** o, Quad* vertices, IMG_PTR raster, PAL_PTR p
 }
 #undef HO
 
-/* S5SPR: the state record of an unshaded component (one NDC_NAPI record in place of its state ops): 4 units. word 0 raster, 1 palette, 2 quad, 3 viewport
- * of the shadow pass, 4 viewport of the main pass, 5 width << 16 | height, 6 alpha | flags << 8, 7 unused. Core 0 expands it to the ops it replaces. */
-void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c: NST2C */
-static void spr_state_run(const uint32_t* u) {
-    static uint32_t buf[128];
-    uint32_t* nrp = buf;
-    spr_flat_gfx(&nrp, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
-                 (s32)(u[6] & 0xffu), (u32)(u[6] >> 8), (Vp*)(uintptr_t)u[3], (Vp*)(uintptr_t)u[4]);
-    nd_c0fb_note(5u, 0u); /* NAT5D */
-    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
-}
-/* NST2C: the same units as spr_state_run, fed to core 1 (nd_ds) at record time. */
-static void spr_state_feed(const uint32_t* u) {
-    uint32_t buf[128];
-    uint32_t* nrp = buf;
-    spr_flat_gfx(&nrp, (Quad*)(uintptr_t)u[2], (IMG_PTR)(uintptr_t)u[0], (PAL_PTR)(uintptr_t)u[1], (s32)(u[5] >> 16), (s32)(u[5] & 0xffffu), nullptr,
-                 (s32)(u[6] & 0xffu), (u32)(u[6] >> 8), (Vp*)(uintptr_t)u[3], (Vp*)(uintptr_t)u[4]);
-    nd_ds_feed(buf, (unsigned)(nrp - buf) / 2u);
-}
+void nd_rec_nr(uint32_t w0, uint32_t w1); /* NAT5S: nd_rec.c */
 void spr_appendGfx_component_flat(
     Quad* vertices,
     IMG_PTR raster, PAL_PTR palette,
@@ -319,10 +301,10 @@ void spr_appendGfx_component_flat(
         }
     }
     if (spr_geo_out != nullptr && !(flags & SPR_SHADING_FLAG_ENABLED)) { /* S5SPR: no state ops from core 1 */
-        const uint32_t st[8] = { (u32)(uintptr_t)raster, (u32)(uintptr_t)palette, (u32)(uintptr_t)vertices, (u32)(uintptr_t)vpAlt, (u32)(uintptr_t)vpMain,
-                                 ((u32)width << 16) | (u32)height, ((u32)alpha & 0xffu) | (flags << 8), 0 };
-        nd_rec_napi(spr_state_run, st, 4u);
-        spr_state_feed(st); /* NST2C */
+        uint32_t sb[128]; uint32_t* nrp = sb; /* NAT5S: core 1 writes the units into the stream (the order of the old state run) */
+        nd_c0fb_note(5u, 0u); /* NAT5D */
+        spr_flat_gfx(&nrp, vertices, raster, palette, width, height, nullptr, (s32)((u32)alpha & 0xffu), flags & 0xffffffu, vpAlt, vpMain);
+        for (const uint32_t* q = sb; q < nrp; q += 2) if (q[0] != ND_NOP_A) nd_rec_nr(q[0], q[1]);
     } else
     {
         spr_flat_gfx(nullptr, vertices, raster, palette, width, height, mtx, alpha, flags, vpAlt, vpMain);
