@@ -4615,7 +4615,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     if (sn) { sw_geo = sv[4]; sw_cw0 = sv[5]; sw_cw1 = sv[6]; }
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
-    { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; } } /* NAT2K: the sprite snap decision */
+    { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); extern unsigned nd_snap_primz(void); /* NAT4H */ const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; nd_ws.prim_z = nd_snap_primz(); /* NAT4H */ } } /* NAT2K: the sprite snap decision */
     pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
     if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; }
         if (PMDL("shadecen")) { shc[12]++; for (int q = 0; q < 3; q++) { const int v = (int)(dual_f[q] * 255.f); if (v < shd_min[q]) shd_min[q] = v; if (v > shd_max[q]) shd_max[q] = v; } } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */

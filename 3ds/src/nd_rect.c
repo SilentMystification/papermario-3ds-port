@@ -322,6 +322,7 @@ __attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) {
     int uly = FILL_SX10(w1 >> 2);
     if (nd_img_role(1) == ROLE_CPUFILL) { nd_fillrect_cpu(ulx, uly, lrx, lry); return; }
     if (nd_img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
+        if (nd_snap_live) nd_ws.fill = nd_snap_fill(); /* NAT4H: the fill of the rectangle snap */
         pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ws.fill));
         return;
     }

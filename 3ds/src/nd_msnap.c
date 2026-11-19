@@ -21,6 +21,7 @@ void nd_msnap_rec(uint32_t* p, unsigned units) {
     NdMSnap* m = (NdMSnap*)(p + 2u + 2u * units + 2u);
     nd_msnap_take(&nd_ds, m);
     { const NdCombOut* o = nd_snap_now(); m->d_plan = (uint32_t)o->plan_on; m->d_mode5 = (uint32_t)o->mode5; m->d_vtx = o->plan.vtx; m->d_vtxname = o->plan.vtxname; m->d_t1 = o->plan.uses_tex1; } /* NAT2K */
+    m->d_primz = nd_ds.w.prim_z; /* NAT4H */
     m->k_omh = ms_pre[0]; m->k_oml = ms_pre[1]; m->k_kh = ms_pre[2]; m->k_kl = ms_pre[3]; m->k_geom = ms_pre[4]; /* NAT2C */
     p[0] |= 1u; /* NREC1B: nd_rec_model reserved the room */
 }
@@ -30,10 +31,10 @@ static NdDs ms_d;
 static NdMSnap ms_wk; static const NdMSnap* ms_cur = &ms_wk; /* NREC1B: the snap of the record that runs now */
 static const NdMSnap* ms_of(const uint32_t* q) { const uint32_t h = q[-2]; const NdMSnap* s = (const NdMSnap*)(q + 2u * ((h >> 16) & 0xffu) + 2u); return ((h & 1u) && s->magic == ND_MSNAP_MAGIC) ? s : NULL; }
 const uint32_t* nd_msnap_key(const uint32_t* q) { const NdMSnap* s = ms_of(q); return s ? &s->k_omh : NULL; } /* NAT2C */
-void nd_msnap_dec(const uint32_t* q) { const NdMSnap* s = ms_of(q); if (!s) return; plan_active = (int)s->d_plan; comb_mode5 = (int)s->d_mode5; cur_plan.vtx = s->d_vtx; cur_plan.vtxname = (unsigned char)s->d_vtxname; cur_plan.uses_tex1 = (unsigned char)s->d_t1; } /* NAT2K */
+void nd_msnap_dec(const uint32_t* q) { const NdMSnap* s = ms_of(q); if (!s) return; plan_active = (int)s->d_plan; comb_mode5 = (int)s->d_mode5; cur_plan.vtx = s->d_vtx; cur_plan.vtxname = (unsigned char)s->d_vtxname; cur_plan.uses_tex1 = (unsigned char)s->d_t1; nd_ws.prim_z = s->d_primz; /* NAT2K; NAT4H */ }
 void nd_msnap_use(const uint32_t* q) { /* NREC1B: no snap: the walker inputs (fixed fallback, counted in nos) */
     const NdMSnap* s = ms_of(q);
-    if (!s) { ms_nos++; ms_d.w = nd_ws; ms_d.fogc = fogc; ms_d.blendc = blendc; nd_msnap_take(&ms_d, &ms_wk); ms_wk.envc = pm_gpu_env_now(); s = &ms_wk; if (ms_nlog++ < 8u) pm_log_evt("msnap nos f%u", pm_frame_n); ms_wk.d_plan = (uint32_t)plan_active; ms_wk.d_mode5 = (uint32_t)comb_mode5; ms_wk.d_vtx = cur_plan.vtx; ms_wk.d_vtxname = cur_plan.vtxname; ms_wk.d_t1 = cur_plan.uses_tex1; }
+    if (!s) { ms_nos++; ms_d.w = nd_ws; ms_d.fogc = fogc; ms_d.blendc = blendc; nd_msnap_take(&ms_d, &ms_wk); ms_wk.envc = pm_gpu_env_now(); s = &ms_wk; if (ms_nlog++ < 8u) pm_log_evt("msnap nos f%u", pm_frame_n); ms_wk.d_plan = (uint32_t)plan_active; ms_wk.d_mode5 = (uint32_t)comb_mode5; ms_wk.d_vtx = cur_plan.vtx; ms_wk.d_vtxname = cur_plan.vtxname; ms_wk.d_t1 = cur_plan.uses_tex1; ms_wk.d_primz = nd_ws.prim_z; /* NAT4H */ }
     ms_cur = s;
 }
 const uint32_t* nd_msnap_w(void) { return &ms_cur->magic; }
