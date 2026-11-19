@@ -1,0 +1,3 @@
+elfgate gfxset 853 gfxscan_files 6010
+elfgate symbols 111108
+elfgate func 0 data 0 gfxnames 0 gfxscan_skip 3

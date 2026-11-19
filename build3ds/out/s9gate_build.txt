@@ -1,0 +1,42 @@
+texkey_bake: cache hit
+gen_shapes: cache hit
+gen_gfx_tab: cache hit
+gen_pso_tab: cache hit
+STAGE key-inputs 2 s
+STAGE gen 0 s
+STAGE key 0 s
+buildslot: slot 1 taken
+STAGE slot-wait 0 s
+sync: 1 changed, 0 deleted (workspace ws1)
+STAGE asset-check 0 s
+STAGE romfs 0 s
+STAGE sync 0 s
+-- Configuring done (0.1s)
+-- Generating done (0.2s)
+-- Build files have been written to: /work/build
+STAGE configure 1 s
+[0/2] Re-checking globbed directories...
+[1/6] Building C object CMakeFiles/pm_3ds.dir/src/pm_wdog.o
+[2/6] Building C object CMakeFiles/pm_3ds.dir/src/pm_options.o
+[3/6] Building C object CMakeFiles/pm_3ds.dir/src/pm_main.o
+[4/6] Linking C executable pm_3ds.elf
+[5/6] Generating pm_3ds.smdh
+[6/6] Building 3DSX executable target pm_3ds_3dsx
+STAGE compile-link 5 s
+STAGE copy-out 1 s
+memcheck: static 21560 margin 426 device o3ds_xl OK
+  sum KB: commit 65536 - static 21560 - loader 8 - linear 14208 - soc 128 - leave 3458 - rom_need 25747 = margin 426 (safety 256; commit_kb measured, loader_kb measured)
+  sections KB: .text 3303 .rodata 547 .data 8794 .bss 8909
+  largest .data/.bss:
+       3010 KB  .bss                                     heaps3.o
+        468 KB  .bss                                     heaps.o
+        416 KB  .bss                                     texture_memory.o
+        368 KB  .bss.mc_keyw                             nd_model.o
+        257 KB  .bss.D_80164000                          main_loop.o
+        256 KB  .bss.gBackgroundImage                    pm_buffers.o
+        256 KB  .bss.slots                               pm_log.o
+        256 KB  .bss.ring                                pm_log.o
+        256 KB  .bss.gMapShapeData                       pm_map.o
+        224 KB  .bss.D_80200000                          pm_map.o
+hotset: detached, its line goes to build3ds/lane-S9GATE/hotset_line.txt
+STAGE tail 1 s
