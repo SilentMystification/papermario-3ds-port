@@ -150,9 +150,10 @@ int main(void) {
         if (!same(&a, &b)) { printf("stunit FAIL %s\n", shapes[i].name); return 1; }
         ok++;
     }
-    run_one(n_rm, &b); /* NAT4J: OML stays a state run: the mark, then the unit */
-    if (b.nw < 6u || b.w[0] != NDC_HDR(NDC_NAPI, 2, 0) || b.w[1] != (uint32_t)(uintptr_t)nd_nr_run || b.w[2] != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16)
-        || (b.w[4] >> 24) != ND_FS_OML || b.nu != 4u || b.u[2] != b.w[4] || b.u[3] != b.w[5]) { printf("stunit FAIL run\n"); return 1; }
+    run_one(n_rm, &b); /* NAT4K: the mark only; a marked OML is not recorded */
+    if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 0) || b.w[1] != (uint32_t)(uintptr_t)nd_nr_run || b.w[2] != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16)
+        || b.nu != 2u || b.u[0] != b.w[2]) { printf("stunit FAIL run
+"); return 1; } /* NAT4K: a marked OML is not recorded */
     run_one(n_scis, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_sci_run || b.w[2] != (10u | 20u << 16) || b.w[3] != (300u | 200u << 16) || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4I */
     run_one(n_cyc, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_omh_run || b.w[2] != (0x80000000u | G_MDSFT_CYCLETYPE | 2u << 8) || b.w[3] != G_CYC_1CYCLE || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4J */
     printf("stunit ok %u/%u\n", ok, n);
