@@ -401,7 +401,7 @@ int nd_part_draw(const NdNDev* t) {
             if (nd_ls_on) { nd_ls_ord++; nd_lsr_tri(nd_ls_ord - 1u); } /* NREC4: the instance snap */
             const unsigned char sn = nd_snap_arm; /* NAT5E: the stream instance snap */
             if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;
-            nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NAT5E: as draw_tri */ if (sn) { nd_snap_plog(); nd_snapchk_tri(); if (ep_epoch == gv_epoch) nd_snap_rpend = 0; } /* NAT2E: the instance snap combine, as draw_tri :353 */
+            nd_snap_rpend = 1; /* NAT5E: a particle triangle binds from the current snap, as the old table run (nd_ls_on 1) */ if (sn) { nd_snap_plog(); nd_snapchk_tri(); if (ep_epoch == gv_epoch) nd_snap_rpend = 0; } /* NAT2E: the instance snap combine, as draw_tri :353 */
             if (ep_epoch != gv_epoch) gv_epoch_enter(); /* the first triangle after a state change */
             nd_snap_rpend = 0; /* NREC4 */
             if (ep_why >= 0) { gv_fb[ep_why]++; tri_drop[1]++; n_drop++; continue; }
