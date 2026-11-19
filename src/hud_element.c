@@ -2,6 +2,7 @@
 #include "nd_gtab.h"
 #include "common.h"
 #include "hud_element.h"
+#include "nd_op.h"
 #include "nu/nusys.h"
 #include "ld_addrs.h"
 #include "pm_interp_fi.h"
@@ -566,6 +567,9 @@ static void hud_rect_feed(const uint32_t* u) {
     hud_rect_emit((const NdHudRec*)u, &p, 0);
     nd_ds_feed_dir(fb, (unsigned)(p - fb) / 2u);
 }
+void nd_rec_nr(uint32_t w0, uint32_t w1); /* NAT5S: nd_rec.c */
+static void hud_rect_stream(const NdHudRec* r) { static uint32_t sb[1024]; uint32_t* p = sb; hud_rect_emit(r, &p, 0); /* NAT5S: core 1 only: a record with no piece as stream units */
+    for (const uint32_t* q = sb; q < p; q += 2) if (q[0] != ND_NOP_A) nd_rec_nr(q[0], q[1]); }
 
 /* S5CHUDB (NATIVEAPI E1): one complex HUD quad of mode 2 (IA8): the matrix stack entry, the 4 vertices, the image and the state. */
 typedef struct NdCHudRec { const void* img; uint32_t mtx; const void* vtx; int32_t w, h; uint32_t flags, prim, pad; } NdCHudRec;
@@ -882,8 +886,9 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
     if (pm_anchor_is_open()) {
         hud_rect_emit(&rec, nullptr, 1);
     } else {
-        { NdPsoN64 pd; u32 prim; if (!hud_rect_direct(&rec, &pd, &prim)) nd_dir_rec(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc, &pd, prim); else nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc); } /* NDR2C */
-        hud_rect_feed((const uint32_t*)&rec);
+        { NdPsoN64 pd; u32 prim; const int hw = hud_rect_direct(&rec, &pd, &prim);
+          if (hw == 5) hud_rect_stream(&rec); /* NAT5S */
+          else { if (!hw) nd_dir_rec(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc, &pd, prim); else nd_rec_napi(hud_rect_run, &rec, 8u + 6u * (unsigned)rec.npc); hud_rect_feed((const uint32_t*)&rec); } } /* NDR2C */
     }
 
 }
