@@ -1600,7 +1600,7 @@ def store_base(commit, bench, scenario_name, shots, log, info):
 
 
 BASE_ADOPT_MAX = 4  # BASEREUSE: after this many adoptions of a bench the next row runs a full base (base_adopt)
-NONINPUT = ("docs/", "3ds/logs/", ".claude/", "CLAUDE.md")  # BASEREUSE: paths that no run or base reads (inputs_equal)
+NONINPUT = ("docs/", "3ds/logs/", "build3ds/out/", ".claude/", "CLAUDE.md")  # BASEREUSE: paths that no run or base reads (inputs_equal); build3ds/out holds the gate outputs the gate commit adds with git add -f
 MEASURE_TOOLS = ("3ds/tools/bench.py", "3ds/tools/basebin.py", "3ds/tools/bench_defs.json", "3ds/tools/azt_scenarios.json")  # BASEREUSE: the tools of a measure (tools_hash)
 
 
