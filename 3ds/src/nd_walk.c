@@ -249,8 +249,8 @@ static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
       if (ep_stream && ex_depth == 0 && (ca_ || cb_)) {
         if (cb_) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } } /* NAT4F: count only OMH, TEXTURE (the combine class fields are stale on core 0 since NAT4D) */
         const int mk_ = ep_mark != 0; ep_mark = 0;
-        if (ca_) { if (mk_) gv_epoch++; return; } /* NAT4D: the combine class is not run */
-        cut = mk_; } } /* NAT4F: OMH and TEXTURE cut on the mark and still run when they change a field */
+        if (ca_) return; /* NAT4K: the mark cut */
+        cut = 0; /* NAT4K: the mark cut */ } } /* NAT4F: OMH and TEXTURE cut on the mark and still run when they change a field */
     if (same && !cut) return;
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
@@ -325,7 +325,7 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
         case ND_FS_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
         case ND_FS_MISC_MODVTX: nd_modvtx((a >> 8) & 0xffu, a & 0xffu); break;
         case ND_FS_MISC_CIMG: nd_cimg_set(a, b); break;
-        case ND_FS_MISC_EP: ep_mark = 1; ep_mw = b; nd_epk_mk++; break; /* NAT4B: the mark and its reason word */
+        case ND_FS_MISC_EP: ep_mark = 1; ep_mw = b; nd_epk_mk++; gv_epoch++; break; /* NAT4B; NAT4K: the mark is the cut */
         default: break;
         }
         break;

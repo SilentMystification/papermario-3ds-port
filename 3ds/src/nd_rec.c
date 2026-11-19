@@ -419,7 +419,9 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
         else if (id == ND_FS_OMH) rec_nat(nd_omh_run, (w0 & 0xffffu) | mk, w1); /* NAT4J */
         else { const unsigned k = (w0 >> 16) & 0xffu, g = w0 & 0xffffu; rec_nat(nd_mw_run, (w0 & 0xffffffu) | mk, (k == ND_FS_MW_SEG && g < 16u) ? nd_ds.w.segbase[g] : k == ND_FS_MW_NUMLIGHT ? nd_ds.lt_n : w1); }
         return; }
-    if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty); if (rc) st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); } /* NAT4B: the cut and its reason */
+    if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
+        if (rc) { st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason */
+            if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
     st_put(t[0], t[1]); /* NAT4A */
 }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
