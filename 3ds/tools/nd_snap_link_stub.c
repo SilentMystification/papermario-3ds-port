@@ -3,3 +3,4 @@
 unsigned char nd_snap_arm;
 void nd_snapchk_tri(void) {}
 void nd_snap_render(void) {}
+unsigned char nd_c0w; /* NAT1: host link stub (nd_direct.c) */

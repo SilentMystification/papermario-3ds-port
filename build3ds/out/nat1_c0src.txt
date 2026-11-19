@@ -1,0 +1,3 @@
+#124 c0src f201 draws 56 mdl 114 wcomb 26 wrnd 0 wbind 0 snb 4133 snn 3633 snm 2631
+#304 c0src f201 draws 98 mdl 74 wcomb 34 wrnd 0 wbind 4 snb 7190 snn 6538 snm 3996
+#605 c0src f676 draws 531 mdl 399 wcomb 208 wrnd 219 wbind 71 snb 32214 snn 27298 snm 23770

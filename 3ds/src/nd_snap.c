@@ -25,6 +25,7 @@ static NdSnapChk sn_last;
 static unsigned sn_cmds = ~0u;
 static NdTgt sn_tgt;
 static unsigned sn_vprim; /* NREC4: 1 while a particle table is taken */
+unsigned nd_snb, nd_snn, nd_snm; /* NAT1: core 1 snap_build calls, new snaps, table misses */
 /* the target record of set_cimg (nd_target.c:87-99) without the GPU calls */
 void nd_snap_tgt(uint32_t w0, uint32_t w1) {
     void* nc = (void*)(uintptr_t)w1;
@@ -40,6 +41,7 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     NdCombOut o;
     memset(&r, 0, sizeof r);
     memset(&o, 0, sizeof o);
+    nd_snb++; /* NAT1 */
     nd_snap_in(s, sn_leg, sn_pat, &r.in);
     nd_snap_rnd(s, &r);
     r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, s->w.omode_l, s->w.omode_h, zc);
@@ -47,10 +49,11 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of nd_rnd_sync */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
     if (sn_cmds == nd_rec_cmds() && !memcmp(&r.in, &sn_last.in, sizeof r.in) && !memcmp(&r.role, &sn_last.role, 6u * 4u) && !memcmp(&r.rs, &sn_last.rs, sizeof r.rs) && r.plod == sn_last.plod && r.mixk == sn_last.mixk && r.mixc == sn_last.mixc && !memcmp(r.b, sn_last.b, sizeof r.b)) return 0; /* no new command, same inputs */
+    nd_snn++; /* NAT1 */
     r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
     r.plan_on = -1;
     if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
-    else nd_comb_core1(&r.in, sn_vprim, sn_mode5, &o); /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
+    else { nd_snm++; nd_comb_core1(&r.in, sn_vprim, sn_mode5, &o); } /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
     if (o.plan_on) pm_comb_colours_k(&o.plan, r.in.prim, r.in.env, r.in.prim_lo8 & 0xffu, r.in.key_c, r.in.key_s, r.in.conv_k4 & 255u);
     r.o = o;
     sn_leg = o.leg; sn_mode5 = o.mode5; sn_pat = o.pat;
@@ -126,6 +129,7 @@ void nd_snapchk_run(const uint32_t* rec) {
 void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed snapshot, at the triangle epoch (nd_geom.c gv_epoch_enter) */
     const unsigned sg = sc_cur.oml ^ (sc_cur.in.omode_h * 2654435761u) ^ sc_cur.geom ^ (unsigned)sc_cur.role;
     nd_snap_rpend = 0; /* DEL3A: the rnd compare is deleted */
+    nd_c0w &= ~2u; /* NAT1 */
     if (nd_sr_same(sg)) return;
     nd_render_apply(&sc_cur.rs, sc_cur.mixk, sc_cur.mixc, sc_cur.in.omode_h, sc_cur.oml, sg);
 }
@@ -170,7 +174,7 @@ void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch sn
     sc_adopt(); /* NCONV2B */
 }
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
-void nd_snap_comb(void) { nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); }
+void nd_snap_comb(void) { nd_c0w &= ~1u; /* NAT1 */ nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); }
 const NdSnapBind* nd_snap_cur_b(void) { return sc_cur.b; } /* NDR1C */
 /* NDR1C: the render state log of a rectangle (drec runs): one line per frame that differs from the walker. */
 void nd_snap_rlog(void) {
