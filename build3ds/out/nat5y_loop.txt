@@ -1,0 +1,10 @@
+LOOP NAT5Y host rc 0, build rc 0, 25 s
+STAGE key-inputs 2 s STAGE slot-wait 0 s STAGE gen 12 s STAGE key 0 s STAGE asset-check 0 s STAGE romfs 0 s STAGE sync 0 s STAGE configure 1 s STAGE compile-link 5 s STAGE copy-out 1 s STAGE tail 1 s 
+
+cmp spot_mac01_drec: 1/1 byte-equal 
+cmp entcape_kmr03_drec: 1/1 byte-equal 
+cmp fxparts_drec: 1/1 byte-equal 
+cmp wscmb_pause_drec:   drec draw 13 DIFF line 1268: base 't 0 type 00000002 dim 02000200 bytes 524288 h aafd0e24f34ba825', row 't 0 type 00000002 dim 02000200 bytes 524288 h 91b5cd10020e577d' 0/1 byte-equal 
+LOOP TIME host+build 25 s, run+cmp 161 s, total 186 s
+LOOP FAIL: cmp, read build3ds/out/loop_NAT5Y_cmp_<bench>.txt
+exit 1
