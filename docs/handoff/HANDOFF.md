@@ -27,3 +27,12 @@ Core 0 = wk - wwait, core 1 = lgms - bw. Last 3 windows: core 0 18 to 25 ms, cor
 - Expected-diff merge: message file with the word expected-diff as merge_row.sh argument 2 (used for NWS4B).
 - Merge order matters when rows share files: the later branch merges main, rebuilds and reruns its gate (NAT6F, NSET2).
 - Agent ids die with the session: start fresh agents after a restart.
+
+## Gate-definition changes this session (for the user to review; FACT from the merge messages)
+The measure is `3ds/tools/c0gate_names.txt` (names) and `3ds/tools/c0gate.py` (rules). Changes, each with its reason:
+- NAT6F (merge 6dcbbe695b) and NSET3 (merge 11aae628a2): names of deleted interpreter functions left the list (nd_nr_exec, nd_nr_run, nr_set, nr_unknown, ls_run, nd_unit_same; nd_unit_apply and 16 setters). The symbols were deleted from the source, so the names matched nothing.
+- NWS1 (merge 5e3df581bf): `interp nd_comb_sync` and `state comb_gen cmb_gen_seen sc_ok sc_sig` left the list with their symbols.
+- NAT6G2 (merge e923f5bce0): `interp gt_run` left the list. Reason: since NAT6E3 gt_run runs no unit (it brackets the snap range and takes a native arm). The same row fixed the c0gate selftest fixture (it called a name that no longer existed).
+- CLEAN2 (merge e5953a4e31): `state nd_c0` joined the list (user decision): the struct holds the core 0 draw state that nd_ws held, so main reads 0 / 0 / 1.
+- Still on the list but their symbols are gone: sc_adopt, ds_take, nd_comb_set, keyc, keys, fogc, blendc, dual_on, box_folded. A name off the list could no longer catch a regression: keep these.
+Review: judge whether `gt_run` (NAT6G2) should return as a name that must have no unit work. Capture data: docs/handoff/plan_perf.md section on the capture of build 7569.
