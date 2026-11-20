@@ -55,7 +55,6 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
     {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
         const unsigned old_tf = nd_ap->in.omode_h & (3u << 12); /* NWS4B */
         nd_c0.omode_h = mh;
-        nd_c0.omode_l = ml;
         if ((nd_c0.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
             pm_gpu_flush();
             pm_tex_set_filter((nd_c0.omode_h & (3u << 12)) != 0);

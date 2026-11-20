@@ -163,7 +163,7 @@ typedef struct NdWs {
 } NdWs;
 /* NWS3: the core 0 draw state (the RSP and texture state the native records write). NdWs above stays the core 1 field model (NdDs.w). */
 typedef struct NdC0 {
-    unsigned omode_h, omode_l;         /* other mode high and low */
+    unsigned omode_h;                  /* other mode high; NC0R: the low word lives in the snap */
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
     unsigned prim_z;                   /* G_SETPRIMDEPTH, 15 bit */

@@ -43,7 +43,7 @@ int nd_td_white(const NdTd* d) {
     return 1;
 }
 
-/* NDR0C: the render inputs of the snapshot (the walker reads the same words: nd_c0.omode_l, nd_c0.geom, fogc, blendc). */
+/* NDR0C: the render inputs of the snapshot (the walker reads the same words: the snap oml, geom, fogc, blendc). */
 void nd_snap_rnd(const NdDs* s, NdSnapChk* r) {
     r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc; r->tss = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); /* NCONV2A */ r->plod = s->w.prim_lod; /* NCONV2D */
 }

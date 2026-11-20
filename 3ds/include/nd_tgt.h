@@ -40,5 +40,4 @@ static inline int nd_img_role_m(int ff, uint32_t oml, uint32_t omh) {
     if (r == ROLE_CPUFILL) pm_zbuf_need();
     return r;
 }
-int nd_role_c(int ff, uint32_t oml, uint32_t omh, const char* f, int l); /* NC0R census (step 1) */
 #endif
