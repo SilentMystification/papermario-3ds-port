@@ -1,5 +1,5 @@
-/* nd_state.c: the native state (NdWs, nd_ws). The walker ops in the former pm_gbi.c read and write nd_ws at walk time: it is the only state.
- * nd_words is the reference decode of F3DEX2 word pairs into nd_ws for the host tests (nd_gbi_test, nd_rec_test). The bridge
+/* nd_state.c: the native state (NdC0 nd_c0). The walker ops in the former pm_gbi.c read and write nd_c0 at walk time: it is the only state.
+ * nd_words is the reference decode of F3DEX2 word pairs into nd_c0 for the host tests (nd_gbi_test, nd_rec_test). The bridge
  * the list words run in the walker only (no macro-time decode), so nd_words is never called during the walk.
  * Pure C: the host test builds it. */
 #include <stdint.h>
@@ -8,14 +8,13 @@
 #include "nd_ops.h"
 #include "nd_tgt.h"
 
-ND_HOTD NdWs nd_ws = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .prim = 0xffffffffu, .envc = 0xffffffffu, .fill = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF };
+ND_HOTD NdC0 nd_c0 = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .prim = 0xffffffffu, .envc = 0xffffffffu, .fill = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF, .sci_x1 = 320, .sci_y1 = 240 };
 ND_HOTD NdTgt nd_tgt = { .img = 0, .stride = 320, .siz = 2, .kind = NDK_NULL }; /* NTGT: the target record; the initial target is the main image (no address, not the zero word) */
 
 #define MW_SEGMENT 0x06
 #define MV_VIEWPORT 8
 
-void nd_words(const unsigned* w, unsigned n) {
-    NdWs* s = &nd_ws;
+void nd_words(NdWs* s, const unsigned* w, unsigned n) {
     for (unsigned i = 0; i < n; i++) {
         uint32_t w0 = w[2 * i], w1 = w[2 * i + 1];
         switch (w0 >> 24) {
@@ -42,4 +41,12 @@ void nd_words(const unsigned* w, unsigned n) {
         default: break;
         }
     }
+}
+
+void nd_c0_to_ws(NdWs* d) { /* NWS3: the core 1 NdWs gets the fields of the core 0 state NdC0 */
+    d->geom = nd_c0.geom; d->omode_h = nd_c0.omode_h; d->omode_l = nd_c0.omode_l; d->prim = nd_c0.prim; d->envc = nd_c0.envc; d->fill = nd_c0.fill; d->prim_z = nd_c0.prim_z;
+    d->om_kh = nd_c0.om_kh; d->om_kl = nd_c0.om_kl; d->prim_lod = nd_c0.prim_lod; d->tex_on = nd_c0.tex_on; d->timg = nd_c0.timg; d->tlut = nd_c0.tlut; d->tlut_n = nd_c0.tlut_n;
+    d->tile_x0 = nd_c0.tile_x0; d->tile_y0 = nd_c0.tile_y0; d->tile_fx = nd_c0.tile_fx; d->tile_fy = nd_c0.tile_fy; d->cur_tile = nd_c0.cur_tile; d->use_t1 = nd_c0.use_t1;
+    d->tex_ss = nd_c0.tex_ss; d->tex_ts = nd_c0.tex_ts; memcpy(d->segbase, nd_c0.segbase, sizeof d->segbase); d->comb_w0 = nd_c0.comb_w0; d->comb_w1 = nd_c0.comb_w1;
+    d->tst1 = nd_c0.tst1; memcpy(d->td, nd_c0.td, sizeof d->td);
 }

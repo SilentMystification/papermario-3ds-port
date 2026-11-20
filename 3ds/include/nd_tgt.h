@@ -36,7 +36,7 @@ static inline int nd_tgt_role(unsigned kind, unsigned siz, int for_fill, uint32_
 }
 /* the role of the current target; D03: the darkness stencil z-buffer is allocated at ROLE_CPUFILL (pm_main.c wraps it) */
 static inline int nd_img_role(int for_fill) {
-    int r = nd_tgt_role(nd_tgt.kind, nd_tgt.siz, for_fill, nd_ws.omode_l, nd_ws.omode_h, zcol);
+    int r = nd_tgt_role(nd_tgt.kind, nd_tgt.siz, for_fill, nd_c0.omode_l, nd_c0.omode_h, zcol);
     if (r == ROLE_CPUFILL) pm_zbuf_need();
     return r;
 }

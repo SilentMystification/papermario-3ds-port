@@ -1,5 +1,5 @@
 /* nd_snap_in.c: the combine inputs of an NdDs (NDR0A, snapchk). Pure, no globals: host-built (3ds/tools/nd_snap_test.c). The fields are the
- * ones comb_in_walker (nd_comb.c) reads from nd_ws and the setter globals; box_folded is 0 here (the core 0 fold state is not in NdDs). */
+ * ones comb_in_walker (nd_comb.c) reads from nd_c0 and the setter globals; box_folded is 0 here (the core 0 fold state is not in NdDs). */
 #include <stddef.h>
 #include <string.h>
 #include <stdint.h>
@@ -43,7 +43,7 @@ int nd_td_white(const NdTd* d) {
     return 1;
 }
 
-/* NDR0C: the render inputs of the snapshot (the walker reads the same words: nd_ws.omode_l, nd_ws.geom, fogc, blendc). */
+/* NDR0C: the render inputs of the snapshot (the walker reads the same words: nd_c0.omode_l, nd_c0.geom, fogc, blendc). */
 void nd_snap_rnd(const NdDs* s, NdSnapChk* r) {
     r->oml = s->w.omode_l; r->geom = s->w.geom; r->fogc = s->fogc; r->blendc = s->blendc; r->tss = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); /* NCONV2A */ r->plod = s->w.prim_lod; /* NCONV2D */
 }

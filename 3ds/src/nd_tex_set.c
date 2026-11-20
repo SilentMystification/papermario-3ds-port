@@ -1,5 +1,5 @@
 /* nd_tex_set.c: the texture ops of the walker and the globals they keep (target only). Split from nd_tex.c (MOVE-5): the
- * descriptor table, nd_tex_get and the unit words are host-tested there (nd_tex.c), and these need the walker state (nd_ws, the former pm_gbi.c). */
+ * descriptor table, nd_tex_get and the unit words are host-tested there (nd_tex.c), and these need the walker state (nd_c0, the former pm_gbi.c). */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,7 +28,7 @@ int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_
     if (!plan_active || !cur_plan.uses_tex1) return 0;
     { const uint32_t* mw = nd_msnap_w(); nd_tile_bind(nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1])); } /* NWS4C */
     dual_bind();
-    return nd_ws.td[1].valid && pm_tex_aux_off_idx() < 0;
+    return nd_c0.td[1].valid && pm_tex_aux_off_idx() < 0;
 }
 
 /* the counters of PG0 (the former pm_gbi.c gp_note) and the pipeline flush by its line (the former pm_gbi.c macros) */
@@ -50,31 +50,31 @@ static int ens_slot = -1; static unsigned ens_gen; /* KMR10M: cache slot and gen
 /* NSET3: the texture units run as native value appliers (nd_sv_timg, nd_sv_tile, nd_sv_tsz, nd_sv_tlut at the end of this file); set_timg, set_tile, set_loadtlut and nd_tsz_set are their helpers (set_timg and set_loadtlut also run in nd_tex_bind_glyph). */
 /* CORE-2b batch D: texture image setter (decoded fields). */
 static void set_timg(u32 addr, unsigned fmt, unsigned siz, int stride) {
-    nd_ws.timg = ptr_of(addr);
-    if (!addr && zslot_on && siz == 2) nd_ws.timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
+    nd_c0.timg = ptr_of(addr);
+    if (!addr && zslot_on && siz == 2) nd_c0.timg = zb_fake; /* B5: the underwater mesh reads the z-buffer slot */
     /* D03: a texture read from a frame buffer is the last frame. Fetch it now. */
-    if (nd_ws.timg && pm_is_cfb(nd_ws.timg) && !pm_is_cur_cfb(nd_ws.timg)) pm_cfb_capture_prev(); /* GAMEOVER: the t = 0.5 pass too (it is a drawn frame with its own old frame) */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
-    nd_ws.tst1.timg_fmt = fmt;
-    nd_ws.tst1.timg_siz = siz;
-    nd_ws.tst1.timg_stride = stride;
+    if (nd_c0.timg && pm_is_cfb(nd_c0.timg) && !pm_is_cur_cfb(nd_c0.timg)) pm_cfb_capture_prev(); /* GAMEOVER: the t = 0.5 pass too (it is a drawn frame with its own old frame) */ /* B2: the frame buffer being drawn is a grab (T2, grab_cur) */
+    nd_c0.tst1.timg_fmt = fmt;
+    nd_c0.tst1.timg_siz = siz;
+    nd_c0.tst1.timg_stride = stride;
     nd_tm.ld_valid = 0;
 }
 /* CORE-2b batch D: tile setter (decoded fields; wr = the four wrap words, sh0 and sh1 the shifts). */
 static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, unsigned pal, const unsigned* wr, unsigned sh0, unsigned sh1) {
-    int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && nd_ws.tst1.tile_fmt[0] == fmt && nd_ws.tst1.tile_siz[0] == siz && nd_ws.tst1.tile_tmem[0] == tmem && nd_ws.tst1.tile_pal[0] == pal
-                  && nd_ws.tst1.tile_wrap[0][0] == wr[0] && nd_ws.tst1.tile_wrap[0][1] == wr[1] && nd_ws.tst1.tile_wrap[0][2] == wr[2] && nd_ws.tst1.tile_wrap[0][3] == wr[3]
-                  && nd_ws.tst1.tile_shift[0][0] == sh0 && nd_ws.tst1.tile_shift[0][1] == sh1;
+    int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && nd_c0.tst1.tile_fmt[0] == fmt && nd_c0.tst1.tile_siz[0] == siz && nd_c0.tst1.tile_tmem[0] == tmem && nd_c0.tst1.tile_pal[0] == pal
+                  && nd_c0.tst1.tile_wrap[0][0] == wr[0] && nd_c0.tst1.tile_wrap[0][1] == wr[1] && nd_c0.tst1.tile_wrap[0][2] == wr[2] && nd_c0.tst1.tile_wrap[0][3] == wr[3]
+                  && nd_c0.tst1.tile_shift[0][0] == sh0 && nd_c0.tst1.tile_shift[0][1] == sh1;
     if (tile == 0) GP_SET(3, same_tile);
-    nd_ws.tst1.tile_fmt[tile] = fmt;
-    nd_ws.tst1.tile_siz[tile] = siz;
-    nd_ws.tst1.tile_tmem[tile] = tmem;
-    nd_ws.tst1.tile_pal[tile] = pal;
-    nd_ws.tst1.tile_wrap[tile][0] = wr[0];
-    nd_ws.tst1.tile_wrap[tile][1] = wr[1];
-    nd_ws.tst1.tile_wrap[tile][2] = wr[2];
-    nd_ws.tst1.tile_wrap[tile][3] = wr[3];
-    nd_ws.tst1.tile_shift[tile][0] = sh0;
-    nd_ws.tst1.tile_shift[tile][1] = sh1;
+    nd_c0.tst1.tile_fmt[tile] = fmt;
+    nd_c0.tst1.tile_siz[tile] = siz;
+    nd_c0.tst1.tile_tmem[tile] = tmem;
+    nd_c0.tst1.tile_pal[tile] = pal;
+    nd_c0.tst1.tile_wrap[tile][0] = wr[0];
+    nd_c0.tst1.tile_wrap[tile][1] = wr[1];
+    nd_c0.tst1.tile_wrap[tile][2] = wr[2];
+    nd_c0.tst1.tile_wrap[tile][3] = wr[3];
+    nd_c0.tst1.tile_shift[tile][0] = sh0;
+    nd_c0.tst1.tile_shift[tile][1] = sh1;
     /* The render tile's wrap belongs to the triangles already queued.
      * Draw them before this tile replaces it. */
     if (tile == 0 && !same_tile) { /* PG1: an identical G_SETTILE changes nothing: no flush, no wrap call, no new texture epoch */
@@ -85,13 +85,13 @@ static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, u
 }
 /* CORE-2b batch D2: palette load setter (decoded fields: tile and entry count). */
 static void set_loadtlut(unsigned tile, unsigned count) {
-            nd_ws.tlut = nd_ws.timg;
-            nd_ws.tlut_n = (int)(count) + 1;
+            nd_c0.tlut = nd_c0.timg;
+            nd_c0.tlut_n = (int)(count) + 1;
             {
                 /* The palette slot is the 16-entry block at the load tile's TMEM address. */
-                unsigned slot = (nd_ws.tst1.tile_tmem[tile] - 256u) >> 4;
+                unsigned slot = (nd_c0.tst1.tile_tmem[tile] - 256u) >> 4;
                 if (slot < 16) {
-                    nd_tm.tlut_pal[slot] = nd_ws.timg;
+                    nd_tm.tlut_pal[slot] = nd_c0.timg;
                     /* V20: gDPLoadTextureBlock_4b sets the tile size (which binds the texture) BEFORE the palette load. A bound CI tile that
                      * uses this palette bank must take the new palette, else it keeps the one of the previous model (the brick block was
                      * drawn with a dark grey palette). */
@@ -101,21 +101,21 @@ static void set_loadtlut(unsigned tile, unsigned count) {
 }
 /* CORE-2b batch D: tile size setter (decoded fields). */
 static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult, int lrs, int lrt, const NdTxR* r) {
-    if (tile == 0 && PMDL("negpanf") && pm_frame_count() >= 200u && (nd_ws.tst1.tile_wrap[0][2] || nd_ws.tst1.tile_wrap[0][3])) { /* NEGPAN step 1 debug: force the mushroom panner offset (-0x8000 = -128 in 10.2) on 8 tile-0 sizes */
+    if (tile == 0 && PMDL("negpanf") && pm_frame_count() >= 200u && (nd_c0.tst1.tile_wrap[0][2] || nd_c0.tst1.tile_wrap[0][3])) { /* NEGPAN step 1 debug: force the mushroom panner offset (-0x8000 = -128 in 10.2) on 8 tile-0 sizes */
         static unsigned nf_;
         if (nf_ < 8u) { nf_++; ult = (ult - 128) & 0xfff; lrt = (lrt - 128) & 0xfff; } /* raw 12 bit fields, as the record carries them */
     }
             const int pn = r ? r->pal_n : 0; const void* const ti = r ? r->timg : NULL; /* NAT5T: r is set for tile 0 and 1 */
-            if (!r && (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0)) tex_win_s25(&uls, &ult, &lrs, &lrt, nd_ws.tst1.tile_wrap[tile][0], nd_ws.tst1.tile_wrap[tile][2], nd_ws.tst1.tile_wrap[tile][1], nd_ws.tst1.tile_wrap[tile][3]);
-            GP_SET(4, nd_ws.tst1.tile_sz[tile][0] == uls && nd_ws.tst1.tile_sz[tile][1] == ult && nd_ws.tst1.tile_sz[tile][2] == lrs && nd_ws.tst1.tile_sz[tile][3] == lrt);
-            nd_ws.tst1.tile_sz[tile][0] = uls;
-            nd_ws.tst1.tile_sz[tile][1] = ult;
-            nd_ws.tst1.tile_sz[tile][2] = lrs;
-            nd_ws.tst1.tile_sz[tile][3] = lrt;
+            if (!r && (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0)) tex_win_s25(&uls, &ult, &lrs, &lrt, nd_c0.tst1.tile_wrap[tile][0], nd_c0.tst1.tile_wrap[tile][2], nd_c0.tst1.tile_wrap[tile][1], nd_c0.tst1.tile_wrap[tile][3]);
+            GP_SET(4, nd_c0.tst1.tile_sz[tile][0] == uls && nd_c0.tst1.tile_sz[tile][1] == ult && nd_c0.tst1.tile_sz[tile][2] == lrs && nd_c0.tst1.tile_sz[tile][3] == lrt);
+            nd_c0.tst1.tile_sz[tile][0] = uls;
+            nd_c0.tst1.tile_sz[tile][1] = ult;
+            nd_c0.tst1.tile_sz[tile][2] = lrs;
+            nd_c0.tst1.tile_sz[tile][3] = lrt;
             if (tile == 1) { tex_tile1(tile, uls, ult, lrs, lrt, r); } /* NWS1 */ /* S25: a plan that reads TEXEL1 needs tile 1 */
             if (tile != 0) return;
-            nd_ws.td[0].valid = 0;
-            nd_ws.cur_tile = -1; /* GP3: defer pm_tex_load to nd_tile_bind(0) at first draw */
+            nd_c0.td[0].valid = 0;
+            nd_c0.cur_tile = -1; /* GP3: defer pm_tex_load to nd_tile_bind(0) at first draw */
             if (m1.valid && tex_shaded0(uls, ult)) return;
             m1.valid = 0;
             int x0 = uls >> 2;
@@ -124,10 +124,10 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             wn.src = r->src; wn.w = r->w; wn.h = r->h; wn.stride = r->stride; wn.x0 = r->x0; /* NAT5T */
             const u8* src = wn.src;
             int w = wn.w, h = wn.h, stride = wn.stride;
-            nd_ws.tile_x0 = x0;
-            nd_ws.tile_y0 = y0;
-            nd_ws.tile_fx = (float)(uls & 3) * 0.25f; /* PT38 */
-            nd_ws.tile_fy = (float)(ult & 3) * 0.25f;
+            nd_c0.tile_x0 = x0;
+            nd_c0.tile_y0 = y0;
+            nd_c0.tile_fx = (float)(uls & 3) * 0.25f; /* PT38 */
+            nd_c0.tile_fy = (float)(ult & 3) * 0.25f;
             /* PG1: the same texture again (same source, format, size, palette, stride) and nothing touched the texture state since the last load (pm_tex_epoch):
              * the load would find the same cache slot. Skip the flush and the load, the batch in flight samples the same image. A frame buffer image is
              * excluded (its content changes under the same pointer, grab_cur). */
@@ -135,45 +135,45 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
                 struct TszLast* lp = &tsz_last;
                 const void* palc = r->pal;
                 int ggx = 0, ggy = 0;
-                if (src && w > 0 && h > 0 && nd_ws.tst1.tile_fmt[0] == 2 && nd_ws.tst1.tile_siz[0] == 0 &&
-                    pm_tex_glyph_same(src, nd_ws.tst1.tile_fmt[0], nd_ws.tst1.tile_siz[0], w, h, palc, pn, &ggx, &ggy)) {
-                    nd_ws.tile_x0 = x0 - ggx; /* same sign as nd_tile_bind's new-bind path (x0 - gox) */
-                    nd_ws.tile_y0 = y0 - ggy;
-                    nd_ws.tile_fx = (float)(uls & 3) * 0.25f;
-                    nd_ws.tile_fy = (float)(ult & 3) * 0.25f;
-                    nd_ws.td[0].valid = 1; nd_ws.td[0].src = src; nd_ws.td[0].fmt = nd_ws.tst1.tile_fmt[0]; nd_ws.td[0].siz = nd_ws.tst1.tile_siz[0]; nd_ws.td[0].w = w; nd_ws.td[0].h = h; nd_ws.td[0].stride = stride;
-                    nd_ws.td[0].x0 = x0; nd_ws.td[0].y0 = y0; nd_ws.td[0].pal = palc; nd_ws.td[0].pal_n = pn;
+                if (src && w > 0 && h > 0 && nd_c0.tst1.tile_fmt[0] == 2 && nd_c0.tst1.tile_siz[0] == 0 &&
+                    pm_tex_glyph_same(src, nd_c0.tst1.tile_fmt[0], nd_c0.tst1.tile_siz[0], w, h, palc, pn, &ggx, &ggy)) {
+                    nd_c0.tile_x0 = x0 - ggx; /* same sign as nd_tile_bind's new-bind path (x0 - gox) */
+                    nd_c0.tile_y0 = y0 - ggy;
+                    nd_c0.tile_fx = (float)(uls & 3) * 0.25f;
+                    nd_c0.tile_fy = (float)(ult & 3) * 0.25f;
+                    nd_c0.td[0].valid = 1; nd_c0.td[0].src = src; nd_c0.td[0].fmt = nd_c0.tst1.tile_fmt[0]; nd_c0.td[0].siz = nd_c0.tst1.tile_siz[0]; nd_c0.td[0].w = w; nd_c0.td[0].h = h; nd_c0.td[0].stride = stride;
+                    nd_c0.td[0].x0 = x0; nd_c0.td[0].y0 = y0; nd_c0.td[0].pal = palc; nd_c0.td[0].pal_n = pn;
                     gp3_t0_set(); GP_SET(7, 1);
                     return;
                 }
-                if (lp->ok && src == lp->src && nd_ws.tst1.tile_fmt[0] == lp->fmt && nd_ws.tst1.tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
+                if (lp->ok && src == lp->src && nd_c0.tst1.tile_fmt[0] == lp->fmt && nd_c0.tst1.tile_siz[0] == lp->siz && w == lp->w && h == lp->h && stride == lp->stride &&
                     palc == lp->pal && pn == lp->pal_n && pm_tex_epoch() == lp->ep && !pm_is_cfb(src) && src && w > 0 && h > 1) {
-                    nd_ws.tile_x0 = x0 - lp->ox;
-                    nd_ws.tile_y0 = y0 - lp->oy;
-                    nd_ws.td[0].valid = 1; nd_ws.td[0].src = src; nd_ws.td[0].fmt = nd_ws.tst1.tile_fmt[0]; nd_ws.td[0].siz = nd_ws.tst1.tile_siz[0]; nd_ws.td[0].w = w; nd_ws.td[0].h = h; nd_ws.td[0].stride = stride;
-                    nd_ws.td[0].x0 = x0; nd_ws.td[0].y0 = y0; nd_ws.td[0].pal = palc; nd_ws.td[0].pal_n = pn;
+                    nd_c0.tile_x0 = x0 - lp->ox;
+                    nd_c0.tile_y0 = y0 - lp->oy;
+                    nd_c0.td[0].valid = 1; nd_c0.td[0].src = src; nd_c0.td[0].fmt = nd_c0.tst1.tile_fmt[0]; nd_c0.td[0].siz = nd_c0.tst1.tile_siz[0]; nd_c0.td[0].w = w; nd_c0.td[0].h = h; nd_c0.td[0].stride = stride;
+                    nd_c0.td[0].x0 = x0; nd_c0.td[0].y0 = y0; nd_c0.td[0].pal = palc; nd_c0.td[0].pal_n = pn;
                     gp3_t0_set(); GP_SET(7, 1);
                     return;
                 }
                 GP_SET(7, 0);
                 lp->ok = 0;
-                lp->src = src; lp->fmt = nd_ws.tst1.tile_fmt[0]; lp->siz = nd_ws.tst1.tile_siz[0]; lp->w = w; lp->h = h; lp->stride = stride; lp->pal = palc; lp->pal_n = pn;
+                lp->src = src; lp->fmt = nd_c0.tst1.tile_fmt[0]; lp->siz = nd_c0.tst1.tile_siz[0]; lp->w = w; lp->h = h; lp->stride = stride; lp->pal = palc; lp->pal_n = pn;
             }
             /* GP3: pm_tex_load runs in nd_tile_bind(0) at the first surviving draw. */
             /* F03: a 1 row tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture (the pause background loads tall z-buffer tiles, those are textures) */
             if (src && w > 0 && h > 0 && (h > 1 || (unsigned)ti - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u)) {
                 const void* pal0 = r->pal;
-                nd_ws.td[0].valid = 1;
-                nd_ws.td[0].src = src;
-                nd_ws.td[0].fmt = nd_ws.tst1.tile_fmt[0];
-                nd_ws.td[0].siz = nd_ws.tst1.tile_siz[0];
-                nd_ws.td[0].w = w;
-                nd_ws.td[0].h = h;
-                nd_ws.td[0].stride = stride;
-                nd_ws.td[0].x0 = x0;
-                nd_ws.td[0].y0 = y0;
-                nd_ws.td[0].pal = pal0;
-                nd_ws.td[0].pal_n = pn;
+                nd_c0.td[0].valid = 1;
+                nd_c0.td[0].src = src;
+                nd_c0.td[0].fmt = nd_c0.tst1.tile_fmt[0];
+                nd_c0.td[0].siz = nd_c0.tst1.tile_siz[0];
+                nd_c0.td[0].w = w;
+                nd_c0.td[0].h = h;
+                nd_c0.td[0].stride = stride;
+                nd_c0.td[0].x0 = x0;
+                nd_c0.td[0].y0 = y0;
+                nd_c0.td[0].pal = pal0;
+                nd_c0.td[0].pal_n = pn;
                 gp3_t0_set();
             }
             return;
@@ -249,8 +249,8 @@ int tile_bound(int n) {
 }
 
 int tile_texel(int n, int s, int t, unsigned char o[4]) {
-    const u8* p = nd_ws.td[n].src;
-    int w = nd_ws.td[n].w, h = nd_ws.td[n].h;
+    const u8* p = nd_c0.td[n].src;
+    int w = nd_c0.td[n].w, h = nd_c0.td[n].h;
     if (n == 0) {
         s %= w; if (s < 0) s += w;
         t %= h; if (t < 0) t += h;
@@ -258,9 +258,9 @@ int tile_texel(int n, int s, int t, unsigned char o[4]) {
         if (s < 0) s = 0; else if (s >= w) s = w - 1;
         if (t < 0) t = 0; else if (t >= h) t = h - 1;
     }
-    size_t i = (size_t)t * (size_t)nd_ws.td[n].stride + (size_t)s;
+    size_t i = (size_t)t * (size_t)nd_c0.td[n].stride + (size_t)s;
     unsigned c;
-    switch (nd_ws.td[n].fmt * 4 + nd_ws.td[n].siz) {
+    switch (nd_c0.td[n].fmt * 4 + nd_c0.td[n].siz) {
     case 4 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = ((i & 1) ? (b & 15u) : (b >> 4)) * 17u; o[0] = o[1] = o[2] = o[3] = (u8)v; return 1; }
     case 4 * 4 + 1: o[0] = o[1] = o[2] = o[3] = p[i]; return 1;
     case 3 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = (i & 1) ? (b & 15u) : (b >> 4); o[0] = o[1] = o[2] = (u8)((v >> 1) * 36u); o[3] = (v & 1u) ? 255 : 0; return 1; }
@@ -269,9 +269,9 @@ int tile_texel(int n, int s, int t, unsigned char o[4]) {
     case 0 * 4 + 2: c = ((unsigned)p[i * 2] << 8) | p[i * 2 + 1]; break;
     case 2 * 4 + 0: case 2 * 4 + 1: {
         unsigned idx;
-        if (!nd_ws.td[n].pal) return 0;
-        if (nd_ws.td[n].siz == 0) { u8 b = p[i >> 1]; idx = (i & 1) ? (b & 15u) : (b >> 4); } else idx = p[i];
-        c = ((unsigned)((const u8*)nd_ws.td[n].pal)[idx * 2] << 8) | ((const u8*)nd_ws.td[n].pal)[idx * 2 + 1];
+        if (!nd_c0.td[n].pal) return 0;
+        if (nd_c0.td[n].siz == 0) { u8 b = p[i >> 1]; idx = (i & 1) ? (b & 15u) : (b >> 4); } else idx = p[i];
+        c = ((unsigned)((const u8*)nd_c0.td[n].pal)[idx * 2] << 8) | ((const u8*)nd_c0.td[n].pal)[idx * 2 + 1];
         break;
     }
     default: return 0;
@@ -290,8 +290,8 @@ static inline int fb_cand(int n) {
 
 static __attribute__((cold, noinline)) void nd_tile_bind_slow(int n) {
     if (!ND_BTD(n)->valid) return;
-    nd_ws.tile_fx = (float)(ND_BSZ(n)[0] & 3) * 0.25f; /* PT38 */
-    nd_ws.tile_fy = (float)(ND_BSZ(n)[1] & 3) * 0.25f;
+    nd_c0.tile_fx = (float)(ND_BSZ(n)[0] & 3) * 0.25f; /* PT38 */
+    nd_c0.tile_fy = (float)(ND_BSZ(n)[1] & 3) * 0.25f;
     { /* FB1 debug switch fbbind: one line per 16 bit RGBA bind (source, window, size); pm_tex.c load_impl adds hit or miss */
         static int fbon = -1;
         if (fbon < 0) fbon = pm_debug_has("fbbind");
@@ -304,8 +304,8 @@ static __attribute__((cold, noinline)) void nd_tile_bind_slow(int n) {
             static const int fb_sz[4] = { -1, -1, -1, -1 }; /* a window size no SetTileSize writes: tile_bound never matches it */
             if (ens_src == fb && ens_pal == ND_BTD(n)->pal && ens_fmt == 0 && ens_siz == 2 && pm_tex_cur_idx() >= 0 &&
                 !memcmp(ens_sz, fb_sz, sizeof ens_sz) && !memcmp(ND_BWR(n), ens_wrap, sizeof ens_wrap)) {
-                nd_ws.tile_x0 = nd_ws.tile_y0 = 0;
-                nd_ws.cur_tile = n;
+                nd_c0.tile_x0 = nd_c0.tile_y0 = 0;
+                nd_c0.cur_tile = n;
                 return;
             }
             pm_gpu_flush();
@@ -317,17 +317,17 @@ static __attribute__((cold, noinline)) void nd_tile_bind_slow(int n) {
                 if (fbon < 0) fbon = pm_debug_has("fbbind");
                 if (fbon) { pm_tex_size(&tw1, &th1); pm_log_d("fbbind bind n%d fb %p fmt RGBA16 size %dx%d off %d cur %d", n, (const void*)fb, tw1, th1, pm_tex_off_idx(), pm_tex_cur_idx()); }
             }
-            nd_ws.tile_x0 = nd_ws.tile_y0 = 0;
+            nd_c0.tile_x0 = nd_c0.tile_y0 = 0;
             ens_src = fb; ens_pal = ND_BTD(n)->pal; ens_fmt = 0; ens_siz = 2; ens_slot = -1;
             memcpy(ens_wrap, ND_BWR(n), sizeof ens_wrap);
             memcpy(ens_sz, fb_sz, sizeof ens_sz);
             ens_img[n] = fb;
-            nd_ws.cur_tile = n;
+            nd_c0.cur_tile = n;
             return;
         }
     }
     if (n == 0 && !tile_bound(0) && glyph_atlas_bound()) {
-        nd_ws.cur_tile = 0;
+        nd_c0.cur_tile = 0;
         return;
     }
     {
@@ -340,12 +340,12 @@ static __attribute__((cold, noinline)) void nd_tile_bind_slow(int n) {
     }
 }
 
-/* NAPI2B: the bind of one texture window to tile n from a descriptor (nd_tile_bind_slow builds it from nd_ws.td[n] and tst1; a direct executor states it).
+/* NAPI2B: the bind of one texture window to tile n from a descriptor (nd_tile_bind_slow builds it from nd_c0.td[n] and tst1; a direct executor states it).
  * The tile_bound arm, the GAMEOVER re-window arm and the load arm of the former nd_tile_bind_slow, in the same order with the same calls.
  * Returns 1 when the texture layer already held the image (nothing loaded), 0 when it was re-windowed or loaded. */
 int nd_tex_bind_desc(const NdBindDesc* d, int n) {
     if (bound_cmp(1, d->src, d->pal, d->fmt, d->siz, d->wrap, d->sz, n)) {
-        nd_ws.cur_tile = n;
+        nd_c0.cur_tile = n;
         return 1;
     }
     /* GAMEOVER: a window of the off-screen image bound now (the 40 six-row strips of the previous-frame blur, one load each) samples the same
@@ -357,12 +357,12 @@ int nd_tex_bind_desc(const NdBindDesc* d, int n) {
         int ox, oy, gox, goy;
         pm_tex_origin(&ox, &oy);
         pm_tex_glyph_ofs(&gox, &goy);
-        nd_ws.tile_x0 = d->x0 - ox - (n == 0 ? gox : 0);
-        nd_ws.tile_y0 = d->y0 - oy - (n == 0 ? goy : 0);
+        nd_c0.tile_x0 = d->x0 - ox - (n == 0 ? gox : 0);
+        nd_c0.tile_y0 = d->y0 - oy - (n == 0 ? goy : 0);
         ens_src = d->src; ens_slot = -1;
         memcpy(ens_sz, d->sz, sizeof ens_sz);
         ens_img[n] = d->src;
-        nd_ws.cur_tile = n;
+        nd_c0.cur_tile = n;
         return 0;
     }
     pm_gpu_flush();
@@ -373,8 +373,8 @@ int nd_tex_bind_desc(const NdBindDesc* d, int n) {
         int ox, oy, gox, goy;
         pm_tex_origin(&ox, &oy);
         pm_tex_glyph_ofs(&gox, &goy);
-        nd_ws.tile_x0 = d->x0 - ox - (n == 0 ? gox : 0);
-        nd_ws.tile_y0 = d->y0 - oy - (n == 0 ? goy : 0);
+        nd_c0.tile_x0 = d->x0 - ox - (n == 0 ? gox : 0);
+        nd_c0.tile_y0 = d->y0 - oy - (n == 0 ? goy : 0);
         if (n == 0) {
             tsz_last.ox = ox - gox;
             tsz_last.oy = oy - goy;
@@ -390,15 +390,15 @@ int nd_tex_bind_desc(const NdBindDesc* d, int n) {
     memcpy(ens_wrap, d->wrap, sizeof ens_wrap);
     memcpy(ens_sz, d->sz, sizeof ens_sz);
     ens_img[n] = d->src;
-    nd_ws.cur_tile = n;
+    nd_c0.cur_tile = n;
     return 0;
 }
 
 void nd_tile_bind(int n) {
     if (ND_BTD(n)->valid && tile_bound(n) && !fb_cand(n)) {
-        nd_ws.tile_fx = (float)(ND_BSZ(n)[0] & 3) * 0.25f; /* PT38 */
-        nd_ws.tile_fy = (float)(ND_BSZ(n)[1] & 3) * 0.25f;
-        nd_ws.cur_tile = n;
+        nd_c0.tile_fx = (float)(ND_BSZ(n)[0] & 3) * 0.25f; /* PT38 */
+        nd_c0.tile_fy = (float)(ND_BSZ(n)[1] & 3) * 0.25f;
+        nd_c0.cur_tile = n;
         if (nd_bsrc) nd_c0w &= ~4u; else nd_c0w |= 4u; /* NAT1B */
         return;
     }
@@ -407,7 +407,7 @@ void nd_tile_bind(int n) {
 }
 
 __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt, const NdTxR* r) {
-            if (__builtin_expect(PMDL("shadecen") && tile == 1 && nd_ws.tst1.tile_fmt[1] == 2 && nd_ws.tst1.tile_siz[1] == 0 && !nd_tm.ld_valid, 0)) shc[1]++;
+            if (__builtin_expect(PMDL("shadecen") && tile == 1 && nd_c0.tst1.tile_fmt[1] == 2 && nd_c0.tst1.tile_siz[1] == 0 && !nd_tm.ld_valid, 0)) shc[1]++;
             if (r->m1v) { /* NAT5T */
                 /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
                 m1.valid = 1;
@@ -417,46 +417,46 @@ __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lr
             if (tile == 1) {
                 NdWin wn;
                 wn.src = r->src; wn.w = r->w; wn.h = r->h; wn.stride = r->stride; wn.x0 = r->x0; /* NAT5T */
-                if (__builtin_expect(PMDL("t1win") && (uls >= 1024 || ult >= 1024), 0)) { static unsigned n_; if (n_ < 8u) { n_++; pm_log("t1win f%u uls %d ult %d w %d h %d ldw %d ldh %d off %d", pm_frame_count(), uls, ult, wn.w, wn.h, nd_tm.ld_w, nd_tm.ld_h, wn.src && nd_ws.timg ? (int)(wn.src - (const u8*)nd_ws.timg) : -1); } }
-                nd_ws.td[1].valid = 0;
-                if (nd_ws.cur_tile == 1) nd_ws.cur_tile = -1; /* a new tile 1 image: bind it again */
+                if (__builtin_expect(PMDL("t1win") && (uls >= 1024 || ult >= 1024), 0)) { static unsigned n_; if (n_ < 8u) { n_++; pm_log("t1win f%u uls %d ult %d w %d h %d ldw %d ldh %d off %d", pm_frame_count(), uls, ult, wn.w, wn.h, nd_tm.ld_w, nd_tm.ld_h, wn.src && nd_c0.timg ? (int)(wn.src - (const u8*)nd_c0.timg) : -1); } }
+                nd_c0.td[1].valid = 0;
+                if (nd_c0.cur_tile == 1) nd_c0.cur_tile = -1; /* a new tile 1 image: bind it again */
                 if (wn.src && wn.w > 0 && wn.h > 0) {
-                    nd_ws.td[1].valid = 1;
-                    nd_ws.td[1].src = wn.src;
-                    nd_ws.td[1].fmt = nd_ws.tst1.tile_fmt[1];
-                    nd_ws.td[1].siz = nd_ws.tst1.tile_siz[1];
-                    nd_ws.td[1].w = wn.w;
-                    nd_ws.td[1].h = wn.h;
-                    nd_ws.td[1].stride = wn.stride;
-                    nd_ws.td[1].x0 = wn.x0;
-                    nd_ws.td[1].y0 = ult >> 2;
-                    nd_ws.td[1].pal = r->pal; /* NAT5T */
-                    nd_ws.td[1].pal_n = r->pal_n;
+                    nd_c0.td[1].valid = 1;
+                    nd_c0.td[1].src = wn.src;
+                    nd_c0.td[1].fmt = nd_c0.tst1.tile_fmt[1];
+                    nd_c0.td[1].siz = nd_c0.tst1.tile_siz[1];
+                    nd_c0.td[1].w = wn.w;
+                    nd_c0.td[1].h = wn.h;
+                    nd_c0.td[1].stride = wn.stride;
+                    nd_c0.td[1].x0 = wn.x0;
+                    nd_c0.td[1].y0 = ult >> 2;
+                    nd_c0.td[1].pal = r->pal; /* NAT5T */
+                    nd_c0.td[1].pal_n = r->pal_n;
                 }
             }
 }
 
 __attribute__((noinline)) void tlut_v20(unsigned slot) {
                     for (int n = 0; n < 2; n++)
-                        if (nd_ws.td[n].valid && nd_ws.td[n].fmt == 2 && (nd_ws.tst1.tile_pal[n] & 15) == slot && nd_ws.td[n].pal != nd_ws.timg) {
+                        if (nd_c0.td[n].valid && nd_c0.td[n].fmt == 2 && (nd_c0.tst1.tile_pal[n] & 15) == slot && nd_c0.td[n].pal != nd_c0.timg) {
                             if (!pm_tex_cell_bound()) pm_gpu_flush(); /* MSGBOX 3: the queued glyphs sample only their own cells on unit 0, which a new palette does not change (flushlog: a stale tile 1 record split every rainbow glyph) */
-                            nd_ws.td[n].pal = nd_ws.timg;
-                            nd_ws.td[n].pal_n = nd_ws.tlut_n;
-                            if (n == nd_ws.cur_tile) nd_ws.cur_tile = -1;
+                            nd_c0.td[n].pal = nd_c0.timg;
+                            nd_c0.td[n].pal_n = nd_c0.tlut_n;
+                            if (n == nd_c0.cur_tile) nd_c0.cur_tile = -1;
                         }
 }
 
 __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) { /* NWS4B */
-            if (m1.valid && nd_ws.tst1.tile_fmt[0] == 2 && nd_ws.tst1.tile_siz[0] == 0 && nd_ws.tst1.tile_pal[0] != nd_ws.tst1.tile_pal[1] &&
+            if (m1.valid && nd_c0.tst1.tile_fmt[0] == 2 && nd_c0.tst1.tile_siz[0] == 0 && nd_c0.tst1.tile_pal[0] != nd_c0.tst1.tile_pal[1] &&
                 nd_ap->in.tst[0] == G_CCMUX_TEXEL0 && nd_ap->in.tst[2] == G_CCMUX_TEXEL1 && /* NWS4B */
                 m1.w > 0 && m1.h > 0) {
                 /* Tile 0 starts 256 texels in (the vertices carry that); the light offset moves only the shade index, which is one colour now (KZN04). */
                 (void)uls; (void)ult;
                 m1.valid = 0;
                 pm_gpu_flush();
-                nd_ws.tile_x0 = m1.x0;
-                nd_ws.tile_y0 = m1.y0;
-                nd_ws.tile_fx = nd_ws.tile_fy = 0.f;
+                nd_c0.tile_x0 = m1.x0;
+                nd_c0.tile_y0 = m1.y0;
+                nd_c0.tile_fx = nd_c0.tile_fy = 0.f;
                 if (load_shaded_sprite()) {
                     if (PMDL("shadecen")) shc[2]++;
                     return 1;
@@ -532,8 +532,8 @@ static void shade_mean(const void* sp, const void* sh) {
 }
 
 int load_shaded_sprite(void) {
-    const void* sp = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[1] & 15];
-    const void* sh = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15];
+    const void* sp = nd_tm.tlut_pal[nd_c0.tst1.tile_pal[1] & 15];
+    const void* sh = nd_tm.tlut_pal[nd_c0.tst1.tile_pal[0] & 15];
     if (!sp || !sh) { if (PMDL("shadecen")) shc[4]++; return 0; }
     shade_mean(sp, sh);
     { const int ok = pm_tex_load_shaded(m1.src, m1.w, m1.h, m1.stride, sp); if (!ok && PMDL("shadecen")) shc[5]++; return ok; }
@@ -586,14 +586,14 @@ void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h) {
         if (texels > G_TX_LDBLK_MAX_TXL) texels = G_TX_LDBLK_MAX_TXL;
         NdTst gt; NdTexM gm; NdWin wn; NdTxR gr; memset(&gt, 0, sizeof gt); memset(&gm, 0, sizeof gm); memset(&gr, 0, sizeof gr);
         gt.tile_fmt[0] = 2; gt.tile_siz[0] = 0; gt.tile_tmem[0] = 0; gt.tile_siz[7] = 2; gt.tile_tmem[7] = 0;
-        gt.blk[0].tmem = 0; gt.blk[0].bytes = ((texels + 1u) << 2) >> 1; gt.blk[0].img = nd_ws.timg; gt.timg_stride = 1;
-        nd_texw0(&gt, &gm, nd_ws.timg, 0, 0, (w - 1) << 2, (h - 1) << 2, &wn);
+        gt.blk[0].tmem = 0; gt.blk[0].bytes = ((texels + 1u) << 2) >> 1; gt.blk[0].img = nd_c0.timg; gt.timg_stride = 1;
+        nd_texw0(&gt, &gm, nd_c0.timg, 0, 0, (w - 1) << 2, (h - 1) << 2, &wn);
         gr.tile = 0; gr.uls = 0; gr.ult = 0; gr.lrs = (w - 1) << 2; gr.lrt = (h - 1) << 2; gr.src = wn.src; gr.w = wn.w; gr.h = wn.h; gr.stride = wn.stride; gr.x0 = wn.x0;
-        gr.pal = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] ? nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] : nd_ws.tlut; gr.pal_n = nd_ws.tlut_n; gr.timg = nd_ws.timg;
+        gr.pal = nd_tm.tlut_pal[nd_c0.tst1.tile_pal[0] & 15] ? nd_tm.tlut_pal[nd_c0.tst1.tile_pal[0] & 15] : nd_c0.tlut; gr.pal_n = nd_c0.tlut_n; gr.timg = nd_c0.timg;
         nd_tsz_set(0, 0, 0, (w - 1) << 2, (h - 1) << 2, &gr); }
 }
-void nd_sv_timg(const uint32_t* r) { const uint32_t a = r[0]; nd_ws.timg = (const void*)(uintptr_t)r[1]; if (nd_ws.timg && pm_is_cfb(nd_ws.timg) && !pm_is_cur_cfb(nd_ws.timg)) pm_cfb_capture_prev(); nd_ws.tst1.timg_fmt = (a >> 21) & 7; nd_ws.tst1.timg_siz = (a >> 19) & 3; nd_ws.tst1.timg_stride = (int)(a & 0xfff) + 1; nd_tm.ld_valid = 0; } /* NSET1: set_timg, the image core 1 resolved */
+void nd_sv_timg(const uint32_t* r) { const uint32_t a = r[0]; nd_c0.timg = (const void*)(uintptr_t)r[1]; if (nd_c0.timg && pm_is_cfb(nd_c0.timg) && !pm_is_cur_cfb(nd_c0.timg)) pm_cfb_capture_prev(); nd_c0.tst1.timg_fmt = (a >> 21) & 7; nd_c0.tst1.timg_siz = (a >> 19) & 3; nd_c0.tst1.timg_stride = (int)(a & 0xfff) + 1; nd_tm.ld_valid = 0; } /* NSET1: set_timg, the image core 1 resolved */
 void nd_sv_tile(const uint32_t* r) { const uint32_t a = r[0], b = r[1]; const unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 }; set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15); } /* NSET1: nd_tx_tile */
-void nd_sv_tsz(const uint32_t* r) { const unsigned t = r[0] >> 28; const int uls = (int32_t)(r[0] << 4) >> 18, ult = (int32_t)(r[0] << 18) >> 18, lrs = (int16_t)r[1], lrt = (int16_t)(r[1] >> 16); int* const z = nd_ws.tst1.tile_sz[t]; GP_SET(4, z[0] == uls && z[1] == ult && z[2] == lrs && z[3] == lrt); z[0] = uls; z[1] = ult; z[2] = lrs; z[3] = lrt; } /* NSET1: nd_tsz_set, tile 2-7 */
-void nd_sv_tlut(const uint32_t* r) { const unsigned slot = r[0] & 0xffu; nd_ws.tlut = (const void*)(uintptr_t)r[1]; nd_ws.tlut_n = (int)(r[0] >> 8); nd_tm.tlut_pal[slot] = nd_ws.tlut; tlut_v20(slot); } /* NSET1: set_loadtlut */
-void nd_sv_tlutn(const uint32_t* r) { nd_ws.tlut = (const void*)(uintptr_t)r[1]; nd_ws.tlut_n = (int)(r[0] >> 8); } /* NSET1: set_loadtlut, no palette slot */
+void nd_sv_tsz(const uint32_t* r) { const unsigned t = r[0] >> 28; const int uls = (int32_t)(r[0] << 4) >> 18, ult = (int32_t)(r[0] << 18) >> 18, lrs = (int16_t)r[1], lrt = (int16_t)(r[1] >> 16); int* const z = nd_c0.tst1.tile_sz[t]; GP_SET(4, z[0] == uls && z[1] == ult && z[2] == lrs && z[3] == lrt); z[0] = uls; z[1] = ult; z[2] = lrs; z[3] = lrt; } /* NSET1: nd_tsz_set, tile 2-7 */
+void nd_sv_tlut(const uint32_t* r) { const unsigned slot = r[0] & 0xffu; nd_c0.tlut = (const void*)(uintptr_t)r[1]; nd_c0.tlut_n = (int)(r[0] >> 8); nd_tm.tlut_pal[slot] = nd_c0.tlut; tlut_v20(slot); } /* NSET1: set_loadtlut */
+void nd_sv_tlutn(const uint32_t* r) { nd_c0.tlut = (const void*)(uintptr_t)r[1]; nd_c0.tlut_n = (int)(r[0] >> 8); } /* NSET1: set_loadtlut, no palette slot */

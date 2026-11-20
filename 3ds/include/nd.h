@@ -161,8 +161,35 @@ typedef struct NdWs {
     NdTst tst1;
     NdTd td[2];
 } NdWs;
-extern NdWs nd_ws;
-void nd_words(const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (NdW2) into nd_ws. Not called during the walk. */
+/* NWS3: the core 0 draw state (the RSP and texture state the native records write). NdWs above stays the core 1 field model (NdDs.w). */
+typedef struct NdC0 {
+    unsigned geom;                     /* geometry mode */
+    unsigned omode_h, omode_l;         /* other mode high and low */
+    unsigned prim;                     /* primitive colour */
+    unsigned envc;                     /* env colour */
+    unsigned fill;                     /* fill colour */
+    unsigned prim_z;                   /* G_SETPRIMDEPTH, 15 bit */
+    uint32_t om_kh, om_kl;             /* B8: other mode bits the state has a value for (SETOTHERMODE sets them) */
+    uint32_t prim_lod;                 /* G_SETPRIMCOLOR w0 low 16 bits (m and l) */
+    int tex_on;
+    const void* timg;
+    const void* tlut;
+    int tlut_n;
+    int tile_x0, tile_y0;
+    float tile_fx, tile_fy;
+    int cur_tile, use_t1;
+    unsigned tex_ss, tex_ts;
+    uint32_t segbase[16];
+    unsigned comb_w0, comb_w1;
+    NdTst tst1;
+    NdTd td[2];
+    unsigned conv_k4;                  /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
+    int sci_x0, sci_y0, sci_x1, sci_y1; /* scissor */
+    int fog_fm, fog_fo;                /* G_MW_FOG factor and offset */
+} NdC0;
+extern NdC0 nd_c0;
+void nd_c0_to_ws(NdWs* d); /* field copy of nd_c0 into a core 1 NdWs */
+void nd_words(NdWs* s, const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (NdW2) into s. Not called during the walk. */
 
 /* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices
  * it loads itself. The compiler keeps the box of the object coordinates per group, the geometry mode ops with the triangle index they apply before, the Vtx copies
@@ -381,10 +408,10 @@ typedef struct NdMCtx {
     int geom_at_set;           /* S3N-3c: geom_at is used, else (geom_base & gand) | gor. Cull and z come from this geometry */
     int draw_3d, dview, rgb_scale, r_mix, r_memblend, r_replace; /* sticky walker flags */
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
-    uint32_t prim_lod;         /* S3N-3d: nd_ws.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; prim_lo8 is the low byte) */
+    uint32_t prim_lod;         /* S3N-3d: nd_c0.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; prim_lo8 is the low byte) */
     uint32_t dbias;            /* decal bias, float bits */
-    uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_ws) and the bits it has a value for */
-    uint32_t geom_base;        /* B9: the geometry mode before the list (nd_ws.geom) */
+    uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_c0) and the bits it has a value for */
+    uint32_t geom_base;        /* B9: the geometry mode before the list (nd_c0.geom) */
     /* MDL-1b: tile 1 of an R13 record (the walker's live state after rec_aux and pm_gbi_bind_tile1): unit 1, its i8 flag, the uv map, the plan t1only */
     NdUnit* u1; int i8_1; int t1_valid; int t1only; float uvx[4]; unsigned loc_uvx;
     int wind;                  /* walker: the sign of the matrix determinant (gv_wind, until the matrix is native in 3c): cull sense */

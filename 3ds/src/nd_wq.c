@@ -1,4 +1,4 @@
-/* CORE2-3a: the walker side. The walker owns nd_ws, pm_gpu (C3D context, command buffers, GX queue, frame begin and end, present,
+/* CORE2-3a: the walker side. The walker owns nd_c0, pm_gpu (C3D context, command buffers, GX queue, frame begin and end, present,
  * shots, grabs, captures, depth reads) and pm_tex (texture cache). It runs on the game thread (core 0, the frame loop). The game logic
  * (pm_logic.c: step_game_loop, the list build, the step tail) runs on the logic thread (core 1 on the O3DS, core 2 on the N3DS) or, in
  * the serial mode (det, phase or census timers, fsplit), inline on the game thread. The logic side reaches the

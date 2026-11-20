@@ -1,5 +1,5 @@
 /* nd_msnapw.h: the model snap words that model_draw reads (NREC1B). model_draw takes its walker inputs from the snap of the record that runs
- * (nd_msnap_use, nd_recs.c), not from nd_ws. The indices are the word indices of NdMSnap (nd_msnap.h). */
+ * (nd_msnap_use, nd_recs.c), not from nd_c0. The indices are the word indices of NdMSnap (nd_msnap.h). */
 #ifndef ND_MSNAPW_H
 #define ND_MSNAPW_H
 #include <stdint.h>

@@ -80,7 +80,7 @@ void nd_img_check(void) {
     if ((r == ROLE_SLOT || r == ROLE_DEPTHQ)) {
         /* FSELLAG2: a window image (draw_box: scissor 0, 0, width, height, then the fill of that rectangle) needs a clear only in the row blocks of its height.
          * Only a stride from 65 to 319 with the scissor equal to the image width qualifies: the 320 wide users (zbuffer copies, frozen frame, water) and the 64 wide stencils clear the whole slot. */
-        int band = (nd_tgt.stride > 64 && nd_tgt.stride < 320 && nd_tgt.siz == 2 && sci_x0 == 0 && sci_y0 == 0 && sci_x1 == nd_tgt.stride && sci_y1 > 0) ? sci_y1 : 0;
+        int band = (nd_tgt.stride > 64 && nd_tgt.stride < 320 && nd_tgt.siz == 2 && nd_c0.sci_x0 == 0 && nd_c0.sci_y0 == 0 && nd_c0.sci_x1 == nd_tgt.stride && nd_c0.sci_y1 > 0) ? nd_c0.sci_y1 : 0;
         pm_gpu_off_begin(nd_tgt.img ? nd_tgt.img : zb_fake, nd_tgt.stride, nd_tgt.siz, band);
     }
 }

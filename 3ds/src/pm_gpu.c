@@ -62,7 +62,7 @@ static void wl_depth(int z, int zmark, int zcmp, int zupd, int decal, int nocol,
 static float game_mvp[4][4];
 static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
-static int sci_x0, sci_y0, sci_x1 = 320, sci_y1 = 240;
+static int gsci_x0, gsci_y0, gsci_x1 = 320, gsci_y1 = 240;
 static C3D_Mtx projection;
 /* PT07: the RDP NOISE input. A 64 x 64 L8 texture of random bytes (fixed seed) on unit 2. The vertex shader gives it the screen position
  * (one texel per pixel) plus a random offset per drawn frame, so every pixel reads a new random value every frame. */
@@ -521,7 +521,7 @@ static __attribute__((cold, noinline)) void ndref_draw(const TevKey* tk, int z, 
     ndref_put(&kind, 4); ndref_put(&n, 4);
     d.z = z; d.graw = graw; d.prog = prog; d.cull = cull;
     d.decal = gs.r_decal; d.blend = gs.r_blend; d.atest = gs.r_atest;
-    d.sx0 = sci_x0; d.sy0 = sci_y0; d.sx1 = sci_x1; d.sy1 = sci_y1;
+    d.sx0 = gsci_x0; d.sy0 = gsci_y0; d.sx1 = gsci_x1; d.sy1 = gsci_y1;
     pm_tex_cur_slots(&d.sa, &d.sb);
     pm_tex_slot_words(d.sa, d.tw0); pm_tex_slot_words(d.sb, d.tw1);
     ndref_put(tk, sizeof *tk); ndref_put(&d, sizeof d);
@@ -846,7 +846,7 @@ void rect_sig_fill(RectSig* s) {
     uint32_t ws = 0, wt = 0; unsigned f = 0;
     pm_tex_unit0_param(&ws, &wt, &f);
     s->filt = (int)f; s->ws = (int)ws; s->wt = (int)wt; s->cur = pm_tex_cur_idx();
-    s->sx0 = sci_x0; s->sy0 = sci_y0; s->sx1 = sci_x1; s->sy1 = sci_y1;
+    s->sx0 = gsci_x0; s->sy0 = gsci_y0; s->sx1 = gsci_x1; s->sy1 = gsci_y1;
     s->bl = gs.r_blend; s->rep = r_replace; s->zc = gs.r_zcmp; s->zu = gs.r_zupd; s->at = gs.r_atest; s->dec = gs.r_decal; s->noc = gs.r_nocol;
     s->zon = gs.z_on; s->mem = r_memblend; s->mix = gs.r_mix; s->comb = gs.combine; s->rgbs = rgb_scale; s->pgen = plan_gen;
     s->mixc = (int)r_mixcol; s->prim = (int)prim; s->cc = (int)cconst; s->env = (int)gs.env_col;
@@ -1020,9 +1020,9 @@ static __attribute__((noinline)) void pcomp_calc(unsigned gm) {
 }
 static __attribute__((noinline)) void scissor_off(void) {
         /* not rotated: x is the game x. GPU y is the game y: row 0 of the image is the last memory row, where v = 0 samples */
-        int x1 = sci_x1 > off_w ? off_w : sci_x1, y1 = sci_y1 > off_h ? off_h : sci_y1;
-        if (x1 > sci_x0 && y1 > sci_y0)
-            sh_scissor(GPU_SCISSOR_NORMAL, (u32)sci_x0, (u32)sci_y0, (u32)x1, (u32)y1);
+        int x1 = gsci_x1 > off_w ? off_w : gsci_x1, y1 = gsci_y1 > off_h ? off_h : gsci_y1;
+        if (x1 > gsci_x0 && y1 > gsci_y0)
+            sh_scissor(GPU_SCISSOR_NORMAL, (u32)gsci_x0, (u32)gsci_y0, (u32)x1, (u32)y1);
         else
             sh_scissor(GPU_SCISSOR_NORMAL, 0, 0, off_w, off_h);
 }
@@ -1137,13 +1137,13 @@ static __attribute__((cold, noinline)) void rp_draw(const char* path, int tex) {
 
 /* the scissor of the main target (flush_draw and the native draw): the game scissor in the rotated 240 x 400 buffer */
 static void stage_scissor(void) {
-        int left = 240 - sci_y1;
-        int right = 240 - sci_y0;
+        int left = 240 - gsci_y1;
+        int right = 240 - gsci_y0;
         /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
         int ui = pm_wide && (!nb.draw_3d || ui_ortho);
         /* MENUGEN: Fullscreen (pm_stretch) scales every batch by 1.25 over the full 400 px, like a 3D batch */
-        int top = pm_stretch ? sci_x0 * 5 / 4 : !pm_wide ? 40 + sci_x0 : ui ? (sci_x0 <= 0 ? 0 : 40 + sci_x0) : sci_x0 * 5 / 4;
-        int bottom = pm_stretch ? sci_x1 * 5 / 4 : !pm_wide ? 40 + sci_x1 : ui ? (sci_x1 >= 320 ? 400 : 40 + sci_x1) : sci_x1 * 5 / 4;
+        int top = pm_stretch ? gsci_x0 * 5 / 4 : !pm_wide ? 40 + gsci_x0 : ui ? (gsci_x0 <= 0 ? 0 : 40 + gsci_x0) : gsci_x0 * 5 / 4;
+        int bottom = pm_stretch ? gsci_x1 * 5 / 4 : !pm_wide ? 40 + gsci_x1 : ui ? (gsci_x1 >= 320 ? 400 : 40 + gsci_x1) : gsci_x1 * 5 / 4;
         const int full = pm_wide || pm_stretch;
         if (left < 0) left = 0;
         if (right > 240) right = 240;
@@ -1237,8 +1237,8 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
     { /* SBLK2 A1/A2/B1 debug: the segment 9 base, tile 0 format, combine words, unit 1 I8 alpha, splits and grabs of this frame */
         extern unsigned n_splits;
         pm_log("orbdbg2 f%u tag %u seg9 %08x cyc %u td0 v%d fmt %u siz %u w %d h %d comb %08x %08x i8_1 %d spl %u grab %d",
-               pm_frame_count(), ot_, nd_ws.segbase[9], (nd_apw(NDAPW_OH) >> 20) & 3u, nd_ws.td[0].valid, nd_ws.td[0].fmt, nd_ws.td[0].siz, /* NWS4B */
-               nd_ws.td[0].w, nd_ws.td[0].h, nd_apw(NDAPW_W0), nd_apw(NDAPW_W1), i8_1, n_splits, grab_n); /* NWS4B */
+               pm_frame_count(), ot_, nd_c0.segbase[9], (nd_apw(NDAPW_OH) >> 20) & 3u, nd_c0.td[0].valid, nd_c0.td[0].fmt, nd_c0.td[0].siz, /* NWS4B */
+               nd_c0.td[0].w, nd_c0.td[0].h, nd_apw(NDAPW_W0), nd_apw(NDAPW_W1), i8_1, n_splits, grab_n); /* NWS4B */
     }
     if (ot_ == 6u && gs.combine == 8) { /* SBLK2 blend check (shimmer, tag 6): the TEV stages as sent, the blend the port sets, the N64 blender */
         const unsigned m = nd_apw(NDAPW_OL); /* NWS4B */
@@ -2708,7 +2708,7 @@ void pm_gpu_pause_gutters(unsigned fade) {
         else if (!ring_need(8, 12)) why = "ring full";
     }
     if (dbg) pm_log("GUTDBG call off_active %d off_cur %d combine %d slot %p why %s scissor %d %d %d %d",
-                    gs.off_active, gs.off_cur, gs.combine, (void*)t, why ? why : "drawn", sci_x0, sci_y0, sci_x1, sci_y1);
+                    gs.off_active, gs.off_cur, gs.combine, (void*)t, why ? why : "drawn", gsci_x0, gsci_y0, gsci_x1, gsci_y1);
     if (why) return;
     gut_tex = t;
     flush(); /* PAUSEFADE: as pm_gpu_set_mix, the open batch keeps its mix */
@@ -2823,10 +2823,10 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     if (!prev_frame) { grab_queue_copy(); if (prev_hold) { prev_hold = 0; hold_rst++; } } /* PT12; PAUSEH: a grab overwrote grab_tex: the next frame copies again */
     pm_gpu_off_begin(cfb, 320, 2, 0);
     {
-        int sc[4] = { sci_x0, sci_y0, sci_x1, sci_y1 };
+        int sc[4] = { gsci_x0, gsci_y0, gsci_x1, gsci_y1 };
         int s_comb = gs.combine, s_2d = nb.rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = gs.r_atest, s_nc = gs.r_nocol, s_mix = gs.r_mix,
             s_rs = rgb_scale, s_3d = nb.draw_3d;
-        sci_x0 = 0; sci_y0 = 0; sci_x1 = x1; sci_y1 = 240;
+        gsci_x0 = 0; gsci_y0 = 0; gsci_x1 = x1; gsci_y1 = 240;
         gs.combine = 3; nb.rect_2d = 1; batch_identity = 1; r_replace = 1; gs.r_atest = -1; gs.r_nocol = 0; gs.r_mix = 0; rgb_scale = 1; nb.draw_3d = 0;
         grab_bind = 1;
         /* FB-1 GRAB: the copy quad is a native raw batch (rect path at fill depth 0.5, combine 3, unit 0 = grab_tex). */
@@ -2835,7 +2835,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         grab_raw_quad(x1, mo);
         flush();
         grab_bind = 0;
-        sci_x0 = sc[0]; sci_y0 = sc[1]; sci_x1 = sc[2]; sci_y1 = sc[3];
+        gsci_x0 = sc[0]; gsci_y0 = sc[1]; gsci_x1 = sc[2]; gsci_y1 = sc[3];
         gs.combine = s_comb; nb.rect_2d = s_2d; batch_identity = s_bi; r_replace = s_rep; gs.r_atest = s_at; gs.r_nocol = s_nc; gs.r_mix = s_mix;
         rgb_scale = s_rs; nb.draw_3d = s_3d;
     }
@@ -2935,10 +2935,10 @@ void pm_gpu_begin_wait(void) {
     drew = 0;
     nb.gni = 0; nb.pal_n = 0; post_gen++; ring_frame_begin(); /* PO3b, GV1c; FB-1: chunk 0 with empty fills */
     nb.gring_fl = nb.gidx_fl = 0; kick_done = 0; /* GV0, KICK1 */
-    sci_x0 = 0;
-    sci_y0 = 0;
-    sci_x1 = 320;
-    sci_y1 = 240;
+    gsci_x0 = 0;
+    gsci_y0 = 0;
+    gsci_x1 = 320;
+    gsci_y1 = 240;
     nb.draw_3d = 0;
     if (!gs.gpu_ok) return;
     pm_tex_upload_vram_before_frame();
@@ -3831,7 +3831,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { /* NWS4C */
     unsigned i = 0;
     uint32_t gk = 0xFFFFFFFFu; /* MAPX-2: the walker geometry reaches the draw only through the bits the list's groups keep (gg = (entry & am) | om) */
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
-    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_apw(NDAPW_OH), nd_apw(NDAPW_OL), nd_ws.om_kh, nd_ws.om_kl, nd_ws.geom }; if (!kw) kw = w5; /* NWS4C: the record's core 1 words, nd_ap and the record state with no snap */
+    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_apw(NDAPW_OH), nd_apw(NDAPW_OL), nd_c0.om_kh, nd_c0.om_kl, nd_c0.geom }; if (!kw) kw = w5; /* NWS4C: the record's core 1 words, nd_ap and the record state with no snap */
       s[i++] = kw[0] & kh; s[i++] = kw[1] & kl; s[i++] = kw[2] & kh; s[i++] = kw[3] & kl; s[i++] = kw[4] & gk & rm_ga[rmi]; } /* NWS4C */
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_apw(NDAPW_PRIM); s[i++] = nd_apw(NDAPW_PLOD); s[i++] = aux_hash(rec); /* NWS4C */ /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
@@ -3868,7 +3868,7 @@ void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k) {
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
     uint32_t* c = k->kc;
     c[0] = rec[-1];
-    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_ws.omode_h, nd_ws.omode_l, nd_ws.om_kh, nd_ws.om_kl, nd_ws.geom }; if (!kw) kw = w5; /* NAT2C: core 1 words, nd_ws only with no snap */
+    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_c0.omode_h, nd_c0.omode_l, nd_c0.om_kh, nd_c0.om_kl, nd_c0.geom }; if (!kw) kw = w5; /* NAT2C: core 1 words, nd_c0 only with no snap */
       c[1] = kw[0] & kh; c[2] = kw[1] & kl; c[3] = kw[2] & kh; c[4] = kw[3] & kl; c[5] = kw[4] & gk & rm_ga[rmi]; }
     c[6] = nd_handle_gen(); c[7] = pm_dlc_gen;
     k->w[0] = rec[0]; k->w[1] = rec[1]; k->w[24] = rec[24]; /* the record words the hit reads (pm_gpu_model_hit, model_vis_same) */
@@ -4288,7 +4288,7 @@ static __attribute__((cold, noinline)) void ndm_cmp(const NdTmplKey* wk, const N
         int wtw = 1, wth = 1; pm_tex_size(&wtw, &wth); sbkw_lines++;
         pm_log_prof_line("sbkw dim rec %08x desc %ux%u ctex %ux%u tile0 win %dx%d td0 %dx%d walk slot %dx%d nat dim %08x walk dim %08x nat uvso1 %08x walk uvso1 %08x nat uvso3 %08x walk uvso3 %08x",
             sbkw_rec, sbkw_dsw, sbkw_dsh, sbkw_ctw, sbkw_cth,
-            ((nd_ws.tst1.tile_sz[0][2] - nd_ws.tst1.tile_sz[0][0]) >> 2) + 1, ((nd_ws.tst1.tile_sz[0][3] - nd_ws.tst1.tile_sz[0][1]) >> 2) + 1, nd_ws.td[0].w, nd_ws.td[0].h, wtw, wth,
+            ((nd_c0.tst1.tile_sz[0][2] - nd_c0.tst1.tile_sz[0][0]) >> 2) + 1, ((nd_c0.tst1.tile_sz[0][3] - nd_c0.tst1.tile_sz[0][1]) >> 2) + 1, nd_c0.td[0].w, nd_c0.td[0].h, wtw, wth,
             nd_->u[0].dim, wd->u[0].dim, sbkw_bits(nd_->uvso[1]), sbkw_bits(wd->uvso[1]), sbkw_bits(nd_->uvso[3]), sbkw_bits(wd->uvso[3]));
     }
     ndm_w_n++;
@@ -4597,7 +4597,7 @@ int nd_snap_spr(uint32_t o[9]); /* nd_snap.c, NDR4 */
 int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) { /* NWS4B */
     NdSprRec r;
     nd_sprite_decode(rec, &r);
-    /* SPR4: the record's render mode list and final list ran on the walker before this vertex word, so the draw state is nd_ws live and the mode adds nothing */
+    /* SPR4: the record's render mode list and final list ran on the walker before this vertex word, so the draw state is nd_c0 live and the mode adds nothing */
     NdMode mode;
     memset(&mode, 0, sizeof mode);
     mode.ok = 1; mode.gand = 0xFFFFFFFFu;
@@ -4619,7 +4619,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     if (sn) { sw_geo = sv[4]; sw_cw0 = sv[5]; sw_cw1 = sv[6]; }
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
-    { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); extern unsigned nd_snap_primz(void); /* NAT4H */ const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; nd_ws.prim_z = nd_snap_primz(); /* NAT4H */ } } /* NAT2K: the sprite snap decision */
+    { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); extern unsigned nd_snap_primz(void); /* NAT4H */ const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; nd_c0.prim_z = nd_snap_primz(); /* NAT4H */ } } /* NAT2K: the sprite snap decision */
     { NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv, &gc); } /* NWS4C */
     if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; }
         if (PMDL("shadecen")) { shc[12]++; for (int q = 0; q < 3; q++) { const int v = (int)(dual_f[q] * 255.f); if (v < shd_min[q]) shd_min[q] = v; if (v > shd_max[q]) shd_max[q] = v; } } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */
@@ -4633,7 +4633,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = gs.r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     c.env = sn ? sv[0] : nd_apw(NDAPW_ENV); c.prim = sn ? sv[1] : nd_apw(NDAPW_PRIM); c.prim_lod = nd_apw(NDAPW_PLOD); c.cconst = cconst; c.mixcol = r_mixcol; /* NWS4B */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = sn ? sv[2] : nd_apw(NDAPW_OH); c.base_ol = sn ? sv[3] : nd_apw(NDAPW_OL); c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl; /* NWS4B */
+    c.base_oh = sn ? sv[2] : nd_apw(NDAPW_OH); c.base_ol = sn ? sv[3] : nd_apw(NDAPW_OL); c.known_h = nd_c0.om_kh; c.known_l = nd_c0.om_kl; /* NWS4B */
     if (sn) { c.r_mix = (int)sv[7]; c.mixcol = sv[7] ? sv[8] : r_mixcol; } else /* NDR4: the mix of the snap */
     { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as nd_rnd_sync), not gs.r_mix of the last model's nd_rnd_sync:
        * a sprite drawn after a shrouded model took its shroud (star power). */
@@ -4729,11 +4729,11 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
     /* V05: the batch in flight was drawn under the old scissor on the N64. Draw it before the scissor changes: the last
      * background piece of a window (its bottom right quarter) was cut by the next pass's scissor, a smaller one. */
-    if (x0 != sci_x0 || y0 != sci_y0 || x1 != sci_x1 || y1 != sci_y1) flush();
-    sci_x0 = x0;
-    sci_y0 = y0;
-    sci_x1 = x1;
-    sci_y1 = y1;
+    if (x0 != gsci_x0 || y0 != gsci_y0 || x1 != gsci_x1 || y1 != gsci_y1) flush();
+    gsci_x0 = x0;
+    gsci_y0 = y0;
+    gsci_x1 = x1;
+    gsci_y1 = y1;
 }
 
 

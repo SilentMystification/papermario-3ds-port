@@ -4,10 +4,10 @@
  * Colours are draw values: the plan this file makes keeps the colour names and has constants 0 (nd_pso_colour makes the values).
  *
  * Globals the moved code read before, and where each comes from now (NdCombIn field, NdPsoDesc field):
- *   nd_ws.comb_w0, comb_w1 -> in->w0, w1 (cw0, cw1)        nd_ws.omode_h -> in->omode_h (omh)     nd_ws.prim, envc -> in->prim, env (draw values)
- *   nd_ws.prim_lod (low byte) -> in->prim_lo8 (plod)       keyc, keys -> in->key_c, key_s         conv_k4 -> in->conv_k4
- *   nd_ws.tst1.comb_a..comb2_ad (tst_f) -> in->tst[16] (decoded from cw0, cw1 by nd_comb_tst)
- *   leg_mode -> in->leg_mode (leg_prev)     nd_ws.tex_on -> tex_on     nd_ws.use_t1 -> use_t1     nd_ws.td[1].valid -> t1_valid   dual_on -> dual_on
+ *   nd_c0.comb_w0, comb_w1 -> in->w0, w1 (cw0, cw1)        nd_c0.omode_h -> in->omode_h (omh)     nd_c0.prim, envc -> in->prim, env (draw values)
+ *   nd_c0.prim_lod (low byte) -> in->prim_lo8 (plod)       keyc, keys -> in->key_c, key_s         conv_k4 -> in->conv_k4
+ *   nd_c0.tst1.comb_a..comb2_ad (tst_f) -> in->tst[16] (decoded from cw0, cw1 by nd_comb_tst)
+ *   leg_mode -> in->leg_mode (leg_prev)     nd_c0.tex_on -> tex_on     nd_c0.use_t1 -> use_t1     nd_c0.td[1].valid -> t1_valid   dual_on -> dual_on
  *   box_prod, box_folded, comb_set, comb_alpha_shade -> the fields of the same name     box_pat -> in->box_pat (desc: 0, no field)
  *   pm_comb_vprim -> the vprim argument (desc vprim)     comb_mode5 (kept when leg 4) -> the mode5_prev argument (desc: 0)
  * pm_comb.c module state kept: pm_k4 (pm_comb_set_k4, nd_pso_build sets it from conv_k4).

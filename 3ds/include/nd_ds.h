@@ -1,6 +1,6 @@
 /* nd_ds.h: the core 1 draw state NdDs (design_nstate.md section 3, row NST1). NdDs = the walker state NdWs plus the globals of the core 0
  * setters (same names and types). nd_ds_apply copies the state writes of nd_unit_apply (nd_set.c, nd_comb.c, nd_tex_set.c, nd_mtx_set.c)
- * without the GPU calls. Core 1 owns nd_ds; core 0 keeps nd_ws and the globals. Host-built (nd_ds_test.c). */
+ * without the GPU calls. Core 1 owns nd_ds; core 0 keeps nd_c0 and the globals. Host-built (nd_ds_test.c). */
 #ifndef ND_DS_H
 #define ND_DS_H
 #include <stdint.h>
@@ -24,7 +24,7 @@ typedef struct NdDs {
     float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
     NdTexM tm;                     /* nd_tex_set.c nd_tm: the load side of the texture model */
     int m1v, m1w, m1h;             /* NST2F: the shaded sprite record of tile 1 (m1.valid, m1.w, m1.h) */
-    unsigned char zslot;           /* NAT5T: a zcol texrect was seen (nd_ws zslot_on) */
+    unsigned char zslot;           /* NAT5T: a zcol texrect was seen (nd_c0 zslot_on) */
     uint8_t sc_lost, sc_dirty;     /* NST2J: core 1 view of !sc_ok and sc_sig != sc_sig_now() (nd_comb.c:342); not in ds_fields */
 } NdDs;
 extern NdDs nd_ds;

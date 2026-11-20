@@ -256,11 +256,11 @@ void nd_rtex_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (r
     r_end(dbg); }
 void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
     nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; ((NdNapiRun)(uintptr_t)r[1])(r + 2); } /* NSET1: r[1] the applier, r[2], r[3] its values (core 1) */
-void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ap->oml & m)) nd_ws.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */ /* NWS4B */
-void nd_prim_run(const uint32_t* r) { if (nd_ap->in.prim == r[1] && (uint8_t)nd_ap->plod == (uint8_t)r[0]) { pm_gpu_set_prim(nd_ap->in.prim, r[0]); nd_ws.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */ /* NWS4B */
+void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ap->oml & m)) nd_c0.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */ /* NWS4B */
+void nd_prim_run(const uint32_t* r) { if (nd_ap->in.prim == r[1] && (uint8_t)nd_ap->plod == (uint8_t)r[0]) { pm_gpu_set_prim(nd_ap->in.prim, r[0]); nd_c0.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */ /* NWS4B */
 void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep_mw = r[1]; nd_epk_mk++; gv_epoch++; } /* NAT6C: nr_ctl MISC_EP */
 void nd_cbd_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6C: nr_set of a pure combine unit at ep_stream, ex_depth 0 */
-static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ap->in.omode_h & a)) nd_ws.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ap->oml & a)) nd_ws.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ap->in.prim == b && (uint8_t)nd_ap->plod == (uint8_t)a) { pm_gpu_set_prim(nd_ap->in.prim, a); nd_ws.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */ /* NWS4B */
+static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ap->in.omode_h & a)) nd_c0.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ap->oml & a)) nd_c0.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ap->in.prim == b && (uint8_t)nd_ap->plod == (uint8_t)a) { pm_gpu_set_prim(nd_ap->in.prim, a); nd_c0.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */ /* NWS4B */
 static void cp_unit(unsigned dbg, const uint32_t* u, unsigned m, int mk) { const unsigned id = u[0] & 0xffu; const NdNapiRun f = (NdNapiRun)(uintptr_t)u[1]; int cut = 1; /* NSET2: u the slot, u + 2 the values */ /* NAT6D2: one copy state unit, nr_set and ls_run under NAT6D1 */
     if (m == 2u) { if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) return;
         if (id == ND_FS_OMH || id == ND_FS_TEXTURE) { f(u + 2); return; } if (id == ND_FS_GEOM) cut = 0; else cp_vside(u); } /* NSET2 */
@@ -436,7 +436,7 @@ static inline void* ptr_res(u32 w) {
     if (!w) return NULL;
     if (is_host(w)) return (void*)w;
     unsigned seg = (w >> 24) & 0xff;
-    if (seg < 16 && nd_ws.segbase[seg]) return (void*)(nd_ws.segbase[seg] + (w & 0x00ffffffu));
+    if (seg < 16 && nd_c0.segbase[seg]) return (void*)(nd_c0.segbase[seg] + (w & 0x00ffffffu));
     /* SW1: an N64 K0 or K1 address (OS_PHYSICAL_TO_K0 of a static buffer: the camera projection matrix of the credits parade) names host memory with the top bits set */
     if ((w & 0xc0000000u) == 0x80000000u && is_host(w & 0x1fffffffu)) return (void*)(w & 0x1fffffffu);
     return (void*)w;
@@ -446,7 +446,7 @@ void pm_gbi_init(void) {
     if (pm_c2own < 0) pm_c2own = pm_debug_has("c2own"); /* CORE2-3a: ownership check (nd_wq.c) */
     nd_mtx_reset();
     memset(vert_live, 0, sizeof vert_live);
-    nd_ws.geom = G_SHADE | G_SHADING_SMOOTH;
+    nd_c0.geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
 }
 /* R5B: a G_MOVEMEM light that writes the values already in lt[slot] changes nothing. The same op also runs lit_freeze, which

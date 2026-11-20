@@ -51,20 +51,20 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
     const uint32_t mh = (nd_ap->in.omode_h & ~p->omh_m) | (p->omh & p->omh_m); /* NWS4B */
     const uint32_t ml = (nd_ap->oml & 7u) | (p->oml & ~7u); /* NWS4B */
     if (((mh >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* COPY and FILL rectangles have their own span rules */
-    if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
+    if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_c0.geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
     {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
         const unsigned old_tf = nd_ap->in.omode_h & (3u << 12); /* NWS4B */
-        nd_ws.omode_h = mh; nd_ws.om_kh |= p->omh_m;
-        nd_ws.omode_l = ml; nd_ws.om_kl |= ~7u;
-        if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
+        nd_c0.omode_h = mh; nd_c0.om_kh |= p->omh_m;
+        nd_c0.omode_l = ml; nd_c0.om_kl |= ~7u;
+        if ((nd_c0.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
             pm_gpu_flush();
-            pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
+            pm_tex_set_filter((nd_c0.omode_h & (3u << 12)) != 0);
         }
     }
-    if (nd_ap->in.w0 != p->cw0 || nd_ap->in.w1 != p->cw1) { if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1) pm_gpu_flush(); nd_ws.comb_w0 = p->cw0; nd_ws.comb_w1 = p->cw1; } /* NWS4D: POND 3a flush and the memo */
+    if (nd_ap->in.w0 != p->cw0 || nd_ap->in.w1 != p->cw1) { if (nd_c0.comb_w0 != p->cw0 || nd_c0.comb_w1 != p->cw1) pm_gpu_flush(); nd_c0.comb_w0 = p->cw0; nd_c0.comb_w1 = p->cw1; } /* NWS4D: POND 3a flush and the memo */
     pm_gpu_set_prim(prim, 0u);
-    nd_ws.prim = prim; nd_ws.prim_lod = 0u;
-    nd_ws.envc = env;
+    nd_c0.prim = prim; nd_c0.prim_lod = 0u;
+    nd_c0.envc = env;
     const NdCombOut* o = nd_snap_dir_o(); /* NDR2D: the core 1 decision (nd_snap_pso) */
     if (!o || (o->plan_on && (o->plan.uses_tex1 || o->plan.uses_noise)) || o->pat) return 0; /* the ok test of the former pso decision: nothing it reads is changed */
     {   /* what nd_comb_sync does with the decision (scm_replay) */
@@ -94,10 +94,10 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
 
 /* Tile 0 = d: the state nd_tsz_set leaves for the bind (origin, quarter texel offsets, the repeated-load record) and the bind. */
 int nd_direct_tex(const NdBindDesc* d) {
-    nd_ws.tile_x0 = d->x0;
-    nd_ws.tile_y0 = d->y0;
-    nd_ws.tile_fx = (float)(d->sz[0] & 3) * 0.25f; /* PT38 */
-    nd_ws.tile_fy = (float)(d->sz[1] & 3) * 0.25f;
+    nd_c0.tile_x0 = d->x0;
+    nd_c0.tile_y0 = d->y0;
+    nd_c0.tile_fx = (float)(d->sz[0] & 3) * 0.25f; /* PT38 */
+    nd_c0.tile_fy = (float)(d->sz[1] & 3) * 0.25f;
     tsz_last.ok = 0;
     tsz_last.src = (const u8*)d->src; tsz_last.fmt = d->fmt; tsz_last.siz = d->siz; tsz_last.w = d->w; tsz_last.h = d->h;
     tsz_last.stride = d->stride; tsz_last.pal = d->pal; tsz_last.pal_n = d->pal_n;
@@ -115,8 +115,8 @@ void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     gp3_t0_surv();
     pm_tex_size(&tw, &th);
     {
-        float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
-        float t0 = ((float)(s16)(hs & 0xffff) / 32.f - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
+        float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)nd_c0.tile_x0 - nd_c0.tile_fx) / (float)tw;
+        float t0 = ((float)(s16)(hs & 0xffff) / 32.f - (float)nd_c0.tile_y0 - nd_c0.tile_fy) / (float)th;
         float dsdx = (float)(s16)(hd >> 16) / 1024.f;
         float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
         float width = (float)(xh - xl) / 4.f;
@@ -130,7 +130,7 @@ void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
 
 void nd_direct_end(void) {
     ens_clear();
-    nd_ws.cur_tile = -1;
+    nd_c0.cur_tile = -1;
     nd_dq_on = 0;
     nd_sr_forget();
     gv_epoch++; /* the ops of the stream path each raise it: the first triangle after this draw takes its state again */
@@ -153,7 +153,7 @@ int nd_glyph_can(int texW) { /* NWS4B */
     if (texW < 16 || (texW & 15)) return 0;
     if (nd_direct_ready() != 1) return 0;
     if (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* NWS4B */
-    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0; /* NWS4B */
+    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_c0.geom & G_ZBUFFER)) return 0; /* NWS4B */
     if (nd_ap->in.use_t1 || nd_ap->in.dual_on || nd_cw_box_prod(nd_ap->in.w0, nd_ap->in.w1) || box_pat) return 0; /* NWS2 */ /* NWS4B */
     return 1;
 }
@@ -174,8 +174,8 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
     dual_bind();
     pm_tex_size(&tw, &th);
     {
-        const float s0 = ((float)(s16)s / 32.f - (float)nd_ws.tile_x0 - nd_ws.tile_fx) / (float)tw;
-        const float t0 = ((float)(s16)t / 32.f - (float)nd_ws.tile_y0 - nd_ws.tile_fy) / (float)th;
+        const float s0 = ((float)(s16)s / 32.f - (float)nd_c0.tile_x0 - nd_c0.tile_fx) / (float)tw;
+        const float t0 = ((float)(s16)t / 32.f - (float)nd_c0.tile_y0 - nd_c0.tile_fy) / (float)th;
         const float dsdx = (float)(s16)dsdx_ / 1024.f;
         const float dtdy = (float)(s16)dtdy_ / 1024.f;
         const float width = (float)(xh - xl) / 4.f;
