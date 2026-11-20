@@ -1,0 +1,2 @@
+base spot_mac01_drec at 95971bdaa: same inputs as ebc6ef28f: copied. No build, no run.
+base spot_mac01_drec at 95971bdaa: stored, 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\95971bdaa791451ff32ef0aab2f42c5eecc43d1a\spot_mac01_drec. No build, no run.
