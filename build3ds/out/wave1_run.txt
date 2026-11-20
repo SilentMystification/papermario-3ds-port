@@ -1,0 +1,80 @@
+list of 4 benches on one kept slot: spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec
+QUEUE: 0 waiting, 1 running or granted, 2 Azahar slots
+LIST: 4 scenarios, one kept slot, warm restart between them: spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec
+LIST: start spot_mac01_drec at 03:40:03
+queue: position 1 of 1 waiting (lane 'WAVE1', speed normal, scenario spot_mac01_drec, want slot any)
+queue: granted slot 2 after 0.2 s (position 1 at enqueue)
+AZT: scenario spot_mac01_drec, row WAVE1, lane 'WAVE1', slot 2, cap 35 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.1 s (deadline kind warm, 30 s)
+azslot: slot 2 pid 28580 warm
+run: rc 0: slot2: stopped after 4s: matched 'drec f\d+ draws \d+ bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.8 s; end at 4.2 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 2; shot files 0 of 0 full
+cap high: spot_mac01_drec cap 35 until 3.8
+PASS  prof on: #15 prof=1 log=off
+PASS  drec: #61 drec f201 draws 170 bytes 277942
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\logs\spot_mac01_drec.txt (copy of this run's log; slot 2)
+SUBJECT: Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\shots\spot_mac01_drec\WAVE1\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\lane-WAVE1\slot2\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2378578, build 7439, commit 728348b9a9
+  scene -                              windows   0 fps - ft -
+LIST: spot_mac01_drec rc 0, wall 14.9 s
+LIST: start entcape_kmr03_drec at 03:40:18
+queue: position 1 of 1 waiting (lane 'WAVE1', speed normal, scenario entcape_kmr03_drec, want slot 2)
+queue: granted slot 2 after 0.2 s (position 1 at enqueue)
+AZT: scenario entcape_kmr03_drec, row WAVE1, lane 'WAVE1', slot 2, cap 25 s, deadline 20 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 20 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 20 s)
+azslot: slot 2 pid 28580 warm
+run: rc 0: slot2: stopped after 4s: matched 'drec f201 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.7 s; end at 4.1 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 2; shot files 0 of 0 full
+PASS  warp: #131 warp: kmr_03 entry 0 (area 0 map 2) story -107 flag 0
+PASS  drec: #216 drec f201 draws 172 bytes 285334
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\logs\entcape_kmr03_drec.txt (copy of this run's log; slot 2)
+SUBJECT: ENTCAPE gate: kmr_03 tour spot (96 0 96) with the heart block at 130 60 0 (kmr_03/entity.c:68), cold det start, drec frames 200 and 201.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\shots\entcape_kmr03_drec\WAVE1\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\lane-WAVE1\slot2\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2379405, build 7439, commit 728348b9a9
+  scene -                              windows   0 fps - ft -
+LIST: entcape_kmr03_drec rc 0, wall 12.1 s
+LIST: start fxparts_drec at 03:40:30
+queue: position 1 of 1 waiting (lane 'WAVE1', speed normal, scenario fxparts_drec, want slot 2)
+queue: granted slot 2 after 0.2 s (position 1 at enqueue)
+AZT: scenario fxparts_drec, row WAVE1, lane 'WAVE1', slot 2, cap 25 s, deadline 20 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 20 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 20 s)
+azslot: slot 2 pid 28580 warm
+run: rc 0: slot2: stopped after 9s: matched 'drec f676 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 9.1 s; end at 9.6 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 2; shot files 0 of 0 full
+PASS  warp: #132 warp: mac_01 entry 0 (area 1 map 2) story -128 flag 0
+PASS  drec: #480 drec f676 draws 930 bytes 1629177
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\logs\fxparts_drec.txt (copy of this run's log; slot 2)
+SUBJECT: NREC4 parts effects: the 7 nd_parts_add effects (shimmer_burst 50, effect_3D 55, snowfall 63, snaking_static 81, water_block 84, embers 105, pink_sparkles 124) on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 412 to 676, step 44), no shots.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\shots\fxparts_drec\WAVE1\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\lane-WAVE1\slot2\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2380232, build 7439, commit 728348b9a9
+  scene -                              windows   0 fps - ft -
+LIST: fxparts_drec rc 0, wall 17.6 s
+LIST: start wscmb_pause_drec at 03:40:48
+queue: position 1 of 1 waiting (lane 'WAVE1', speed normal, scenario wscmb_pause_drec, want slot 2)
+queue: granted slot 2 after 0.1 s (position 1 at enqueue)
+AZT: scenario wscmb_pause_drec, row WAVE1, lane 'WAVE1', slot 2, cap 30 s, deadline 25 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 25 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 25 s)
+azslot: slot 2 pid 28580 warm
+run: rc 0: slot2: stopped after 8s: matched 'drec f141 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 8.0 s; end at 8.4 s; 0.5 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 2; shot files 0 of 0 full
+cap high: wscmb_pause_drec cap 30 until 8
+PASS  warp: #132 warp: mac_00 entry 4 (area 1 map 1) story -107 flag 0
+PASS  pause mode: #187 game mode 10 frame 96
+PASS  drec: #294 drec f141 draws 206 bytes 339600
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\logs\wscmb_pause_drec.txt (copy of this run's log; slot 2)
+SUBJECT: Toad Town (preset toad), START opens the pause menu at frame 80, cold det start with the drec switch: the draw records of frames 140 and 141 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\azt\shots\wscmb_pause_drec\WAVE1\drec.txt
+LOG CHECKS PASS (3 of 3). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\WAVE1\build3ds\lane-WAVE1\slot2\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2381059, build 7439, commit 728348b9a9
+  scene -                              windows   0 fps - ft -
+LIST: wscmb_pause_drec rc 0, wall 18.6 s
+LIST DONE: wall 63.3 s. spot_mac01_drec rc 0 14.9 s; entcape_kmr03_drec rc 0 12.1 s; fxparts_drec rc 0 17.6 s; wscmb_pause_drec rc 0 18.6 s
+list: azt.ps1 exit 0. azt.ps1 wrote each run record (ingest-last) to 3ds/logs/perf/runs.jsonl; its LIST lines give the wall times.

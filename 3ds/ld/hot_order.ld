@@ -61,7 +61,6 @@
 		*(.text.one)  /* 783.7 calls/frame, 36 B */
 		*(.text.kick_check)  /* 70.0 calls/frame, 100 B */
 		*(.text.nd_native_submit)  /* 70.0 calls/frame, 2412 B */
-		*(.text.pm_gbi_draw_note)  /* 70.0 calls/frame, 132 B */
 		*(.text.prog_use)  /* 70.0 calls/frame, 212 B */
 		*(.text.nd_shadow_reset)  /* 44.3 calls/frame, 28 B */
 		*(.text.uni)  /* 32.7 calls/frame, 96 B */
@@ -289,7 +288,6 @@
 		*(.text.ent_find)  /* 2.0 calls/frame, 124 B */
 		*(.text.ent_gdl)  /* 2.0 calls/frame, 532 B */
 		*(.text.nd_rec_close)  /* 2.0 calls/frame, 52 B */
-		*(.text.nd_rec_task)  /* 2.0 calls/frame, 12 B */
 		*(.text.noise_next)  /* 2.0 calls/frame, 44 B */
 		*(.text.pm_gpu_off_end)  /* 2.0 calls/frame, 152 B */
 		*(.text.pm_gpu_set_mvp)  /* 2.0 calls/frame, 436 B */

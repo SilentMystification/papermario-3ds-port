@@ -1,0 +1,18 @@
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+queue: position 1 of 1 waiting (lane 'CLEAN2', speed normal, scenario hudfb_drec, want slot any)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario hudfb_drec, row CLEAN2, lane 'CLEAN2', slot 1, cap 25 s, deadline 20 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 20 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.1 s (deadline kind warm, 20 s)
+azslot: slot 1 pid 27280 warm
+run: rc 0: slot1: stopped after 7s: matched 'drec f103 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 6.6 s; end at 7.0 s; 0.5 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+PASS  warp: #132 warp: mac_00 entry 4 (area 1 map 1) story -107 flag 0
+PASS  drec: #244 drec f103 draws 360 bytes 598042
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CLEAN2\build3ds\azt\logs\hudfb_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town pause menu, cold det start with drec: records of frames 102 and 103, where the HUD fallback copies run.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CLEAN2\build3ds\azt\shots\hudfb_drec\CLEAN2\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CLEAN2\build3ds\lane-CLEAN2\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2435650, build 7527, commit b73975a553
+  scene -                              windows   0 fps - ft -
+bench hudfb_drec: azt.ps1 exit 0. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl.

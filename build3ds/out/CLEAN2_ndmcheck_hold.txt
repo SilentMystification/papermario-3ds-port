@@ -1,0 +1,24 @@
+ndmcheck hold (CLEAN2 item 3). Entries still present after 3a:
+1:3ds/tools/bench_defs.json:1478:      "name": "spot_mac01_ndmcheck",
+8:3ds/tools/bench_defs.json:1946:      "name": "spot_mac00_ndmcheck",
+15:3ds/tools/bench_defs.json:2021:      "name": "spot_sbk56_ndmcheck",
+22:3ds/tools/bench_defs.json:2645:      "name": "spot_iwa10_ndmcheck",
+41:3ds/tools/bench_defs.json:7690:      "name": "tik19_water_ndmcheck",
+44:3ds/tools/bench_defs.json:7706:      "name": "tik19_wall_ndmcheck",
+47:3ds/tools/azt_scenarios.json:8292:      "name": "spot_mac01_ndmcheck",
+51:3ds/tools/azt_scenarios.json:8309:          "name": "ndmcheck window: eq above 0 and diff 0",
+55:3ds/tools/azt_scenarios.json:8703:      "name": "spot_mac00_ndmcheck",
+59:3ds/tools/azt_scenarios.json:8720:          "name": "ndmcheck window: eq above 0 and diff 0",
+62:3ds/tools/azt_scenarios.json:8752:      "name": "spot_sbk56_ndmcheck",
+66:3ds/tools/azt_scenarios.json:8769:          "name": "ndmcheck window: eq above 0 and diff 0",
+69:3ds/tools/azt_scenarios.json:9089:      "name": "spot_iwa10_ndmcheck",
+73:3ds/tools/azt_scenarios.json:9106:          "name": "ndmcheck window: eq above 0 and diff 0",
+79:3ds/tools/azt_scenarios.json:10598:          "name": "ndmcheck window: eq above 0 and diff 0",
+84:3ds/tools/azt_scenarios.json:10623:          "name": "ndmcheck window: eq above 0 and diff 0",
+91:3ds/tools/azt_scenarios.json:13114:      "name": "tik19_water_ndmcheck",
+94:3ds/tools/azt_scenarios.json:13139:      "name": "tik19_wall_ndmcheck",
+code: switch alive
+3ds/src/nd_recs.c:173:    int ndm = pm_gpu_ndm_on();
+3ds/src/nd_recs.c:256:    const int mkc = PMDL("mkchk"), full0 = mkc || mfr_on || pm_gpu_ndm_on();
+3ds/src/pm_gpu.c:3785:int pm_gpu_ndm_on(void) { if (ndm_on_v < 0) ndm_on_v = pm_debug_has("ndmcheck"); return ndm_on_v; }
+3ds/src/pm_gpu.c:3974:    if (!emit && pm_gpu_ndm_on()) { /* SBKW-2 diagnostic: the native desc size of the record, read by ndm_cmp against the walker */
