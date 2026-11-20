@@ -1317,6 +1317,29 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
  * is skipped: the command stream is the same. Uniform arrays not word aligned: always update. */
 #define C3D_UPD_FLAGS (0x4u | 0x8u | 0x10u | 0x20u | 0x40u | 0x80u | 0x100u | 0x200u | 0x400u | 0x4000u | 0x718000u | 0x20000u | 0x3800000u | 0xfc000000u)
 static unsigned updr[8]; /* DO3: why c3d_upd_needed said yes: 0 flag word, 1 light env, 2 fixed attr, 3 gas 7, 4 unaligned, 5 float uniform, 6 int or bool uniform */
+/* DO3: the dirty vertex float uniform rows go into the command buffer as native words (what C3Di_UpdateUniforms writes: the location word, then the rows in memory
+ * order), and their dirty bits are cleared; C3Di_UpdateContext then runs only for other reasons. The eye row is never sent (eye_put writes it): its bit is cleared.
+ * With the key patch on (nd_kp_on) citro3d keeps the path (kp_scan reads its words). Runs are cut at 32 rows (the length field of one write is 8 bits). */
+static void uni_native(void) {
+    bool* const dv = C3D_FVUnifDirty[GPU_VERTEX_SHADER];
+    if (u_eye >= 0) dv[u_eye] = false;
+    if (__builtin_expect(nd_kp_on, 0)) return;
+    for (unsigned i = 0; i < C3D_FVUNIF_COUNT;) {
+        if (!dv[i]) { i++; continue; }
+        unsigned e = i + 1;
+        while (e < C3D_FVUNIF_COUNT && e - i < 32u && dv[e]) e++;
+        u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff);
+        u32* o = cb + coff;
+        *o++ = 0x80000000u | i; *o++ = 0x2C0u | 0xFu << 16; /* one(): value, header (the pad is not needed: 2 words) */
+        const unsigned nw = 4u * (e - i);
+        *o++ = ((const u32*)&C3D_FVUnif[GPU_VERTEX_SHADER][i])[0]; *o++ = 0x2C1u | 0xFu << 16 | (nw - 1u) << 20;
+        for (unsigned k = 1; k < nw; k++) *o++ = ((const u32*)&C3D_FVUnif[GPU_VERTEX_SHADER][i])[k];
+        *o++ = 0; /* nw is even: the pad */
+        GPUCMD_SetBufferOffset(coff + (unsigned)(o - (cb + coff)));
+        for (unsigned k = i; k < e; k++) dv[k] = false;
+        i = e;
+    }
+}
 static int c3d_upd_needed(void) {
     const unsigned char* c = __C3D_Context;
     const unsigned gm = *(const unsigned*)(c + 412) & 7u;
@@ -1364,7 +1387,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; sc_shr++; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
     eyd_sync(); /* STEREO: before the update test (a change marks the uniform dirty) */
-    if (c3d_upd_needed()) { NDT_B(tu); if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false;
+    uni_native(); /* DO3 */
+    if (c3d_upd_needed()) { NDT_B(tu);
         if (__builtin_expect(nd_kp_on, 0)) { u32 *cb0, sz0, o0, *cb1, sz1, o1; GPUCMD_GetBuffer(&cb0, &sz0, &o0); C3Di_UpdateContext(); GPUCMD_GetBuffer(&cb1, &sz1, &o1); kp_scan(cb0, o0, o1); } /* INTERPB2: the uniform words citro3d wrote get their K patch */
         else C3Di_UpdateContext();
         NDT_E(tu, NDT_SUPD); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
