@@ -238,6 +238,13 @@ void nd_rec_spr(const void* rec, const void* geo) {
     memcpy(p + 2 + 2 * G_PM_SPR_WORDS, geo, 16u);
 }
 /* D3: the draw record of a static list (gbi_custom.h gPmEntDrawRecord) and the G_DL of that list. form: record word 2 w0 (1: the animator form, log). */
+static const NdDs* alt_s; /* NAT6E2: forward (tentative) definition, the initializer is below */
+static int ent_has_call(const NdNDev* nt) { if (!nt) return 1; for (unsigned i = 0; i < nt->nu; i++) if ((nt->u[2u * i] >> 24) == ND_FS_CALL) return 1; return 0; } /* NAT6E2: no device entry counts as a call */
+static uint32_t* ent_m1(const NdDs* s0, const NdNDev* nt, const void* list) { /* NAT6E2: the mode 1 copy (calls nested) of an entity list, from the state before the record */
+    static NdDs es; es = *s0; const NdDs* const sa = alt_s; const unsigned char sr = nd_alt_raw_on, sl = nd_lsc_on; uint32_t ab[2];
+    nd_lsc_on = 0; uint32_t* const br = nd_alt_open(); alt_s = &es; nd_alt_raw_on = 1;
+    if (nt) nd_ds_pairs0(&es, nt->u, nt->nu); else nd_ds_list(&es, list, 0);
+    nd_alt_close(br, ab); nd_alt_raw_on = sr; alt_s = sa; nd_lsc_on = sl; return br; }
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form) {
     NdW2 r[G_PM_ENT_WORDS + 1];
     gPmEntDrawRecord(r, list, segid, varray);
@@ -250,9 +257,11 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 2u, 0);
     p[1] = 0;
     memcpy(p + 2, r, sizeof r);
+    const NdNDev* const ent_nt = nd_ntab_find(list); const int ent_c = ent_has_call(ent_nt); static NdDs ent_s0; if (ent_c) ent_s0 = nd_ds; /* NAT6E2: the state before the flat copy */
     uint32_t* const x = p + 2u + 2u * (G_PM_ENT_WORDS + 1u); uint32_t ab[2]; x[0] = x[1] = 0u; uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 2; nd_alt_et_begin(); /* NAT5A */
     nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0);
     nd_alt_raw_on = 0; nd_alt_close(br, ab); x[1] = (uint32_t)(uintptr_t)nd_alt_et_end(ab[1]); /* NAT5A */
+    x[0] = (uint32_t)(uintptr_t)(ent_c ? ent_m1(&ent_s0, ent_nt, list) : br); /* NAT6E2: the copy for the G_DL of a refused record */
     nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at nd_eg_run or walk_call) NREC2: the list snap table in header word 1 */
 }
 void nd_rec_ent(const void* rec) {
