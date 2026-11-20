@@ -16,6 +16,7 @@
 #include "nd_ops.h"
 #include "nd_op.h"
 #include "nd_fs.h"
+#include "nd_sv.h" /* NSET1 */
 extern int pm_wide; /* WIDE4: set_scissor reads signed x edges with wide on */
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
