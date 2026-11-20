@@ -1,0 +1,671 @@
+texkey_bake: cache hit
+gen_shapes: cache hit
+gen_gfx_tab: cache hit
+gen_pso_tab: cache hit
+STAGE key-inputs 2 s
+STAGE gen 0 s
+STAGE key 0 s
+buildslot: slot 1 taken
+STAGE slot-wait 1 s
+sync: 9 changed, 0 deleted (workspace ws1)
+STAGE asset-check 0 s
+STAGE romfs 1 s
+STAGE sync 0 s
+-- Configuring done (0.1s)
+-- Generating done (0.2s)
+-- Build files have been written to: /work/build
+STAGE configure 0 s
+[0/2] Re-checking globbed directories...
+[1/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_decide.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_decide.c:19:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[2/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_dlc.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/nd_dlc.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[3/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_emit.o
+[4/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_cen.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_cen.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_cen.c:23:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[5/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_model_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_model_set.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[6/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_mtx.o
+[7/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_model.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/nd_model.c:10:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_model.c:11:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[8/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_psokey.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_psokey.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[9/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_mtx_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_mtx_set.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_mtx_set.c:13:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[10/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_psolk.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_psolk.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[11/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_pso_tab.o
+[12/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_seam.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/nd_seam.c:16:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[13/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_core.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/include/nd_snap.h:8,
+                 from /src/3ds/src/nd_core.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[14/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_msnap_in.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/src/nd_msnap_in.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[15/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_sprite.o
+[16/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_msnap.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_msnap.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[17/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_state.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_tgt.h:7,
+                 from /src/3ds/src/nd_state.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[18/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_target.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_target.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_target.c:15:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[19/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_tex.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/src/nd_tex.c:10:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_tex.c:15:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[20/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_texwin.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_texwin.c:4:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[21/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_tmpl.o
+[22/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_scomp.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_scomp.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[23/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_gtab.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/nd_gtab.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_gtab.c:90:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[24/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_snap_in.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/src/nd_snap_in.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[25/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_gpu_rect.o
+[26/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_gpu.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/pm_gpu.c:15:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+/src/3ds/src/pm_gpu.c: In function 'pm_gpu_mfr_rec':
+/src/3ds/src/pm_gpu.c:4080:62: warning: passing argument 1 of 'nd_mc_nat' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 4080 |                 if (e && e->n) { const NdNatC* q = nd_mc_nat(e, 0u);
+      |                                                              ^
+In file included from /src/3ds/src/pm_gpu.c:14:
+/src/3ds/include/nd.h:457:27: note: expected 'NdMEnt *' but argument is of type 'const NdMEnt *'
+  457 | NdNatC* nd_mc_nat(NdMEnt* e, unsigned j);                      /* draw j of an entry (j < e->n) */
+      |                   ~~~~~~~~^
+[27/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_keymiss.o
+[28/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_nusys.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/../include/nu/nusys.h:23,
+                 from /src/3ds/src/pm_nusys.c:3:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[29/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_set.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_set.c:15:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[30/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_phase.o
+[31/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_direct.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_direct.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[32/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_tex.o
+/src/3ds/src/pm_tex.c: In function 'pm_tex_bind_slot':
+/src/3ds/src/pm_tex.c:963:23: warning: passing argument 2 of 'pm_c3d_texbind' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+  963 |     pm_c3d_texbind(0, tp);
+      |                       ^~
+/src/3ds/src/pm_tex.c:19:40: note: expected 'C3D_Tex *' but argument is of type 'const C3D_Tex *'
+   19 | void pm_c3d_texbind(int unit, C3D_Tex* t) { if (unit >= 0 && unit < 3) c3d_unit[unit] = t; C3D_TexBind(unit, t); }
+      |                               ~~~~~~~~~^
+/src/3ds/src/pm_tex.c: In function 'pm_tex_bind':
+/src/3ds/src/pm_tex.c:2036:22: warning: passing argument 1 of 'C3D_TexSetFilter' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2036 |     C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : ff, PMDL("texnear") ? GPU_NEAREST : ff);
+      |                      ^~
+In file included from /opt/devkitpro/libctru/include/citro3d.h:23,
+                 from /src/3ds/src/pm_tex.c:3:
+/opt/devkitpro/libctru/include/c3d/texture.h:157:46: note: expected 'C3D_Tex *' but argument is of type 'const C3D_Tex *'
+  157 | static inline void C3D_TexSetFilter(C3D_Tex* tex, GPU_TEXTURE_FILTER_PARAM magFilter, GPU_TEXTURE_FILTER_PARAM minFilter)
+      |                                     ~~~~~~~~~^~~
+/src/3ds/src/pm_tex.c:2037:20: warning: passing argument 1 of 'C3D_TexSetWrap' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2037 |     C3D_TexSetWrap(tp, ws, wt);
+      |                    ^~
+/opt/devkitpro/libctru/include/c3d/texture.h:169:44: note: expected 'C3D_Tex *' but argument is of type 'const C3D_Tex *'
+  169 | static inline void C3D_TexSetWrap(C3D_Tex* tex, GPU_TEXTURE_WRAP_PARAM wrapS, GPU_TEXTURE_WRAP_PARAM wrapT)
+      |                                   ~~~~~~~~~^~~
+/src/3ds/src/pm_tex.c:2040:23: warning: passing argument 2 of 'pm_c3d_texbind' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2040 |     pm_c3d_texbind(0, tp);
+      |                       ^~
+/src/3ds/src/pm_tex.c:19:40: note: expected 'C3D_Tex *' but argument is of type 'const C3D_Tex *'
+   19 | void pm_c3d_texbind(int unit, C3D_Tex* t) { if (unit >= 0 && unit < 3) c3d_unit[unit] = t; C3D_TexBind(unit, t); }
+      |                               ~~~~~~~~~^
+/src/3ds/src/pm_tex.c: In function 'pm_tex_bind_aux':
+/src/3ds/src/pm_tex.c:2122:22: warning: passing argument 1 of 'C3D_TexSetFilter' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2122 |     C3D_TexSetFilter(tp, PMDL("texnear") ? GPU_NEAREST : filt_now(), PMDL("texnear") ? GPU_NEAREST : filt_now());
+      |                      ^~
+/opt/devkitpro/libctru/include/c3d/texture.h:157:46: note: expected 'C3D_Tex *' but argument is of type 'const C3D_Tex *'
+  157 | static inline void C3D_TexSetFilter(C3D_Tex* tex, GPU_TEXTURE_FILTER_PARAM magFilter, GPU_TEXTURE_FILTER_PARAM minFilter)
+      |                                     ~~~~~~~~~^~~
+/src/3ds/src/pm_tex.c:2123:20: warning: passing argument 1 of 'C3D_TexSetWrap' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2123 |     C3D_TexSetWrap(tp, ws, wt);
+      |                    ^~
+/opt/devkitpro/libctru/include/c3d/texture.h:169:44: note: expected 'C3D_Tex *' but argument is of type 'const C3D_Tex *'
+  169 | static inline void C3D_TexSetWrap(C3D_Tex* tex, GPU_TEXTURE_WRAP_PARAM wrapS, GPU_TEXTURE_WRAP_PARAM wrapT)
+      |                                   ~~~~~~~~~^~~
+/src/3ds/src/pm_tex.c:2125:23: warning: passing argument 2 of 'pm_c3d_texbind' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 2125 |     pm_c3d_texbind(1, tp);
+      |                       ^~
+/src/3ds/src/pm_tex.c:19:40: note: expected 'C3D_Tex *' but argument is of type 'const C3D_Tex *'
+   19 | void pm_c3d_texbind(int unit, C3D_Tex* t) { if (unit >= 0 && unit < 3) c3d_unit[unit] = t; C3D_TexBind(unit, t); }
+      |                               ~~~~~~~~~^
+[33/51] Building C object CMakeFiles/pm_3ds.dir/src/src/entity_model.o
+[34/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_xf.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_xf.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[35/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_recs.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_recs.c:4:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_recs.c:12:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[36/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_rect.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_rect.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[37/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_comb.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_comb.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_comb.c:19:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[38/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_snap.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_snap.c:10:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[39/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_ent.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_ent.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_ent.c:21:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[40/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_wdog.o
+[41/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_geom.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_geom.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_geom.c:19:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[42/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_ds.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/src/nd_ds.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/src/nd_ds.c:14:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[43/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_walk.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_walk.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_walk.c:16:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[44/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_tex_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/src/nd_tex_set.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_tex_set.c:11:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[45/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_rec.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_rec.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_rec.c:10:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[46/51] Building C object CMakeFiles/pm_3ds.dir/src/nd_shape.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_shape.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_shape.c:18:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[47/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_options.o
+[48/51] Building C object CMakeFiles/pm_3ds.dir/src/pm_main.o
+[49/51] Linking C executable pm_3ds.elf
+[50/51] Generating pm_3ds.smdh
+[51/51] Building 3DSX executable target pm_3ds_3dsx
+STAGE compile-link 5 s
+STAGE copy-out 1 s
+memcheck: static 21576 margin 410 device o3ds_xl OK
+  sum KB: commit 65536 - static 21576 - loader 8 - linear 14208 - soc 128 - leave 3458 - rom_need 25747 = margin 410 (safety 256; commit_kb measured, loader_kb measured)
+  sections KB: .text 3310 .rodata 548 .data 8794 .bss 8912
+  largest .data/.bss:
+       3010 KB  .bss                                     heaps3.o
+        468 KB  .bss                                     heaps.o
+        416 KB  .bss                                     texture_memory.o
+        368 KB  .bss.mc_keyw                             nd_model.o
+        257 KB  .bss.D_80164000                          main_loop.o
+        256 KB  .bss.gBackgroundImage                    pm_buffers.o
+        256 KB  .bss.slots                               pm_log.o
+        256 KB  .bss.ring                                pm_log.o
+        256 KB  .bss.gMapShapeData                       pm_map.o
+        224 KB  .bss.D_80200000                          pm_map.o
+hotset: detached, its line goes to build3ds/lane-CNTFIX/hotset_line.txt
+STAGE tail 1 s

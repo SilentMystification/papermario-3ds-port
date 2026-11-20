@@ -1,0 +1,4 @@
+c0gate interp_syms 
+c0gate state_syms nd_c0
+c0gate calls 0 interp 0 state 1
+TIP rc 0

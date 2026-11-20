@@ -1,0 +1,18 @@
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+queue: position 1 of 1 waiting (lane 'CNTFIX', speed normal, scenario entcape_kmr03_drec, want slot any)
+queue: granted slot 1 after 0.2 s (position 1 at enqueue)
+AZT: scenario entcape_kmr03_drec, row CNTFIX, lane 'CNTFIX', slot 1, cap 25 s, deadline 20 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 20 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 20 s)
+azslot: slot 1 pid 27280 warm
+run: rc 0: slot1: stopped after 4s: matched 'drec f201 draws [1-9]\d* bytes \d+' (Azahar running; stopped by this run) warm kept; until at 3.7 s; end at 4.1 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.2 s; slot 1; shot files 0 of 0 full
+PASS  warp: #132 warp: kmr_03 entry 0 (area 0 map 2) story -107 flag 0
+PASS  drec: #215 drec f201 draws 172 bytes 285334
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CNTFIX\build3ds\azt\logs\entcape_kmr03_drec.txt (copy of this run's log; slot 1)
+SUBJECT: ENTCAPE gate: kmr_03 tour spot (96 0 96) with the heart block at 130 60 0 (kmr_03/entity.c:68), cold det start, drec frames 200 and 201.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CNTFIX\build3ds\azt\shots\entcape_kmr03_drec\CNTFIX\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CNTFIX\build3ds\lane-CNTFIX\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2455506, build 7567, commit b17ad66e08
+  scene -                              windows   0 fps - ft -
+bench entcape_kmr03_drec: azt.ps1 exit 0. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl.
