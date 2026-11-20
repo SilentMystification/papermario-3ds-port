@@ -60,10 +60,11 @@ static float wrap_period_shift(float st, unsigned sl, unsigned cm, unsigned mask
  * shaded-sprite code draws its 16-entry shadow/highlight palette this way. Returns 1 if done. */
 static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
     int x0 = xl >> 2, y0 = yl >> 2, x1 = xh >> 2, y1 = yh >> 2;
-    if (x0 < nd_c0.sci_x0) x0 = nd_c0.sci_x0;
-    if (y0 < nd_c0.sci_y0) y0 = nd_c0.sci_y0;
-    if (x1 > nd_c0.sci_x1) x1 = nd_c0.sci_x1;
-    if (y1 > nd_c0.sci_y1) y1 = nd_c0.sci_y1;
+    const int* const sc = pm_gpu_sci_raw(); /* NC0S */
+    if (x0 < sc[0]) x0 = sc[0];
+    if (y0 < sc[1]) y0 = sc[1];
+    if (x1 > sc[2]) x1 = sc[2];
+    if (y1 > sc[3]) y1 = sc[3];
     float s0 = (float)(s16)(hs >> 16) / 32.f;
     float t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f;
@@ -163,7 +164,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
  * old block with the same expressions in the same order (byte-equal by construction). */
 static int nd_texlog_on = -1; /* texlog debug switch: -1 until the first texrect that needs it */
 __attribute__((noinline, cold)) static void nd_texrect_depth(u32 hs) {
-    pm_depth_query(nd_c0.timg, (int)((s16)(hs >> 16) >> 5), nd_c0.sci_x0);
+    pm_depth_query(nd_c0.timg, (int)((s16)(hs >> 16) >> 5), pm_gpu_sci_raw()[0]);
 }
 __attribute__((noinline, cold)) static void nd_texrect_log(int xl, int yl, int xh, int yh) { /* NWS4B */
     /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */

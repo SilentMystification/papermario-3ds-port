@@ -63,6 +63,7 @@ static float game_mvp[4][4];
 static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
 static int gsci_x0, gsci_y0, gsci_x1 = 320, gsci_y1 = 240;
+static int gsci_r[4] = { 0, 0, 320, 240 }; /* NC0S: the raw words of the last scissor unit (before the clamp) */
 static C3D_Mtx projection;
 /* PT07: the RDP NOISE input. A 64 x 64 L8 texture of random bytes (fixed seed) on unit 2. The vertex shader gives it the screen position
  * (one texel per pixel) plus a random offset per drawn frame, so every pixel reads a new random value every frame. */
@@ -4568,7 +4569,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     if (sn) { sw_geo = sv[4]; sw_cw0 = sv[5]; sw_cw1 = sv[6]; }
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
-    { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); extern unsigned nd_snap_primz(void); /* NAT4H */ const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; nd_c0.prim_z = nd_snap_primz(); /* NAT4H */ } } /* NAT2K: the sprite snap decision */
+    { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); /* NAT4H */ const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; /* NAT4H */ } } /* NAT2K: the sprite snap decision */
     { NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv, &gc); } /* NWS4C */
     if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; }
         if (PMDL("shadecen")) { shc[12]++; for (int q = 0; q < 3; q++) { const int v = (int)(dual_f[q] * 255.f); if (v < shd_min[q]) shd_min[q] = v; if (v > shd_max[q]) shd_max[q] = v; } } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */
@@ -4670,6 +4671,7 @@ void pm_gpu_dcsum_frame(unsigned frame) {
 }
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
+    gsci_r[0] = x0; gsci_r[1] = y0; gsci_r[2] = x1; gsci_r[3] = y1; /* NC0S */
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 > 320) x1 = 320;
@@ -4684,6 +4686,7 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     gsci_x1 = x1;
     gsci_y1 = y1;
 }
+const int* pm_gpu_sci_raw(void) { return gsci_r; } /* NC0S */
 
 
 

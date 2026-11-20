@@ -101,6 +101,7 @@ void pm_gpu_dcsum_frame(unsigned frame); /* DS0: per drawn frame; prints the dcs
 void pm_gpu_gbiprof_report(unsigned frames);
 /* N64 pixels, y down. Clipped to the 320x240 picture inside the 400-wide target. */
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1);
+const int* pm_gpu_sci_raw(void); /* NC0S: the raw words of the last scissor unit (gsci_r) */
 
 /* V05: draws go to an off-screen RGBA image for the colour image at base (width stride pixels) until pm_gpu_off_end. */
 int pm_gpu_off_begin(const void* base, int stride, int siz, int band_h); /* siz: 3 = 32 bit, 2 = 16 bit, 1 = 8 bit. band_h: 0 whole slot cleared, else only the band of the rows 0..band_h */
