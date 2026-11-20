@@ -16,6 +16,7 @@ interp box_fold_sync
 interp sc_adopt
 interp ds_take
 state nd_ws
+state nd_c0
 state conv_k4
 state keyc
 state keys
