@@ -4,6 +4,7 @@
 #include "hud_element.h"
 #include "camera.h"
 #include "nd_geo.h"
+#include "nd.h"
 
 extern int pm_wide; /* F07-2 */
 /* PT53, PT54: with wide the standard game view (12 20 296 200) becomes the whole 320 x 240 picture. The vertical field of view stays the original one, so the 200 rows fill the 240 rows (zoom 6 / 5).
@@ -220,18 +221,18 @@ void render_frame(s32 isSecondPass) {
         if (!(camera->flags & CAMERA_FLAG_ORTHO)) {
             if (gCurrentCamID != CAM_HUD) {
                 if (!(camera->flags & CAMERA_FLAG_RENDER_ENTITIES)) {
-                    render_entities();
+                    { NDT_B(tg_e); render_entities(); NDT_E(tg_e, NDT_GENT); }
                 }
                 if (!(camera->flags & CAMERA_FLAG_RENDER_MODELS)) {
-                    render_models();
+                    { NDT_B(tg_m); render_models(); NDT_E(tg_m, NDT_GMDL); }
                 }
-                render_player();
-                render_npcs();
-                render_workers_scene();
-                render_effects_scene();
-                execute_render_tasks();
+                { NDT_B(tg_p); render_player(); NDT_E(tg_p, NDT_GPLY); }
+                { NDT_B(tg_n); render_npcs(); NDT_E(tg_n, NDT_GNPC); }
+                { NDT_B(tg_w); render_workers_scene(); NDT_E(tg_w, NDT_GWRK); }
+                { NDT_B(tg_f); render_effects_scene(); NDT_E(tg_f, NDT_GFX); }
+                { NDT_B(tg_t); execute_render_tasks(); NDT_E(tg_t, NDT_GTASK); }
                 FI_OPEN("cam_hud_elements", 0);
-                render_transformed_hud_elements();
+                { NDT_B(tg_h); render_transformed_hud_elements(); NDT_E(tg_h, NDT_GTHUD); }
                 FI_CLOSE();
             } else {
                 guOrthoF(camera->mtxPerspective, 0.0f, SCREEN_WIDTH, -SCREEN_HEIGHT, 0.0f, -1000.0f, 1000.0f,
@@ -242,7 +243,7 @@ void render_frame(s32 isSecondPass) {
                 nd_xf_push(&gDisplayContext->camPerspMatrix[gCurrentCamID], G_MTX_NOPUSH |
                             G_MTX_LOAD | G_MTX_PROJECTION);
                 FI_OPEN("cam_hud_elements", 0);
-                render_transformed_hud_elements();
+                { NDT_B(tg_k); render_transformed_hud_elements(); NDT_E(tg_k, NDT_GTHUD); }
                 FI_CLOSE();
                 FI_OPEN("cam_item_entities", 0);
                 render_item_entities();
