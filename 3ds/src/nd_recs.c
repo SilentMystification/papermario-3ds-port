@@ -106,15 +106,15 @@ enum { HS_OMH, HS_OML, HS_GEOM, HS_PRIM, HS_ENV, HS_FOG, HS_BLEND, HS_TEX, HS_CO
 static unsigned hs_hits, hs_n[HS_N], hs_f0, hs_fl;
 static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
     hs_hits++;
-    hs_n[HS_OMH] += ((nd_ws.omode_h & ~d->omh_m) | d->omh_v) != nd_ws.omode_h;
-    hs_n[HS_OML] += ((nd_ws.omode_l & ~d->oml_m) | d->oml_v) != nd_ws.omode_l;
+    hs_n[HS_OMH] += ((nd_ap->in.omode_h & ~d->omh_m) | d->omh_v) != nd_ap->in.omode_h; /* NWS4C */
+    hs_n[HS_OML] += ((nd_ap->oml & ~d->oml_m) | d->oml_v) != nd_ap->oml; /* NWS4C */
     hs_n[HS_GEOM] += ((nd_ws.geom & d->g_and) | d->g_or) != nd_ws.geom;
-    hs_n[HS_PRIM] += (d->fl & HD_PRIM) && (d->prim != nd_ws.prim || d->plod != nd_ws.prim_lod);
-    hs_n[HS_ENV] += (d->fl & HD_ENV) && d->env != nd_ws.envc;
-    hs_n[HS_FOG] += (d->fl & HD_FOG) && d->fog != fogc;
-    hs_n[HS_BLEND] += (d->fl & HD_BLEND) && d->blend != blendc;
+    hs_n[HS_PRIM] += (d->fl & HD_PRIM) && (d->prim != nd_ap->in.prim || d->plod != nd_ap->plod); /* NWS4C */
+    hs_n[HS_ENV] += (d->fl & HD_ENV) && d->env != nd_ap->in.env; /* NWS4C */
+    hs_n[HS_FOG] += (d->fl & HD_FOG) && d->fog != nd_ap->fogc; /* NWS4C */
+    hs_n[HS_BLEND] += (d->fl & HD_BLEND) && d->blend != nd_ap->blendc; /* NWS4C */
     hs_n[HS_TEX] += (d->fl & HD_TEX) && (d->tex != (uint8_t)nd_ws.tex_on || d->tss != ((uint32_t)nd_ws.tex_ss << 16 | (nd_ws.tex_ts & 0xffffu)));
-    hs_n[HS_COMB] += (d->fl & HD_COMB) && (d->cw0 != nd_ws.comb_w0 || d->cw1 != nd_ws.comb_w1);
+    hs_n[HS_COMB] += (d->fl & HD_COMB) && (d->cw0 != nd_ap->in.w0 || d->cw1 != nd_ap->in.w1); /* NWS4C */
     hs_n[HS_FOGF] += (d->fl & HD_FOGF) && (d->fm != fog_fm || d->fo != fog_fo);
     const unsigned fr = pm_frame_count();
     if (fr != hs_fl) {

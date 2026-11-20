@@ -9,6 +9,7 @@
 #include "ultra64.h"
 #include "nd.h"
 #include "nd_cmd.h"
+#include "nd_apw.h" /* NWS4C: NdGvC */
 
 typedef struct { int p0, p1; float u0, u1; } FoldSeg;
 
@@ -221,7 +222,7 @@ void nd_comb_set(u32 w0, u32 w1);                 /* the former pm_gbi.c, combin
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 /* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
 extern int comb_mode5, plan_active, fog_fm, fog_fo, box_pat, leg_mode;
-int nd_cw_ashade(uint32_t w0, uint32_t w1); int nd_cw_box_prod(uint32_t w0, uint32_t w1); /* NWS2, nd_comb.c */
+int nd_cw_t1only(uint32_t w0, uint32_t w1); /* NWS4C, nd_comb.c */ int nd_cw_ashade(uint32_t w0, uint32_t w1); int nd_cw_box_prod(uint32_t w0, uint32_t w1); /* NWS2, nd_comb.c */
 extern PmPlan cur_plan; extern float dual_f[4];
 void cc_cycle1(const float* t0, const float* t1, float out[4]);
 /* ---- C (ST-2): the combine group in nd_comb.c ---- */
@@ -248,7 +249,7 @@ void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list);
 void draw_tri(unsigned w);
 void nd_geo_units(const uint32_t* u, unsigned n); /* NATFB, nd_geom.c */
 void gv_params_calc(unsigned tss, NdGvP* o);
-void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o, const NdGvC* gc); /* NWS4C */
 void lit_freeze(void);
 int gv_lit_ok(void);
 int clip_bits4(const float* p);

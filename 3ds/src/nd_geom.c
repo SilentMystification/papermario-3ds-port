@@ -94,22 +94,23 @@ float cull_cross(const float* p1, const float* p2, const float* p3) {
 }
 
 int nd_spr_walk; /* WALLSHADE: 1 while nd_walk_spr runs the walker words of a sprite (the shaded sprite fallback) */
-void gv_params_calc(unsigned tss, GvP* o) { ND_WCHK(); int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); nd_bsrc = NULL; if (nd_ap->in.dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */ /* NWS4B */
+void gv_params_calc(unsigned tss, GvP* o) { ND_WCHK(); int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o, &gc); /* NWS4C */ nd_bsrc = NULL; if (nd_ap->in.dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */ /* NWS4B */
 
 /* S3N-3c: the draw parameters at geometry geo (the lighting, texgen and fog bits of the batch), the rest as the walker state */
-void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o, const NdGvC* gc) { /* NWS4C */
     NdGvIn in;
-    unsigned st = nd_ws.use_t1 ? 1 : 0;
-    unpack8(nd_ws.envc, in.en);
+    if (gc->w0 != nd_ws.comb_w0 || gc->w1 != nd_ws.comb_w1 || gc->env != nd_ws.envc || gc->oml != nd_ws.omode_l || gc->primz != nd_ws.prim_z || gc->use_t1 != nd_ws.use_t1 || gc->dual_on != dual_on) nd_mws_log(); /* NWS4C marker */
+    unsigned st = gc->use_t1 ? 1 : 0; /* NWS4C */
+    unpack8(gc->env, in.en);
     unpack8(cur_plan.vtx, in.vc);
     in.tss = tss;
     in.lighting = (geo & G_LIGHTING) != 0; in.texgen = (geo & G_TEXTURE_GEN) != 0; in.fog = (geo & G_FOG) != 0;
     in.comb5 = comb_mode5; in.plan_active = plan_active;
     in.plan_vtx_ok = cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
-    in.alpha_shade = nd_cw_ashade(nd_ws.comb_w0, nd_ws.comb_w1); /* NWS2 */
-    in.boost = dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED;
-    in.primz = (nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) != 0; in.prim_z = nd_ws.prim_z;
-    in.envc = nd_ws.envc; in.plan_vtx = cur_plan.vtx;
+    in.alpha_shade = nd_cw_ashade(gc->w0, gc->w1); /* NWS2 */ /* NWS4C */
+    in.boost = gc->dual_on && ((gc->w0 >> 5) & 0xf) == G_CCMUX_SHADE && ((gc->w1 >> 24) & 0xf) == G_CCMUX_ENVIRONMENT && (gc->w0 & 0x1f) == G_CCMUX_COMBINED && ((gc->w1 >> 6) & 7) == G_CCMUX_COMBINED; /* NWS4C */
+    in.primz = (gc->oml & (1u << G_MDSFT_ZSRCSEL)) != 0; in.prim_z = gc->primz; /* NWS4C */
+    in.envc = gc->env; in.plan_vtx = cur_plan.vtx; /* NWS4C */
     in.tw = tw; in.th = th;
     in.shs = ND_BSH(st)[0]; in.sht = ND_BSH(st)[1];
     in.tex_on = nd_ws.tex_on;

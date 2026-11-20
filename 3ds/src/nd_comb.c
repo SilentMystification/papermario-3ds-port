@@ -29,6 +29,12 @@ int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mod
 int nd_cw_ashade(uint32_t w0, uint32_t w1) { return !w0 || ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4; } /* NWS2: comb_alpha_shade of the applied words (1 before the first combine) */
 int nd_cw_box_prod(uint32_t w0, uint32_t w1) { uint32_t t[16]; nd_comb_tst(w0, w1, 0, 0, t); return t[0] == 1 && t[1] >= 7 && t[2] == 2 && t[3] == 7 && t[4] == 7 && t[5] == 7 && t[6] == 7 && t[7] == 2 &&
     t[8] == 3 && t[9] == 5 && t[10] == 0 && t[11] == 5 && t[12] == 7 && t[13] == 7 && t[14] == 7 && t[15] == 0; } /* NWS2: box_prod of the applied words */
+int nd_cw_t1only(uint32_t w0, uint32_t w1) { uint32_t t[16]; nd_comb_tst(w0, w1, 0, 0, t); /* NWS4C: the TEXEL1 rename test of nd_comb_set on the applied words (use_t1) */
+    const int t0 = t[0] == 1 || t[1] == 1 || t[3] == 1 || t[2] == 1 || t[2] == 8 || t[4] == 1 || t[5] == 1 || t[6] == 1 || t[7] == 1;
+    const int t1 = t[0] == 2 || t[1] == 2 || t[3] == 2 || t[2] == 2 || t[2] == 9 || t[4] == 2 || t[5] == 2 || t[6] == 2 || t[7] == 2;
+    const int c2 = t[8] == 1 || t[9] == 1 || t[11] == 1 || t[10] == 1 || t[10] == 8 || t[12] == 1 || t[13] == 1 || t[14] == 1 || t[15] == 1 ||
+                   t[8] == 2 || t[9] == 2 || t[11] == 2 || t[10] == 2 || t[10] == 9 || t[12] == 2 || t[13] == 2 || t[14] == 2 || t[15] == 2;
+    return t1 && !t0 && !c2; }
 PmPlan cur_plan;
 extern int pm_comb_vprim; /* S4COL: the particle plan flag (pm_comb.c), in the memo keys */
 const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };

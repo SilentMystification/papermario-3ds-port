@@ -118,6 +118,9 @@ static NdSnapChk sc_cur;
 const NdSnapChk* const nd_ap = &sc_cur; /* NWS4B: the applied snap, read by core 0 */
 static __attribute__((cold, noinline)) void ws_log(void) { static unsigned fr = ~0u; if (pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_d("wsnap f%u", fr); } } /* NWS4B */
 uint32_t nd_apw(int k) { const NdSnapChk* a = &sc_cur; switch (k) { case NDAPW_W0: return a->in.w0; case NDAPW_W1: return a->in.w1; case NDAPW_OH: return a->in.omode_h; case NDAPW_OL: return a->oml; case NDAPW_PRIM: return a->in.prim; case NDAPW_PLOD: return a->plod; case NDAPW_ENV: return a->in.env; case NDAPW_FOGC: return a->fogc; case NDAPW_DUAL: return (uint32_t)a->in.dual_on; default: return (uint32_t)a->in.use_t1; } } /* NWS4B: pm_gpu.c does not include nd_snap.h */
+static __attribute__((cold, noinline)) void mws_cold(void) { static unsigned fr = ~0u; if (pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_d("mwsnap f%u", fr); } } /* NWS4C */
+void nd_mws_log(void) { mws_cold(); } /* NWS4C */
+void nd_apw_gvc(NdGvC* c) { c->w0 = sc_cur.in.w0; c->w1 = sc_cur.in.w1; c->env = sc_cur.in.env; c->oml = sc_cur.oml; c->primz = sc_cur.primz; c->use_t1 = sc_cur.in.use_t1; c->dual_on = sc_cur.in.dual_on; } /* NWS4C */
 void nd_wsnap_chk(void) { const NdCombIn* i = &sc_cur.in; const NdTst* t = &nd_ws.tst1; extern int dual_on, box_folded; extern unsigned keyc, keys, conv_k4; /* NWS4B: the shadow (old reads) against the snap (new reads) */
     const uint32_t ts[16] = { t->comb_a, t->comb_b, t->comb_c, t->comb_d, t->comb_aa, t->comb_ab, t->comb_ac, t->comb_ad, t->comb2_a, t->comb2_b, t->comb2_c, t->comb2_d, t->comb2_aa, t->comb2_ab, t->comb2_ac, t->comb2_ad };
     if (nd_ws.comb_w0 != i->w0 || nd_ws.comb_w1 != i->w1 || nd_ws.omode_h != i->omode_h || nd_ws.omode_l != sc_cur.oml || nd_ws.prim != i->prim || nd_ws.prim_lod != sc_cur.plod || nd_ws.envc != i->env ||

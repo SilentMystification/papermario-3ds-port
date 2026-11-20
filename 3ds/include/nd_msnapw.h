@@ -3,7 +3,7 @@
 #ifndef ND_MSNAPW_H
 #define ND_MSNAPW_H
 #include <stdint.h>
-enum { MSW_PRIM = 1, MSW_PLOD, MSW_OMH, MSW_OML, MSW_KH, MSW_KL, MSW_TSS, MSW_GEOM, MSW_CW0, MSW_CW1, MSW_FOGC, MSW_BLENDC, MSW_ENVC };
+enum { MSW_PRIM = 1, MSW_PLOD, MSW_OMH, MSW_OML, MSW_KH, MSW_KL, MSW_TSS, MSW_GEOM, MSW_CW0, MSW_CW1, MSW_FOGC, MSW_BLENDC, MSW_ENVC, MSW_PRIMZ = 25 /* d_primz, nd_msnap.c asserts it */ };
 struct NdTd;
 void nd_msnap_use(const uint32_t* q);
 const uint32_t* nd_msnap_w(void);

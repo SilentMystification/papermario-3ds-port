@@ -3815,7 +3815,7 @@ static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
     rm_ga[i] = 0xFFFFFFFFu;
     if (i < ND_RM_N && nd_mode_compile(&m, (const unsigned*)nd_rm_tab[i])) { /* HC4b: the typed render mode table (nd_rec.c) */ rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
 }
-void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
+void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { ND_WCHK(); /* NWS4C */
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
     k->w[3] = 0; /* MAPX-2: R1 w1 (pmSlot, static matrix flag, pmMtxVer) is matrix bookkeeping: a hit runs the matrix of this frame (rec_matrix, the palette); a lit entry keeps its version (NdMEnt mver) */
     if (!(rec[3] & 0x100u)) k->w[5] = 0; k->w[17] = rec[17] != 0u; /* KEYFIX1: as nd_mkey_a */
@@ -3831,9 +3831,11 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) {
     unsigned i = 0;
     uint32_t gk = 0xFFFFFFFFu; /* MAPX-2: the walker geometry reaches the draw only through the bits the list's groups keep (gg = (entry & am) | om) */
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
-    s[i++] = nd_ws.omode_h & kh; s[i++] = nd_ws.omode_l & kl; s[i++] = nd_ws.om_kh & kh; s[i++] = nd_ws.om_kl & kl; s[i++] = nd_ws.geom & gk & rm_ga[rmi];
+    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_apw(NDAPW_OH), nd_apw(NDAPW_OL), nd_ws.om_kh, nd_ws.om_kl, nd_ws.geom }; if (!kw) kw = w5; /* NWS4C: the record's core 1 words, nd_ap and the record state with no snap */
+      if (kw[0] != nd_ws.omode_h || kw[1] != nd_ws.omode_l || kw[2] != nd_ws.om_kh || kw[3] != nd_ws.om_kl || kw[4] != nd_ws.geom || nd_apw(NDAPW_PRIM) != nd_ws.prim || nd_apw(NDAPW_PLOD) != nd_ws.prim_lod) nd_mws_log(); /* NWS4C marker */
+      s[i++] = kw[0] & kh; s[i++] = kw[1] & kl; s[i++] = kw[2] & kh; s[i++] = kw[3] & kl; s[i++] = kw[4] & gk & rm_ga[rmi]; } /* NWS4C */
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
-    s[i++] = nd_ws.prim; s[i++] = nd_ws.prim_lod; s[i++] = aux_hash(rec); /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
+    s[i++] = nd_apw(NDAPW_PRIM); s[i++] = nd_apw(NDAPW_PLOD); s[i++] = aux_hash(rec); /* NWS4C */ /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
     s[i++] = (uint32_t)dview; s[i++] = gs.r_mix == 2 ? 2u : 0u; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
     { float zb_ = gs.r_zmark ? gs.r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = gs.r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
     s[i++] = (uint32_t)gs.r_decal; s[i++] = (uint32_t)gs.r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)gs.off_active; s[i++] = (uint32_t)ui_ortho;
@@ -4224,7 +4226,8 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     pm_gpu_flush();
     const uint32_t* rw = (const uint32_t*)(uintptr_t)k->rp; /* MERLEE: the shroud mix colour of this frame (the key leaves it out): blend colour RGB, fog colour alpha, as rec_apply sets them */
     const int shr = rw && (rw[6] & 32u);
-    const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : blendc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u;
+    const uint32_t shc_bc = nd_msnap_w()[MSW_BLENDC]; if (shr && shc_bc != blendc) nd_mws_log(); /* NWS4C marker */
+    const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : shc_bc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u; /* NWS4C */
     for (unsigned j = 0; j < e->n; j++) {
         NdNatC* q = nd_mc_nat(e, j);
         if (shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = shc;
@@ -4562,7 +4565,7 @@ void pm_gpu_cnt_take(unsigned o[8]) { /* PERF2 step 6: the counters of the prof 
     for (int i = 0; i < 8; i++) { o[i] = now[i] - last[i]; last[i] = now[i]; }
 }
 void pm_gpu_cnt_now(unsigned o[8]) { const unsigned now[8] = { sc_prg, sc_shr, sc_upd, sc_spl, spr_nat_n - spc_miss, spc_miss, nd_ent_cfull_all(), nd_gdl_lists() }; memcpy(o, now, sizeof now); } /* FXCEN1: totals, no reset */
-void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o, const NdGvC* gc); /* NWS4C */
 /* S4-2: the sprite record as a native draw (nd_sprite_draw, nd_sprite.c). The walker inputs of the draw (sticky state, gv, env and prim of the record),
  * the NdDraw without palette and index (set by pm_gpu_spr_submit), the key st and palette 0 (the walker combined matrix, post x combined). 1 native, 0 with why
  * (1 mode, 2 unit 0, 10 + nd_model_state code). */
@@ -4618,7 +4621,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     const uint32_t geo = (sw_geo & mode.gand) | mode.gor;
     NdGvP gv;
     { extern int plan_active, comb_mode5; extern PmPlan cur_plan; extern const NdCombOut* nd_snap_dir_o(void); extern unsigned nd_snap_primz(void); /* NAT4H */ const NdCombOut* so = nd_snap_dir_o(); if (so) { plan_active = so->plan_on; comb_mode5 = so->mode5; cur_plan.vtx = so->plan.vtx; cur_plan.vtxname = so->plan.vtxname; cur_plan.uses_tex1 = so->plan.uses_tex1; nd_ws.prim_z = nd_snap_primz(); /* NAT4H */ } } /* NAT2K: the sprite snap decision */
-    pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv);
+    { NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(mode.has_tx ? mode.tw1 : sw_tss, geo, tw, th, &gv, &gc); } /* NWS4C */
     if (shaded) { extern float dual_f[4]; for (int q = 0; q < 4; q++) { gv.cm[q] *= dual_f[q]; gv.ca[q] *= dual_f[q]; }
         if (PMDL("shadecen")) { shc[12]++; for (int q = 0; q < 3; q++) { const int v = (int)(dual_f[q] * 255.f); if (v < shd_min[q]) shd_min[q] = v; if (v > shd_max[q]) shd_max[q] = v; } } } /* WALLSHADE: the KZN04 shade colour, the shaded sprite only */
     NdMCtx c;

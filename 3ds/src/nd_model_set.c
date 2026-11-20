@@ -13,7 +13,7 @@
 
 extern NdNat nat[ND_NAT_MAX]; extern int nat_n; extern uint64_t nat_vm; extern int nat_vm_ok; extern int nat_nr; extern uint32_t nat_geom;
 
-void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o, const NdGvC* gc); /* NWS4C */
 void pm_gpu_pcomp_native(float o[16], const float m[4][4]);
 extern float pm_pal0_k[16]; extern float pm_nrm5_k[3][4]; extern int pm_tw_on; /* INTERPB2: the K twins of the last pcomp_native and of the last model_draw normal rows (the L walk) */
 void pm_gpu_native_submit_draw(NdDraw* d, const uint16_t* sd, unsigned nidx, int tex);
@@ -35,7 +35,7 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
     for (int r = 0; r < nr; r++) {
         NdMCtx c = *c0;
         NdGvP gv;
-        pm_gbi_gv_at(c0->tss, rng[r].geom, c0->tex_w, c0->tex_h, &gv);
+        NdGvC gc; nd_msnap_gvc(&gc); pm_gbi_gv_at(c0->tss, rng[r].geom, c0->tex_w, c0->tex_h, &gv, &gc); /* NWS4C */
         c.gv = &gv; c.rgb_scale = gv.boost ? 2 : 1; /* the walker sets rgb_scale from the boost of the batch (dlc_seg) */
         c.geom_at = rng[r].geom; c.geom_at_set = 1;
         NdDraw dd; NdMState ss;

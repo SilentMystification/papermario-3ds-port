@@ -12,6 +12,7 @@
 #include "nd_op.h"
 #include "nd_api.h"
 #include "nd_snap.h"
+#include "nd_msnapw.h" /* NWS4C */
 #include "nd_fs.h"
 #include "nd_ds.h" /* NAT5T: NdTxR */
 #include "nd_sv.h" /* NSET1 */
@@ -25,7 +26,7 @@ void nd_sprm_take(unsigned* h, unsigned* m); /* nd_model.c */
 int shd_min[3] = { 255, 255, 255 }, shd_max[3] = { 0, 0, 0 }; /* BOMBLIT2: dual_f range of the shaded native draws, x255 */
 int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
     if (!plan_active || !cur_plan.uses_tex1) return 0;
-    nd_tile_bind(nd_ws.use_t1 ? 1 : 0);
+    { const uint32_t* mw = nd_msnap_w(); const int ut = nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1]); if (ut != (nd_ws.use_t1 ? 1 : 0)) nd_mws_log(); nd_tile_bind(ut); } /* NWS4C marker */
     dual_bind();
     return nd_ws.td[1].valid && pm_tex_aux_off_idx() < 0;
 }
