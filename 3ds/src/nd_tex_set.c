@@ -26,7 +26,7 @@ void nd_sprm_take(unsigned* h, unsigned* m); /* nd_model.c */
 int shd_min[3] = { 255, 255, 255 }, shd_max[3] = { 0, 0, 0 }; /* BOMBLIT2: dual_f range of the shaded native draws, x255 */
 int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
     if (!plan_active || !cur_plan.uses_tex1) return 0;
-    { const uint32_t* mw = nd_msnap_w(); const int ut = nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1]); if (ut != (nd_ws.use_t1 ? 1 : 0)) nd_mws_log(); nd_tile_bind(ut); } /* NWS4C marker */
+    { const uint32_t* mw = nd_msnap_w(); nd_tile_bind(nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1])); } /* NWS4C */
     dual_bind();
     return nd_ws.td[1].valid && pm_tex_aux_off_idx() < 0;
 }
@@ -116,7 +116,6 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             if (tile != 0) return;
             nd_ws.td[0].valid = 0;
             nd_ws.cur_tile = -1; /* GP3: defer pm_tex_load to nd_tile_bind(0) at first draw */
-            if (dual_on) { dual_on = 0; } /* NWS1 */ /* S25: the plan path is off while the shaded sprite is on */
             if (m1.valid && tex_shaded0(uls, ult)) return;
             m1.valid = 0;
             int x0 = uls >> 2;
@@ -447,7 +446,7 @@ __attribute__((noinline)) void tlut_v20(unsigned slot) {
                         }
 }
 
-__attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) { ND_WCHK(); /* NWS4B */
+__attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) { /* NWS4B */
             if (m1.valid && nd_ws.tst1.tile_fmt[0] == 2 && nd_ws.tst1.tile_siz[0] == 0 && nd_ws.tst1.tile_pal[0] != nd_ws.tst1.tile_pal[1] &&
                 nd_ap->in.tst[0] == G_CCMUX_TEXEL0 && nd_ap->in.tst[2] == G_CCMUX_TEXEL1 && /* NWS4B */
                 m1.w > 0 && m1.h > 0) {
@@ -459,7 +458,6 @@ __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) { ND_WCHK(); /
                 nd_ws.tile_y0 = m1.y0;
                 nd_ws.tile_fx = nd_ws.tile_fy = 0.f;
                 if (load_shaded_sprite()) {
-                    dual_on = 1;
                     if (PMDL("shadecen")) shc[2]++;
                     return 1;
                 }

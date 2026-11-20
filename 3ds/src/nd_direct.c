@@ -42,10 +42,10 @@ int nd_direct_ready(void) {
     return 1;
 }
 
-uint32_t nd_direct_prim(void) { ND_WCHK(); return nd_ap->in.prim; } /* NWS4B */
-uint32_t nd_direct_env(void) { ND_WCHK(); return nd_ap->in.env; } /* NWS4B */
+uint32_t nd_direct_prim(void) { return nd_ap->in.prim; } /* NWS4B */
+uint32_t nd_direct_env(void) { return nd_ap->in.env; } /* NWS4B */
 
-int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { ND_WCHK(); /* NWS4B */
+int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
     nd_snap_arm = 0; /* NDR2A: the arm of this record */
     const NdPsoN64* p = nd_pso_get(id);
     const uint32_t mh = (nd_ap->in.omode_h & ~p->omh_m) | (p->omh & p->omh_m); /* NWS4B */
@@ -61,8 +61,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { ND_WCHK(); /* NWS4B 
             pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
         }
     }
-    if (nd_ap->in.w0 != p->cw0 || nd_ap->in.w1 != p->cw1) nd_comb_set(p->cw0, p->cw1); /* NWS2 */ /* NWS4B */
-    dual_on = 0; /* nd_tsz_set of tile 0 ends the shaded sprite mode */
+    if (nd_ap->in.w0 != p->cw0 || nd_ap->in.w1 != p->cw1) { if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1) pm_gpu_flush(); nd_ws.comb_w0 = p->cw0; nd_ws.comb_w1 = p->cw1; } /* NWS4D: POND 3a flush and the memo */
     pm_gpu_set_prim(prim, 0u);
     nd_ws.prim = prim; nd_ws.prim_lod = 0u;
     nd_ws.envc = env;
@@ -150,7 +149,7 @@ __attribute__((cold, noinline)) void nd_direct_fallback(unsigned why) {
  * the printer setup recorded; the glyph states its texture (nd_tex_bind_glyph) and its rectangle. nd_glyph_can: 1 when the direct draw takes the
  * walker's own path (nd_trect_draw for a 1 cycle rectangle on the main colour image, tile 0, no shift, no tile 1 product); checked before any state is
  * touched, 0 runs the old list. No nd_direct_end: the walker leaves the bind (ens_*, tsz_last) as the glyph arms keep it, and so does this. */
-int nd_glyph_can(int texW) { ND_WCHK(); /* NWS4B */
+int nd_glyph_can(int texW) { /* NWS4B */
     if (texW < 16 || (texW & 15)) return 0;
     if (nd_direct_ready() != 1) return 0;
     if (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* NWS4B */

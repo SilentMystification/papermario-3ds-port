@@ -21,9 +21,6 @@
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
-unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
-int dual_on;
-PM_HOTD int box_folded;
 int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 int nd_cw_ashade(uint32_t w0, uint32_t w1) { return !w0 || ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4; } /* NWS2: comb_alpha_shade of the applied words (1 before the first combine) */
@@ -49,7 +46,7 @@ unsigned aux_key;
 
 /* globals of the combine state, owned by the former pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
 extern unsigned aux_key;
-extern int box_pat, dual_on, plan_active;
+extern int box_pat, plan_active;
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
 extern PmPlan cur_plan;
 extern const char* const cc_nm_a[8], * const cc_nm_aa[8], * const cc_nm_ac[8];
@@ -66,7 +63,7 @@ extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 
 
 /* The constant colour mode of the walker state (nd_decide.c nd_const_rgb on the walker's inputs). */
-int const_rgb_tex_alpha(unsigned* out) { ND_WCHK(); /* NWS4B */
+int const_rgb_tex_alpha(unsigned* out) { /* NWS4B */
     NdCombIn c;
     c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = nd_ws.tex_on; c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_ws.td[1].valid; c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
     memcpy(c.tst, nd_ap->in.tst, sizeof c.tst); /* NWS4B */
@@ -114,7 +111,7 @@ float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, const fl
 }
 
 /* (A - B) * C + D, cycle 1 only. COMBINED reads as 0 there. */
-void cc_cycle1(const float* t0, const float* t1, float out[4]) { ND_WCHK(); /* NWS4B */
+void cc_cycle1(const float* t0, const float* t1, float out[4]) { /* NWS4B */
     float pr[4], en[4];
     unpack8(nd_ap->in.prim, pr); /* NWS4B */
     unpack8(nd_ap->in.env, en); /* NWS4B */
@@ -212,7 +209,7 @@ static void nd_comb_pick(const NdCombIn* in, NdCombOut* o) {
 
 uint32_t gvk_bits(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }
 
-unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { ND_WCHK(); /* NWS4B */
+unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { /* NWS4B */
     uint32_t v[48]; unsigned n = 0;
     v[n++] = nd_ap->in.env; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx; /* NWS4B */
     v[n++] = (uint32_t)nd_ap->in.dual_on; v[n++] = nd_ap->in.tst[8]; v[n++] = nd_ap->in.tst[9]; v[n++] = nd_ap->in.tst[10]; v[n++] = nd_ap->in.tst[11]; /* NWS4B */
@@ -228,7 +225,7 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { ND_WCHK(); /* NWS4B */
 }
 
 /* S3N-3d: the walker's sticky state at a draw (ndmcheck compare only: the native draw takes these as inputs): the TEXTURE scale word, the geometry mode and the combine words. */
-void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) { ND_WCHK(); /* NWS4B */
+void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) { /* NWS4B */
     *tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu); *geo = nd_ws.geom; *cw0 = nd_ap->in.w0; *cw1 = nd_ap->in.w1; /* NWS4B */
 }
 
@@ -334,7 +331,7 @@ void t1_fold(float u0, float u1, float v0, float v1) {
 }
 
 /* T1F: the CPU path fold for a ring triangle. dual_bind map reset, then the window fold over the tile 0 uv range of the triangle (same floats as gv_xf and vert_uv of the old draw_tri_cpu). */
-void t1_fold_tri(const unsigned ri[3], unsigned tss) { ND_WCHK(); /* NWS4B */
+void t1_fold_tri(const unsigned ri[3], unsigned tss) { /* NWS4B */
     nd_bsrc = nd_ep_bs; /* NDR0G2: the tile words of the open epoch */
     float u[3], v[3];
     int tw = 1, th = 1;
@@ -359,56 +356,6 @@ void t1_fold_tri(const unsigned ri[3], unsigned tss) { ND_WCHK(); /* NWS4B */
 
 
 
-void nd_comb_set(u32 w0, u32 w1) {
-            GP_SET(0, nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1); /* NWS2 */
-            /* POND 3a: an open batch is drawn with the combine it was queued with. A new combine closes it first (the copy record's combine closed the blocker batch with the water combine). */
-            if (!(nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1)) pm_gpu_flush(); /* NWS2 */
-            nd_ws.comb_w0 = w0;
-            nd_ws.comb_w1 = w1;
-            nd_ws.tst1.comb_a = (w0 >> 20) & 0xf;
-            nd_ws.tst1.comb_c = (w0 >> 15) & 0x1f;
-            nd_ws.tst1.comb_b = (w1 >> 28) & 0xf;
-            nd_ws.tst1.comb_d = (w1 >> 15) & 7;
-            nd_ws.tst1.comb_aa = (w0 >> 12) & 7;
-            nd_ws.tst1.comb_ac = (w0 >> 9) & 7;
-            nd_ws.tst1.comb_ab = (w1 >> 12) & 7;
-            nd_ws.tst1.comb_ad = (w1 >> 9) & 7;
-            nd_ws.tst1.comb2_a = (w0 >> 5) & 0xf;
-            nd_ws.tst1.comb2_c = w0 & 0x1f;
-            nd_ws.tst1.comb2_b = (w1 >> 24) & 0xf;
-            nd_ws.tst1.comb2_d = (w1 >> 6) & 7;
-            nd_ws.tst1.comb2_aa = (w1 >> 21) & 7;
-            nd_ws.tst1.comb2_ac = (w1 >> 18) & 7;
-            nd_ws.tst1.comb2_ab = (w1 >> 3) & 7;
-            nd_ws.tst1.comb2_ad = w1 & 7;
-            /* TEXEL1 with no TEXEL0 anywhere: the texture is tile 1. Rename it so one binding serves. */
-            {
-                int t0 = nd_ws.tst1.comb_a == 1 || nd_ws.tst1.comb_b == 1 || nd_ws.tst1.comb_d == 1 || nd_ws.tst1.comb_c == 1 || nd_ws.tst1.comb_c == 8 ||
-                         nd_ws.tst1.comb_aa == 1 || nd_ws.tst1.comb_ab == 1 || nd_ws.tst1.comb_ac == 1 || nd_ws.tst1.comb_ad == 1;
-                int t1 = nd_ws.tst1.comb_a == 2 || nd_ws.tst1.comb_b == 2 || nd_ws.tst1.comb_d == 2 || nd_ws.tst1.comb_c == 2 || nd_ws.tst1.comb_c == 9 ||
-                         nd_ws.tst1.comb_aa == 2 || nd_ws.tst1.comb_ab == 2 || nd_ws.tst1.comb_ac == 2 || nd_ws.tst1.comb_ad == 2;
-                int c2 = nd_ws.tst1.comb2_a == 1 || nd_ws.tst1.comb2_b == 1 || nd_ws.tst1.comb2_d == 1 || nd_ws.tst1.comb2_c == 1 || nd_ws.tst1.comb2_c == 8 ||
-                         nd_ws.tst1.comb2_aa == 1 || nd_ws.tst1.comb2_ab == 1 || nd_ws.tst1.comb2_ac == 1 || nd_ws.tst1.comb2_ad == 1 ||
-                         nd_ws.tst1.comb2_a == 2 || nd_ws.tst1.comb2_b == 2 || nd_ws.tst1.comb2_d == 2 || nd_ws.tst1.comb2_c == 2 || nd_ws.tst1.comb2_c == 9 ||
-                         nd_ws.tst1.comb2_aa == 2 || nd_ws.tst1.comb2_ab == 2 || nd_ws.tst1.comb2_ac == 2 || nd_ws.tst1.comb2_ad == 2;
-                nd_ws.use_t1 = 0;
-                if (t1 && !t0 && !c2) {
-                    nd_ws.use_t1 = 1;
-                    if (nd_ws.tst1.comb_a == 2) nd_ws.tst1.comb_a = 1;
-                    if (nd_ws.tst1.comb_b == 2) nd_ws.tst1.comb_b = 1;
-                    if (nd_ws.tst1.comb_d == 2) nd_ws.tst1.comb_d = 1;
-                    if (nd_ws.tst1.comb_c == 2) nd_ws.tst1.comb_c = 1;
-                    if (nd_ws.tst1.comb_c == 9) nd_ws.tst1.comb_c = 8;
-                    if (nd_ws.tst1.comb_aa == 2) nd_ws.tst1.comb_aa = 1;
-                    if (nd_ws.tst1.comb_ab == 2) nd_ws.tst1.comb_ab = 1;
-                    if (nd_ws.tst1.comb_ac == 2) nd_ws.tst1.comb_ac = 1;
-                    if (nd_ws.tst1.comb_ad == 2) nd_ws.tst1.comb_ad = 1;
-                }
-            }
-            if (dual_on && !nd_dual_keep(nd_ws.tst1.comb_a, nd_ws.tst1.comb_c)) dual_on = 0; /* COIN: a combine that is not the shaded sprite combine ends the shaded sprite mode (a stale dual_on skipped decide: item_entity.c coins drew texel * vertex colour 0) */
-            box_folded = 0;
-}
-
 /* ---- MV-10: debug switch combchk, cut from the former pm_gbi.c (no change) ---- */
 /* S3N-3d: debug switch combchk. Each combine work of nd_comb_sync runs nd_comb_dec on its inputs and compares the outputs with the walker state. */
 int combchk_on(void) { static int v = -1; if (v < 0) v = pm_debug_has("combchk"); return v; }
@@ -429,4 +376,4 @@ __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked)
 
 
 /* SPR4-3: the dual boost of the walker (draw_tri path): 1 when cycle 2 is (SHADE - ENV) * COMBINED + COMBINED with the shaded bake live. nd_model/sprite native share it. */
-int dual_boost_on(void) { ND_WCHK(); return nd_ap->in.dual_on && nd_ap->in.tst[8] == G_CCMUX_SHADE && nd_ap->in.tst[9] == G_CCMUX_ENVIRONMENT && nd_ap->in.tst[10] == G_CCMUX_COMBINED && nd_ap->in.tst[11] == G_CCMUX_COMBINED; } /* NWS4B */
+int dual_boost_on(void) { return nd_ap->in.dual_on && nd_ap->in.tst[8] == G_CCMUX_SHADE && nd_ap->in.tst[9] == G_CCMUX_ENVIRONMENT && nd_ap->in.tst[10] == G_CCMUX_COMBINED && nd_ap->in.tst[11] == G_CCMUX_COMBINED; } /* NWS4B */

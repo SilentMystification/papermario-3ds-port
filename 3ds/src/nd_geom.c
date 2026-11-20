@@ -94,12 +94,11 @@ float cull_cross(const float* p1, const float* p2, const float* p3) {
 }
 
 int nd_spr_walk; /* WALLSHADE: 1 while nd_walk_spr runs the walker words of a sprite (the shaded sprite fallback) */
-void gv_params_calc(unsigned tss, GvP* o) { ND_WCHK(); int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o, &gc); /* NWS4C */ nd_bsrc = NULL; if (nd_ap->in.dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */ /* NWS4B */
+void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o, &gc); /* NWS4C */ nd_bsrc = NULL; if (nd_ap->in.dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */ /* NWS4B */
 
 /* S3N-3c: the draw parameters at geometry geo (the lighting, texgen and fog bits of the batch), the rest as the walker state */
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o, const NdGvC* gc) { /* NWS4C */
     NdGvIn in;
-    if (gc->w0 != nd_ws.comb_w0 || gc->w1 != nd_ws.comb_w1 || gc->env != nd_ws.envc || gc->oml != nd_ws.omode_l || gc->primz != nd_ws.prim_z || gc->use_t1 != nd_ws.use_t1 || gc->dual_on != dual_on) nd_mws_log(); /* NWS4C marker */
     unsigned st = gc->use_t1 ? 1 : 0; /* NWS4C */
     unpack8(gc->env, in.en);
     unpack8(cur_plan.vtx, in.vc);
@@ -124,7 +123,7 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o, const NdGv
     nd_gv_params(&in, o);
 }
 
-unsigned tri_flags(void) { ND_WCHK(); /* NWS4B */
+unsigned tri_flags(void) { /* NWS4B */
     unsigned f = 0, bl = nd_ap->oml; /* NWS4B */
     int two = ((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1; /* NWS4B */
     unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
@@ -193,7 +192,7 @@ GvP ep_p;
 void ep_flush_stats(void) { if (ep_n) { tri_stats_add(ep_fl, ep_n); ep_n = 0; } }
 
 /* what the state alone says: a reason to leave the GPU path (or -1), the cull type, CULL_BOTH */
-int gv_state_why(int* ct, int* both) { ND_WCHK(); /* NWS4B */
+int gv_state_why(int* ct, int* both) { /* NWS4B */
     unsigned cg = nd_ws.geom & G_CULL_BOTH;
     *ct = cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
     *both = cg == G_CULL_BOTH;
@@ -205,7 +204,7 @@ int gv_state_why(int* ct, int* both) { ND_WCHK(); /* NWS4B */
 
 /* the first triangle (or DLC2 range) after a state change */
 extern int nd_dq_on; /* nd_direct.c */
-void gv_epoch_enter(void) { ND_WCHK(); /* NWS4B */
+void gv_epoch_enter(void) { /* NWS4B */
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;

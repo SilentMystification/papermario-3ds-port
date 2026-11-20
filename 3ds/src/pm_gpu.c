@@ -1225,7 +1225,7 @@ static int t1l_on = -1; /* switch t1log: -1 until t1log_draw reads it */
 static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex);
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
-static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) { ND_WCHK(); /* NWS4B */
+static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) { /* NWS4B */
     extern unsigned pm_gbi_dbg_orb_tag(void);
     unsigned ot_ = pm_gbi_dbg_orb_tag();
     if (!ot_ || !PMDL("orbdbg")) return;
@@ -3815,7 +3815,7 @@ static __attribute__((cold, noinline)) void rm_masks(unsigned i) {
     rm_ga[i] = 0xFFFFFFFFu;
     if (i < ND_RM_N && nd_mode_compile(&m, (const unsigned*)nd_rm_tab[i])) { /* HC4b: the typed render mode table (nd_rec.c) */ rm_wh[i] = m.wh; rm_wl[i] = m.wl; rm_ga[i] = m.gand; }
 }
-void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { ND_WCHK(); /* NWS4C */
+void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { /* NWS4C */
     memcpy(k->w, rec, NDMC_RW * sizeof(uint32_t));
     k->w[3] = 0; /* MAPX-2: R1 w1 (pmSlot, static matrix flag, pmMtxVer) is matrix bookkeeping: a hit runs the matrix of this frame (rec_matrix, the palette); a lit entry keeps its version (NdMEnt mver) */
     if (!(rec[3] & 0x100u)) k->w[5] = 0; k->w[17] = rec[17] != 0u; /* KEYFIX1: as nd_mkey_a */
@@ -3832,7 +3832,6 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { ND_WCHK(); /* NWS4C */
     uint32_t gk = 0xFFFFFFFFu; /* MAPX-2: the walker geometry reaches the draw only through the bits the list's groups keep (gg = (entry & am) | om) */
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
     { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_apw(NDAPW_OH), nd_apw(NDAPW_OL), nd_ws.om_kh, nd_ws.om_kl, nd_ws.geom }; if (!kw) kw = w5; /* NWS4C: the record's core 1 words, nd_ap and the record state with no snap */
-      if (kw[0] != nd_ws.omode_h || kw[1] != nd_ws.omode_l || kw[2] != nd_ws.om_kh || kw[3] != nd_ws.om_kl || kw[4] != nd_ws.geom || nd_apw(NDAPW_PRIM) != nd_ws.prim || nd_apw(NDAPW_PLOD) != nd_ws.prim_lod) nd_mws_log(); /* NWS4C marker */
       s[i++] = kw[0] & kh; s[i++] = kw[1] & kl; s[i++] = kw[2] & kh; s[i++] = kw[3] & kl; s[i++] = kw[4] & gk & rm_ga[rmi]; } /* NWS4C */
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_apw(NDAPW_PRIM); s[i++] = nd_apw(NDAPW_PLOD); s[i++] = aux_hash(rec); /* NWS4C */ /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
@@ -3891,7 +3890,7 @@ void pm_gpu_set_r13_t1(int bound) {
     /* FB-2: 2 (an off-screen aux image) stays a fallback here: the model path has no snapshot */
 }
 int nd_mix1(unsigned ol, unsigned* col); /* nd_set.c: the V06 colour mix rule of nd_rnd_sync */
-extern unsigned fogc, blendc; extern int pm_nofog;
+extern int pm_nofog;
 int nd_snap_mix(unsigned, unsigned, unsigned, int, unsigned*); /* nd_snap_in.c */
 static int model_draw(const uint32_t* rec, const uint32_t* modew, const uint32_t* combw, const void* gfx, unsigned texidx, const void* geo, int emit, int* mode_ok, const NdMKey* mk) {
     const uint32_t* const msw = nd_msnap_w(); const NdTd* const t0 = nd_msnap_td0(); /* NREC1B */
@@ -4226,7 +4225,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     pm_gpu_flush();
     const uint32_t* rw = (const uint32_t*)(uintptr_t)k->rp; /* MERLEE: the shroud mix colour of this frame (the key leaves it out): blend colour RGB, fog colour alpha, as rec_apply sets them */
     const int shr = rw && (rw[6] & 32u);
-    const uint32_t shc_bc = nd_msnap_w()[MSW_BLENDC]; if (shr && shc_bc != blendc) nd_mws_log(); /* NWS4C marker */
+    const uint32_t shc_bc = nd_msnap_w()[MSW_BLENDC];
     const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : shc_bc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u; /* NWS4C */
     for (unsigned j = 0; j < e->n; j++) {
         NdNatC* q = nd_mc_nat(e, j);
@@ -4492,7 +4491,7 @@ unsigned pm_gpu_env_now(void) { return gs.env_col; }
 void pm_gpu_flush(void) { flush(); }
 
 /* SPR4-3: shaded sprites (nd_int.h is not included here; the former pm_gbi.c, nd_tex.c and nd_geom.c own these) */
-extern int dual_on; void nd_tile_bind(int n); void dual_bind(void); int dual_boost_on(void);
+void nd_tile_bind(int n); void dual_bind(void); int dual_boost_on(void);
 static unsigned spr_nat_n, spr_nat_fb[32];
 static unsigned spr5_sub[8]; /* MDL-3a: class 5 refusals per flag: 1 no pm4 palette path (g_pal, g_use5, gv4_on), 2 off-screen target, 3 grab, 4 zmark, 5 nozt */
 static unsigned spc_texget, spc_miss, spc_rh0[2]; /* PERF2: full texture lookups of sprites and the dirty-slot rehash totals at the last sprcost line */
@@ -4572,7 +4571,7 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o, const Nd
 /* HC8 step 3: the shaded bake and the CI4 texture of a sprite (cold: the spr5 census and the sprtex refusal log are here). Returns 1 with tw, th and un
  * set, or 0 with *why. */
 extern unsigned shc[16]; /* BOMBLIT: nd_tex_set.c shade path counters */
-static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) { ND_WCHK(); /* NWS4B */
+static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) { /* NWS4B */
     if (shaded) {
         if (!nd_apw(NDAPW_DUAL) || nd_apw(NDAPW_UT1)) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */ /* NWS4B */
         nd_tile_bind(0);
@@ -4595,7 +4594,7 @@ static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int
     return 1;
 }
 int nd_snap_spr(uint32_t o[9]); /* nd_snap.c, NDR4 */
-int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) { ND_WCHK(); /* NWS4B */
+int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) { /* NWS4B */
     NdSprRec r;
     nd_sprite_decode(rec, &r);
     /* SPR4: the record's render mode list and final list ran on the walker before this vertex word, so the draw state is nd_ws live and the mode adds nothing */

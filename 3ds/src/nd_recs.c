@@ -129,14 +129,12 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
 }
 /* the combine of a hit, as rec_top runs it (nd_unit_same COMB, nd_comb_set) */
 static __attribute__((noinline)) void hd_comb(const NdHitD* d) {
-    if (!(d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0)) nd_comb_set(d->cw0, d->cw1);
+    if (d->cw0 != nd_ws.comb_w0 || d->cw1 != nd_ws.comb_w1) { pm_gpu_flush(); nd_ws.comb_w0 = d->cw0; nd_ws.comb_w1 = d->cw1; } /* NWS4D: POND 3a flush and the memo */
 }
 static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
     if (fl & HD_PRIM) { nd_ws.prim = d->prim; nd_ws.prim_lod = d->plod; }
     if (fl & HD_ENV) nd_ws.envc = d->env;
-    if (fl & HD_FOG) fogc = d->fog;
-    if (fl & HD_BLEND) blendc = d->blend;
     if (fl & HD_TEX) { nd_ws.tex_on = d->tex; nd_ws.tex_ss = d->tss >> 16; nd_ws.tex_ts = d->tss & 0xffffu; }
     if (fl & HD_FOGF) { fog_fm = d->fm; fog_fo = d->fo; }
 }

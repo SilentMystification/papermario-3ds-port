@@ -10,7 +10,7 @@ extern void pm_log_d(const char* fmt, ...);
 extern unsigned pm_frame_count(void);
 /* debug switch ndst: the native state (nd_ws) once per 100 frames */
 unsigned nd_rect_tex_n, nd_rect_fill_n; /* handler calls (CORE-3 census); incremented by nd_rect.c, defined here so the host test links without nd_rect.c (ST) */
-static __attribute__((cold, noinline)) void nd_st_log(void) { ND_WCHK(); /* NWS4B */
+static __attribute__((cold, noinline)) void nd_st_log(void) { /* NWS4B */
     static int on = -1;
     if (on < 0) on = pm_debug_has("ndst");
     if (!on || pm_frame_count() % 100u) return;

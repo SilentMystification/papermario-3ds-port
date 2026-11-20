@@ -34,14 +34,13 @@ int sr_ok;
  * compare and update come from Z_CMP and Z_UPD, a decal passes equal depth, blending is on when
  * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
  * cut away near-transparent texels. */
-unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
 
 /* V06 rule, one owner (nd_rnd_sync and the native model state, pm_gpu.c model_draw): the first blender cycle P * A_FOG + IN * (1 - A_FOG), P = BL or FOG.
  * 1 with *col = the mix colour (RGB of P, alpha = the fog colour alpha), else 0. */
 extern int pm_nofog; /* MENUGEN part 3: Disable Fog (pm_options.c) */
 /* MENUGEN part 3: the room shroud is the blend colour mix (P = BL), so Disable Fog (the FOG mix) never turns it off (macros.h:319, nd_recs.c:95, :178) */
 _Static_assert((((PM_RM_SHROUD) >> 30) & 3u) == 2u, "PM_RM_SHROUD must not be the FOG mix");
-int nd_mix1(unsigned ol, unsigned* col) { ND_WCHK(); /* NWS4B */
+int nd_mix1(unsigned ol, unsigned* col) { /* NWS4B */
     unsigned p = (ol >> 30) & 3u;
     if ((p != 2u && p != 3u) || ((ol >> 26) & 3u) != 1u || ((ol >> 22) & 3u) != 0u || ((ol >> 18) & 3u) != 0u) return 0;
     if (p == 3u && pm_nofog) return 0; /* FOG blend: no fog. Caveat: the room shroud (PM_RM_SHROUD, nd_recs.c:95, :178) uses this mix too */
@@ -97,7 +96,7 @@ void nd_tex_run(const uint32_t* r) { const unsigned on = r[0] & 0xffffffu, ss = 
     const int same = nd_ws.tex_on == (int)on && nd_ws.tex_ss == ss && nd_ws.tex_ts == ts; /* NWS1 */
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_TEXTURE; if (mk) gv_epoch++; if (same) return;
     nd_ws.tex_on = (int)on; nd_ws.tex_ss = ss; nd_ws.tex_ts = ts; }
-void nd_omh_run(const uint32_t* r) { ND_WCHK(); const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */ /* NWS4B */
+void nd_omh_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */ /* NWS4B */
     const int same = (v & m) == (nd_ap->in.omode_h & m); if (same) nd_ws.om_kh |= m; /* NWS4B */
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_OMH; if (mk) gv_epoch++;
     if (!same) { const uint32_t sv[2] = { m, v & m }; nd_sv_omh(sv); } } /* NSET1: core 1 bit 30 is the cycle sync of set_om */
@@ -106,9 +105,9 @@ void nd_sv_omh(const uint32_t* r) { const uint32_t m = r[0], tf = nd_ws.omode_h 
     if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
 void nd_sv_oml(const uint32_t* r) { nd_ws.omode_l = (nd_ws.omode_l & ~r[0]) | r[1]; nd_ws.om_kl |= r[0]; } void nd_sv_geom(const uint32_t* r) { nd_ws.geom = (nd_ws.geom & r[0]) | r[1]; pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0); }
 void nd_sv_prim(const uint32_t* r) { GP_SET(1, nd_ws.prim == r[1] && (u8)nd_ws.prim_lod == (u8)r[0]); pm_gpu_set_prim(r[1], r[0]); nd_ws.prim = r[1]; nd_ws.prim_lod = r[0]; } void nd_sv_env(const uint32_t* r) { GP_SET(2, nd_ws.envc == r[1]); nd_ws.envc = r[1]; pm_gpu_set_env(nd_ws.envc); }
-void nd_sv_fog(const uint32_t* r) { fogc = r[1]; } void nd_sv_blend(const uint32_t* r) { blendc = r[1]; } void nd_sv_fill(const uint32_t* r) { nd_ws.fill = r[1]; } void nd_sv_primz(const uint32_t* r) { nd_ws.prim_z = r[1]; { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_ws.prim_z); } }
+void nd_sv_fog(const uint32_t* r) { (void)r; } void nd_sv_blend(const uint32_t* r) { (void)r; } /* NWS4D: fog and blend colours live in the snaps */ void nd_sv_fill(const uint32_t* r) { nd_ws.fill = r[1]; } void nd_sv_primz(const uint32_t* r) { nd_ws.prim_z = r[1]; { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_ws.prim_z); } }
 void nd_sv_sci(const uint32_t* r) { sci_x0 = (int16_t)r[0]; sci_y0 = (int16_t)(r[0] >> 16); sci_x1 = (int16_t)r[1]; sci_y1 = (int16_t)(r[1] >> 16); pm_gpu_set_scissor(sci_x0, sci_y0, sci_x1, sci_y1); } void nd_sv_tex(const uint32_t* r) { nd_ws.tex_on = (int)r[0]; nd_ws.tex_ss = r[1] >> 16; nd_ws.tex_ts = r[1] & 0xffffu; }
 void nd_sv_nlt(const uint32_t* r) { lit_freeze(); lt_n = r[1]; } void nd_sv_lcol(const uint32_t* r) { lt[r[0]].col[0] = (u8)(r[1] >> 24); lt[r[0]].col[1] = (u8)(r[1] >> 16); lt[r[0]].col[2] = (u8)(r[1] >> 8); } void nd_sv_fogf(const uint32_t* r) { fog_fm = (s16)(r[1] >> 16); fog_fo = (s16)r[1]; }
-void nd_sv_seg(const uint32_t* r) { nd_ws.segbase[r[0]] = r[1]; } void nd_sv_conv(const uint32_t* r) { conv_k4 = r[1]; pm_comb_set_k4(conv_k4); } void nd_sv_keyr(const uint32_t* r) { keyc = (keyc & 0x00ffffffu) | r[0]; keys = (keys & 0x00ffffffu) | r[1]; }
-void nd_sv_keygb(const uint32_t* r) { keyc = (keyc & 0xff000000u) | r[0]; keys = (keys & 0xff000000u) | r[1]; } void nd_sv_comb(const uint32_t* r) { nd_comb_set(r[0], r[1]); } /* NSET2: the setters of nd_unit_apply without the sync, on the core 1 values */
+void nd_sv_seg(const uint32_t* r) { nd_ws.segbase[r[0]] = r[1]; } void nd_sv_conv(const uint32_t* r) { conv_k4 = r[1]; pm_comb_set_k4(conv_k4); } void nd_sv_keyr(const uint32_t* r) { (void)r; }
+void nd_sv_keygb(const uint32_t* r) { (void)r; } void nd_sv_comb(const uint32_t* r) { GP_SET(0, nd_ws.comb_w0 == r[0] && nd_ws.comb_w1 == r[1]); if (nd_ws.comb_w0 != r[0] || nd_ws.comb_w1 != r[1]) pm_gpu_flush(); nd_ws.comb_w0 = r[0]; nd_ws.comb_w1 = r[1]; } /* NWS4D: POND 3a flush and the memo */ /* NSET2: the setters of nd_unit_apply without the sync, on the core 1 values */
 void nd_sv_apply(const uint32_t* s) { ((NdNapiRun)(uintptr_t)s[1])(s + 2); } /* NWS1: the sync of the old setter goes (NSET2 was the applier only) */

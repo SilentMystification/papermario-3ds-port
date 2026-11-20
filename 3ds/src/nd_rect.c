@@ -165,7 +165,7 @@ static int nd_texlog_on = -1; /* texlog debug switch: -1 until the first texrect
 __attribute__((noinline, cold)) static void nd_texrect_depth(u32 hs) {
     pm_depth_query(nd_ws.timg, (int)((s16)(hs >> 16) >> 5), sci_x0);
 }
-__attribute__((noinline, cold)) static void nd_texrect_log(int xl, int yl, int xh, int yh) { ND_WCHK(); /* NWS4B */
+__attribute__((noinline, cold)) static void nd_texrect_log(int xl, int yl, int xh, int yh) { /* NWS4B */
     /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
     if (nd_texlog_on < 0) nd_texlog_on = pm_debug_has("texlog");
     if (nd_texlog_on) pm_log_d("texlog f%u rect %d,%d-%d,%d w%d h%d cyc %u rm %08x zsrc %d ac %u tile0 %d/%d tile1 %d/%d valid1 %d",
@@ -197,7 +197,7 @@ static unsigned char rc_sn; /* NDR1C: the rectangle in progress has a live snap 
 static void rc_render(void) { if (rc_sn) nd_snap_render(); } /* NDR1C; NCS3; NWS2 */
 /* MERLON: the ball rectangle (G_ZS_PRIM, depth compare) reads the texel S - SL through the tile mask, then tests the primitive depth. */
 __attribute__((noinline, cold)) static void nd_texrect_zprim(int rx0, int ry0, int ex, int ey, float* s0, float* t0, float* s1, float* t1, u32 hs,
-                                                              float ms, float mt, int tw, int th, int rtile) { ND_WCHK(); /* NWS4B */
+                                                              float ms, float mt, int tw, int th, int rtile) { /* NWS4B */
     if (pm_tex_off_idx() >= 0) {
         const float ps = wrap_period_shift((float)(s16)(hs >> 16) / 32.f * ms, ND_BSZ(rtile)[0], ND_BWR(rtile)[0], ND_BWR(rtile)[2], (*s1 - *s0) * (float)tw);
         const float pt = wrap_period_shift((float)(s16)(hs & 0xffff) / 32.f * mt, ND_BSZ(rtile)[1], ND_BWR(rtile)[1], ND_BWR(rtile)[3], (*t1 - *t0) * (float)th);
@@ -218,7 +218,7 @@ __attribute__((noinline, cold)) static int nd_texrect_fold(int rx0, int ry0, int
     return 1;
 }
 
-__attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { ND_WCHK(); /* NWS4B */
+__attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { /* NWS4B */
     const unsigned char sn_armed = nd_snap_arm; nd_snap_arm = 0; /* NDR1B: compared after the fold */
     rc_sn = nd_snap_live; /* NDR1C */
     nd_rect_tex_n++;
@@ -305,13 +305,13 @@ __attribute__((noinline, cold)) static void nd_fillrect_cpu(int ulx, int uly, in
     for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
         for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < nd_tgt.stride; x++) d[y * nd_tgt.stride + x] = 0x8421;
 }
-__attribute__((noinline, cold)) static void nd_fillrect_zs(int ulx, int uly, int lrx, int lry, unsigned color) { ND_WCHK(); /* NWS4B */
+__attribute__((noinline, cold)) static void nd_fillrect_zs(int ulx, int uly, int lrx, int lry, unsigned color) { /* NWS4B */
     /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
     if (nd_snap_live) nd_snap_render(); /* NCS3 */
     pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)nd_ap->primz / 32767.f); /* NWS4B */
 }
 
-__attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) { ND_WCHK(); /* NWS4B */
+__attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) { /* NWS4B */
     nd_rect_fill_n++;
 #define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
     int lrx = FILL_SX10(w0 >> 14);

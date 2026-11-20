@@ -13,7 +13,6 @@
 extern int plan_active, comb_mode5; extern PmPlan cur_plan; const NdCombOut* nd_snap_now(void); /* NAT2K */
 
 extern unsigned pm_frame_n;
-extern unsigned fogc, blendc;
 static uint32_t ms_pre[5]; void nd_msnap_pre(const NdDs* s) { ms_pre[0] = s->w.omode_h; ms_pre[1] = s->w.omode_l; ms_pre[2] = s->w.om_kh; ms_pre[3] = s->w.om_kl; ms_pre[4] = s->w.geom; } /* NAT2C */
 unsigned pm_gpu_env_now(void);
 
