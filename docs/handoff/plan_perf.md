@@ -86,8 +86,8 @@ Merged since: NC0B, NC0R, NC0C, MCOPY1, MCOPY2, T1FIX, NC0S (main 8bcf0252ee). P
 | 4 | NC0M (Haiku) | GPU call memos (omode_h, prim, prim_lod, envc, comb_w0, comb_w1, conv_k4) move to nd_gm: pure move, one sed | nd_snap.c, nd_set.c:103-111, nd_direct.c:57-66, nd_recs.c:147-162, nd_walk.c:263-266, nd.h, nd_state.c, nd_direct_test.c | nd_c0 -28 B / none | wscmb_pause, fxparts | ws_NC0M, WAIT NC0V |
 | 4 | NC0T1 (Haiku) | bind outputs (tile_x0, tile_y0, tile_fx, tile_fy, cur_tile) move to nd_bo: pure move, one sed | nd_comb.c, nd_direct.c:96-177, nd_geom.c:117, nd_rect.c, nd_tex_set.c, nd_int.h, nd.h, nd_direct_test.c | nd_c0 -20 B / none | spot_mac01, hudfb | ws_NC0T1, WAIT NC0V; parallel with NC0M |
 | 5 | NC0F (Sonnet) | segment table from the entry record block (static calls); census segdiff | nd_snap.h, nd_rec.c, nd_walk.c, nd_snap.c:197, nd_set.c:93, :110, nd_ent.c:361, nd_geom.c:443, pm_gpu.c:1234, nd.h | segdiff 0, nd_c0 -64 B / none | step 1 entcape_kmr03, spot_mac01; step 2 fxparts, hudfb | ws_NC0F, WAIT NC0M, NC0T1 |
-| 6 | NC0T2 (Sonnet) | texture setter state td, tst1, timg, tlut, tlut_n (about 230 references) | nd_tex_set.c, nd_rect.c, nd_ent.c, pm_gpu.c | c0gate state 1 to 0 | | next pass, own read |
-| 7 | ALT2 | alt copies left (section 6b) | nd_rec.c, nd_ent.c | c1a e, c, o | | no closed design yet (section 6b) |
+| 6 | NC0T2 (Haiku) | step 1: const_rgb t1_valid and the box pattern rect read the recorded source; step 2: timg, tlut, tlut_n, tst1, td move to NdTxw nd_txw, NdC0 goes | nd_comb.c:67, nd_rect.c:115-143, :247-250, nd_tex_set.c:255-257; step 2 one sed | c0gate state 1 to 0 / none | step 1 hudfb, wscmb_pause (bindsrc, txsrc 0); step 2 spot_mac01, fxparts | ws_NC0T2, WAIT NC0F |
+| 7 | ALT2C (Haiku) | census: core 0 entity copy words by reason (refusal code, slice reason, gap); line entw | nd_rec.c:757-758, nd_ent.c:310-326, :398-478, pm_gpu.c:633 | entw sum = altw c0 e / none | spot_mac01, entcape_kmr03 byte-equal | ws_ALT2C, after NC0F; parallel with NC0T2 |
 | 6 | MDLHIT2 | model hit path cuts, from the PROF2 c0r split | pm_gpu.c, nd_recs.c:265-293 | c0r / cls rec 6.15 | spot_mac01, hudfb | after the Q2 capture |
 | - | GPUTRL | the 30-word draw trailer (nd_emit.c) | nd_emit.c | gw / gb | needs a console check (PICA hangs) | user |
 WAIT reasons (data): NC0V shares nd_set.c:108 (nd_sv_sci and nd_sv_tex on one line) and adjacent NdC0 lines (nd.h:169-171, :183-184) with NC0S.
@@ -128,7 +128,7 @@ Fields left on main d0483da1ba (FACT grep of the nd_c0 readers) and their row:
 | omode_h, comb_w0, comb_w1, prim, prim_lod, envc, conv_k4 | memo tests only: nd_snap.c:181-189, :217, nd_set.c:103-111, nd_direct.c:57-66, nd_recs.c:147-162, nd_walk.c:263, :266 | NC0M | NdGm nd_gm (nd_state.c), a pure move. Later: merge with the GPU shadows prim, prim_lod_g (pm_gpu.c:47, :4402), gs.env_col, pm_k4 after a census (hd_rare writes the memo without a GPU call, nd_recs.c:151-152) |
 | tile_x0, tile_y0, tile_fx, tile_fy, cur_tile | uv math nd_comb.c:195-196, :275-276, :327-328, nd_direct.c, nd_geom.c:117, nd_rect.c; writers in the bind (nd_tex_set.c) | NC0T1 | NdBo nd_bo (nd_tex_set.c), a pure move |
 | segbase[16] | ptr_res nd_walk.c:435-441 (20 ptr_of sites), ent_segkey nd_ent.c:361, writes nd_set.c:93, :110 | NC0F | entry record block (rec_ew p[9]), copy on write in nd_sv_seg |
-| td, tst1, timg, tlut, tlut_n | nd_tex_set.c (about 160), nd_rect.c (35), nd_ent.c (22), pm_gpu.c (11) | NC0T2 | next pass |
+| td, tst1, timg, tlut, tlut_n | setters nd_tex_set.c (85 lines), bind fallback ND_BTD etc. (nd_snap.h:31-34), nd_rect.c:72-174, nd_comb.c:67, :197, nd_ent.c:45-52, nd_snap.c:137, pm_gpu.c debug | NC0T2 | step 1 two readers to the snap; step 2 NdTxw nd_txw (texture register, class C under Q5) |
 The hit delta (nd_recs.c:86-151) goes with the last scalar field. Each of NC0D to NC0G needs its own reader read: next pass, one page each.
 ## 7a. Console rows
 - C1HOT and PROF2 are merged; MDLHIT2 gates on Azahar. The console confirms later: ic1 and lgms (C1HOT), the c1d and c0r lines (PROF2), cls rec (MDLHIT2),
@@ -150,6 +150,9 @@ The hit delta (nd_recs.c:86-151) goes with the last scalar field. Each of NC0D t
 - Q2 (open): one capture now that MCOPY2 is merged, to read ic1, lgms, c1d, c0r, c1a. It picks the next core 1 row (ALT2 or C1HOT follow-up) and MDLHIT2. Default: at the next wake.
 - Q3 (open): a static call (map shape, entity list) keeps a register (NdGs) that holds only core 1 entry values and the static list's own GEOM ops. Is that
   "core 0 decides nothing"? Default yes (the static cache is class C).
+- Q5 (open): after NC0T2 core 0 still keeps a texture model (nd_txw: the TMEM state the recorded texture units build). Readers: the bind fallback of a
+  static call after a copy texture unit and of the glyph, TMEM rects, the model full key. Is it the static register of Q3 (class C)? Default yes. No: core 1 must
+  record a tile block for each bind inside a static list (a design pass; core 1 cost GUESS +0.1 to +0.5 ms).
 - Q4 (open): to reach c0gate state 0, the GPU memos (comb, prim, env, k4) move to the GPU layer and the bind outputs (uv origin, cur_tile) to the bind module.
   These are caches, not decisions. Accept the move (the names list then drops nd_c0)? Default yes.
 
