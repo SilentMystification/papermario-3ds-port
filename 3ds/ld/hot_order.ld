@@ -218,7 +218,6 @@
 		*(.text.nd_wdiff)  /* 214.3 calls/frame, 36 B */
 		*(.text.nd_alt_close)  /* 205.3 calls/frame, 76 B */
 		*(.text.nd_alt_open)  /* 205.3 calls/frame, 88 B */
-		*(.text.nd_alt_lst)  /* 187.3 calls/frame, 112 B */
 		*(.text.aux_hash)  /* 90.7 calls/frame, 116 B */
 		*(.text.nd_ds_model)  /* 87.7 calls/frame, 1512 B */
 		*(.text.nd_mkey_a)  /* 87.7 calls/frame, 176 B */
@@ -376,10 +375,6 @@
 		*(.text.gt_run)  /* 6.0 calls/frame, 812 B */
 		*(.text.lt_mem_same)  /* 6.0 calls/frame, 220 B */
 		*(.text.nd_cw_t1only)  /* 6.0 calls/frame, 464 B */
-		*(.text.nd_mdl_alt)  /* 6.0 calls/frame, 56 B */
-		*(.text.nd_mle_run)  /* 6.0 calls/frame, 92 B */
-		*(.text.nd_mls_run)  /* 6.0 calls/frame, 172 B */
-		*(.text.nd_msnap_ab)  /* 6.0 calls/frame, 16 B */
 		*(.text.nd_mvm_run)  /* 6.0 calls/frame, 192 B */
 		*(.text.nd_ntab_rec)  /* 6.0 calls/frame, 40 B */
 		*(.text.nd_r13_texonly)  /* 6.0 calls/frame, 160 B */

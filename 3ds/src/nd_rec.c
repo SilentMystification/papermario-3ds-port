@@ -228,13 +228,13 @@ void nd_rec_model(const void* rec, unsigned words) {
     { const unsigned rmi = (((const uint32_t*)rec)[0] >> 16) & 0xffu; if (rmi < ND_RM_N && !rm_built[rmi]) nd_rm_build(rmi); } /* HC4b: W3 */
     const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) keep++; /* R13NOP: a typed sync is not an R13 op */
-    rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U + 4u); /* NREC1B: room for the jump and the model snap */ ndc_n[NDC_MODEL]++;
+    rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U); /* NREC1B: room for the jump and the model snap */ ndc_n[NDC_MODEL]++;
     memcpy(p + 2, rec, G_PM_REC_WORDS * 8u); uint32_t* q = p + 2; uint32_t* o = q + 2 * G_PM_REC_WORDS;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
-    { uint32_t* j = p + 2u + 2u * (G_PM_REC_WORDS + keep); j[0] = NDC_HDR(NDC_JUMP, 0, 0); j[1] = (uint32_t)(uintptr_t)(j + 2u + 2u * ND_MSNAP_U + 4u); } /* NREC1B; NAT5B: the 2 alt ranges follow the snap */
+    { uint32_t* j = p + 2u + 2u * (G_PM_REC_WORDS + keep); j[0] = NDC_HDR(NDC_JUMP, 0, 0); j[1] = (uint32_t)(uintptr_t)(j + 2u + 2u * ND_MSNAP_U); } /* NREC1B */
     nd_msnap_pre(&nd_ds); /* NAT2C: the state before the record */
-    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit, p + 4u + 2u * (G_PM_REC_WORDS + keep) + 2u * ND_MSNAP_U); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */
+    { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
     NDT_E(tq, NDT_RMDL);
 }
@@ -444,10 +444,8 @@ static void rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { /* NAT4I: a native 
     p[0] = NDC_HDR(NDC_NAPI, 1, 1); p[1] = (uint32_t)(uintptr_t)run; p[2] = a; p[3] = b; }
 void nd_rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { rec_open(); rec_nat(run, a, b); } /* NAT5E */
 static unsigned char cg_keep; void nd_rec_cgfx(int on) { cg_keep = (unsigned char)(on != 0); } /* NAT6A: a custom gfx range keeps its combine class units (nd_r11_walk) */
-__attribute__((weak)) void nd_mls_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_mle_run(const uint32_t* r) { (void)r; } /* NAT5B: strong in nd_walk.c */
 __attribute__((weak)) void nd_txs_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_oml_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_prim_run(const uint32_t* r) { (void)r; } /* NAT6A: strong in nd_walk.c */
 __attribute__((weak)) void nd_epm_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_cbd_run(const uint32_t* r) { (void)r; } /* NAT6C: strong in nd_walk.c */
-void nd_alt_lst(unsigned end) { nd_rec_nat(end ? nd_mle_run : nd_mls_run, 0u, 0u); } /* NAT5B: the list start and end markers of nd_nr_list keep 0 */
 static const NdDs* alt_s = &nd_ds; /* NAT5T: the state that the txr puts read (a scratch copy on the static paths) */
 static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window of a TILESIZE of tile 0 or 1, as nd_tsz_set and tex_tile1 compute it */
     const NdDs* s = alt_s; const NdTst* t = &s->w.tst1; const unsigned tile = (b >> 24) & 7u; NdWin wn;
@@ -540,6 +538,7 @@ void nd_alt_put(uint32_t w0, uint32_t w1) { nd_altu_n++; NDT_B(nt8); /* NAT8A */
     else if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { uint32_t* const h0 = st_hdr; xr_put(nd_cpy_run, ND_NOP_A | id, (uint32_t)(uintptr_t)nd_sv_nop, 2u); c6_slot = wp - 2; c6_w0 = w0; c6_w1 = w1; /* NSET2 */ xr_put(nd_cpy_run, w0, w1, 1u); c6_app = h0 != NULL && st_hdr == h0; /* ALTU: both units went into an open record */ NDT_E(nt8, NDT_ALT); return; } /* NAT6B: slot and unit in one record */
     if (dr && alt_sd && nd_alt_raw_on != 2u && !nd_lsc_on) { alt_sd = 0; nd_snap_alt(alt_s, id == ND_FS_RECT); } /* NWS4A */
     cp_put(alt_s, w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ } /* NAT5G: xr_put need 3 holds the NAT5F rectangle rule */
+void nd_rec_shreset(void) { rec_open(); st_hdr = NULL; sh_all(); } /* MCOPY2: the stream shadow restarts at a model range unit */
 uint32_t* nd_alt_open(void) { rec_open(); alt_sd = 1; /* NWS4A */ uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
 void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }
 /* NAT5N, core 1: a call unit inside a raw alt range. A block {list word, a, b} in stream data, the unit CALL | 2 with w1 = the block,

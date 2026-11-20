@@ -14,7 +14,6 @@
 #include "nd_msnapw.h"
 #include "nd_snap.h" /* NWS4C: nd_ap */
 
-void nd_mdl_alt(const uint32_t* ab); /* NAT5B: nd_walk.c */
 void nd_range_run(const uint32_t* a); /* nd_walk.c: DIRECT D10a, a custom gfx range of the frame stream */
 void pm_gpu_set_r13_t1(int bound);
 /* M4-2 / S3F-2 / S3F-4: producer record of a model (model.c appendGfx_model, TARGET_3DS), G_PM_REC_WORDS (11) words, R0 to R10. R0: w0 = G_PM_REC << 24 |
