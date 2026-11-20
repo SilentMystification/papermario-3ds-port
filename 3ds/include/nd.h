@@ -167,7 +167,6 @@ typedef struct NdC0 {
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
     uint32_t prim_lod;                 /* G_SETPRIMCOLOR w0 low 16 bits (m and l) */
-    int tex_on;
     const void* timg;
     const void* tlut;
     int tlut_n;
@@ -179,7 +178,6 @@ typedef struct NdC0 {
     NdTst tst1;
     NdTd td[2];
     unsigned conv_k4;                  /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
-    int fog_fm, fog_fo;                /* G_MW_FOG factor and offset */
 } NdC0;
 extern NdC0 nd_c0;
 void nd_words(NdWs* s, const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (NdW2) into s. Not called during the walk. */

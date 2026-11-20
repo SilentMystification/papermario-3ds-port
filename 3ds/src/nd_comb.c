@@ -64,7 +64,7 @@ extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 /* The constant colour mode of the walker state (nd_decide.c nd_const_rgb on the walker's inputs). */
 int const_rgb_tex_alpha(unsigned* out) { /* NWS4B */
     NdCombIn c;
-    c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = ND_TEXON(); nd_tf_chk(ND_FOGF(), c.tex_on, 4u); /* NC0V */ c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_c0.td[1].valid; c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
+    c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = ND_TEXON(); c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_c0.td[1].valid; c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
     memcpy(c.tst, nd_ap->in.tst, sizeof c.tst); /* NWS4B */
     return nd_const_rgb(&c, out);
 }
@@ -192,7 +192,7 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { /* NWS4B */
     uint32_t v[48]; unsigned n = 0;
     v[n++] = nd_ap->in.env; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx; /* NWS4B */
     v[n++] = (uint32_t)nd_ap->in.dual_on; v[n++] = nd_ap->in.tst[8]; v[n++] = nd_ap->in.tst[9]; v[n++] = nd_ap->in.tst[10]; v[n++] = nd_ap->in.tst[11]; /* NWS4B */
-    v[n++] = (uint32_t)nd_cw_ashade(nd_ap->in.w0, nd_ap->in.w1); /* NWS2 */ v[n++] = (uint32_t)nd_ap->in.use_t1; v[n++] = (uint32_t)ND_TEXON(); nd_tf_chk(ND_FOGF(), ND_TEXON(), 3u); /* NC0V */ v[n++] = (uint32_t)nd_c0.tile_x0; v[n++] = (uint32_t)nd_c0.tile_y0; /* NWS4B */
+    v[n++] = (uint32_t)nd_cw_ashade(nd_ap->in.w0, nd_ap->in.w1); /* NWS2 */ v[n++] = (uint32_t)nd_ap->in.use_t1; v[n++] = (uint32_t)ND_TEXON(); v[n++] = (uint32_t)nd_c0.tile_x0; v[n++] = (uint32_t)nd_c0.tile_y0; /* NWS4B */
     v[n++] = gvk_bits(nd_c0.tile_fx); v[n++] = gvk_bits(nd_c0.tile_fy);
     v[n++] = nd_c0.tst1.tile_shift[0][0]; v[n++] = nd_c0.tst1.tile_shift[0][1]; v[n++] = nd_c0.tst1.tile_shift[1][0]; v[n++] = nd_c0.tst1.tile_shift[1][1];
     v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
@@ -320,7 +320,7 @@ void t1_fold_tri(const unsigned ri[3], unsigned tss) { /* NWS4B */
     unsigned st = nd_ap->in.use_t1 ? 1 : 0; /* NWS4B */
     float ms = shift_mul(ND_BSH(st)[0]);
     float mt = shift_mul(ND_BSH(st)[1]);
-    const int ton = ND_TEXON(); nd_tf_chk(ND_FOGF(), ton, 5u); /* NC0V */
+    const int ton = ND_TEXON();
     for (int k = 0; k < 3; k++) {
         const Vtx* r = (const Vtx*)(pm_gpu_gring() + 16u * ri[k]);
         float s0 = ton ? (float)r->v.tc[0] * (float)(tss >> 16) / 65536.f : 0.f;

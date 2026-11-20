@@ -134,9 +134,9 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
     hs_n[HS_ENV] += (d->fl & HD_ENV) && d->env != nd_ap->in.env; /* NWS4C */
     hs_n[HS_FOG] += (d->fl & HD_FOG) && d->fog != nd_ap->fogc; /* NWS4C */
     hs_n[HS_BLEND] += (d->fl & HD_BLEND) && d->blend != nd_ap->blendc; /* NWS4C */
-    hs_n[HS_TEX] += (d->fl & HD_TEX) && (d->tex != (uint8_t)nd_c0.tex_on || d->tss != nd_ap->tss);
+    hs_n[HS_TEX] += (d->fl & HD_TEX) && (d->tex != (uint8_t)ND_TEXON() || d->tss != nd_ap->tss);
     hs_n[HS_COMB] += (d->fl & HD_COMB) && (d->cw0 != nd_ap->in.w0 || d->cw1 != nd_ap->in.w1); /* NWS4C */
-    hs_n[HS_FOGF] += (d->fl & HD_FOGF) && (d->fm != nd_c0.fog_fm || d->fo != nd_c0.fog_fo);
+    hs_n[HS_FOGF] += (d->fl & HD_FOGF) && (d->fm != (int16_t)(ND_FOGF() >> 16) || d->fo != (int16_t)ND_FOGF());
     const unsigned fr = pm_frame_count();
     if (fr != hs_fl) {
         hs_fl = fr;
@@ -156,8 +156,6 @@ static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
     if (fl & HD_PRIM) { nd_c0.prim = d->prim; nd_c0.prim_lod = d->plod; }
     if (fl & HD_ENV) nd_c0.envc = d->env;
-    if (fl & HD_TEX) { nd_c0.tex_on = d->tex; nd_tf_w = 4; }
-    if (fl & HD_FOGF) { nd_c0.fog_fm = d->fm; nd_c0.fog_fo = d->fo; }
 }
 static void hit_apply(const NdW2* q, const NdMEnt* e) {
     NdHitD dl, * d = &dl;

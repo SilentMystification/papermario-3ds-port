@@ -108,6 +108,4 @@ extern NdGs* nd_gs; extern NdGs nd_ew;
 #define ND_FOGF() (nd_gs ? nd_gs->fogf : nd_ap->fogf) /* NC0V: fog_fm << 16 | fog_fo */
 #define ND_TEXON() (nd_gs ? nd_gs->tex_on : (int)nd_ap->in.tex_on)
 #define ND_FOGPK(fm, fo) ((uint32_t)(uint16_t)(fm) << 16 | (uint16_t)(fo))
-extern unsigned char nd_tf_w; /* NC0V: last nd_c0.tex_on writer */
-void nd_tf_chk(uint32_t fogf, int ton, unsigned site); /* NC0V census */
 #endif
