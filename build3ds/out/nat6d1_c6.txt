@@ -1,0 +1,17 @@
+== entcape_kmr03_drec count
+2
+== entcape_kmr03_drec seeded
+== entcape_kmr03_drec lines
+212:#209 c6cut f200
+216:#213 c6cut f201
+== fxparts_drec count
+7
+== fxparts_drec seeded
+== fxparts_drec lines
+291:#286 c6cut f412
+312:#307 c6cut f456
+334:#329 c6cut f500
+357:#351 c6cut f544
+372:#366 c6cut f588
+456:#450 c6cut f632
+480:#473 c6cut f676
