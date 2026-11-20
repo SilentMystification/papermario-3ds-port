@@ -188,7 +188,6 @@ typedef struct NdC0 {
     int fog_fm, fog_fo;                /* G_MW_FOG factor and offset */
 } NdC0;
 extern NdC0 nd_c0;
-void nd_c0_to_ws(NdWs* d); /* field copy of nd_c0 into a core 1 NdWs */
 void nd_words(NdWs* s, const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (NdW2) into s. Not called during the walk. */
 
 /* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices

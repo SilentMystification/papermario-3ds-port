@@ -42,11 +42,3 @@ void nd_words(NdWs* s, const unsigned* w, unsigned n) {
         }
     }
 }
-
-void nd_c0_to_ws(NdWs* d) { /* NWS3: the core 1 NdWs gets the fields of the core 0 state NdC0 */
-    d->geom = nd_c0.geom; d->omode_h = nd_c0.omode_h; d->omode_l = nd_c0.omode_l; d->prim = nd_c0.prim; d->envc = nd_c0.envc; d->fill = nd_c0.fill; d->prim_z = nd_c0.prim_z;
-    d->om_kh = nd_c0.om_kh; d->om_kl = nd_c0.om_kl; d->prim_lod = nd_c0.prim_lod; d->tex_on = nd_c0.tex_on; d->timg = nd_c0.timg; d->tlut = nd_c0.tlut; d->tlut_n = nd_c0.tlut_n;
-    d->tile_x0 = nd_c0.tile_x0; d->tile_y0 = nd_c0.tile_y0; d->tile_fx = nd_c0.tile_fx; d->tile_fy = nd_c0.tile_fy; d->cur_tile = nd_c0.cur_tile; d->use_t1 = nd_c0.use_t1;
-    d->tex_ss = nd_c0.tex_ss; d->tex_ts = nd_c0.tex_ts; memcpy(d->segbase, nd_c0.segbase, sizeof d->segbase); d->comb_w0 = nd_c0.comb_w0; d->comb_w1 = nd_c0.comb_w1;
-    d->tst1 = nd_c0.tst1; memcpy(d->td, nd_c0.td, sizeof d->td);
-}
