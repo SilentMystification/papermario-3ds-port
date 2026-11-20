@@ -319,11 +319,6 @@ static inline void nd_kp_vec(uint32_t* base, unsigned first, const float* k) {
 }
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
-/* HC6 step 4: the word offsets of the per-frame values in a full-state block (0xFFFF: not written): palette 0 data word 0 (then +2..+16), unit 0 block
- * (border word; dim +2, param +3, lod +4, addr +5), unit 0 type, index address, stage colours. */
-typedef struct NdBlkOff { uint16_t pal, u0, ty, idx, col[6]; } NdBlkOff;
-unsigned nd_emit_full(uint32_t* out, const NdDraw* d, NdBlkOff* off);
-unsigned nd_emit_cmp(const uint32_t* a, unsigned na, const uint32_t* b, unsigned nb); /* blkchk: old writes whose last value the block does not end with */
 
 
 /* NDTMPL (S1-3): render state and TEV template per key. The key holds the inputs of flush_draw's state setters and of the TEV builder.
@@ -432,9 +427,9 @@ typedef struct NdNat { NdDraw d; NdMState s; float pal[16], pal_k[16]; /* INTERP
 /* PERF2 step 3: a cached draw of the native model cache (the pool of an NdMEnt): the draw, its index range, the zmark pass 2 factor, the MERLEE mix stage and
  * the template key. No palette (the hit points d.pal at its palette 0 of this view) and no NdMState (only the mix stage is read); the pm5 block is in a side pool. */
 typedef struct __attribute__((aligned(64))) NdNatC {
-    uint32_t boff; int bt; uint16_t blen, bgen; NdBlkOff bo; const uint16_t* sd; unsigned nidx; float zn; uint8_t zp; int8_t mix_st; /* HC9C: the hit head (first 64 bytes) */
+    const uint16_t* sd; unsigned nidx; float zn; uint8_t zp; int8_t mix_st; /* HC9C: the hit head (first 64 bytes) */
     NdDraw __attribute__((aligned(64))) d; /* its own 64-byte hot header (PERF2 step 3) on the next line */
-    NdTmplKey tk; } NdNatC; /* HC6 step 4: the full-state command block of the draw in the block arena (pm_gpu.c blk_*): offset, template id, words, arena generation (0: none), patch offsets. HC9C: the block and hit fields first, tk only for a template rebuild */
+    NdTmplKey tk; } NdNatC; /* HC9C: the hit fields first, tk only for a template rebuild */
 _Static_assert(offsetof(NdNatC, d) == 64, "HC9C: the hit head is one 64-byte line");
 extern int nd_nat_why;
 extern unsigned nd_nat_sub; /* MDL-5 census: sub-case of why 6 (1 a noise, 2 b tex1 no unit 1, 3 c aux off-screen, 4 d pm5 tex1), 0 other whys */

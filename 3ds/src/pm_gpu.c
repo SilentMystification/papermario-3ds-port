@@ -1277,54 +1277,6 @@ static __attribute__((cold, noinline)) const NdDraw* sub_pm5(const NdDraw* dp, N
     *d5 = *dp; pm5_upload_draw(d5); d5->no_uni = 1; d5->npal = 0; if (d5->has_uvx) d5->loc_uvx = (uint16_t)u5_uvx;
     return d5;
 }
-/* HC6 step 4 (plan_hotcode 5.4): the pre-built command block of a cached model draw. The first hit of a draw (or after an arena wrap or a new template
- * id) emits its words with the full state (nd_emit_full: no redundant-state filter) into the block arena and keeps the offsets of the per-frame values;
- * every hit copies the block and patches palette 0 (or the zmark row), the stage colours (the shroud mix_st), unit 0 and the index address. The native
- * shadow is reset after a block (the next draw writes its full state). Arena: one heap block at first use; full: a new generation (every block is made
- * again at its next hit). Switch blkchk (cold): the words the old path writes for the draw against the block, per register; blkchk line per 300 frames. */
-#define BLK_WORDS 65536u
-static uint32_t* blk_ar; static unsigned blk_n; static uint16_t blk_gen = 1;
-static NdNatC* ndn_bq; /* the cached draw being submitted by pm_gpu_model_hit (NULL: any other draw) */
-static unsigned bc_draws, bc_bad, bc_f0, bc_fl; static int bc_sw = -1;
-static __attribute__((cold, noinline)) void blk_build(NdNatC* q, const NdDraw* d) {
-    if (!blk_ar) { blk_ar = (uint32_t*)malloc(BLK_WORDS * 4u); if (!blk_ar) pm_fatal_stop("blk: no memory for the command block arena"); }
-    if (blk_n + ND_EMIT_MAX > BLK_WORDS) { blk_n = 0; if (++blk_gen == 0) blk_gen = 1; }
-    const unsigned kp0 = nd_kp_n; /* INTERPB3: the arena words are no command buffer words: the K patches of this emit are dropped (a cache hit copy patches its own row, blk_put) */
-    const unsigned n = nd_emit_full(blk_ar + blk_n, d, &q->bo);
-    nd_kp_n = kp0;
-    q->boff = blk_n; q->blen = (uint16_t)n; q->bgen = blk_gen; q->bt = d->tmpl;
-    blk_n += n;
-}
-extern uint32_t nd_emit_dk, nd_emit_da, nd_emit_db;
-static __attribute__((cold, noinline)) void blk_check(const uint32_t* blk, unsigned n, const NdDraw* d, const NdNatC* q) {
-    static uint32_t old[ND_EMIT_MAX];
-    NdShadow s = ndn_sh;
-    const unsigned kp0 = nd_kp_n, no = nd_emit_draw(old, &s, d); /* INTERPB3: no patches for the scratch words */
-    nd_kp_n = kp0;
-    bc_draws++;
-    if (nd_emit_cmp(old, no, blk, n)) {
-        static unsigned nl_;
-        bc_bad++;
-        if (nl_ < 8u) { nl_++; pm_log("blkchk diff f%u tmpl %d key %x old %x blk %x u0 %d npal %u zp %d mix %d boff %u bgen %u/%u", pm_frame_count(), d->tmpl, (unsigned)nd_emit_dk,
-                                    (unsigned)nd_emit_da, (unsigned)nd_emit_db, d->u[0].dim != 0, (unsigned)d->npal, q->zp, q->mix_st, (unsigned)q->boff, (unsigned)q->bgen, (unsigned)blk_gen); }
-    }
-    const unsigned fr = pm_frame_count();
-    if (fr != bc_fl) { bc_fl = fr; if (fr >= bc_f0 + 300u) { pm_log("blkchk f%u frames %u draws %u diff %u", fr, fr - bc_f0, bc_draws, bc_bad); bc_f0 = fr; bc_draws = bc_bad = 0; } }
-}
-static unsigned blk_put(uint32_t* o, NdNatC* q, const NdDraw* d) {
-    if (q->bgen != blk_gen || q->bt != d->tmpl || (q->bo.u0 != 0xFFFFu) != (d->u[0].dim != 0)) blk_build(q, d);
-    const unsigned n = q->blen;
-    memcpy(o, blk_ar + q->boff, n * 4u);
-    const NdBlkOff* b = &q->bo;
-    { const uint32_t* p = (const uint32_t*)(const void*)d->pal[0]; uint32_t* w = o + b->pal; w[0] = p[0]; for (unsigned i = 1; i < 16u; i++) w[1 + i] = p[i];
-      if (__builtin_expect(nd_kp_on, 0) && d->pal_k && memcmp(d->pal_k[0], d->pal[0], 64) != 0) for (unsigned r = 0; r < 4; r++) nd_kp_vec(w, 4u * r, d->pal_k[0] + 4u * r); } /* INTERPB2: the K twin of the row */
-    if (b->u0 != 0xFFFFu) { uint32_t* w = o + b->u0; w[2] = d->u[0].dim; w[3] = d->u[0].param; w[4] = d->u[0].lod; w[5] = d->u[0].addr; o[b->ty] = d->u[0].type; }
-    for (unsigned i = 0; i < 6u; i++) if (b->col[i] != 0xFFFFu) o[b->col[i]] = d->tev_col[i];
-    o[b->idx] = d->idx_word;
-    if (__builtin_expect(bc_sw, 0)) { if (bc_sw < 0) bc_sw = pm_debug_has("blkchk"); if (bc_sw) blk_check(o, n, d, q); }
-    nd_shadow_reset(&ndn_sh);
-    return n;
-}
 static __attribute__((cold, noinline)) void c0_count(const NdDraw* d) { /* NAT1: one drec draw by the source of its state */
     if (!drec_f) return; if (ndt_mdl || c0_spr) { c0_m++; return; } /* NAT1 */
     c0_d++; c0_c += nd_c0w & 1u; c0_r += (nd_c0w >> 1) & 1u; if (d->u[0].dim) c0_b += (nd_c0w >> 2) & 1u; } /* NAT1 */
@@ -1353,8 +1305,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         else C3Di_UpdateContext();
         sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
-      const int bq_ = ndn_bq && !d->use5 && !d->no_uni && d->npal == 1u; const unsigned nw_ = bq_ ? blk_put(cb + coff, ndn_bq, d) : nd_emit_draw(cb + coff, &ndn_sh, d);
-      GPUCMD_SetBufferOffset(coff + nw_); sc_gd[bq_]++; sc_gw[bq_] += nw_; } /* HC6 step 4: a cache hit copies its block */
+      const unsigned nw_ = nd_emit_draw(cb + coff, &ndn_sh, d);
+      GPUCMD_SetBufferOffset(coff + nw_); sc_gd[0]++; sc_gw[0] += nw_; } /* MDLBLK: one emit path */
     if (tex) ndunit_after();
     if (__builtin_expect(drec_on, 0)) c0_count(d); /* NAT1 */
     if (__builtin_expect(drec_on, 0)) drec_draw(d, ndt_mdl || nb.gi_kind == 1); /* HOSTCORE2: the golden record of this draw */
@@ -4229,9 +4181,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         else q->d.pal = (const float(*)[16])pal0;
         q->d.pal_k = pm_tw_on ? (const float(*)[16])(q->zp ? zpalk : pal0k) : NULL; q->d.nrm_k = NULL; /* INTERPB2 */
         if (e->tex) q->d.u[0] = u;
-        ndn_bq = q; /* HC6 step 4: the submit copies the draw's command block */
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
-        ndn_bq = NULL;
         mfr_idx += q->nidx;
     }
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
