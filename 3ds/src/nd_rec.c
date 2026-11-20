@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdio.h>
 #include "ultra64.h"
 #include "variables.h"
 #include "pm_port.h"
