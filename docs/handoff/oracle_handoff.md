@@ -11,9 +11,10 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 - Gate benches (drec): spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec, hudfb_drec; entcapd_kgr01_drec (darkness stencil).
 - drec end lines (pm_gpu.c:628-632): `c0src ... wbind` (binds from walker tiles), `altw ... c1 m ... c0 all ... m` (copy words). `drec frame <F> seq <S>` (:609).
 ## Open work (order)
-1. Pages: ws_PROF3 (Haiku, c1g split of core 1 draw time) and ws_MSNAP2 (Haiku, model decision words without a snap, -2.2 ms GUESS), parallel.
-2. plan_perf.md section 11 = audit 2 (ranked findings D1, D2, C1 to C8, K1, K2). Next rows after PROF3 numbers: C3 model record memo, C1 delta snaps, K1 MDLHIT2.
-3. Q6 DRAWOBJ (retained draw objects) is the design change that closes the gap; it needs the user's yes. NC0T2 and ALT2 status: section 6 table.
+1. MSNAP2 and PROF3 merged (MSNAP2: snn 19572 to 3957, spot_mac01 f201). Capture 1 (plan_60fps.md section 5 words, phase=on) reads c1g.
+2. DRAWOBJ (user yes 20 Nov): plan_drawobj.md, pages ws_DO0 (Haiku, gst.txt state hash tool) and ws_DO1 (Sonnet, model record memo).
+   The user reads plan_drawobj.md before a DO coder starts. DO2 to DO4 pages after DO0 merges (DO3 needs gst). DO5 needs the user.
+3. plan_perf.md section 11 rows C1, C3 (= DO1), C4 (= DO4), K1, K2 (= DO3): pick by the capture 1 numbers. Content cuts: none unless the user decides.
 ## Design facts (FACT code read)
 - Stream OML units never write nd_c0.omode_l (nd_rec.c:480 records nd_oml_run, nd_walk.c:258 is empty). nd_img_role read a stale word until NC0R.
 - core 1 keeps no nested state after a stream CALL (nd_rec.c:483-485 apply to a scratch copy); core 0 runs the list. Static runners (nd_sg_try, ent_gdl,
