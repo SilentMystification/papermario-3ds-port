@@ -15,7 +15,7 @@
 #include "nd_fs.h"
 #include "nd_sv.h" /* NSET1 */
 unsigned char nd_alt_raw_on; __attribute__((weak)) void nd_alt_put(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; } /* NAT5F */
-unsigned nd_altw[8]; /* PERF0: alt words. Core 1 written: 0 model, 1 entity, 2 stream call, 3 fallback. Core 0 run (top level): 4 all, 5 model, 6 entity */
+unsigned nd_altw[8]; /* PERF0: alt words. Core 1 written: 0 model, 1 entity, 2 stream call, 3 fallback. Core 0 run (top level): 4 all, 5 model, 6 entity. 7 copy units dropped (ALTU) */
 __attribute__((weak)) void nd_alt_mark(unsigned rc) { (void)rc; } /* NAT6B */
 __attribute__((weak)) void nd_alt_eput(uint32_t w0, uint32_t w1) { nd_alt_put(w0, w1); } __attribute__((weak)) void nd_alt_et_begin(void) {} /* NAT5A */
 __attribute__((weak)) uint32_t* nd_alt_call(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; return NULL; } __attribute__((weak)) void nd_alt_call_end(uint32_t* b) { (void)b; } /* NAT5N */
