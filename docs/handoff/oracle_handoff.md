@@ -1,19 +1,22 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 8bcf0252ee (T1FIX, NC0S merged) plus the pages of oracle NATIVE17 (second pass), 2026-11-20.
+State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs; ALT2C gated 0464762731) plus pages of oracle NATIVE17, 2026-11-20.
 ## Goal
 - User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
 - The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, section 6a MCOPY, section 7 nd_c0 fields left, section 10 questions).
-- Numbers (FACT console capture build 7569): core 1 44.4 ms, core 0 24.0 ms, ratio 1.86, ft 46.5, fps 42.2; c1a m 10975 words per step (0 after MCOPY2). c0gate 0 / 0 / 1 (nd_c0, 896 B).
+- Numbers (FACT console capture build 7569): core 1 44.4 ms, core 0 24.0 ms, ratio 1.86, ft 46.5, fps 42.2; c1a m 10975 words per step (0 after MCOPY2). c0gate 0 / 0 / 1 (nd_c0 now timg, tlut, tlut_n, tst1, td; NC0T2 step 2 deletes it: 0 / 0 / 0).
 ## Tools on main
 - `python 3ds/tools/c0gate.py <elf>`: calls / interp / state. Run on the ELF of the same tree (a clean worktree or git archive).
 - `bench.py base <bench> --commit $(git merge-base HEAD main)`, `bench.py run a,b --row <id>`, `bench.py cmp <bench> --row <id>`.
 - Gate benches (drec): spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec, hudfb_drec; entcapd_kgr01_drec (darkness stencil).
 - drec end lines (pm_gpu.c:628-632): `c0src ... wbind` (binds from walker tiles), `altw ... c1 m ... c0 all ... m` (copy words). `drec frame <F> seq <S>` (:609).
 ## Open work (order)
-1. NC0F merging. Then ws_NC0T2 (Haiku, c0gate state 1 to 0) and ws_ALT2C (Haiku, census) in parallel.
-2. ALT2 design from the ALT2C entw line (refusal codes, slice reasons, gaps). Q5 (texture register) and Q3, Q4 stay with default yes.
-3. Q2 capture picks the next core 1 row and MDLHIT2. GPUTRL needs the user (PICA hang risk).
+1. NC0T2 (ws_NC0T2): step 1 bindsrc s3 lines at f102, f103 in hudfb and wscmb_pause are accepted (drec frames, byte-equal). Step 2 = the sed move, c0gate 0.
+2. ALT2: no page (decision NATIVE17, low value). ALT2C (FACT, Azahar f201 counts since boot): every core 0 entity copy word is a state gap run
+   (nd_ent.c ent_gap, reasons 20 and 21): spot_mac01 166930 words in 2784 runs, entcape_kmr03 459446 words in 6072 runs; 0 refused segments.
+   Gaps carry the units between native segments (matrices, lights, state, vertex loads). GUESS gain of any ALT2: core 1 0.2 to 0.4 ms, core 0 0.15 ms per frame.
+3. Next frame-time work needs the Q2 capture (lgms, c1s, c1d, c1a, ic1, c0r): core 1 is 44 ms; the untimed recorder (GUESS 30 ms) is the target.
+   Then: MDLHIT2 (core 0 rec 6.15 ms), GPUTRL (needs the user, PICA hang risk). Q3, Q4, Q5 defaults yes (plan_perf.md section 10).
 ## Design facts (FACT code read)
 - Stream OML units never write nd_c0.omode_l (nd_rec.c:480 records nd_oml_run, nd_walk.c:258 is empty). nd_img_role read a stale word until NC0R.
 - core 1 keeps no nested state after a stream CALL (nd_rec.c:483-485 apply to a scratch copy); core 0 runs the list. Static runners (nd_sg_try, ent_gdl,
@@ -33,6 +36,9 @@ State: main 8bcf0252ee (T1FIX, NC0S merged) plus the pages of oracle NATIVE17 (s
 - The c1t timers run in sampled steps only. The alt timer is per unit: subtract altu x cal ticks (cal 303 ticks per pair) for real ms.
 - Model cache hit path (nd_recs.c:265-293) runs no rec_apply, no nd_msnap_use: core 0 state on a hit comes from hit_apply only.
 - State leaks out of a called list on core 0 (nd_c0) but not on core 1 (scratch copy nd_rec.c:466, CALL :491-492). A field that moves from nd_c0 to a snap needs a carry back after the scratch run (NC0V: tex_on, fog).
+- Gate rule seen this pass: a census line in a drec frame with a byte-equal cmp of that frame names words the draw does not read: accept it.
+- An expected-diff marker must exist in the gate tree. When step 2 deletes the census, merge step 1 first (NC0V: texfog, then gstex).
+- Step-1 omissions show as step-2 diffs (NC0V nd_sv_tex nd_gs write). Check the page's source list against the step 1 diff before step 2.
 - ms_cur getters (nd_msnap_w, _gvc, _td0) return the last nd_msnap_use: read each call order at the call site (T1FIX fault).
 - nd_set.c holds several setters per line: rows that touch nd_set.c:84-111 or adjacent NdC0 lines in nd.h conflict; give them WAIT lines.
 - PERF0 altw and PERF1 snapi lines are cumulative from boot: compare a tip run with its base log, never with a steady-state rate.
