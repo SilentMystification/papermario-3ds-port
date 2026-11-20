@@ -57,7 +57,7 @@ int pm_gpu_spr_native(const uint32_t* rec);
 const float (*pm_gbi_combined_ptr(void))[4];
 int clip_bits4(const float* p);
 int nd_sg_try(const void* l);
-int ent_draw(const NdW2* rec);
+int ent_draw(const NdW2* rec, const uint32_t* et);
 int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigned char* pbits);
 #define gp_on() (pm_ph_cen) /* PG0 and PERF-GBI counters: phase mode only (PROF2-2: not in a prof sample) */
 int gv_lit_ok(void);
@@ -166,7 +166,7 @@ void nd_light_count(u32 w1);                 /* ST-1: the former pm_gbi.c, G_MW_
 extern unsigned lt_n;                        /* the former pm_gbi.c, lights count (GM-1) */
 extern unsigned fogc, blendc;                /* ST-1: nd_state.c */
 extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
-int ent_gdl(const NdW2* l);
+int ent_gdl(const NdW2* l, const uint32_t* et);
 extern u8 gMapShapeData[];
 extern int sc_ok, gp_prev_op, box_folded;
 extern unsigned char nd_c0w; /* NAT1: bit 0 combine, bit 1 render, bit 2 bind set by the walker (pm_gpu.c) */
@@ -316,6 +316,7 @@ typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refus
 #define DLC_MAXOPS 4096
 #define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
 typedef struct { u32 a0, op0, op1, tri0, ntri; struct NdSDef* sd; } EntSeg; /* S6E sd: the gap before the segment as a compiled def, or NULL */
+void nd_ent_slice(const uint32_t* ab); /* NAT5A */
 void nd_ent_units(const uint32_t* u, unsigned n); /* nd_walk.c, core 0 (DEL1B): n flat units of an entity list, the list start and end of nd_ops_run (keep 1) */
 typedef struct {
     u32 list, vb, nops, hash, fr, vlen, retry;
@@ -352,12 +353,12 @@ EntKey* ent_lookup(const NdW2* l, u32 vb);
 EntKey* ent_find(const NdW2* l, u32 vb);
 int ent_seg_native(const EntKey* k, const EntSeg* s);
 void ent_log(void);
-int nd_eg_run(const NdW2* l, EntKey* k, u32 segid);
+int nd_eg_run(const NdW2* l, EntKey* k, u32 segid, const uint32_t* et);
 u32 ent_segkey(void);
 int entchk_on(void);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx);
 /* LS-2 (nd_ent.c): the entity record case of G_PM_ENT (the walk calls it). */
-int nd_ent_case(const NdW2* rec, u32 w0, u32 w1);
+int nd_ent_case(const NdW2* rec, u32 w0, u32 w1, const uint32_t* et);
 void pm_gbi_ent_texchk(const uint32_t* dl);
 void pm_gbi_ent_segchk(const uint32_t* dl);
 extern NdW2 ent_flat_buf[];

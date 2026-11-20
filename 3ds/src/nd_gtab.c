@@ -141,7 +141,7 @@ void nd_rec_ntab(const void* list) {
     uint32_t* const pay = nd_rec_last_pay(); uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 1; /* NAT5F: the units as a raw alt range */
     if (ls) nd_lsc_begin();
     nd_ds_list(&nd_ds, list, 0); /* NST2A: the list's state units follow its record */
-    nd_alt_raw_on = 0; nd_alt_close(br, pay + 6); /* NAT5F */
+    nd_alt_raw_on = 0; nd_alt_close(br, pay + 6); pay[5] = (uint32_t)(uintptr_t)nd_alt_et_end(pay[7]); /* NAT5F; NAT5A */
     if (ls) nd_lsc_end_at(pay + 4); /* NAT5F: the table after the range */
 }
 void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_ntab(list); dl_ent = NULL; }

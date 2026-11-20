@@ -14,6 +14,7 @@
 #include "macros.h"
 #include "nd_fs.h"
 unsigned char nd_alt_raw_on; __attribute__((weak)) void nd_alt_put(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; } /* NAT5F */
+__attribute__((weak)) void nd_alt_eput(uint32_t w0, uint32_t w1) { nd_alt_put(w0, w1); } __attribute__((weak)) void nd_alt_et_begin(void) {} /* NAT5A */
 __attribute__((weak)) uint32_t* nd_alt_call(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; return NULL; } __attribute__((weak)) void nd_alt_call_end(uint32_t* b) { (void)b; } /* NAT5N */
 unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */ __attribute__((weak)) void nd_lsc_tris(unsigned n) { (void)n; } /* NREC4 */ __attribute__((weak)) void nd_lsc_ep(void) {} /* NCONV2C */
 
@@ -416,9 +417,9 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
     for (unsigned i = 0; i < n; i++) {
         const uint32_t w0 = u[2u * i], w1 = u[2u * i + 1u];
         if (raw && (w0 >> 24) == ND_FS_END) return;
-        if (nd_alt_raw_on && (w0 >> 24) != ND_FS_CALL) nd_alt_put(w0, w1); /* NAT5F; NAT5N: every depth, a call opens its own range */
+        if (nd_alt_raw_on && (w0 >> 24) != ND_FS_CALL) nd_alt_eput(w0, w1); /* NAT5F; NAT5N: every depth, a call opens its own range */
         if ((w0 >> 24) == ND_FS_CALL) {
-            uint32_t* const ac = nd_alt_raw_on ? nd_alt_call(w0, w1) : NULL; /* NAT5N */
+            uint32_t* const ac = nd_alt_raw_on == 1u ? nd_alt_call(w0, w1) : NULL; /* NAT5A: mode 2 is flat */ /* NAT5N */
             ds_list_at(s, w1, depth + 1u);
             if (ac) nd_alt_call_end(ac); /* NAT5N */
             if (w0 & 1u) return;
@@ -428,11 +429,13 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
         }
     }
 }
+static int ds_ent_ok(const NdNDev* nt) { if (!nt || !nt->ntri) return 0; for (unsigned i = 0; i < nt->nu; i++) { const uint32_t w0 = nt->u[2u * i]; const unsigned id = w0 >> 24; if (w0 != ND_NOP_A && !(id >= ND_FS_BASE && id <= ND_FS_COMB) && !(id >= ND_FS_TIMG && id <= ND_FS_MOVEMEM)) return 0; } return 1; } /* NAT5A */
 static void ds_list_at(NdDs* s, uint32_t w, unsigned depth) {
     if (depth >= DS_LIST_DEPTH) return;
     const void* l = ds_ptr(s, w);
     if (!l) return;
     const NdNDev* nt = nd_ntab_find(l);
+    if (nd_alt_raw_on == 1u && ds_ent_ok(nt)) nd_alt_et_begin(); /* NAT5A */
     if (nt) { ds_pairs(s, nt->u, nt->nu, depth, 0); return; }
     ds_pairs(s, (const uint32_t*)l, DS_LIST_MAX, depth, 1);
 }
