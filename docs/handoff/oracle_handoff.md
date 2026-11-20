@@ -1,60 +1,34 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main cb63f94d28, 2026-11-18. Counters FACT (DEL5B2 hand-back, start e41cf8981f): build 0, data 0, gfxtype 91, reader 341, model 11; elfgate basebin 309a79ac9ab7e378: func 44 data 365 (182 ndg_, 182 ndgo_, gMainGfxPos). Run listcen and elfgate on the newest build3ds/basebin ELF for fresh numbers.
-## The plan: plan_finish.md (waves, width and stop file per wave), design_nstate.md (S3-S6 design), build_pipeline.md (BUILDO tools). Read them first.
-- D1 A, D2 A. UD1 option 1: core 1 keeps the N64 field model; listcen class core1 is outside the end proof. UD2 option 1: core 0 keeps a native transform stack.
-- User 2026-11-16: a table miss uses a fixed fallback and one log entry (PSOFB). Option B 2026-11-17: gbi.h etc. stay until S7.
-- User 2026-11-17: at most 5 parallel Haiku coders. Goal: every listcen total 0, elfgate func 0 data 0 gfxnames 0. No console check until the end.
-- User 2026-11-18 option A: NDR0G2 and NDR1C have an expected-diff gate (the correct bind from the snap, not the stale walker bind). Other rows stay byte-equal.
-## Chain NATIVE (oracle NATIVE9; state in plan_native.md W5 row). FACT main 99d8555ed3: 75 / 30 / 23. Merged: NAT5G, NAT6A, NATFB, NATFB2, NATRS. Pages (NATIVE9, merge order): NAT6B (running) -> NAT6D1 (expected-diff c6cut) -> NAT6D2; NAT6C (WAIT NAT6A merged: ready); NAT6E1 (WAIT NAT6B), NAT6E2 (WAIT NATEF), NAT6E3 (WAIT E1, E2: static call arm to fallback, -8/-2); NAT6F last (WAIT NAT6C, NAT6D2, NAT6E3, NATEF: NRUN and interpreter body go, -15). Boundaries: NATIVE13 owns nd_unit_apply and the setters (takes apply = cut = the nd_cpy_run slot mark); NATIVE14 owns combine syncs and state symbols (cp_side reads sc_ok). Facts that cost time: c0gate counts the source tree (base = git archive of the merge-base). Copy state units sit in nd_cpy_run records after an ND_NOP_A or ND_C6_MARK slot; the slot is patched after the apply (txr_take reads state before the apply). Every nd_rec_nr unit runs at ep_stream 1, ex_depth 0. nd_unit_same changes state only for OMH, OML, PRIM. nd_r11_walk reads custom gfx range units (keep them readable). Host doubles define nd_nr_run as a logger: new runners need loggers and weak stubs.
-## Chain NCS/NWS (oracle NATIVE14): combine syncs and state 23. READY: NCS1 (walker desc from sc_cur, -1/-1), NCS2 (box fold goes, marker bfold, -5/-1); NCS3 (WAIT NCS2: rndw/csync markers, -10/-1). DRAFT: NWS1 (WAIT NCS3, NAT6F, NSET3: skip state goes, state -4), NWS2 (Sonnet: draws read nd_snap_cur(), sc_adopt/ds_take/nd_comb_set go, state -12; needs rndw 0 or NWS2P copy snaps first), NWS3 (last: NdC0 nd_c0 for RSP and texture state, state 0). FACT c0src wrnd 0 wcomb 0 on the 4 gate benches. FACT sc_ok matters only at unmarked units, where core 1 lost/dirty (nd_ds.h:28) guarantee sc_ok 1. NATIVE13 rows NSET1-3 keep 3 nd_comb_sync sites and nd_sv_comb in nd_set.c (NWS1, NWS2 take them).
-## Chain NSET (oracle NATIVE13): nd_set.c setters as native value records. Core 1 nd_sv_enc (nd_ds.c) gives an applier and 2 values per applied state unit; core 0 appliers nd_sv_* (nd_set.c, nd_tex_set.c). Pages: NSET1 (READY: stream texture units and OMH record; calls -1) -> NSET2 (WAIT NSET1: copy slot = mark|sync bit|id, applier; values in the unit pair; cp_unit calls nd_sv_apply; calls 0) -> NSET3 (WAIT NSET2, NAT6F: setters, nd_unit_apply, nd_tx wrappers, ls_omh, cp_side go; calls -24). After NSET3 nd_set.c keeps 4 sites for NATIVE14: nd_comb_sync in nd_tex_run, nd_omh_run (bit 30), nd_sv_apply; nd_comb_set in nd_sv_comb. FACT alt_s is the applied copy state on every copy path (nd_alt_mark reads it).
-## Merged on main: NST1, NST3, NST2A-K, FALLBK, NDR0A-F, NDR0G1-2, NDR1B-C, NDR2A-C, NDR3, NDR4, NDR5, NCONV1A, NCONV1D1, NCONV1D2, NREC1A, NDR2D, REN1-8, MREN, PSOFB, DEL4D34, BUILDO, NCONV2A-D, NREC1B-5, DEL4D12, NOLIST2, DELCEN, DELLC, DELT4, DELC2, DEL1B, DEL1C, DEL5A, DEL5B1, DEL3B.
-## Chain NDR: done (coach a28bf24a1ad35b1c8). No NDR page is left. Snapchk data at the end (FACT NDR2D): nimgm f400 recs 14138 cmp 6286 wst 870; wscmb f200 recs 18047 cmp 13482 wst 12060.
-## Chain DEL (coach DEL lead; pages on main by the DEL helper oracle; DEL3A, DEL5B2, DEL1A merged)
-- Page order (each page WAIT names its blockers): DEL1D1 -> DEL1D2 -> DEL2 (also after DEL5B3) -> DEL2E; DEL3C1 (after DEL1D2) -> DEL3C2 -> DEL3C3 (also after DEL2) -> DELGT (C7 to 0); then S9GATE (end proof page on main). Expected end (FACT sums of the pages): model 0; elf func 0 (44 = DEL5B2 3 + DEL1A 2 + DEL1D2 8 + DEL2 26 + DEL2E 5); elf data 0 (DEL5B3 364, DEL3C1 1); reader 11 (nd_op.h ND_X0/ND_X1) until IMGFX2, then 0.
-- DEL2 and DEL2E rename the core 0 draw functions, no logic change. FACT every MODEL_NAMES function has core 0 callers; a delete needs snap sources for the model_draw reads (pm_gpu.c:3854), the particle combine (nd_walk.c:448) and the texture units. D1 A "core 0 decides nothing" stays open. Dropped from DEL3A: "nd_rec_nr records no unit". FACT core 0 draws the stream VTX, TRI, MTX units (nd_walk.c op_geo) and the model key reads the stream mode words (pm_gpu.c:3854).
-- IMGFX (oracle IMGFX): ws_IMGFX starts now (gen_imgfx_tab.py writes 3ds/src/nd_imgfx_tab.c as a second output of the pso step: build.sh GEN_FILES, PT_CMD, pt_run; build_key.py GC_EXCL, :242, :389; gencache.sh GC_EXCL; nd_host_test.sh HOST_GEN; imgfx.c copies the units; ROM check exact for all 20 lists; gate nimgm_anim_drec and 3 key-only checks). ws_IMGFX2 WAIT IMGFX, DEL3C2, DEL3C3: ND_X0, ND_X1 move to 3ds/tools/nd_x.h, reader -11. IMGFX merged. FACT 179 of 261 gfx table converter TUs reach nd_gbi.h (common.h:22): ws_DEL3C2 (rewritten) keeps the redirect for host compiles through `#ifndef __arm__` + nd_gbi_host.h; DEL3C2, DEL3C3, IMGFX2 gate the 4 generator outputs byte-equal (gencmp).
-## Open work (in order)
-1. Expected-diff rule (NDR0G2, NDR1C only): a DIFF passes only when the frame of its first DIFF draw has a bindsnap (NDR0G2) or rectsnap (NDR1C) line.
-2. NCONV1D1 and NCONV1D2 merged (8e3e583bff). FACT: fxops lsnap lists 1118 cmp 1583 p1 1583 bst 0 tmis 0 over 0, drec equal. entcape_kmr03 lsnap lists 644 cmp 644 p1 644.
-   Design: a list snap range starts at the first triangle after a state unit; core 0 finds it by triangle ordinal (nd_snap_lsr). LS_MAX 16 ranges: a list over it keeps range 15 (stale) until NREC2 gives it no table.
-3. NDR4 merged byte-equal with 0 sprsnap lines (FACT 0cf4333a5e).
-4. Stream size: NdSnapChk about 640 bytes (GUESS), 16 x 32 KB per context (FACT nd_rec.c:30-31). Rectangles and sprites add snaps; the compact NdSnap (design section 7) is a later row. Risk (GUESS): the snap_take memo (nd_snap.c:51) counts no NDC_END, so a frame whose only draw repeats the last snap has no live snap at nd_direct_bind and walks.
-5. DEL1D: dead declarations nd_walk_state at nd_api.h:16 and nd_direct.c:254 (no caller outside nd_walk.c; host stubs define it).
-6. NREC (design oracle NREC). NREC1A merged (27f33ea1da): FACT fxops msnap cmp 260 nos 1 bad 0 wst 43 genv 0. The record payload already carries ND_FS ids (nd_rec.c:246-248).
-   Pages on main (order): ws_NREC1B (model_draw reads the msnap; snap always, room reserved so nos 0; wst split w0td w0t w1td w1t) and ws_NREC2 (entity records get a list table in NDC_ENT p[1]; nd_lsc_end_at; over lists get no table) run in parallel. Then ws_NCONV2A (tss in NdSnapChk, tsnap line wtss vtss; WAIT NREC2). Then ws_NREC4 (parts tables in payload u[1], vprim 1 snaps, nd_part_draw consumes; new scene fxp_snapchk; WAIT NCONV2A). All Haiku.
-   NREC1B, NREC2, NREC2B, NREC5 merged. NREC4 round 3 (ws_NREC4 25e4e6f121, coder a76162f1810bc420a). FACT: nd_parts_run_v sets pm_comb_vprim 1 with no sync_combine, so the walker draws snowfall with the stale vprim 0 plan (drec r 0cb, unused TEV const). Round 3: particle draws compare the combine (psnap line), no apply. USER DECISION open: expected-diff gate for a sync at the vprim flip (default no). Parts effects: fxtest 50,55,63,81,84,105,124.
-   OPEN walker reads of model_draw after NREC1B: pm_gbi_bind_tile1 (nd_tex_set.c:23-27), cconst, gs.r_mix, r_mixcol, r_memblend, pm_tex_native_unit0 (pm_gpu.c:3906-3950), the key B (pm_gpu.c:3856) and hit_apply (nd_recs.c:200) read nd_ws before the record.
-   NREC3 dropped: FACT map shapes draw through model records (nd_model_draw reads only NdMCtx, no nd_ws in nd_model.c); dlc_try runs only for list calls into gMapShapeData (nd_walk.c:269, :574, :668) and under ndm or nomodelnat (nd_recs.c:302). Its entry geom and tss reads join NCONV2B.
-   NCONV2 (oracle NCONV2RA, pages on main d323ade40d). Design: core 0 keeps RSP state (geom, tss, segbase, lights, matrices: the vertex load reads them, nd_geom.c:463, :491); the combine units (OML PRIM ENV FOG BLEND RARE COMB) leave core 0 lists. NCONV2B: sc_adopt writes the consumed snap fields into the walker (no-op where snapchk has no bad of those names). NCONV2C: core 1 ep flag per range (ND_LS_EP, ND_LS_DUP in the range start word), lscut line epc epm epx dup rect. NCONV2D (PRE epm 0 epx 0 rect 0): ls_run skips those units, ls_gpu replays their GPU calls at the arm, ds_take copies the core 1 end state (a NdDs after the snaps of each table) at nd_lsr_end, plod in pad2.
-   NREC5 (page on main): compiled defs in lists and entity gaps run as units; nd_scomp_exec, _exec_own go (C11 -2 GUESS); the old cut and sr_ok = 0 stay. No NCONV2D wait. NREC2B (oracle NREC) owns the fxops sl fault. Next after NCONV2D (pages then, from the NCONV2D code): DEL3A stream units (nd_rec_nr) as ls_run with a core 1 ep unit; the texture model units (TIMG..LOADTLUT, TILESIZE writes tile_x0/y0/fx/fy nd_tex_set.c:165-168, read by pm_gbi_gv_at nd_geom.c:119) need a snap source first; then W10-W14 of plan_finish.md.
+State: main 1472130686 plus the PERF commit, 2026-11-20. Oracle NATIVE15.
+## Goal
+- User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
+- The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, measurement plan). Old plans: plan_native.md, design_native_draw.md.
+- Numbers (FACT capture build 9f6be238aa, build3ds/hw_o3ds_log.txt): ft 46 to 51 ms per step, about 21 steps per second (fps counts interpolated presents).
+  Core 1 lgms 44 to 50 ms, core 0 load 18 to 25 ms, core 0 waits 15 to 17 ms per step. c0gate 0 / 0 / 1 (state nd_c0).
+## Tools on main
+- `python 3ds/tools/c0gate.py <elf>`: calls / interp / state. Run on the ELF of the same tree (a clean worktree or git archive).
+- `bench.py base <bench> --commit $(git merge-base HEAD main)`, `bench.py run a,b --row <id>`, `bench.py cmp <bench> --row <id> --commit ...`.
+- Gate benches (drec, byte-equal shots): spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec, hudfb_drec (debug words in 3ds/tools/azt.d/*.json).
+- Prof lines (pm_phase.c:575-703): fps, core2 lgms, c1n, c1t, cls, ndc, pmu. PERF0 adds c1s (core 1 logic and list ms) and c1a (alt words, GPU draw words).
+## Open work (order)
+1. Pages on main: ws_PERF0 (counters), ws_PERF1 (snap intern), ws_PERF3 (dead code, shroud fix) run in parallel. ws_PERF2 (audio on core 0) WAITs capture 1.
+2. After Merge PERF0 and PERF1: console capture 1, A and B (plan_perf.md section 9). Read lgms, c1s, c1t snap, c1a, wk - wwait.
+3. Then write ALTM and ALTE pages from the altw counts (Azahar gate logs of PERF0), then C1HOT, MDLHIT, the NC0 rows (plan_perf.md section 6, 7).
 ## Facts that cost time
-- The Bash default timeout is 120 s. nd_host_test.sh runs longer and goes to the background: pages say `timeout: 600000` (FACT NDR2B, NDR2C). `bench.py run` does not build: a page says `PM_LANE=<id> sh 3ds/build.sh` first (FACT NDR0G2 STALE BUILD exit 5).
-- A SendMessage to a coder that handed back resumes it. Never also start a fresh coder on the same worktree (FACT NCONV2A: 2 writers).
-- Git Bash `sed -i` writes LF and turns a CRLF file into a whole-file diff (FACT dry run 2026-11-18). Pages say `sed -b -i` or the Edit tool.
-- drec_cmp (bench.py:1658) names only the first DIFF draw. drec.txt has `frame` lines only with a step above 1 (pm_gpu.c:605); NDR0G2 logs `drec frame <f> seq <s>`.
-- No host unit links nd_geom.c, nd_comb.c, nd_tex_set.c, nd_snap.c, nd_rect.c. nd_direct_test.c includes nd_direct.c (stubs there and in nd_snap_link_stub.c).
-- Game files (src/) do not include nd_ds.h or nd_snap.h: give them getters (nd_dir_prim1) or plain-word accessors (nd_snap_spr).
-- A crash at map load: read last_log.txt for `shape load fail`, then the shape entry (volume pm3ds-shape, build_pipeline.md) before any code theory.
-- Core 1 (pm_logic.c) runs at the same time as core 0. Det runs are serial: a race does not show in a bench. Shared statics of a core 1 call need a lock or a copy.
-- Every setter unit passes nd_rec_nr (nd_rec.c); core 0 runs it in nd_walk_state. Core 0 never resets nd_ws: nd_ds must not reset either.
-- The F3 globals (conv_k4, dual_on, comb_set ...) have struct-field and parameter twins in 20+ files: never rename them by sed.
-- listcen: reader = NDO_ and G_ op tokens in 3ds/src/*.c, 3ds/include/*.h. model = definitions of MODEL_NAMES (listcen.py:196-198). gfxtype = Gfx in src, include, 3ds/src.
-- Host seed scripts sed source files: before a rename row, grep 3ds/tests/host.d/*.sh for sed lines on the row's files.
-- box_fold_sync (nd_comb.c:377) folds tst1 on core 0 at a new epoch only. SETCOMBINE resets box_folded.
-- snapchk benches: nimgm_strip_snapchk (until f400), wscmb_pause_snapchk (until f200), bench.d/NDR0A.json. drec windows: nimgm 400:2:20, wscmb_pause 140:2, wscmb_fsel 300:2, spot 200:2.
-- bench.py run does not build: `sh 3ds/build.sh` before a capture run. A new debug switch of a gate scene must be on main before the gate row. BASEREUSE (ws_BASEREUSE): `bench.py base` copies a base of a commit with the same inputs, merge_row adopts a base from a byte-equal row cmp (4 per bench, then a full base); an entry with no tools field adopts nothing.
-- Hooks: SendMessage text must not hold the words "log line" (no_guess_hook.js). No sleep loops (no_poll_hook.js).
-- Other oracles edit this file: read `git log -- <file>` and the file before a write.
-- A row that deletes a reader line fails host.d/lcen.sh (`lkey census bad <file> <n> listed <m>`): the fix is the count in 3ds/tests/lkey/allow.txt. The 3 lines `CACHECHECK FAIL shots main_bench` do not fail the suite.
-- The gbi macros live in 3ds/tools/gbi_inc/PR/gbi.h (DEL4D12, host only, include_next). A new host compile line that uses a gDP/gSP name needs `-I 3ds/tools/gbi_inc` before `-I include`.
-- azt_scenarios.json and bench_defs.json do not round-trip through json.dump: delete an object by its line range (the `{` line to its `},` line), then json.load to check.
-- Model key A hashes all 28 record words (pm_gpu.c:3836): a new record word breaks the model cache. Put model data in stream data (nd_rec_data_st) or the NDC_MODEL header arg.
-- Core 0 stale state: a model cache hit (nd_recs.c:198) skips lights, tile/load units, panner sizes, filter bits; a direct draw writes pso state and binds without tile ops.
-- wst (NDR0G2) is the NDR0G1 b-name bad on the current compare population: its cap is a base run of the same scene, never a fixed number. Later pages say: report wst, not judged, when a row adds compares.
-## Roles (dispatcher.md)
-A COACH oracle runs the coders of one chain under a quota (oracle.md rule 7). A design oracle writes pages and starts no agent. Both report to the dispatcher.
+- Sources are CRLF. Git Bash `sed -i` turns them into LF: pages say `sed -b -i` or the Edit tool.
+- Host -Werror units link some files: nd_rec.c with nd_ds.c (geounit, hunit, nat5a, nmdl0, ns3unit, stunit), nd_ds.c alone (nst1, nset1),
+  nd_direct.c with 3ds/tools/nd_direct_test.c (it defines nd_ap). nd_snap.c, nd_walk.c, nd_geom.c, nd_comb.c, nd_tex_set.c are not host-linked.
+- Host seeds sed nd_rec.c text: `|| c == 1u;` (nat5a.sh), `rec_nat(nd_epm_run, 0u,` and `p[0] = NDC_HDR(NDC_NAPI, 1, 1);` (stunit.sh). Keep those strings.
+- The Bash default timeout is 120 s. nd_host_test.sh needs `timeout: 600000`. bench.py run does not build: `PM_LANE=<id> sh 3ds/build.sh` first.
+- The stream lives as long as its display context (2 chains, nd_rec.c:32-35, rec_ctx_check :167). A core 0 pointer into the stream must not outlive the walk.
+- The c1t timers run in sampled steps only. The alt timer is per unit: subtract altu x cal ticks (cal 303 ticks per pair) for real ms.
+- mx in the core2 wait line is mixer wall time (pm_au2.c:168-176), not CPU.
+- Model cache hit path (nd_recs.c:251-276) runs no rec_apply, no nd_msnap_use: core 0 state on a hit comes from hit_apply only.
+- Snap memo: a new snap needs a new command between draws (sn_cmds, nd_snap.c:53). nd_snap_alt and nd_snap_now force the next snap new.
+- Core 1 runs while core 0 walks. Det runs are serial: a race does not show in a bench.
+- A SendMessage to a coder that handed back resumes it. Never start a second coder on the same worktree.
+- Oracles cannot start coders (permission denied): the orchestrator starts them.
 ## What to do first
-1. Read plan_finish.md, design_nstate.md and the ws_* pages on main. Answer coder questions (SendMessage, 10 lines).
-2. Answer the NREC1B, NREC2, NCONV2A, NREC4 coders. Write NCONV2B from the NCONV2A tsnap data (open work 6), then DEL pages. Check `git log -5 -- docs/handoff` first.
+1. Read plan_perf.md and the ws_PERF pages on main. `git log --oneline -15`. Answer coder questions (SendMessage, 10 lines).
+2. When PERF0 hands back: read its altw lines. Write ALTM (model alt ranges as a cached core 1 block) or drop it if c0 m is near c1 m.
