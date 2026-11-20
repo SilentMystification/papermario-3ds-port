@@ -248,10 +248,11 @@ static __attribute__((cold, noinline)) void epk_note(unsigned id, int same, cons
         sc_ok, sc_sig_now() == sc_sig, cmb_gen_seen == comb_gen, box_folded, (unsigned)(u[0] & 0xffffffu), (unsigned)u[1]); }
 }
 void nd_epk_log(void) { for (unsigned i = 0; i < 64u; i++) for (unsigned d = 0; d < 2u; d++) if (epk_h[i][d]) pm_log_evt("epbin id %u dir %u n %u", i, d, epk_h[i][d]); } /* NAT4B */
+static unsigned char c6_mark, c6_on; unsigned nd_c6_bad; static __attribute__((cold, noinline)) void c6_note(void) { static unsigned fr = ~0u; nd_c6_bad++; if (pm_drec_now() && pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("c6cut f%u", fr); } } /* NAT6B */
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
-    const int same = nd_unit_same(u); int cut = !same; /* NAT4C: the cut of this unit */
+    const int same = nd_unit_same(u); int cut = !same; /* NAT4C: the cut of this unit */ if (c6_on && !(ep_stream && ex_depth == 0)) { cut = c6_mark != 0; if (cut == same) c6_note(); } /* NAT6B: a copy unit cuts on its core 1 mark */
     { const unsigned i_ = u[0] >> 24; const int ca_ = i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB || i_ == ND_FS_FILL || i_ == ND_FS_PRIMZ /* NAT4H */, cb_ = !ca_ && ((i_ >= ND_FS_OMH && i_ <= ND_FS_COMB) || (i_ >= ND_FS_TIMG && i_ <= ND_FS_LOADTLUT)); /* NAT4G all other scalar units */
       if (ep_stream && ex_depth == 0 && (ca_ || cb_)) {
         if (cb_) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } } /* NAT4F: count only OMH, TEXTURE (the combine class fields are stale on core 0 since NAT4D) */
@@ -392,6 +393,11 @@ static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of
         else if (nd_op_ctl(id)) { const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
         else if (id == ND_FS_END) break; else nr_set(dbg, q, q);
     } }
+void nd_cpy_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; const uint32_t* const e = rec + 2u * n; /* NAT6B: a copy state record, a slot before each unit */
+    if (m != 2u) ep_stream = m == 0u; /* as nd_nr_run */
+    for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_C6_MARK || q[0] == ND_NOP_A) { c6_mark = q[0] == ND_C6_MARK; continue; }
+        c6_on = 1; if (m == 2u) ls_run(q, 1u); else nr_set(dbg, q, q); c6_on = 0; c6_mark = 0; }
+    if (m != 2u) { ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); } }
 
 /* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words
  * of a model record, an interpreted map shape group) on the op executor (nd_walk_state), with the list start and end rules of nd_walk_run:

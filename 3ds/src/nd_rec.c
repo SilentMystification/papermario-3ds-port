@@ -411,6 +411,7 @@ static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
     if (k++ < 4) pm_log_e("ndc: untyped word %08x not recorded", (unsigned)w0);
 }
 __attribute__((weak)) void nd_geo_rec(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_ctl_rec(const uint32_t* r) { (void)r; } /* NAT5G: strong in nd_walk.c */
+__attribute__((weak)) void nd_cpy_run(const uint32_t* r) { (void)r; } /* NAT6B: strong in nd_walk.c */
 /* HC4a: typed on the recorder (nd_op.h). HC4e4: an untyped word is not recorded. */
 __attribute__((weak)) void nd_sci_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_geo_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_mw_run(const uint32_t* r) { (void)r; } /* NAT4I: strong in nd_set.c */
 __attribute__((weak)) void nd_tex_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_omh_run(const uint32_t* r) { (void)r; } /* NAT4J: strong in nd_set.c */
@@ -484,14 +485,17 @@ void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const
     uint32_t* const ab = p + 2u + 2u * units; ab[0] = ab[1] = 0u;
     uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; ab[0] = (uint32_t)(uintptr_t)wp; nd_snap_task();
     NdDs* const sc = nd_alt_scr_on();
-    for (unsigned k = 0; k < an; k++) { const uint32_t w0 = au[2u * k], w1 = au[2u * k + 1u]; nd_alt_put(w0, w1); nd_ds_apply(sc, w0, w1); }
+    for (unsigned k = 0; k < an; k++) { const uint32_t w0 = au[2u * k], w1 = au[2u * k + 1u]; const int lost = sc->sc_lost, dirty = sc->sc_dirty; nd_alt_put(w0, w1); nd_alt_mark(nd_ds_ep_rule(w0, nd_ds_apply(sc, w0, w1), lost, dirty)); } /* NAT6B */
     nd_alt_scr_off();
     st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp;
 }
+static uint32_t* c6_slot; void nd_alt_mark(unsigned rc) { if (c6_slot && rc) c6_slot[0] = ND_C6_MARK; c6_slot = NULL; } /* NAT6B: after the apply of the unit nd_alt_put wrote last */
 /* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
  * A texture rectangle and its 2 RDPHALF units stay in one nd_ctl_rec record (nr_ctl reads at[3], at[5]). */
 void nd_alt_put(uint32_t w0, uint32_t w1) { nd_altu_n++; NDT_B(nt8); /* NAT8A */
+    const unsigned id = w0 >> 24; c6_slot = NULL; /* NAT6B */
     if ((w0 >> 24) == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { w1 = txr_take(w0, w1); w0 = ND_FS_W0(ND_FS_TXR, 0); } /* NAT5T */
+    else if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { xr_put(nd_cpy_run, ND_NOP_A, 0u, 2u); c6_slot = wp - 2; xr_put(nd_cpy_run, w0, w1, 1u); NDT_E(nt8, NDT_ALT); return; } /* NAT6B: slot and unit in one record */
     cp_put(w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ } /* NAT5G: xr_put need 3 holds the NAT5F rectangle rule */
 uint32_t* nd_alt_open(void) { rec_open(); uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
 void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }

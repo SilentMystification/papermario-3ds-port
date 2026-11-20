@@ -46,7 +46,7 @@ void nd_nr_run(const uint32_t* q) { const unsigned n = (q[-2] >> 16) & 0xffu;
     for (unsigned i = 0; i < n && nulog < 256u; i++) { ulog[2u * nulog] = q[2u * i]; ulog[2u * nulog + 1u] = q[2u * i + 1u]; nulog++; }
 }
 void nd_sci_run(const uint32_t* r); void nd_omh_run(const uint32_t* r); void nd_alt_put(uint32_t w0, uint32_t w1);
-static NdNapiRun fam(uint32_t w0) { const unsigned id = w0 >> 24; return nd_op_geo(id) ? nd_geo_rec : nd_op_ctl(id) ? nd_ctl_rec : nd_nr_run; } /* NAT5G */
+static NdNapiRun fam(uint32_t w0) { const unsigned id = w0 >> 24; return nd_op_geo(id) ? nd_geo_rec : nd_op_ctl(id) ? nd_ctl_rec : ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) ? nd_cpy_run : nd_nr_run; } /* NAT5G; NAT6B */
 #define U(id, b) ND_FS_W0(id, 0u), (uint32_t)(b)
 static unsigned bad;
 static void chk(int ok, const char* why) { if (!ok) { bad++; printf("nat5a bad: %s\n", why); } }
@@ -56,9 +56,10 @@ static unsigned walk(const uint32_t* ab, uint32_t* out, unsigned max, const uint
     while (p != e) {
         if ((p[0] >> 24) == NDC_JUMP) { p = (const uint32_t*)(uintptr_t)p[1]; continue; }
         const unsigned k = (p[0] >> 16) & 0xffu;
-        if (p[0] >> 24 != NDC_NAPI || p[1] != (uint32_t)(uintptr_t)nd_nr_run && p[1] != (uint32_t)(uintptr_t)nd_geo_rec && p[1] != (uint32_t)(uintptr_t)nd_ctl_rec) { bad++; printf("nat5a bad: header\n"); return n; }
+        if (p[0] >> 24 != NDC_NAPI || p[1] != (uint32_t)(uintptr_t)nd_nr_run && p[1] != (uint32_t)(uintptr_t)nd_geo_rec && p[1] != (uint32_t)(uintptr_t)nd_ctl_rec && p[1] != (uint32_t)(uintptr_t)nd_cpy_run) { bad++; printf("nat5a bad: header\n"); return n; }
         stop_hdr[(*nstop)++] = p;
-        for (unsigned i = 0; i < k && n < max; i++) { out[2u * n] = p[2u + 2u * i]; out[2u * n + 1u] = p[3u + 2u * i]; n++; }
+        for (unsigned i = 0; i < k && n < max; i++) { if (p[1] == (uint32_t)(uintptr_t)nd_cpy_run && (p[2u + 2u * i] == ND_NOP_A || p[2u + 2u * i] == ND_C6_MARK)) continue; /* NAT6B */
+            out[2u * n] = p[2u + 2u * i]; out[2u * n + 1u] = p[3u + 2u * i]; n++; }
         p += 2u + 2u * k;
     }
     return n;
@@ -78,7 +79,7 @@ int main(void) {
             for (unsigned i = 0; i < 12u; i++) {
                 const uint32_t* const h = (const uint32_t*)(uintptr_t)t[1u + i];
                 chk((h != NULL) == (want[i] != 0), "c1 cut set");
-                if (h && want[i]) { chk((h[0] >> 24) == NDC_NAPI && h[1] == (uint32_t)(uintptr_t)fam(l[2u * i]), "c1 hdr"); chk(h[2] == l[2u * i] && h[3] == l[2u * i + 1u], "c1 unit"); }
+                if (h && want[i]) { chk((h[0] >> 24) == NDC_NAPI && h[1] == (uint32_t)(uintptr_t)fam(l[2u * i]), "c1 hdr"); { const unsigned o = h[1] == (uint32_t)(uintptr_t)nd_cpy_run ? 4u : 2u; chk(h[o] == l[2u * i] && h[o + 1u] == l[2u * i + 1u], "c1 unit"); } /* NAT6B */ }
             }
             chk(t[13] == ab[1], "c1 end");
             uint32_t out[64]; const uint32_t* hs[32]; unsigned ns; const unsigned n = walk(ab, out, 32u, hs, &ns);
@@ -102,9 +103,17 @@ int main(void) {
         nd_alt_close(br, ab);
         uint32_t out[32]; const uint32_t* hs[16]; unsigned ns; const unsigned n = walk(ab, out, 16u, hs, &ns);
         chk(n == 5u && ns == 3u, "c4 n ns");
-        if (ns == 3u) { chk(hs[0][1] == (uint32_t)(uintptr_t)nd_geo_rec, "c4 geo"); chk(hs[1][1] == (uint32_t)(uintptr_t)nd_ctl_rec && ((hs[1][0] >> 16) & 0xffu) == 3u && (hs[1][0] & 0xffu) == 1u, "c4 ctl"); chk(hs[2][1] == (uint32_t)(uintptr_t)nd_nr_run, "c4 st"); }
+        if (ns == 3u) { chk(hs[0][1] == (uint32_t)(uintptr_t)nd_geo_rec, "c4 geo"); chk(hs[1][1] == (uint32_t)(uintptr_t)nd_ctl_rec && ((hs[1][0] >> 16) & 0xffu) == 3u && (hs[1][0] & 0xffu) == 1u, "c4 ctl"); chk(hs[2][1] == (uint32_t)(uintptr_t)nd_cpy_run && ((hs[2][0] >> 16) & 0xffu) == 2u, "c4 st"); /* NAT6B */ }
+    }
+    { /* case 5 NAT6B: the slot of a copy state unit, patched on the apply */
+        nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0;
+        static const uint32_t l[] = { U(ND_FS_ENV, 0x12345678), U(ND_FS_ENV, 0x12345678), U(ND_FS_END, 0) };
+        uint32_t ab[2]; uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 1; nd_ds_list(&nd_ds, l, 0); nd_alt_raw_on = 0; nd_alt_close(br, ab);
+        uint32_t out[32]; const uint32_t* hs[16]; unsigned ns; const unsigned n = walk(ab, out, 16u, hs, &ns);
+        chk(n == 2u && ns == 1u, "c5 n ns");
+        if (ns == 1u) { chk(hs[0][1] == (uint32_t)(uintptr_t)nd_cpy_run && ((hs[0][0] >> 16) & 0xffu) == 4u, "c5 hdr"); chk(hs[0][2] == ND_C6_MARK && hs[0][4] == l[0] && hs[0][6] == ND_NOP_A && hs[0][8] == l[2], "c5 slots"); }
     }
     chk(nd_alt_et_end(0u) == NULL, "c3 end");
-    printf("nat5a cases 4 bad %u\n", bad);
+    printf("nat5a cases 5 bad %u\n", bad);
     return bad ? 1 : 0;
 }
