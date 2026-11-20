@@ -103,3 +103,6 @@ Each class B reader of section 1 must read a recorded value. Core 1 has every va
 - Real alt ms from a sampled step = c1t alt - altu per step x cal / 268112 (FACT timer per unit, nd_rec.c:509).
 ## 10. User decisions (defaults)
 - UP1 capture 1 with the audio A/B (default yes, after PERF0 and PERF1 merge). UP2 C1HOT and NC0C, NC0F on Sonnet (default no: Haiku with closed pages).
+
+## Decision (user, 20 Nov)
+PERF2 (audio threads on core 0) and capture run B (audiocore0) are dropped: audio stays on core 1. The balance comes from PERF1, deleting duplicate work and moving small decisions to core 0.
