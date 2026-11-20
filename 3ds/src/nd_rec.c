@@ -244,10 +244,13 @@ static MmS mm_s; static NdDs mm_b;
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
 void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * 2u * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
+#define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
+#define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
+static inline uint32_t mm_mask(unsigned i) { return (i == MM_I0 || i == MM_I1) ? 3u : ~0u; } /* the load slot counters of nd_ds_loadtile and nd_ds_loadblock are used as n & 3 only */
 static void mm_s_take(MmS* s) {
     const uint32_t* d = (const uint32_t*)&nd_ds; uint32_t h0 = 2166136261u, h1 = 0x9e3779b9u;
-    for (unsigned i = 0; i < (unsigned)(offsetof(NdDs, lt) / 4u); i++) { h0 = (h0 ^ d[i]) * 16777619u; h1 = (h1 + d[i]) * 2246822519u; h1 ^= h1 >> 15; }
-    for (unsigned i = (unsigned)(offsetof(NdDs, lt_n) / 4u); i < (unsigned)(sizeof(NdDs) / 4u); i++) { h0 = (h0 ^ d[i]) * 16777619u; h1 = (h1 + d[i]) * 2246822519u; h1 ^= h1 >> 15; }
+    for (unsigned i = 0; i < (unsigned)(offsetof(NdDs, lt) / 4u); i++) { const uint32_t v = d[i] & mm_mask(i); h0 = (h0 ^ v) * 16777619u; h1 = (h1 + v) * 2246822519u; h1 ^= h1 >> 15; }
+    for (unsigned i = (unsigned)(offsetof(NdDs, lt_n) / 4u); i < (unsigned)(sizeof(NdDs) / 4u); i++) { const uint32_t v = d[i] & mm_mask(i); h0 = (h0 ^ v) * 16777619u; h1 = (h1 + v) * 2246822519u; h1 ^= h1 >> 15; }
     s->h0 = h0; s->h1 = h1; nd_snap_sv(s->sv);
 }
 static int mm_lights(const uint32_t* r) { return r[7] && r[4] <= 7u; }
@@ -276,7 +279,7 @@ static __attribute__((cold, noinline)) void mm_store(MmEnt* e, const uint32_t* r
     e->nl1 = 0;
     if (!keep && r[1]) { const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; for (; (u[0] >> 24) != ND_FS_END; u += 2) { if (e->nl1 >= MM_L1) return; e->l1[2u * e->nl1] = u[0]; e->l1[2u * e->nl1 + 1u] = u[1]; e->nl1++; } }
     const uint32_t* b = (const uint32_t*)&mm_b; const uint32_t* a = (const uint32_t*)&nd_ds; unsigned n = 0;
-    for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u); i++) if (a[i] != b[i]) { if (n >= MM_D) return; e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
+    for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u); i++) if ((a[i] ^ b[i]) & mm_mask(i)) { if (n >= MM_D) return; e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
     e->nd = n; e->ok = 1;
 }
 static __attribute__((cold, noinline)) void mm_diff(const char* what, unsigned at) { if (mm_diffs++ < 16u) pm_log_evt("mmemo f%u diff %s %u", pm_frame_count(), what, at); }
@@ -299,8 +302,8 @@ static __attribute__((cold, noinline)) void mm_census(MmEnt* e, const uint32_t* 
     memcpy(mm_scr, e->blk, nw * 4u); mm_scr[2 + 5] = r[5]; mm_scr[2 + 16] = r[16]; mm_scr[2 + 17] = r[17];
     mm_scr[1] = nd_mkey_a(mm_scr + 2); mm_scr[2u + 2u * (G_PM_REC_WORDS + keep) + 1u] = (uint32_t)(uintptr_t)(p + nw);
     for (unsigned i = 0; i < nw; i++) if (mm_scr[i] != p[i]) { mm_diff("blk", i); break; }
-    uint32_t* b = (uint32_t*)&mm_b; for (unsigned i = 0; i < e->nd; i++) b[e->di[i]] = e->dv[i];
-    const uint32_t* a = (const uint32_t*)&nd_ds; unsigned nb = 0; for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u) && nb < 4u; i++) if (a[i] != b[i]) { mm_diff("ds", i * 4u); nb++; }
+    uint32_t* b = (uint32_t*)&mm_b; for (unsigned i = 0; i < e->nd; i++) { const uint32_t k = mm_mask(e->di[i]); b[e->di[i]] = (b[e->di[i]] & ~k) | (e->dv[i] & k); }
+    const uint32_t* a = (const uint32_t*)&nd_ds; unsigned nb = 0; for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u) && nb < 4u; i++) if ((a[i] ^ b[i]) & mm_mask(i)) { mm_diff("ds", i * 4u); nb++; }
 }
 static void mm_done(MmEnt* e, const uint32_t* r, unsigned keep, uint32_t* p, unsigned hit) {
     mm_models++;
