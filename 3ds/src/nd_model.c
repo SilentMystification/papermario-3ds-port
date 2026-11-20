@@ -290,7 +290,7 @@ static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw
             if (p[1] == (uint32_t)(uintptr_t)nd_oml_run || p[1] == (uint32_t)(uintptr_t)nd_prim_run || p[1] == (uint32_t)(uintptr_t)nd_cbd_run) { /* NAT6C: a unit record of a custom gfx range */
                 const uint32_t w0 = p[1] == (uint32_t)(uintptr_t)nd_oml_run ? ND_FS_W0(ND_FS_OML, p[2]) : p[1] == (uint32_t)(uintptr_t)nd_prim_run ? ND_FS_W0(ND_FS_PRIM, p[2]) : p[2];
                 if (i >= 16u || !nd_r11_op(w0, p[3], pre, &pend, has_cb, cw, mo, nmo)) { return 0; } i++; break; }
-            if (p[1] != (uint32_t)(uintptr_t)nd_ctl_rec && p[1] != (uint32_t)(uintptr_t)nd_geo_rec) return 0; /* NAT5G */ /* NSTREAM2: only a run of native records */ /* NAT6F */
+            if (p[1] != (uint32_t)(uintptr_t)nd_call_run) return 0; /* NAT6G1 */ /* NSTREAM2: only a run of native records */ /* NAT6F */
             for (unsigned k = 0; k < n; k++, i++) {
                 if (i >= 16u) return 0;
                 if (!nd_r11_op(p[2 + 2 * k], p[3 + 2 * k], pre, &pend, has_cb, cw, mo, nmo)) return 0;

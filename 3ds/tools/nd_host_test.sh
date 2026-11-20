@@ -191,7 +191,7 @@ void* nd_ntab_find(const void* list) { (void)list; return 0; } /* GKEY2: rec_inl
 __attribute__((weak)) int pm_wide; __attribute__((weak)) int is_host(unsigned p) { return p >= 0x00100000u; } __attribute__((weak)) void tex_win_s25(int* a, int* b, int* c, int* d, unsigned e, unsigned f, unsigned g, unsigned h) { (void)a; (void)b; (void)c; (void)d; (void)e; (void)f; (void)g; (void)h; } /* NST1: nd_ds.c (linked with nd_rec.c, the nd_rec_nr hook) */
 __attribute__((weak)) void nd_omh_run(const uint32_t* q) { (void)q; } /* NAT4J: nd_r11_walk (nd_model.c) names the OMH record runner */
 __attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2: nd_r11_walk (nd_model.c) names the native record runner; weak: nd_geo_test.c and the other unit doubles define their own */
-__attribute__((weak)) void nd_geo_rec(const uint32_t* q) { (void)q; } __attribute__((weak)) void nd_ctl_rec(const uint32_t* q) { (void)q; } /* NAT5G: nd_r11_walk (nd_model.c) names the geometry and control runners */
+__attribute__((weak)) void nd_call_run(const uint32_t* q) { (void)q; } /* NAT6G1: nd_r11_walk (nd_model.c) names the call runner */
 __attribute__((weak)) void nd_oml_run(const uint32_t* q) { (void)q; } __attribute__((weak)) void nd_prim_run(const uint32_t* q) { (void)q; } __attribute__((weak)) void nd_cbd_run(const uint32_t* q) { (void)q; } /* NAT6C: nd_r11_walk names them */
 " > /tmp/ndcombs.c
   t0=$(date +%s); stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }

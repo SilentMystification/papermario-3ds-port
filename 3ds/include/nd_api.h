@@ -13,7 +13,7 @@ void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units); /* nd_rec.c,
 void nd_snap_mesh(void); /* nd_snap.c, core 1: the snap of the next draw (NDR3: also before a glyph record) */
 void nd_rec_xf(NdNapiRun run, const uint32_t* rec); /* NDR5, nd_rec.c, core 1: one transform record taken as a state op */
 void nd_rec_st(NdNapiRun run, const void* rec, unsigned units); /* NDR0E2, nd_rec.c, core 1: a snap record taken as a state op */
-void nd_geo_rec(const uint32_t* rec); void nd_ctl_rec(const uint32_t* rec); /* NAT5G, nd_walk.c, core 0: the geometry and control records */
+void nd_vtx_run(const uint32_t* rec); void nd_tri1_run(const uint32_t* rec); void nd_tri2_run(const uint32_t* rec); void nd_mtx_run(const uint32_t* rec); void nd_pop_run(const uint32_t* rec); void nd_mvm_run(const uint32_t* rec); void nd_call_run(const uint32_t* rec); void nd_txr_run(const uint32_t* rec); void nd_frect_run(const uint32_t* rec); void nd_lst_run(const uint32_t* rec); void nd_mnd_run(const uint32_t* rec); void nd_mvx_run(const uint32_t* rec); void nd_cimg_run(const uint32_t* rec); void nd_nop_run(const uint32_t* rec); void nd_rtex_run(const uint32_t* rec); /* NAT6G1, nd_walk.c, core 0 */
 void nd_txs_run(const uint32_t* r); void nd_oml_run(const uint32_t* r); void nd_prim_run(const uint32_t* r); /* NAT6A, nd_walk.c, core 0: stream state records */
 void nd_epm_run(const uint32_t* r); void nd_cbd_run(const uint32_t* r); /* NAT6C, nd_walk.c, core 0: the stream mark, a combine unit of a custom gfx range */
 

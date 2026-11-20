@@ -1,0 +1,17 @@
+/* NAT6G1: the geometry and control runners of the unit tests log as a run */
+#define ND_RLOG(f) void f(const uint32_t* q) { nd_nr_run(q); }
+ND_RLOG(nd_vtx_run)
+ND_RLOG(nd_tri1_run)
+ND_RLOG(nd_tri2_run)
+ND_RLOG(nd_mtx_run)
+ND_RLOG(nd_pop_run)
+ND_RLOG(nd_mvm_run)
+ND_RLOG(nd_call_run)
+ND_RLOG(nd_txr_run)
+ND_RLOG(nd_frect_run)
+ND_RLOG(nd_lst_run)
+ND_RLOG(nd_mnd_run)
+ND_RLOG(nd_mvx_run)
+ND_RLOG(nd_cimg_run)
+ND_RLOG(nd_nop_run)
+ND_RLOG(nd_rtex_run)

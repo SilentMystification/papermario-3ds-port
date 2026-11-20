@@ -48,7 +48,7 @@ static uint32_t ulog[512]; static unsigned nulog;
 void nd_nr_run(const uint32_t* q) { const unsigned n = (q[-2] >> 16) & 0xffu;
     for (unsigned i = 0; i < n && nulog < 256u; i++) { ulog[2u * nulog] = q[2u * i]; ulog[2u * nulog + 1u] = q[2u * i + 1u]; nulog++; }
 }
-void nd_geo_rec(const uint32_t* q) { nd_nr_run(q); } void nd_ctl_rec(const uint32_t* q) { nd_nr_run(q); } /* NAT5G: the records log as a run */
+#include "nd_rec_log.h" /* NAT6G1 */
 /* NDR5: the transform record runs nd_xf_run, which calls these two (the walker's matrix code); each logs its unit as nd_nr_run does */
 static void ulog_put(uint32_t w0, uint32_t w1) { if (nulog < 256u) { ulog[2u * nulog] = w0; ulog[2u * nulog + 1u] = w1; nulog++; } }
 unsigned pm_gbi_cur_op;
