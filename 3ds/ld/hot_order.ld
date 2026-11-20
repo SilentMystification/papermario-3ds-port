@@ -149,7 +149,6 @@
 		*(.text.pm_gbi_sticky)  /* 8.0 calls/frame, 72 B */
 		*(.text.nd_model_state_spr)  /* 5.0 calls/frame, 1260 B */
 		*(.text.nd_snap_dir_o)  /* 5.0 calls/frame, 36 B */
-		*(.text.nd_snap_primz)  /* 5.0 calls/frame, 20 B */
 		*(.text.nd_snap_spr)  /* 5.0 calls/frame, 356 B */
 		*(.text.pm_gbi_combined_ptr)  /* 5.0 calls/frame, 12 B */
 		*(.text.pm_gpu_spr_build)  /* 5.0 calls/frame, 1708 B */

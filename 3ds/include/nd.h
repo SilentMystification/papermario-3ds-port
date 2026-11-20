@@ -166,7 +166,6 @@ typedef struct NdC0 {
     unsigned omode_h;                  /* other mode high; NC0R: the low word lives in the snap */
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
-    unsigned prim_z;                   /* G_SETPRIMDEPTH, 15 bit */
     uint32_t prim_lod;                 /* G_SETPRIMCOLOR w0 low 16 bits (m and l) */
     int tex_on;
     const void* timg;
@@ -180,7 +179,6 @@ typedef struct NdC0 {
     NdTst tst1;
     NdTd td[2];
     unsigned conv_k4;                  /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
-    int sci_x0, sci_y0, sci_x1, sci_y1; /* scissor */
     int fog_fm, fog_fo;                /* G_MW_FOG factor and offset */
 } NdC0;
 extern NdC0 nd_c0;

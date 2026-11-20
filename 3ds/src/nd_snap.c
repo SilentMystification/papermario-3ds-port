@@ -252,5 +252,4 @@ void nd_snap_plog(void) {
         pm_log_d("partsnap f%u", ps_fr);
     }
 }
-unsigned nd_snap_primz(void) { return nd_ap->primz; } /* NAT4H: the sprite path */
 unsigned nd_snap_fill(void) { return nd_ap->fill; } /* NAT4H: the z-buffer clear */
