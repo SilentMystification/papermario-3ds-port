@@ -19,6 +19,7 @@
 #include "nd_ds.h" /* NST2D: nd_ds_rpl */
 #include "nd_op.h"
 #include "nd_api.h"
+#include "nd_sv.h" /* NSET2 */
 #include "nd_snap.h"
 #include "nd_gtab.h"
 #include "nd_lkey.h"
@@ -335,17 +336,17 @@ static void cp_side(const uint32_t* u) { const uint32_t a = u[0] & 0xffffffu, b 
     if (id == ND_FS_OMH) { const uint32_t m = nd_op_om_mask(a); if ((b & m) == (nd_ws.omode_h & m) && sc_ok) nd_ws.om_kh |= m; }
     else if (id == ND_FS_OML) { const uint32_t m = nd_op_om_mask(a); if ((b & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; }
     else if (id == ND_FS_PRIM && nd_ws.prim == b && (uint8_t)nd_ws.prim_lod == (uint8_t)a && sc_ok) { pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; } } /* NAT6D2 */
-static void cp_unit(unsigned dbg, const uint32_t* u, unsigned m, int mk) { const unsigned id = u[0] >> 24; int cut = 1; /* NAT6D2: one copy state unit, nr_set and ls_run under NAT6D1 */
+static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ws.omode_h & a) && sc_ok) nd_ws.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ws.omode_l & a)) nd_ws.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ws.prim == b && (uint8_t)nd_ws.prim_lod == (uint8_t)a && sc_ok) { pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */
+static void cp_unit(unsigned dbg, const uint32_t* u, unsigned m, int mk) { const unsigned id = u[0] & 0xffu; const NdNapiRun f = (NdNapiRun)(uintptr_t)u[1]; int cut = 1; /* NSET2: u the slot, u + 2 the values */ /* NAT6D2: one copy state unit, nr_set and ls_run under NAT6D1 */
     if (m == 2u) { if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) return;
-        if (id == ND_FS_OMH) { ls_omh(u); return; } if (id == ND_FS_TEXTURE) { nd_tx_texon(u[0] & 0xffffffu, u[1]); return; } if (id == ND_FS_GEOM) cut = 0; else cp_side(u); }
-    else { cp_side(u); if (m == 0u && ex_depth == 0 && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) return; }
+        if (id == ND_FS_OMH || id == ND_FS_TEXTURE) { f(u + 2); return; } if (id == ND_FS_GEOM) cut = 0; else cp_vside(u); } /* NSET2 */
+    else { cp_vside(u); if (m == 0u && ex_depth == 0 && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) return; }
     if (!mk) return;
     int fp = 0; if (cut) { pm_gbi_cur_op = id; gv_epoch++; if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)u, 0, id, u[0], u[1]); }
-    nd_unit_apply(u); if (__builtin_expect(fp, 0)) pm_ph_pop(); } /* NAT6D2 */
+    nd_sv_apply(u); /* NSET2 */ if (__builtin_expect(fp, 0)) pm_ph_pop(); } /* NAT6D2 */
 void nd_cpy_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; const uint32_t* const e = rec + 2u * n; /* NAT6B: a copy state record, a slot before each unit */
     if (m != 2u) ep_stream = m == 0u; /* as nd_nr_run */
-    for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_C6_MARK || q[0] == ND_NOP_A) { c6_mark = q[0] == ND_C6_MARK; continue; }
-        cp_unit(dbg, q, m, c6_mark != 0); c6_mark = 0; } /* NAT6D2 */
+    for (const uint32_t* q = rec; q < e; q += 4) cp_unit(dbg, q, m, (q[0] & 0xffff0000u) == ND_C6_MARK); /* NAT6D2; NSET2: a slot (mark, sync bit, id; the applier) and the values per unit */
     if (m != 2u) { ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); } }
 
 /* DIRECT D10b: a flat op range (no branch, no nested list: the sprite fallback geometry, the pieces of a flattened entity list, the R13 words

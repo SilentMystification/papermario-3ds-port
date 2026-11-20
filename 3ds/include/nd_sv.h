@@ -12,4 +12,5 @@ void nd_sv_env(const uint32_t* r); void nd_sv_fog(const uint32_t* r); void nd_sv
 void nd_sv_sci(const uint32_t* r); void nd_sv_tex(const uint32_t* r); void nd_sv_nlt(const uint32_t* r); void nd_sv_lcol(const uint32_t* r); void nd_sv_fogf(const uint32_t* r); /* NSET1 */
 void nd_sv_seg(const uint32_t* r); void nd_sv_conv(const uint32_t* r); void nd_sv_keyr(const uint32_t* r); void nd_sv_keygb(const uint32_t* r); void nd_sv_comb(const uint32_t* r); /* NSET1 */
 void nd_sv_timg(const uint32_t* r); void nd_sv_tile(const uint32_t* r); void nd_sv_tsz(const uint32_t* r); void nd_sv_tlut(const uint32_t* r); void nd_sv_tlutn(const uint32_t* r); /* NSET1 */
+void nd_sv_apply(const uint32_t* s); /* NSET2 */
 #endif /* NSET1 */
