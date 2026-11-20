@@ -243,7 +243,7 @@ typedef struct MmEnt {
     MmS s; Lightsn lt; uint32_t c9[2]; uint32_t l1[2u * MM_L1]; uint16_t di[MM_D]; uint32_t dv[MM_D]; uint32_t cl, cb, al[4u * MM_LW], ab[4u * MM_BW]; /* A: the ring counter steps and the rings after, logical order */
 } MmEnt;
 static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits, mm_skip, mm_diffs;
-static MmS mm_s; static NdDs mm_b;
+static unsigned mm_nc[8]; static MmS mm_s; static NdDs mm_b;
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
 void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * 2u * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
@@ -292,7 +292,7 @@ static __attribute__((cold, noinline)) void mm_store(MmEnt* e, const uint32_t* r
     e->nd = n; e->cl = nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n; e->cb = nd_ds.tm.blk_n - mm_b.tm.blk_n; mm_ring_get(&nd_ds, e->al, e->ab); e->ok = 1;
 }
 static __attribute__((cold, noinline)) void mm_diff(const char* what, unsigned at) { if (mm_diffs++ < 16u) pm_log_evt("mmemo f%u diff %s %u", pm_frame_count(), what, at); }
-static unsigned mm_nn; static unsigned mm_nc[8]; /* near misses: the same key and record, only S differs; counted by the part of S (m, sv, rg, lr, br) */
+static unsigned mm_nn; /* near misses: the same key and record, only S differs; counted by the part of S (m, sv, rg, lr, br) */
 static __attribute__((cold, noinline)) void mm_near(const MmEnt* e, const MmS* s) {
     const uint32_t* x = (const uint32_t*)&e->s; const uint32_t* y = (const uint32_t*)s; unsigned i = 0; while (x[i] == y[i]) i++;
     const unsigned o = i * 4u; const unsigned c = o < offsetof(MmS, sv) ? 0u : o < offsetof(MmS, rg) ? 1u : o < offsetof(MmS, lr) ? 2u : o < offsetof(MmS, br) ? 3u : 4u;
