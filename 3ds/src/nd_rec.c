@@ -231,7 +231,8 @@ void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak belo
  * with the real block and the real nd_ds (log `mmemo f<n> diff ...`). */
 unsigned pm_frame_count(void);
 void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim */
-#define MM_SETS 64u
+#define MM_SETS 16u
+#define MM_WAYS 8u
 #define MM_D 24u
 #define MM_L1 8u
 #define MM_LW ((unsigned)(sizeof(((NdTst*)0)->ldrec[0]) / 4u))
@@ -246,7 +247,7 @@ static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits,
 static unsigned mm_nc[8]; static MmS mm_s; static NdDs mm_b;
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
-void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * 2u * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
+void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * MM_WAYS * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
 #define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
 #define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
 #define MM_L0 ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, ldrec)) / 4u))
@@ -300,17 +301,17 @@ static __attribute__((cold, noinline)) void mm_near(const MmEnt* e, const MmS* s
 }
 static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned* hit) {
     *hit = 0;
-    if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_SETS * 2u * sizeof *mm_t); }
-    if (!mm_t) { if (mm_tried) return NULL; mm_tried = 1; mm_t = (MmEnt*)calloc(MM_SETS * 2u, sizeof *mm_t); if (!mm_t) return NULL; }
+    if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_SETS * MM_WAYS * sizeof *mm_t); }
+    if (!mm_t) { if (mm_tried) return NULL; mm_tried = 1; mm_t = (MmEnt*)calloc(MM_SETS * MM_WAYS, sizeof *mm_t); if (!mm_t) return NULL; }
     mm_s_take(&mm_s);
-    MmEnt* const w = &mm_t[(((r[24] * 2654435761u) ^ (r[0] * 2246822519u) ^ ((mm_s.m.prim ^ mm_s.m.envc * 40503u ^ mm_s.m.cw1 * 9973u) * 3266489917u)) >> 26) * 2u]; MmEnt* v = NULL; /* the before state is in the index: two instances of one geometry in a step keep their own entries */
-    for (unsigned k = 0; k < 2u; k++) {
+    MmEnt* const w = &mm_t[(((r[24] * 2654435761u) ^ (r[0] * 2246822519u) ^ ((mm_s.m.prim ^ mm_s.m.envc * 40503u ^ mm_s.m.cw1 * 9973u) * 3266489917u)) >> 28) * MM_WAYS]; MmEnt* v = NULL; /* the before state is in the index: two instances of one geometry in a step keep their own entries */
+    for (unsigned k = 0; k < MM_WAYS; k++) {
         MmEnt* const e = &w[k];
         if (mm_match(e, r, words, keep, &mm_s)) { *hit = 1; return e; }
         if (e->ok && e->kg == r[24] && e->k0 == r[0] && e->cg == mm_cg[e->ctx] && (int)e->ctx != rec_ctx && e->keep == keep && mm_r13_eq(e, r, words) && mm_list_eq(e, r)) mm_near(e, &mm_s); /* DO1 census: S is the only difference */
         if (!v && (!e->ok || (int)e->ctx != rec_ctx || e->cg != mm_cg[e->ctx])) v = e; /* free, or an entry of the step before that did not hit: the entries of this step stay for the next */
     }
-    return v ? v : &w[mm_tog++ & 1u];
+    return v ? v : &w[mm_tog++ & (MM_WAYS - 1u)];
 }
 /* The census of a hit (step 1): the copy of the last block and the nd_ds delta against the real ones. */
 static __attribute__((cold, noinline)) void mm_census(MmEnt* e, const uint32_t* r, unsigned keep, const uint32_t* p) {
