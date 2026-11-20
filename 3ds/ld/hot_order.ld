@@ -173,7 +173,6 @@
 		*(.text.rec_take)  /* 593.7 calls/frame, 272 B */
 		*(.text.rec_op_t)  /* 503.7 calls/frame, 1012 B */
 		*(.text.nd_op_om_mask)  /* 475.3 calls/frame, 32 B */
-		*(.text.nd_unit_apply)  /* 405.7 calls/frame, 636 B */
 		*(.text.flush_draw)  /* 192.7 calls/frame, 440 B */
 		*(.text.flush_impl_body)  /* 192.7 calls/frame, 220 B */
 		*(.text.pm_wq_on_logic)  /* 157.3 calls/frame, 52 B */
@@ -185,7 +184,6 @@
 		*(.text.nd_mkey_a)  /* 87.7 calls/frame, 132 B */
 		*(.text.nd_rec_model)  /* 87.7 calls/frame, 168 B */
 		*(.text.nd_walk_rec_model)  /* 87.7 calls/frame, 256 B */
-		*(.text.nd_tx_tile)  /* 85.3 calls/frame, 716 B */
 		*(.text.hd_comb)  /* 84.7 calls/frame, 120 B */
 		*(.text.hd_rare)  /* 84.7 calls/frame, 172 B */
 		*(.text.nd_mc_hd)  /* 83.3 calls/frame, 36 B */
@@ -196,9 +194,7 @@
 		*(.text.nd_mtx_cmul)  /* 63.3 calls/frame, 176 B */
 		*(.text.nd_mtx_pcomp)  /* 63.3 calls/frame, 96 B */
 		*(.text.tex_for_draw)  /* 62.3 calls/frame, 68 B */
-		*(.text.nd_tx_timg)  /* 59.0 calls/frame, 208 B */
 		*(.text.nd_tex_wrap_of)  /* 50.0 calls/frame, 36 B */
-		*(.text.set_geom)  /* 49.7 calls/frame, 44 B */
 		*(.text.nd_xf_load)  /* 49.3 calls/frame, 460 B */
 		*(.text.nd_mtx_replace)  /* 49.3 calls/frame, 120 B */
 		*(.text.pm_gbi_ndref_frame)  /* 49.3 calls/frame, 52 B */
@@ -210,9 +206,7 @@
 		*(.text.pm_gpu_rect_sync)  /* 42.3 calls/frame, 64 B */
 		*(.text.nd_comb_core)  /* 40.0 calls/frame, 684 B */
 		*(.text.pm_tex_wrap_gen)  /* 35.0 calls/frame, 16 B */
-		*(.text.nd_tx_ldtlut)  /* 32.7 calls/frame, 88 B */
 		*(.text.tlut_v20)  /* 32.7 calls/frame, 252 B */
-		*(.text.nd_tx_tsz)  /* 30.0 calls/frame, 56 B */
 		*(.text.nd_tex_wrap_final)  /* 30.0 calls/frame, 28 B */
 		*(.text.nd_mc_find)  /* 28.3 calls/frame, 128 B */
 		*(.text.nd_mc_hash)  /* 28.3 calls/frame, 52 B */
@@ -253,11 +247,9 @@
 		*(.text.glyph_atlas_bound)  /* 10.3 calls/frame, 360 B */
 		*(.text.pm_tex_glyph_ofs)  /* 10.3 calls/frame, 44 B */
 		*(.text.pm_tex_origin)  /* 10.3 calls/frame, 108 B */
-		*(.text.nd_tx_texon)  /* 9.7 calls/frame, 32 B */
 		*(.text.pm_gpu_set_prim)  /* 9.0 calls/frame, 136 B */
 		*(.text.pm_wq_pump_one)  /* 8.0 calls/frame, 212 B */
 		*(.text.pm_gpu_set_scissor)  /* 7.0 calls/frame, 204 B */
-		*(.text.set_scissor)  /* 7.0 calls/frame, 160 B */
 		*(.text.lt_mem_same)  /* 6.0 calls/frame, 220 B */
 		*(.text.nd_r13_texonly)  /* 6.0 calls/frame, 160 B */
 		*(.text.nd_tex_gen)  /* 6.0 calls/frame, 16 B */
@@ -274,7 +266,6 @@
 		*(.text.sprm_eq)  /* 5.0 calls/frame, 68 B */
 		*(.text.rect_raw_open)  /* 4.7 calls/frame, 720 B */
 		*(.text.rect_raw_quad)  /* 4.7 calls/frame, 764 B */
-		*(.text.nd_set_prim)  /* 4.3 calls/frame, 112 B */
 		*(.text.nd_texrect_run)  /* 4.3 calls/frame, 48 B */
 		*(.text.pm_gpu_begin_wait)  /* 4.0 calls/frame, 2788 B */
 		*(.text.pm_gpu_flush_from)  /* 4.0 calls/frame, 28 B */
@@ -348,7 +339,6 @@
 		*(.text.wq_pm_gpu_begin)  /* 1.0 calls/frame, 280 B */
 		*(.text.wq_pm_gpu_drew)  /* 1.0 calls/frame, 96 B */
 		*(.text.wq_pm_gpu_end)  /* 1.0 calls/frame, 2484 B */
-		*(.text.nd_envc_set)  /* 0.7 calls/frame, 80 B */
 		*(.text.kick_split)  /* 0.7 calls/frame, 324 B */
 		*(.text.pm_gpu_gv5_ok)  /* 0.7 calls/frame, 16 B */
 		*(.text.pm_gpu_hud_flush)  /* 0.7 calls/frame, 1136 B */
@@ -357,4 +347,3 @@
 		*(.text.nd_mc_store)  /* 0.3 calls/frame, 992 B */
 		*(.text.nd_r11_state)  /* 0.3 calls/frame, 80 B */
 		*(.text.pm_gpu_dbg_primz)  /* 0.3 calls/frame, 16 B */
-		*(.text.set_primdepth)  /* 0.3 calls/frame, 28 B */

@@ -73,17 +73,12 @@ void nd_modvtx(unsigned where, unsigned vi); /* HC4d2: ND_FS_MISC_MODVTX fields 
 void nd_mv_mem(u32 w0, u32 w1);
 void nd_xf_popb(u32 w1);
 void nd_cimg_set(u32 a, u32 b); /* HC4d2: ND_FS_MISC_CIMG (a = sub << 16 | siz << 12 | width - 1, b = address) */
-void nd_envc_set(u32 w1);
 void gv_streak_flush(void);
 void gv_streak_op(unsigned op);
 void nd_xf_load(u32 w0, u32 w1, u32 hdr);
 void note(unsigned op);
 void pm_gbi_ent_segchk(const uint32_t* dl);
 void pm_gbi_ent_texchk(const uint32_t* dl);
-void set_fillcolor(u32 w1);
-void set_fogcolor(u32 w1);
-void set_geom(u32 w0, u32 w1);
-void set_primdepth(u32 w1);
 void nd_comb_sync(void);
 void tex_streak_flush(void);
 void tex_streak_op(unsigned op);
@@ -144,16 +139,9 @@ extern unsigned st_vx;
 extern unsigned vert_tss[64];
 
 /* ---- W: the walk group's own entry points and tables (defined in nd_walk.c), and the the former pm_gbi.c helpers it calls ---- */
-void nd_unit_apply(const uint32_t* u);
 void nd_bad_next(u32 w1, u32 w0, u32 list);
 void nd_bad_vtx(u32 w1, u32 w0, u32 list);
 void nd_bad_mtx(u32 w0, u32 w1, NdW2* list, NdW2* pc);
-void set_scissor(u32 w0, u32 w1);
-void set_blendcolor(u32 w1);
-void set_fogcolor(u32 w1);
-void set_primdepth(u32 w1);
-void set_fillcolor(u32 w1);
-void nd_set_prim(u32 a, u32 b);              /* nd_set.c: G_SETPRIMCOLOR (a = LOD word, b = colour) */
 void nd_sr_forget(void);                     /* ST-1: nd_state.c, nd_rnd_sync state forgotten */
 int nd_mix1(unsigned ol, unsigned* col);   /* nd_set.c: the V06 blend colour mix of other mode L (1 and the colour, else 0) */
 void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, unsigned oml, unsigned sg); /* NDR0F2: nd_set.c, the GPU part of nd_rnd_sync */
@@ -199,12 +187,6 @@ void tlut_v20(unsigned slot);
 struct NdTxR; void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt, const struct NdTxR* r); void nd_tx_tszr(const struct NdTxR* r); /* NAT5T */
 int tex_shaded0(int uls, int ult);
 void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, unsigned ms, unsigned ft, unsigned mt);
-/* HC4c: the typed texture setters (nd_op.h fields; nd_unit_apply runs them by id) */
-void nd_tx_timg(u32 a, u32 b);
-void nd_tx_tile(u32 a, u32 b);
-void nd_tx_ldtlut(u32 b);
-void nd_tx_tsz(u32 a, u32 b);
-void nd_tx_texon(u32 a, u32 b);
 
 /* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; the former pm_gbi.c and the walker read them. ---- */
 extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;

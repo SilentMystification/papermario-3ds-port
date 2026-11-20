@@ -17,7 +17,6 @@
 #include "nd_op.h"
 #include "nd_fs.h"
 #include "nd_sv.h" /* NSET1 */
-extern int pm_wide; /* WIDE4: set_scissor reads signed x edges with wide on */
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
@@ -30,131 +29,11 @@ unsigned sr_sig;
 int sr_ok;
 
 
-/* CORE-2b: the geometry mode setter. Every G_GEOMETRYMODE path writes through here (gv_epoch stays with the callers that bumped it). */
-void set_geom(u32 w0, u32 w1) {
-    nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1;
-    pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
-}
-
 /* Render mode bits of G_SETOTHERMODE_L, same reading as libultraship DeriveTriState: depth
  * compare and update come from Z_CMP and Z_UPD, a decal passes equal depth, blending is on when
  * the blender mixes with the frame buffer by (1 - alpha), texture edge and the alpha threshold
  * cut away near-transparent texels. */
 unsigned fogc, blendc; /* V06: G_SETFOGCOLOR and G_SETBLENDCOLOR, RGBA */
-/* CORE-2b: the fog and blend colour setters (fogc, blendc; the fog factors stay with G_MOVEWORD). */
-void set_fogcolor(u32 w1) { fogc = w1; }
-
-/* CORE-2b: scissor (the walker's sci_* and the GPU scissor), prim depth and fill colour. */
-void set_scissor(u32 w0, u32 w1) {
-    int ulx = (int)((w0 >> 12) & 0xfff);
-    int uly = (int)(w0 & 0xfff);
-    int lrx = (int)((w1 >> 12) & 0xfff);
-    int lry = (int)(w1 & 0xfff);
-    /* WIDE4: with wide on a window in the left margin (battle Moves/Strats list at game x -20) sets a scissor with a negative left edge; gDPSetScissor
-     * packs it as an unsigned 12-bit field (-18 -> 1006 px), which swapped the edges and cut the list text. The x fields are signed 10.2 then. */
-    if (pm_wide) {
-        if (ulx & 0x800) ulx |= ~0xfff;
-        if (lrx & 0x800) lrx |= ~0xfff;
-    }
-    sci_x0 = ulx >> 2;
-    sci_y0 = uly >> 2;
-    sci_x1 = lrx >> 2;
-    sci_y1 = lry >> 2;
-    pm_gpu_set_scissor(ulx >> 2, uly >> 2, lrx >> 2, lry >> 2);
-}
-
-void set_primdepth(u32 w1) {
-    nd_ws.prim_z = (w1 >> 16) & 0x7fffu;
-    { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_ws.prim_z); } /* POND-LOG: waterlog line of pm_gpu.c */
-}
-
-void set_fillcolor(u32 w1) { nd_ws.fill = w1; }
-
-void set_blendcolor(u32 w1) { blendc = w1; }
-
-/* CORE-2b: G_SETPRIMCOLOR, one owner (the walker and the record both run it). a = the LOD word, b = the colour. */
-void nd_set_prim(u32 a, u32 b) {
-    GP_SET(1, nd_ws.prim == b && (u8)nd_ws.prim_lod == (u8)(a & 0xff));
-    pm_gpu_set_prim(b, a & 0xffffu); /* closes the open batch before the change (SPR4-prim) */
-    nd_ws.prim = b;
-    nd_ws.prim_lod = a & 0xffffu; /* S3N-3d: the prim LOD word (pm_gpu key) */
-    nd_comb_sync();
-}
-
-/* HC4a: the othermode setter on the typed fields (h: the H word; mask from shift and length, nd_op.h). */
-static void set_om(int h, unsigned sft, unsigned len, unsigned mask, u32 v) {
-            if (h) {
-                unsigned old_tf = nd_ws.omode_h & (3u << 12);
-                nd_ws.omode_h = (nd_ws.omode_h & ~mask) | (v & mask);
-                nd_ws.om_kh |= mask; /* B8 known bits */
-                if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT, POINT is 0, BILERP 2, AVERAGE 3 */
-                    pm_gpu_flush();
-                    pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
-                }
-            }
-            else { nd_ws.omode_l = (nd_ws.omode_l & ~mask) | (v & mask); nd_ws.om_kl |= mask; }
-            /* S25: the cycle type decides 1 or 2 cycles of the combiner. */
-            if (h && sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE) nd_comb_sync();
-}
-
-/* S3F-2b: G_SETENVCOLOR, one function for the walker and the record. */
-void nd_envc_set(u32 w1) {
-    GP_SET(2, nd_ws.envc == w1);
-    nd_ws.envc = w1;
-    pm_gpu_set_env(nd_ws.envc);
-    nd_comb_sync();
-}
-
-/* HC4a: G_MOVEWORD by its typed kind (nd_op.c decodes the index and offset). */
-static void set_mw(unsigned kind, unsigned arg, u32 w1) {
-    switch (kind) {
-    case ND_FS_MW_NUMLIGHT: nd_light_count(w1); break; /* L01 */
-    case ND_FS_MW_LIGHTCOL: lt[arg].col[0] = w1 >> 24; lt[arg].col[1] = w1 >> 16; lt[arg].col[2] = w1 >> 8; break; /* L01 */
-    case ND_FS_MW_FOG: fog_fm = (s16)(w1 >> 16); fog_fo = (s16)w1; break; /* F08 */
-    case ND_FS_MW_SEG:
-        nd_ws.segbase[arg] = (u32)ptr_of(w1);
-        if (!nd_ws.segbase[arg]) nd_ws.segbase[arg] = w1;
-        break;
-    default: break;
-    }
-}
-
-/* HC4a: the typed scalar ops (nd_op.h). nd_unit_apply: the handler of the op (the walker's arm). */ /* NAT6F */
-static __attribute__((cold, noinline)) void set_rare(unsigned k, u32 w1) {
-    if (k == ND_FS_RARE_CONV) { conv_k4 = (w1 >> 9) & 0xffu; pm_comb_set_k4(conv_k4); }
-    else if (k == ND_FS_RARE_KEYR) {
-        keyc = (keyc & 0x00ffffffu) | ((w1 >> 8 & 0xffu) << 24);
-        keys = (keys & 0x00ffffffu) | ((w1 & 0xffu) << 24);
-    } else {
-        keyc = (keyc & 0xff000000u) | ((w1 >> 24 & 0xffu) << 16) | ((w1 >> 8 & 0xffu) << 8);
-        keys = (keys & 0xff000000u) | ((w1 >> 16 & 0xffu) << 16) | ((w1 & 0xffu) << 8);
-    }
-    nd_comb_sync();
-}
-void nd_unit_apply(const uint32_t* u) {
-    const u32 a = u[0] & 0xffffffu, b = u[1];
-    switch (u[0] >> 24) {
-    case ND_FS_OMH: set_om(1, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
-    case ND_FS_OML: set_om(0, a & 0xffu, (a >> 8) & 0xffu, nd_op_om_mask(a), b); break;
-    case ND_FS_GEOM: set_geom(a, b); break;
-    case ND_FS_PRIM: nd_set_prim(a, b); break;
-    case ND_FS_ENV: nd_envc_set(b); break;
-    case ND_FS_FOG: set_fogcolor(b); break;
-    case ND_FS_BLEND: set_blendcolor(b); break;
-    case ND_FS_FILL: set_fillcolor(b); break;
-    case ND_FS_PRIMZ: set_primdepth(b); break;
-    case ND_FS_SCISSOR: set_scissor(a, b); break;
-    case ND_FS_TEXTURE: nd_tx_texon(a, b); nd_comb_sync(); break;
-    case ND_FS_MW: set_mw(a >> 16, a & 0xffffu, b); break;
-    case ND_FS_RARE: set_rare(a, b); break;
-    case ND_FS_COMB: nd_comb_set(ND_FS_COMB_W0(a), b); nd_comb_sync(); break;
-    case ND_FS_TIMG: nd_tx_timg(a, b); break; /* HC4c: the texture image, tile and load ops (nd_tex_set.c) */
-    case ND_FS_TILE: nd_tx_tile(a, b); break;
-    case ND_FS_TILESIZE: nd_tx_tsz(a, b); break;
-    case ND_FS_LOADTLUT: nd_tx_ldtlut(b); break;
-    default: break;
-    }
-}
 
 /* V06 rule, one owner (nd_rnd_sync and the native model state, pm_gpu.c model_draw): the first blender cycle P * A_FOG + IN * (1 - A_FOG), P = BL or FOG.
  * 1 with *col = the mix colour (RGB of P, alpha = the fog colour alpha), else 0. */
