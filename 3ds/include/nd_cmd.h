@@ -51,6 +51,7 @@ void nd_sub_call(const NdSub* s);
 /* D10a: a custom gfx range (build_custom_gfx): nd_rec_mark at its start, the builder's commands, nd_rec_end. The model record names the range
  * (R11) and the replay runs it to its NDC_END (nd_range_run). A static custom gfx list (SetCustomGfx) is recorded as commands (nd_rec_list). */
 void nd_rec_end(void);
+void nd_rec_cgfx(int on); /* NAT6A, nd_rec.c, core 1: 1 while a custom gfx range records */
 void nd_rec_list(const void* l);
 int nd_rec_inline(uint32_t a); /* DEL3C1: nd_rec.c, a push call of an in-line state list; nd_gx_host.c */
 

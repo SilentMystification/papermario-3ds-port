@@ -16,6 +16,7 @@ void nd_rec_st(NdNapiRun run, const void* rec, unsigned units); /* NDR0E2, nd_re
 void nd_nr_exec(const uint32_t* u, unsigned n); /* nd_walk.c, core 0: n native records (nd_nr.h) */
 void nd_nr_run(const uint32_t* rec); /* nd_walk.c, core 0: the NDC_NAPI runner of a run; n = the units field of its header at rec[-2] */
 void nd_geo_rec(const uint32_t* rec); void nd_ctl_rec(const uint32_t* rec); /* NAT5G, nd_walk.c, core 0: the geometry and control records */
+void nd_txs_run(const uint32_t* r); void nd_oml_run(const uint32_t* r); void nd_prim_run(const uint32_t* r); /* NAT6A, nd_walk.c, core 0: stream state records */
 
 typedef uint16_t NdPso;
 #define ND_PSO_MAX 256u

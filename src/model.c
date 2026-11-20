@@ -3523,8 +3523,10 @@ static void nd_cgfx_one(s32 k, ModelCustomGfxBuilderFunc fn, s32 i) {
     nd_cgfx_rng[k] = nullptr;
     if (fn == nullptr && l == nullptr) return;
     nd_cgfx_rng[k] = nd_rec_mark();
+    nd_rec_cgfx(1); /* NAT6A */
     if (fn != nullptr) fn(i);
     else nd_rec_list(l);
+    nd_rec_cgfx(0); /* NAT6A */
     nd_rec_end();
 }
 void build_custom_gfx(void) {

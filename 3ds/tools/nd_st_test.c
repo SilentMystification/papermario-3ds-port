@@ -56,6 +56,7 @@ int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, 
 /* the macro form (A) and the setter form (B) of each shape: the fixtures are the root call sites (draw_img_util.c:21, :26, :27) */
 static void m_rm(void) { gDPSetRenderMode(gMainGfxPos++, G_RM_TEX_EDGE, G_RM_TEX_EDGE2); }
 static void n_rm(void) { nd_pso_rm(G_RM_TEX_EDGE, G_RM_TEX_EDGE2); }
+static void n6a(void) { nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; gDPSetEnvColor(gMainGfxPos++, 11, 22, 33, 44); gDPSetPrimColor(gMainGfxPos++, 0, 0, 55, 66, 77, 88); (void)nd_rec_mark(); gDPSetEnvColor(gMainGfxPos++, 11, 22, 33, 44); gDPSetPrimColor(gMainGfxPos++, 0, 0, 55, 66, 77, 88); } /* NAT6A: nd_rec_mark resets the shadow, so the second pair is unmarked */
 static void m_cyc(void) { gDPSetCycleType(gMainGfxPos++, G_CYC_1CYCLE); }
 static void n_cyc(void) { nd_pso_cyc(G_CYC_1CYCLE); }
 static void m_filt(void) { gDPSetTextureFilter(gMainGfxPos++, G_TF_BILERP); }
@@ -158,6 +159,10 @@ int main(void) {
         || b.nu != 2u || b.u[0] != b.w[2]) { printf("stunit FAIL run\n"); return 1; } /* NAT4K: a marked OML is not recorded */
     run_one(n_scis, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_sci_run || b.w[2] != (10u | 20u << 16) || b.w[3] != (300u | 200u << 16) || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4I */
     run_one(n_cyc, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_omh_run || b.w[2] != (0x80000000u | G_MDSFT_CYCLETYPE | 2u << 8) || b.w[3] != G_CYC_1CYCLE || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4J */
+    run_one(n6a, &b); /* NAT6A: the second pair is unmarked: one nd_prim_run record, no ENV or PRIM unit */
+    { unsigned pr = 0, bad = 0; for (unsigned i = 0; i + 1 < b.nw; i++) if (b.w[i] == NDC_HDR(NDC_NAPI, 1, 1) && b.w[i + 1] == (uint32_t)(uintptr_t)nd_prim_run) pr++;
+      for (unsigned j = 0; j < b.nu; j++) if (b.u[j] >> 24 == ND_FS_ENV || b.u[j] >> 24 == ND_FS_PRIM) bad++;
+      if (pr != 1u || bad != 0) { printf("stunit FAIL nat6a\n"); return 1; } } /* NAT6A */
     printf("stunit ok %u/%u\n", ok, n);
     return 0;
 }
