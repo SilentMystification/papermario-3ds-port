@@ -61,10 +61,14 @@ void combchk_run(const NdCombIn* in, int worked);
 extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 
 
+/* NC0T2: census of the recorded tile 1 valid (nd_ap->in) against the walker (nd_txw.td[1]); one line per drec frame. */
+int pm_drec_now(void);
+static __attribute__((cold, noinline)) void nd_txsrc_note(void) { static unsigned fr = ~0u; if (pm_drec_now() && pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("txsrc f%u", fr); } }
+
 /* The constant colour mode of the walker state (nd_decide.c nd_const_rgb on the walker's inputs). */
 int const_rgb_tex_alpha(unsigned* out) { /* NWS4B */
     NdCombIn c;
-    c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = ND_TEXON(); c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_c0.td[1].valid; c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
+    c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = ND_TEXON(); c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_ap->in.t1_valid; if (__builtin_expect(c.t1_valid != nd_txw.td[1].valid, 0)) nd_txsrc_note(); c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
     memcpy(c.tst, nd_ap->in.tst, sizeof c.tst); /* NWS4B */
     return nd_const_rgb(&c, out);
 }
@@ -194,7 +198,7 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { /* NWS4B */
     v[n++] = (uint32_t)nd_ap->in.dual_on; v[n++] = nd_ap->in.tst[8]; v[n++] = nd_ap->in.tst[9]; v[n++] = nd_ap->in.tst[10]; v[n++] = nd_ap->in.tst[11]; /* NWS4B */
     v[n++] = (uint32_t)nd_cw_ashade(nd_ap->in.w0, nd_ap->in.w1); /* NWS2 */ v[n++] = (uint32_t)nd_ap->in.use_t1; v[n++] = (uint32_t)ND_TEXON(); v[n++] = (uint32_t)nd_bo.x0; v[n++] = (uint32_t)nd_bo.y0; /* NWS4B */
     v[n++] = gvk_bits(nd_bo.fx); v[n++] = gvk_bits(nd_bo.fy);
-    v[n++] = nd_c0.tst1.tile_shift[0][0]; v[n++] = nd_c0.tst1.tile_shift[0][1]; v[n++] = nd_c0.tst1.tile_shift[1][0]; v[n++] = nd_c0.tst1.tile_shift[1][1];
+    v[n++] = nd_txw.tst1.tile_shift[0][0]; v[n++] = nd_txw.tst1.tile_shift[0][1]; v[n++] = nd_txw.tst1.tile_shift[1][0]; v[n++] = nd_txw.tst1.tile_shift[1][1];
     v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
     v[n++] = nd_ap->oml; v[n++] = nd_ap->primz; v[n++] = (uint32_t)(int32_t)(int16_t)(ND_FOGF() >> 16); v[n++] = (uint32_t)(int32_t)(int16_t)ND_FOGF(); /* NC0V */ v[n++] = (uint32_t)fogmix_on; /* NWS4B */
     v[n++] = (uint32_t)ND_ROLE(0);

@@ -1236,8 +1236,8 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
     { /* SBLK2 A1/A2/B1 debug: the segment 9 base, tile 0 format, combine words, unit 1 I8 alpha, splits and grabs of this frame */
         extern unsigned n_splits;
         pm_log("orbdbg2 f%u tag %u seg9 %08x cyc %u td0 v%d fmt %u siz %u w %d h %d comb %08x %08x i8_1 %d spl %u grab %d",
-               pm_frame_count(), ot_, nd_seg_of(9), (nd_apw(NDAPW_OH) >> 20) & 3u, nd_c0.td[0].valid, nd_c0.td[0].fmt, nd_c0.td[0].siz, /* NWS4B */
-               nd_c0.td[0].w, nd_c0.td[0].h, nd_apw(NDAPW_W0), nd_apw(NDAPW_W1), i8_1, n_splits, grab_n); /* NWS4B */
+               pm_frame_count(), ot_, nd_seg_of(9), (nd_apw(NDAPW_OH) >> 20) & 3u, nd_txw.td[0].valid, nd_txw.td[0].fmt, nd_txw.td[0].siz, /* NWS4B */
+               nd_txw.td[0].w, nd_txw.td[0].h, nd_apw(NDAPW_W0), nd_apw(NDAPW_W1), i8_1, n_splits, grab_n); /* NWS4B */
     }
     if (ot_ == 6u && gs.combine == 8) { /* SBLK2 blend check (shimmer, tag 6): the TEV stages as sent, the blend the port sets, the N64 blender */
         const unsigned m = nd_apw(NDAPW_OL); /* NWS4B */
@@ -4239,7 +4239,7 @@ static __attribute__((cold, noinline)) void ndm_cmp(const NdTmplKey* wk, const N
         int wtw = 1, wth = 1; pm_tex_size(&wtw, &wth); sbkw_lines++;
         pm_log_prof_line("sbkw dim rec %08x desc %ux%u ctex %ux%u tile0 win %dx%d td0 %dx%d walk slot %dx%d nat dim %08x walk dim %08x nat uvso1 %08x walk uvso1 %08x nat uvso3 %08x walk uvso3 %08x",
             sbkw_rec, sbkw_dsw, sbkw_dsh, sbkw_ctw, sbkw_cth,
-            ((nd_c0.tst1.tile_sz[0][2] - nd_c0.tst1.tile_sz[0][0]) >> 2) + 1, ((nd_c0.tst1.tile_sz[0][3] - nd_c0.tst1.tile_sz[0][1]) >> 2) + 1, nd_c0.td[0].w, nd_c0.td[0].h, wtw, wth,
+            ((nd_txw.tst1.tile_sz[0][2] - nd_txw.tst1.tile_sz[0][0]) >> 2) + 1, ((nd_txw.tst1.tile_sz[0][3] - nd_txw.tst1.tile_sz[0][1]) >> 2) + 1, nd_txw.td[0].w, nd_txw.td[0].h, wtw, wth,
             nd_->u[0].dim, wd->u[0].dim, sbkw_bits(nd_->uvso[1]), sbkw_bits(wd->uvso[1]), sbkw_bits(nd_->uvso[3]), sbkw_bits(wd->uvso[3]));
     }
     ndm_w_n++;

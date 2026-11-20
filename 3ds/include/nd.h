@@ -162,14 +162,8 @@ typedef struct NdWs {
     NdTd td[2];
 } NdWs;
 /* NWS3: the core 0 draw state (the RSP and texture state the native records write). NdWs above stays the core 1 field model (NdDs.w). */
-typedef struct NdC0 {
-    const void* timg;
-    const void* tlut;
-    int tlut_n;
-    NdTst tst1;
-    NdTd td[2];
-} NdC0;
-extern NdC0 nd_c0;
+typedef struct NdTxw { const void* timg; const void* tlut; int tlut_n; NdTst tst1; NdTd td[2]; } NdTxw; /* NC0T2: the texture register: the TMEM model the recorded texture units build on core 0 (bind fallback of static calls and the glyph, TMEM rects); class C */
+extern NdTxw nd_txw;
 typedef struct NdGm { unsigned omh, prim, env, plod, cw0, cw1, k4; } NdGm; /* NC0M: the last values the walker sent to the GPU setters (class C memo) */
 extern NdGm nd_gm;
 void nd_words(NdWs* s, const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (NdW2) into s. Not called during the walk. */
@@ -386,10 +380,10 @@ typedef struct NdMCtx {
     int geom_at_set;           /* S3N-3c: geom_at is used, else (geom_base & gand) | gor. Cull and z come from this geometry */
     int draw_3d, dview, rgb_scale, r_mix, r_memblend, r_replace; /* sticky walker flags */
     uint32_t prim, env, cconst, mixcol; /* used when the record does not set PRIM (R3 bit 2) */
-    uint32_t prim_lod;         /* S3N-3d: nd_c0.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; prim_lo8 is the low byte) */
+    uint32_t prim_lod;         /* S3N-3d: nd_txw.prim_lod (G_SETPRIMCOLOR w0 low 16 bits; prim_lo8 is the low byte) */
     uint32_t dbias;            /* decal bias, float bits */
     uint32_t base_oh, base_ol, known_h, known_l; /* B8: the native other mode state (nd_c0) and the bits it has a value for */
-    uint32_t geom_base;        /* B9: the geometry mode before the list (nd_c0.geom) */
+    uint32_t geom_base;        /* B9: the geometry mode before the list (nd_txw.geom) */
     /* MDL-1b: tile 1 of an R13 record (the walker's live state after rec_aux and pm_gbi_bind_tile1): unit 1, its i8 flag, the uv map, the plan t1only */
     NdUnit* u1; int i8_1; int t1_valid; int t1only; float uvx[4]; unsigned loc_uvx;
     int wind;                  /* walker: the sign of the matrix determinant (gv_wind, until the matrix is native in 3c): cull sense */

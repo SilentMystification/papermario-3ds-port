@@ -8,7 +8,6 @@
 #include "nd_ops.h"
 #include "nd_tgt.h"
 
-ND_HOTD NdC0 nd_c0;
 ND_HOTD NdGm nd_gm = { .omh = 0, .prim = 0xffffffffu, .env = 0xffffffffu }; /* NC0M */
 ND_HOTD NdTgt nd_tgt = { .img = 0, .stride = 320, .siz = 2, .kind = NDK_NULL }; /* NTGT: the target record; the initial target is the main image (no address, not the zero word) */
 

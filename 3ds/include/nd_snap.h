@@ -31,10 +31,10 @@ _Static_assert(sizeof(NdSnapChk) % 8u == 0u, "units");
 extern const NdSnapBind* nd_bsrc;
 /* NDR0G2: the blocks of the open epoch, NULL = walker */
 extern const NdSnapBind* nd_ep_bs;
-#define ND_BTD(n) (nd_bsrc ? &nd_bsrc[n].td : &nd_c0.td[n])
-#define ND_BWR(n) (nd_bsrc ? nd_bsrc[n].wrap : nd_c0.tst1.tile_wrap[n])
-#define ND_BSZ(n) (nd_bsrc ? nd_bsrc[n].sz : nd_c0.tst1.tile_sz[n])
-#define ND_BSH(n) (nd_bsrc ? nd_bsrc[n].shift : nd_c0.tst1.tile_shift[n])
+#define ND_BTD(n) (nd_bsrc ? &nd_bsrc[n].td : &nd_txw.td[n])
+#define ND_BWR(n) (nd_bsrc ? nd_bsrc[n].wrap : nd_txw.tst1.tile_wrap[n])
+#define ND_BSZ(n) (nd_bsrc ? nd_bsrc[n].sz : nd_txw.tst1.tile_sz[n])
+#define ND_BSH(n) (nd_bsrc ? nd_bsrc[n].shift : nd_txw.tst1.tile_shift[n])
 /* NDR0G2, nd_snap_in.c: bit 1 << 2n when the td of tile n differs, 2 << 2n when its wrap, sz or shift words differ. */
 unsigned nd_snap_bdiff(const NdSnapBind* a, const NdSnapBind* b);
 unsigned nd_snap_fill(void); /* NAT4H */

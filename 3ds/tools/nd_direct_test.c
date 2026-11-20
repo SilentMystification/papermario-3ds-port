@@ -16,11 +16,12 @@
 #define nd_direct_rect(...) (ap_sync(), nd_direct_rect(__VA_ARGS__))
 #define nd_direct_quad(...) (ap_sync(), nd_direct_quad(__VA_ARGS__))
 #define nd_direct_end() (ap_sync(), nd_direct_end())
-/* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that ap_sync (run before each nd_direct call below) fills from nd_c0. */
+/* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that ap_sync (run before each nd_direct call below) fills from nd_txw. */
 static NdSnapChk ap_stub;
 const NdSnapChk* nd_ap = &ap_stub;
 NdGs* nd_gs; /* NC0R: no static call on the host */
 static unsigned t_oml; /* NC0R: the other mode low word of the stub snap (nd_c0 no longer holds it) */
+NdTxw nd_txw; /* NC0T2: the link of the texture register (was NdC0 nd_c0) */
 int pm_drec_now(void) { return 1; }
 extern int dual_on; extern unsigned keyc, keys;
 static void ap_sync(void) {
@@ -40,7 +41,6 @@ NdBo nd_bo; /* NC0T1 */
 unsigned pm_frame_count(void) { return 0; }
 void pm_fatal_stop(const char* msg) { printf("FAIL nd_direct fatal %s\n", msg); exit(1); }
 
-NdC0 nd_c0;
 NdGm nd_gm; /* NC0M */
 int dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, plan_active, leg_mode, comb_mode5, rm_frame;
 NdTgt nd_tgt;
@@ -147,7 +147,7 @@ int main(void) {
     NdPsoN64 pl = { 0xfc000002u, 0u, 0x00504340u, 0u, 0u };
     NdPsoN64 cc = { 0xfc000003u, 0u, 0x00504340u, 0u, 0u };
     NdPso ia, ib, it1, ipl, icc;
-    memset(&nd_c0, 0, sizeof nd_c0);
+    memset(&nd_txw, 0, sizeof nd_txw);
     memset(&nd_gm, 0, sizeof nd_gm); /* NC0M: the memo resets with nd_c0 */
     t_oml = 0x5u;
     comb_set = 1;

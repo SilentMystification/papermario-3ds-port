@@ -69,7 +69,7 @@ static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, in
     float t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f;
     float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
-    float sl = (float)nd_c0.tst1.tile_sz[tile][0] / 4.f, tl = (float)nd_c0.tst1.tile_sz[tile][1] / 4.f;
+    float sl = (float)nd_txw.tst1.tile_sz[tile][0] / 4.f, tl = (float)nd_txw.tst1.tile_sz[tile][1] / 4.f;
     for (int y = y0; y < y1; y++) {
         for (int x = x0; x < x1; x++) {
             float s = s0 + dsdx * (float)(x - (xl >> 2)) - sl;
@@ -78,7 +78,7 @@ static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, in
             (void)t;
             if (ts < 0) ts = 0;
             /* A TLUT in TMEM holds each entry four times in a row. One row only. */
-            unsigned word = nd_c0.tst1.tile_tmem[tile] + (unsigned)(ts >> 2);
+            unsigned word = nd_txw.tst1.tile_tmem[tile] + (unsigned)(ts >> 2);
             unsigned entry = word - 256u;
             if (entry > 255u) continue;
             float tx[4], none[4] = { 0, 0, 0, 0 }, o[4];
@@ -97,7 +97,7 @@ static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, in
 }
 
 __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
-    if (!nd_tgt.img || (nd_tgt.kind & NDK_CFB) || tile >= 8 || nd_c0.tst1.tile_tmem[tile] < 256) return 0;
+    if (!nd_tgt.img || (nd_tgt.kind & NDK_CFB) || tile >= 8 || nd_txw.tst1.tile_tmem[tile] < 256) return 0;
     return rect_to_image_draw(xl, yl, xh, yh, tile, hs, hd); /* HCCUT2: the drawing body is cold */ }
 
 /* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
@@ -112,7 +112,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
     float s0 = (float)(s16)(hs >> 16) / 32.f, t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f, dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
     unsigned char tst[4];
-    if (!box_pat || !nd_c0.td[0].valid || !nd_c0.td[1].valid || !nd_c0.td[0].src || !nd_c0.td[1].src) return 0;
+    if (!box_pat || !ND_BTD(0)->valid || !ND_BTD(1)->valid || !ND_BTD(0)->src || !ND_BTD(1)->src) return 0;
     if (!tile_texel(0, 0, 0, tst) || !tile_texel(1, 0, 0, tst)) return 0;
     /* HUD3: with wide the frame shows game x -40..359 (px maps x to 40 + x). A window that reaches into the side strips is composed there too, so its border and
      * corners sit where draw_box puts them. Clipped at 0 and 320, the chunk on the game edge took the edge rule of tex_raw_rect, which extends s past the
@@ -128,10 +128,10 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
             int sa = (int)__builtin_floorf(s0 + dsdx * (float)(xs - X0));
             int ta = (int)__builtin_floorf(t0 + dtdy * (float)(ys - Y0));
             unsigned key = 2166136261u;
-            unsigned parts[] = { (unsigned)nd_c0.td[0].src, (unsigned)nd_c0.td[1].src, (unsigned)nd_c0.td[0].x0, (unsigned)nd_c0.td[0].y0, (unsigned)nd_c0.td[1].x0,
-                                 (unsigned)nd_c0.td[1].y0, (unsigned)(nd_c0.td[0].w | nd_c0.td[0].h << 8 | nd_c0.td[1].w << 16 | nd_c0.td[1].h << 24),
-                                 (unsigned)(nd_c0.td[0].fmt | nd_c0.td[0].siz << 3 | nd_c0.td[1].fmt << 6 | nd_c0.td[1].siz << 9), (unsigned)sa, (unsigned)ta,
-                                 hd, (unsigned)(cw | ch << 8), (unsigned)nd_c0.td[0].stride | (unsigned)nd_c0.td[1].stride << 16 };
+            unsigned parts[] = { (unsigned)ND_BTD(0)->src, (unsigned)ND_BTD(1)->src, (unsigned)ND_BTD(0)->x0, (unsigned)ND_BTD(0)->y0, (unsigned)ND_BTD(1)->x0,
+                                 (unsigned)ND_BTD(1)->y0, (unsigned)(ND_BTD(0)->w | ND_BTD(0)->h << 8 | ND_BTD(1)->w << 16 | ND_BTD(1)->h << 24),
+                                 (unsigned)(ND_BTD(0)->fmt | ND_BTD(0)->siz << 3 | ND_BTD(1)->fmt << 6 | ND_BTD(1)->siz << 9), (unsigned)sa, (unsigned)ta,
+                                 hd, (unsigned)(cw | ch << 8), (unsigned)ND_BTD(0)->stride | (unsigned)ND_BTD(1)->stride << 16 };
             for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) key = (key ^ parts[k]) * 16777619u;
             if (!pm_tex_load_rgba8(box_buf, key, cw, ch, NULL)) {
                 for (int y = 0; y < ch; y++) {
@@ -139,8 +139,8 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
                         int S = (int)__builtin_floorf(s0 + dsdx * (float)(xs + x - X0));
                         int T = (int)__builtin_floorf(t0 + dtdy * (float)(ys + y - Y0));
                         unsigned char a[4], b[4];
-                        tile_texel(0, S - nd_c0.td[0].x0, T - nd_c0.td[0].y0, a);
-                        tile_texel(1, S - nd_c0.td[1].x0, T - nd_c0.td[1].y0, b);
+                        tile_texel(0, S - ND_BTD(0)->x0, T - ND_BTD(0)->y0, a);
+                        tile_texel(1, S - ND_BTD(1)->x0, T - ND_BTD(1)->y0, b);
                         unsigned char* d = &box_buf[(y * cw + x) * 4];
                         d[0] = (unsigned char)(a[0] * b[0] / 255u);
                         d[1] = (unsigned char)(a[1] * b[1] / 255u);
@@ -164,14 +164,14 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
  * old block with the same expressions in the same order (byte-equal by construction). */
 static int nd_texlog_on = -1; /* texlog debug switch: -1 until the first texrect that needs it */
 __attribute__((noinline, cold)) static void nd_texrect_depth(u32 hs) {
-    pm_depth_query(nd_c0.timg, (int)((s16)(hs >> 16) >> 5), pm_gpu_sci_raw()[0]);
+    pm_depth_query(nd_txw.timg, (int)((s16)(hs >> 16) >> 5), pm_gpu_sci_raw()[0]);
 }
 __attribute__((noinline, cold)) static void nd_texrect_log(int xl, int yl, int xh, int yh) { /* NWS4B */
     /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
     if (nd_texlog_on < 0) nd_texlog_on = pm_debug_has("texlog");
     if (nd_texlog_on) pm_log_d("texlog f%u rect %d,%d-%d,%d w%d h%d cyc %u rm %08x zsrc %d ac %u tile0 %d/%d tile1 %d/%d valid1 %d",
                                pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (xh - xl) / 4 + 1, (yh - yl) / 4 + 1, (nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3, /* NWS4B */
-                               (unsigned)nd_ap->oml, (nd_ap->oml >> G_MDSFT_ZSRCSEL) & 1, (nd_ap->oml >> 0) & 3, nd_c0.tst1.tile_fmt[0], nd_c0.tst1.tile_siz[0], nd_c0.tst1.tile_fmt[1], nd_c0.tst1.tile_siz[1], nd_c0.td[1].valid); /* NWS4B */
+                               (unsigned)nd_ap->oml, (nd_ap->oml >> G_MDSFT_ZSRCSEL) & 1, (nd_ap->oml >> 0) & 3, nd_txw.tst1.tile_fmt[0], nd_txw.tst1.tile_siz[0], nd_txw.tst1.tile_fmt[1], nd_txw.tst1.tile_siz[1], nd_txw.td[1].valid); /* NWS4B */
 }
 /* COPY cycle: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1). The lower right corner is inclusive, one more pixel
  * (as in libultraship). PT06: the lower edge is inclusive too. BG1/BG2 oracle plan 2, fix 1: the pixel span is the RDP one. */
@@ -244,10 +244,10 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { /
     else if (rc_sn) nd_snap_comb(); /* NDR1C */
     if (rc_sn) nd_snap_rlog(); /* NDR1C */
     rc_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
-    if (box_pat && nd_c0.td[0].valid && nd_c0.td[1].valid && box_pattern_rect(xl, yl, xh, yh, hs, hd)) { return; }
-    /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
-    nd_bsrc = rc_sn ? nd_snap_cur_b() : nd_ap->b; /* NDR1C: the tile words of the snap; NC0C */
+    nd_bsrc = rc_sn ? nd_snap_cur_b() : nd_ap->b; /* NDR1C: the tile words of the snap; NC0C; NC0T2: moved before the box test */
     nd_bsrc_chk(nd_bsrc, 3u);
+    if (box_pat && ND_BTD(0)->valid && ND_BTD(1)->valid && box_pattern_rect(xl, yl, xh, yh, hs, hd)) { nd_bsrc = NULL; return; } /* NC0T2 */
+    /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
     int rtile = (nd_ap->in.use_t1 || (((w1 >> 24) & 7) == 1 && ND_BTD(1)->valid)) ? 1 : 0; /* NWS4B */
     if (!rtile) gp3_t0_surv();
     nd_tile_bind(rtile);

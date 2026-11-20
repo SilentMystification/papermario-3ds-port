@@ -5,7 +5,6 @@
 #include "ultra64.h"
 #include "nd_tgt.h"
 
-NdC0 nd_c0;
 NdTgt nd_tgt;
 int zcol;
 void pm_zbuf_need(void) {}
