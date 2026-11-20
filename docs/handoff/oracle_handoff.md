@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main d0483da1ba (NC0B, NC0R, NC0C, MCOPY1, MCOPY2 merged) plus the pages of oracle NATIVE17, 2026-11-20.
+State: main 8bcf0252ee (T1FIX, NC0S merged) plus the pages of oracle NATIVE17 (second pass), 2026-11-20.
 ## Goal
 - User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
 - The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, section 6a MCOPY, section 7 nd_c0 fields left, section 10 questions).
@@ -11,9 +11,10 @@ State: main d0483da1ba (NC0B, NC0R, NC0C, MCOPY1, MCOPY2 merged) plus the pages 
 - Gate benches (drec): spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec, hudfb_drec; entcapd_kgr01_drec (darkness stencil).
 - drec end lines (pm_gpu.c:628-632): `c0src ... wbind` (binds from walker tiles), `altw ... c1 m ... c0 all ... m` (copy words). `drec frame <F> seq <S>` (:609).
 ## Open work (order)
-1. Pages on main: ws_T1FIX and ws_NC0S (Haiku, now, parallel), then ws_NC0V (Sonnet, WAIT NC0S). Ranks and WAIT reasons: plan_perf.md sections 6, 6b.
-2. Next pages: NC0M (GPU memos, WAIT NC0V), NC0F (segbase), NC0T (texture setters, bind outputs). Section 7 table lists readers and sources.
-3. Q2 capture picks the next core 1 row (ALT2: alt copies e, c, o) and MDLHIT2. GPUTRL needs the user (PICA hang risk).
+1. Pages on main: ws_NC0V (Sonnet, runs now); then ws_NC0M and ws_NC0T1 (Haiku, parallel, WAIT NC0V); then ws_NC0F (Sonnet, WAIT NC0M, NC0T1).
+2. Next pages: NC0T2 (texture setter state td, tst1, timg, tlut, tlut_n, about 230 references: own read pass). Then c0gate state 0.
+3. ALT2 has no closed design: core 0 runs 50 percent of the entity copy words (slices, refusals, nd_ent.c:310-326). Next: a census of run reasons.
+4. Q2 capture picks the next core 1 row and MDLHIT2. GPUTRL needs the user (PICA hang risk).
 ## Design facts (FACT code read)
 - Stream OML units never write nd_c0.omode_l (nd_rec.c:480 records nd_oml_run, nd_walk.c:258 is empty). nd_img_role read a stale word until NC0R.
 - core 1 keeps no nested state after a stream CALL (nd_rec.c:483-485 apply to a scratch copy); core 0 runs the list. Static runners (nd_sg_try, ent_gdl,
@@ -41,6 +42,7 @@ State: main d0483da1ba (NC0B, NC0R, NC0C, MCOPY1, MCOPY2 merged) plus the pages 
 - Oracles cannot start coders (permission denied): the orchestrator starts them.
 ## What to do first
 1. `git log --oneline -15`; `ls docs/handoff`. Answer coder questions (SendMessage, 10 lines).
-2. T1FIX: a DIFF passes only with `expected-diff PASS` on the t1fix marker. NC0S: byte-equal by construction; a DIFF is a fault.
-3. NC0V step 1: a `texfog f<n> s<site>` line names a reader whose recorded source differs from nd_c0: decide per site, then the coder goes on.
-4. Write NC0M from the section 7 row (census: memo against the GPU shadow at each skip test).
+2. NC0V step 1: a `texfog f<n> s<site>` line names a reader whose recorded source differs from nd_c0: decide per site, then the coder goes on.
+3. NC0M, NC0T1: byte-equal by construction; a DIFF is a missed site or a fault. NC0F step 1: a `segdiff` line s1 breaks the premise (stream units need the table):
+   then core 1 must resolve the stream addresses (nd_rec_nr) before step 2.
+4. Write NC0T2 after a reader read of nd_tex_set.c setters (the walker texture model, the glyph bind, nd_rect.c, nd_ent.c, pm_gpu.c readers).

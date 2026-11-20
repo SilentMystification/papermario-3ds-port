@@ -77,24 +77,28 @@ Core 0 cls: rec 6.15, sub 6.09, rest 5.76, raw 1.93, ent 1.63, list 0.63.
 Reading (GUESS from the code read): the 30 ms of list build with no timer is the game draw code (old build 7079: all of core 1 was 19 ms), the untimed
 recorder (nd_rec_nr per unit, nd_ds_apply, nd_rec_model with nd_ds_model, msnap, nd_snap_now, nd_mkey_a; the entity copies) and the I-cache misses
 (92K per step x about 40 cycles is about 14 ms). PROF2 splits it at the next capture.
-Merged since: NC0B, NC0R, NC0C, MCOPY1, MCOPY2 (main d0483da1ba). Pages of oracle NATIVE17:
+Merged since: NC0B, NC0R, NC0C, MCOPY1, MCOPY2, T1FIX, NC0S (main 8bcf0252ee). Pages of oracle NATIVE17:
 | rank | row | what | files (main d0483da1ba) | proxy (Azahar) / console number | gate | page / order |
 |---|---|---|---|---|---|---|
-| 1 | T1FIX (Haiku) | the tile 1 bind of a model miss reads its own snap (fault: nd_recs.c:206 binds before nd_msnap_use at :209) | nd_recs.c | t1fix marker lines / none | spot_mac01, entcape_kmr03, expected-diff `--expect t1fix` | ws_T1FIX, now |
-| 2 | NC0S (Haiku) | scissor raw words into the GPU layer (pm_gpu_sci_raw); prim_z (no reader) goes | nd_set.c:84, :107-108, nd_rect.c, nd_target.c:84, pm_gpu.c, pm_gpu.h, nd.h, nd_state.c, nd_msnap.c:33, nd_snap.c:255 | nd_c0 896 to 876 / none | hudfb, wscmb_pause | ws_NC0S, now; parallel with T1FIX |
+| 1 | T1FIX (Haiku) | the tile 1 bind of a model miss reads its own snap (fault: nd_recs.c:206 binds before nd_msnap_use at :209) | nd_recs.c | t1fix marker lines / none | spot_mac01, entcape_kmr03, expected-diff `--expect t1fix` | merged 984b424e1f |
+| 2 | NC0S (Haiku) | scissor raw words into the GPU layer (pm_gpu_sci_raw); prim_z (no reader) goes | nd_set.c:84, :107-108, nd_rect.c, nd_target.c:84, pm_gpu.c, pm_gpu.h, nd.h, nd_state.c, nd_msnap.c:33, nd_snap.c:255 | nd_c0 896 to 876 / none | hudfb, wscmb_pause | merged 8bcf0252ee |
 | 3 | NC0V (Sonnet) | fog factors and tex_on from the snap, NdGs, entry record, model snap; census texfog | nd_snap.h, nd_snap.c, nd_apw.h, nd_msnap.h, nd_msnap.c, nd_rec.c, nd_walk.c, nd_geom.c, nd_comb.c, nd_set.c, nd_recs.c:131-154, nd.h | texfog 0, nd_c0 876 to 864 / none | step 1 spot_mac01, entcape_kmr03; step 2 hudfb, fxparts | ws_NC0V, WAIT NC0S |
-| 4 | NC0M (Sonnet) | GPU memos (omode_h, comb, prim, prim_lod, envc, conv_k4) read the GPU layer shadows; census first | see section 7 | c0gate state 1 stays | next pass | WAIT NC0V |
-| 5 | NC0F, NC0T (Sonnet) | segbase; texture setter and bind outputs (section 7) | | c0gate state 1 to 0 after NC0T | | next pass |
+| 4 | NC0M (Haiku) | GPU call memos (omode_h, prim, prim_lod, envc, comb_w0, comb_w1, conv_k4) move to nd_gm: pure move, one sed | nd_snap.c, nd_set.c:103-111, nd_direct.c:57-66, nd_recs.c:147-162, nd_walk.c:263-266, nd.h, nd_state.c, nd_direct_test.c | nd_c0 -28 B / none | wscmb_pause, fxparts | ws_NC0M, WAIT NC0V |
+| 4 | NC0T1 (Haiku) | bind outputs (tile_x0, tile_y0, tile_fx, tile_fy, cur_tile) move to nd_bo: pure move, one sed | nd_comb.c, nd_direct.c:96-177, nd_geom.c:117, nd_rect.c, nd_tex_set.c, nd_int.h, nd.h, nd_direct_test.c | nd_c0 -20 B / none | spot_mac01, hudfb | ws_NC0T1, WAIT NC0V; parallel with NC0M |
+| 5 | NC0F (Sonnet) | segment table from the entry record block (static calls); census segdiff | nd_snap.h, nd_rec.c, nd_walk.c, nd_snap.c:197, nd_set.c:93, :110, nd_ent.c:361, nd_geom.c:443, pm_gpu.c:1234, nd.h | segdiff 0, nd_c0 -64 B / none | step 1 entcape_kmr03, spot_mac01; step 2 fxparts, hudfb | ws_NC0F, WAIT NC0M, NC0T1 |
+| 6 | NC0T2 (Sonnet) | texture setter state td, tst1, timg, tlut, tlut_n (about 230 references) | nd_tex_set.c, nd_rect.c, nd_ent.c, pm_gpu.c | c0gate state 1 to 0 | | next pass, own read |
+| 7 | ALT2 | alt copies left (section 6b) | nd_rec.c, nd_ent.c | c1a e, c, o | | no closed design yet (section 6b) |
 | 6 | MDLHIT2 | model hit path cuts, from the PROF2 c0r split | pm_gpu.c, nd_recs.c:265-293 | c0r / cls rec 6.15 | spot_mac01, hudfb | after the Q2 capture |
 | - | GPUTRL | the 30-word draw trailer (nd_emit.c) | nd_emit.c | gw / gb | needs a console check (PICA hangs) | user |
 WAIT reasons (data): NC0V shares nd_set.c:108 (nd_sv_sci and nd_sv_tex on one line) and adjacent NdC0 lines (nd.h:169-171, :183-184) with NC0S.
-NC0M shares nd_set.c:106-111, nd_recs.c:147-162 and nd_snap.c:181-189 with NC0V. T1FIX edits nd_recs.c:201-209 only (no overlap with NC0V :131-154).
-Why Sonnet: NC0V changes 3 record formats and has a census step; NC0M has a census that can pick a branch. T1FIX and NC0S are closed edit lists: Haiku.
+NC0M and NC0T1 share lines with NC0V (nd_snap.c:189, nd_recs.c:151-154, nd_comb.c:195, :325-329, nd_geom.c:115-121). NC0M and NC0T1 edit separate lines
+(nd.h deletions are 1 line apart; nd_direct_test.c :38 and :42). NC0F shares nd_set.c:110 with NC0M, and its nd.h line sits between theirs.
+Why Sonnet: NC0V and NC0F change record formats and have a census step. NC0M and NC0T1 are pure moves (one sed, byte-equal by construction): Haiku.
 ## 6b. Rank by core time (core 1 is the long pole: 44.4 ms against core 0 24.0 ms, FACT capture build 7569, before MCOPY2)
 | work | core 1 | core 0 | basis |
 |---|---|---|---|
 | MCOPY2 (merged) | -2 to -4 ms (GUESS) | 0 | FACT c1a m 10975 words per step; altw c1 m 0 on Azahar (FACT MCOPY2 gate) |
-| alt copies left: c1a e 2035, c 194, o 4171 words per step | -1 to -3 ms (GUESS) | 0 | FACT capture build 7569; design pass ALT2 after the Q2 capture |
+| alt copies left: c1a e 2035, c 194, o 4171 words per step | -1 to -3 ms (GUESS) | 0 | FACT capture build 7569. Azahar spot_mac01 f201 (cumulative, after MCOPY2): c1 e 334334, c 31872, o 2444; c0 runs e 166878 (50 percent of e). Core 0 runs the entity copies it slices or refuses (nd_ent.c:310-326), so e cannot go without a design pass on those decisions: no closed ALT2 page. Next: a census of the run reasons per entity record |
 | core 1 I-cache: ic1 92K misses per step | up to -14 ms (GUESS, 40 cycles per miss) | 0 | C1HOT merged, not measured on the console (OPEN) |
 | model hit path (MDLHIT2), submit (F6, F7) | 0 | rec 6.15, sub 6.09 ms (FACT cls) | needs the PROF2 c0r split (Q2) |
 | T1FIX, NC0S, NC0V, NC0M, NC0F, NC0T | 0 to +0.1 ms (GUESS: NC0V adds 4 B per snap, 8 B per model and entry record) | 0 (GUESS) | user goal: core 0 decides nothing |
@@ -121,9 +125,10 @@ Fields left on main d0483da1ba (FACT grep of the nd_c0 readers) and their row:
 | prim_z | none (writes nd_msnap.c:33, nd_set.c:107, pm_gpu.c:4571) | NC0S | delete |
 | sci_x0 to sci_y1 | nd_rect.c:63-66, :166, nd_target.c:84 | NC0S | raw copy in pm_gpu_set_scissor (its only callers are nd_set.c:84, :108) |
 | fog_fm, fog_fo, tex_on | nd_geom.c:115, :121, nd_comb.c:67, :195, :199, :325-329, nd_recs.c:131, :133 | NC0V | snap fogf (was pad3) and in.tex_on, NdGs, entry record, model snap |
-| omode_h, comb_w0, comb_w1, prim, prim_lod, envc, conv_k4 | memo tests only: nd_snap.c:181-189, :217, nd_set.c:103-111, nd_direct.c:57-66, nd_recs.c:147-162 | NC0M | the GPU layer shadows: prim, prim_lod_g (pm_gpu.c:4406-4407), gs.env_col (:4422), pm_k4 (pm_comb.c:424) |
-| segbase[16] | ptr_res nd_walk.c:439 (every static list pointer), ent_segkey nd_ent.c:361, writes nd_set.c:93, :110 | NC0F | a recorded segment block (as the NC0C entry block) |
-| td, tst1, timg, tlut, tlut_n, tile_x0, tile_y0, tile_fx, tile_fy, cur_tile | nd_tex_set.c, nd_rect.c, nd_ent.c, nd_comb.c:195-197, :327-328, nd_geom.c:117 | NC0T | bind module state (class C, Q4) |
+| omode_h, comb_w0, comb_w1, prim, prim_lod, envc, conv_k4 | memo tests only: nd_snap.c:181-189, :217, nd_set.c:103-111, nd_direct.c:57-66, nd_recs.c:147-162, nd_walk.c:263, :266 | NC0M | NdGm nd_gm (nd_state.c), a pure move. Later: merge with the GPU shadows prim, prim_lod_g (pm_gpu.c:47, :4402), gs.env_col, pm_k4 after a census (hd_rare writes the memo without a GPU call, nd_recs.c:151-152) |
+| tile_x0, tile_y0, tile_fx, tile_fy, cur_tile | uv math nd_comb.c:195-196, :275-276, :327-328, nd_direct.c, nd_geom.c:117, nd_rect.c; writers in the bind (nd_tex_set.c) | NC0T1 | NdBo nd_bo (nd_tex_set.c), a pure move |
+| segbase[16] | ptr_res nd_walk.c:435-441 (20 ptr_of sites), ent_segkey nd_ent.c:361, writes nd_set.c:93, :110 | NC0F | entry record block (rec_ew p[9]), copy on write in nd_sv_seg |
+| td, tst1, timg, tlut, tlut_n | nd_tex_set.c (about 160), nd_rect.c (35), nd_ent.c (22), pm_gpu.c (11) | NC0T2 | next pass |
 The hit delta (nd_recs.c:86-151) goes with the last scalar field. Each of NC0D to NC0G needs its own reader read: next pass, one page each.
 ## 7a. Console rows
 - C1HOT and PROF2 are merged; MDLHIT2 gates on Azahar. The console confirms later: ic1 and lgms (C1HOT), the c1d and c0r lines (PROF2), cls rec (MDLHIT2),
