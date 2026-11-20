@@ -119,34 +119,7 @@ static void set_mw(unsigned kind, unsigned arg, u32 w1) {
     }
 }
 
-/* HC4a: the typed scalar ops (nd_op.h). nd_unit_same: 1 when the walker skips the op (the old g2_same case; it runs the old g2_note part);
- * nd_unit_apply: the handler of the op (the walker's arm). */
-int nd_unit_same(const uint32_t* u) {
-    const u32 a = u[0] & 0xffffffu, b = u[1];
-    switch (u[0] >> 24) {
-    case ND_FS_OMH: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_h & m) || !sc_ok) return 0; nd_ws.om_kh |= m; return 1; }
-    case ND_FS_OML: { const u32 m = nd_op_om_mask(a); if ((b & m) != (nd_ws.omode_l & m)) return 0; nd_ws.om_kl |= m; return 1; }
-    case ND_FS_GEOM: {
-        unsigned g = (nd_ws.geom & a) | b;
-        return g == nd_ws.geom && pm_gpu_mode_is((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
-    }
-    case ND_FS_PRIM:
-        if (nd_ws.prim != b || (u8)nd_ws.prim_lod != (u8)a || !sc_ok) return 0;
-        pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; /* SPR4-prim: LOD change closes the open batch */
-        return 1;
-    case ND_FS_ENV: return nd_ws.envc == b && sc_ok;
-    case ND_FS_FOG: return fogc == b;
-    case ND_FS_BLEND: return blendc == b;
-    case ND_FS_TEXTURE: return nd_ws.tex_on == (int)a && nd_ws.tex_ss == (b >> 16) && nd_ws.tex_ts == (b & 0xffffu) && sc_ok && sc_sig_now() == sc_sig;
-    case ND_FS_COMB: /* R2B: the handler's writes equal the state and nd_comb_sync does nothing (sc_ok and the same input hash) */
-        return comb_set && nd_ws.comb_w0 == ND_FS_COMB_W0(a) && nd_ws.comb_w1 == b && box_folded == 0 && cmb_gen_seen == comb_gen && sc_ok &&
-               sc_sig_now() == sc_sig;
-    case ND_FS_MW: /* R5B: the handler of G_MW_LIGHTCOL writes lt[k].col only (no other effect) */
-        return (a >> 16) == ND_FS_MW_LIGHTCOL && lt[a & 0xffffu].col[0] == (u8)(b >> 24) && lt[a & 0xffffu].col[1] == (u8)(b >> 16) &&
-               lt[a & 0xffffu].col[2] == (u8)(b >> 8);
-    default: return 0;
-    }
-}
+/* HC4a: the typed scalar ops (nd_op.h). nd_unit_apply: the handler of the op (the walker's arm). */ /* NAT6F */
 static __attribute__((cold, noinline)) void set_rare(unsigned k, u32 w1) {
     if (k == ND_FS_RARE_CONV) { conv_k4 = (w1 >> 9) & 0xffu; pm_comb_set_k4(conv_k4); }
     else if (k == ND_FS_RARE_KEYR) {

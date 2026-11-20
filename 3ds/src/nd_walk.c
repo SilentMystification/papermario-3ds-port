@@ -195,7 +195,7 @@ void nd_walk_ent(const NdW2* q, unsigned words) {
 #define ND_LIST_MAX 200000u
 #define ND_LIST_DEPTH 12
 static int ex_depth;
-static unsigned char alt_mode; static void ls_run(const uint32_t* q, unsigned n); /* NAT5F; NAT5N: 0 stream, 1 nd_nr_exec, 2 ls_run */
+static unsigned char alt_mode; /* NAT5F; NAT5N: 0 stream, 1 nd_nr_exec, 2 ls_run */ /* NAT6F */
 static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
     if (t != orb_tag) pm_gpu_flush();
     orb_tag = t;
@@ -237,37 +237,9 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
  * same handler as the walker's arm. The recorder dropped the RDP syncs; the branch form of G_DL stays a list word.
  * D10b: also the op executor of a flat op range (nd_nr_list): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
-unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; static unsigned epk_h[64][2], epk_nl; /* NAT4B */
-/* NAT4B: one disagreement: the unit id, the direction (1: a mark and core 0 skips, 0: core 0 cuts with no mark), the mark reason word and the core 0 skip inputs. */
+unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; /* NAT4B */ /* NAT6F */
 int pm_drec_now(void); extern int sc_ok; extern unsigned sc_sig, comb_gen, cmb_gen_seen; unsigned sc_sig_now(void); extern int box_folded;
-static __attribute__((cold, noinline)) void epk_note(unsigned id, int same, const uint32_t* u) { /* NAT4B: one disagreement */
-    const unsigned dir = same ? 1u : 0u; /* 0: core 0 cuts with no mark, 1: a mark and core 0 skips */
-    epk_h[id & 63u][dir]++;
-    { static unsigned fr = ~0u; if (pm_drec_now() && pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("epcut f%u", fr); } } /* NAT4C: one line per drec frame with a changed cut */
-    if (epk_nl < 24u && pm_drec_now()) { epk_nl++; pm_log_evt("epbad f%u id %u dir %u mw %03x sc_ok %d sig %d gen %d fold %d a %06x b %08x", pm_frame_count(), id, dir, ep_mark ? (unsigned)ep_mw : 0u,
-        sc_ok, sc_sig_now() == sc_sig, cmb_gen_seen == comb_gen, box_folded, (unsigned)(u[0] & 0xffffffu), (unsigned)u[1]); }
-}
-void nd_epk_log(void) { for (unsigned i = 0; i < 64u; i++) for (unsigned d = 0; d < 2u; d++) if (epk_h[i][d]) pm_log_evt("epbin id %u dir %u n %u", i, d, epk_h[i][d]); } /* NAT4B */
 static unsigned char c6_mark; /* NAT6B: the slot of the copy unit that runs; NAT6D2 */
-/* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
- * and the setter. */
-static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
-    const int same = nd_unit_same(u); int cut = !same, ap = !same; /* NAT4C: the cut of this unit; NAT6D1: and its apply */
-    { const unsigned i_ = u[0] >> 24; const int ca_ = i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB || i_ == ND_FS_FILL || i_ == ND_FS_PRIMZ /* NAT4H */, cb_ = !ca_ && ((i_ >= ND_FS_OMH && i_ <= ND_FS_COMB) || (i_ >= ND_FS_TIMG && i_ <= ND_FS_LOADTLUT)); /* NAT4G all other scalar units */
-      if (ep_stream && ex_depth == 0 && (ca_ || cb_)) {
-        if (cb_) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } } /* NAT4F: count only OMH, TEXTURE (the combine class fields are stale on core 0 since NAT4D) */
-        const int mk_ = ep_mark != 0; ep_mark = 0;
-        if (ca_) return; /* NAT4K: the mark cut */
-        cut = 0; /* NAT4K: the mark cut */ } } /* NAT4F: OMH and TEXTURE cut on the mark and still run when they change a field */
-    if (!ap && !cut) return; /* NAT6D1 */
-    const unsigned id = u[0] >> 24;
-    pm_gbi_cur_op = id; /* DEL1D1: the unit id */
-    if (cut) gv_epoch++; /* GV1b; NST2H source; NAT4C: the cut */
-    int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, id, u[0], u[1]);
-    if (ap) nd_unit_apply(u); /* NAT4C; NAT6D1 */
-    if (__builtin_expect(fp, 0)) pm_ph_pop();
-}
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
  * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
 static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, const void* at) {
@@ -344,37 +316,6 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     return r;
 }
-/* An op with no typed form (not one the game writes): the walker's unknown op note. */
-static __attribute__((cold, noinline)) void nr_unknown(unsigned dbg, const uint32_t* q) {
-    const unsigned op = q[0] >> 24;
-    pm_gbi_cur_op = op;
-    gv_epoch++; /* GV1b */
-    int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)q, 0, op, q[0], q[1]);
-    note(op);
-    if (__builtin_expect(fp, 0)) pm_ph_pop();
-}
-/* HC4d2: the op executor runs typed ops only. HC4e4: every list is typed; the RDP syncs and G_SPNOOP are the typed no-op (ND_NOP_A);
- * ND_FS_END ends the run. */
-void nd_nr_exec(const uint32_t* q, unsigned n) { /* DEL1D2: was nd_walk_state */
-    const unsigned dbg = pm_walk_dbg;
-    for (const uint32_t* e = q + 2u * n; q < e; q += 2) {
-        const uint32_t* u = q;
-        unsigned id = q[0] >> 24;
-        if (q[0] == ND_NOP_A) continue; /* HC4f3: a typed sync or no-op, skipped as a raw sync: no nr_ctl, no gv_epoch */
-        if (__builtin_expect(!nd_op_typed(id), 0)) { nr_unknown(dbg, q); continue; } /* HC4e4: every list is typed */
-        if (nd_op_geo(id)) nr_geo(dbg, u, q);
-        else if (nd_op_ctl(id)) {
-            const unsigned r = nr_ctl(dbg, u, q, e);
-            if (r == ~0u) q = e - 2;
-            else q += 2u * r;
-        }
-        else if (id == ND_FS_END) break;
-        else nr_set(dbg, u, q);
-    }
-    if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
-}
-void nd_nr_run(const uint32_t* rec) { const unsigned n = (rec[-2] >> 16) & 0xffu; if (alt_mode == 2u) ls_run(rec, n); else { ep_stream = alt_mode == 0u; nd_nr_exec(rec, n); ep_stream = 0; } } /* NAT4A; NAT5F; NAT5N */
 void nd_geo_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; /* NAT5G: nr_geo per unit, as nd_nr_exec and ls_run */
     for (unsigned k = 0; k < n; k++) nr_geo(dbg, rec + 2u * k, rec + 2u * k);
     if (__builtin_expect(dbg & WD_PH, 0) && m != 2u) pm_gpu_ndt_cls(-1); }
@@ -390,15 +331,6 @@ void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep
 void nd_cbd_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6C: nr_set of a pure combine unit at ep_stream, ex_depth 0 */
 void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
     nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
-static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of a list with a snap table: nd_walk_state without the combine units */
-    const unsigned dbg = pm_walk_dbg;
-    for (const uint32_t* e = q + 2u * n; q < e; q += 2) { const unsigned id = q[0] >> 24;
-        if (q[0] == ND_NOP_A || id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) continue;
-        if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_tx_texon(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { if (!nd_unit_same(q)) nd_unit_apply(q); } /* NAT6D2 */
-        else if (__builtin_expect(!nd_op_typed(id), 0)) nr_unknown(dbg, q); else if (nd_op_geo(id)) nr_geo(dbg, q, q);
-        else if (nd_op_ctl(id)) { const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
-        else if (id == ND_FS_END) break; else nr_set(dbg, q, q);
-    } }
 static void cp_side(const uint32_t* u) { const uint32_t a = u[0] & 0xffffffu, b = u[1]; const unsigned id = u[0] >> 24; /* NAT6D2: the state notes of nd_unit_same (nd_set.c:126-134) */
     if (id == ND_FS_OMH) { const uint32_t m = nd_op_om_mask(a); if ((b & m) == (nd_ws.omode_h & m) && sc_ok) nd_ws.om_kh |= m; }
     else if (id == ND_FS_OML) { const uint32_t m = nd_op_om_mask(a); if ((b & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; }
