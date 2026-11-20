@@ -218,14 +218,14 @@ void gfx_draw_frame(void) {
     func_802C3EE4();
     render_screen_overlay_backUI();
     render_workers_backUI();
-    render_hud_elements_backUI();
+    { NDT_B(t_hb); render_hud_elements_backUI(); NDT_E(t_hb, NDT_GHUD); } /* GD0B */
     render_effects_UI();
-    render_game_mode_backUI();
+    { NDT_B(t_mb); render_game_mode_backUI(); NDT_E(t_mb, NDT_GMODE); } /* GD0B */
     FI_CLOSE();
 
     FI_OPEN("gfx_window_root");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_WINDOWS_OVER_CURTAINS)) {
-        render_window_root();
+        { NDT_B(t_wr1); render_window_root(); NDT_E(t_wr1, NDT_GWIN); } /* GD0B */
     }
     FI_CLOSE();
     NDT_E(tu_a, NDT_GUI); }
@@ -241,13 +241,13 @@ void gfx_draw_frame(void) {
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS)
         && !(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_FRONTUI)
     ) {
-        render_messages();
+        { NDT_B(t_ms1); render_messages(); NDT_E(t_ms1, NDT_GWIN); } /* GD0B */
     }
     FI_CLOSE();
 
     FI_OPEN("gfx_front_ui");
     render_workers_frontUI();
-    render_hud_elements_frontUI();
+    { NDT_B(t_hf); render_hud_elements_frontUI(); NDT_E(t_hf, NDT_GHUD); } /* GD0B */
     render_screen_overlay_frontUI();
     FI_CLOSE();
 
@@ -255,7 +255,7 @@ void gfx_draw_frame(void) {
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS)
         && (gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_FRONTUI)
     ) {
-        render_messages();
+        { NDT_B(t_ms2); render_messages(); NDT_E(t_ms2, NDT_GWIN); } /* GD0B */
     }
     FI_CLOSE();
 
@@ -265,18 +265,18 @@ void gfx_draw_frame(void) {
 
     FI_OPEN("gfx_messages_over_curtains");
     if (gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS) {
-        render_messages();
+        { NDT_B(t_ms3); render_messages(); NDT_E(t_ms3, NDT_GWIN); } /* GD0B */
     }
     FI_CLOSE();
 
     FI_OPEN("gfx_window_over_curtains");
     if (gOverrideFlags & GLOBAL_OVERRIDES_WINDOWS_OVER_CURTAINS) {
-        render_window_root();
+        { NDT_B(t_wr2); render_window_root(); NDT_E(t_wr2, NDT_GWIN); } /* GD0B */
     }
     FI_CLOSE();
 
     FI_OPEN("gfx_game_mode_front_ui");
-    render_game_mode_frontUI();
+    { NDT_B(t_mf); render_game_mode_frontUI(); NDT_E(t_mf, NDT_GMODE); } /* GD0B */
     FI_CLOSE();
 
     if (gOverrideFlags & GLOBAL_OVERRIDES_SOFT_RESET) {
@@ -288,10 +288,10 @@ void gfx_draw_frame(void) {
         }
     }
 
-    nuGfxTaskStart(NU_GFX_UCODE_F3DEX2, NU_SC_TASK_LODABLE | NU_SC_SWAPBUFFER); /* DIRECT D9: the task is a frame stream */
+    NDT_E(tu_b, NDT_GUI); }
+    { NDT_B(tu_c); nuGfxTaskStart(NU_GFX_UCODE_F3DEX2, NU_SC_TASK_LODABLE | NU_SC_SWAPBUFFER); NDT_E(tu_c, NDT_GSUB); } /* DIRECT D9: the task is a frame stream; GD0B: timed */
     gCurrentDisplayContextIndex = gCurrentDisplayContextIndex ^ 1;
     crash_screen_set_draw_info(nuGfxCfb_ptr, SCREEN_WIDTH, SCREEN_HEIGHT);
-    NDT_E(tu_b, NDT_GUI); }
 }
 
 void load_engine_data(void) {

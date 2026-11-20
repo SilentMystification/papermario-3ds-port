@@ -12,8 +12,10 @@
 #include "nd_ds.h"
 #include "nd_int.h"
 #include "nd_fs.h"
+#include "nd.h"
 
 extern unsigned pm_gbi_cur_op; /* nd_walk.c */
+extern int pm_ph_on; /* GD0B */
 
 /* core 0: op_geo's MTX and POPMTX arms for one record unit */
 static void nd_xf_run(const uint32_t* r) {
@@ -26,8 +28,7 @@ static void nd_xf_run(const uint32_t* r) {
 /* core 1: the state and ep rule of the unit (as nd_rec_nr did), then the record */
 static void xf_rec(uint32_t w0, uint32_t w1) {
     const uint32_t r[2] = { w0, w1 };
-    nd_ds_unit(&nd_ds, w0, w1);
-    nd_rec_xf(nd_xf_run, r);
+    NDT_B(tx); nd_ds_unit(&nd_ds, w0, w1); nd_rec_xf(nd_xf_run, r); NDT_E(tx, NDT_RXF); /* GD0B */
 }
 
 void nd_xf_push(const void* m, unsigned p) {
