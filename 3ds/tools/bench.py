@@ -1761,9 +1761,9 @@ FHASH_RX = re.compile(r"fhash f(\d+) h ([0-9a-f]{16}) draws (\d+) words (\d+)")
 
 
 def shot_names(d):
-    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots, fhash.txt (frame hashes) and drec.txt (HOSTCORE2: draw records), sorted."""
+    """FRAMEHASH4: the compared files of a shot folder: the *.ppm shots, fhash.txt (frame hashes), drec.txt (HOSTCORE2: draw records) and gst.txt (DO0: state hashes), sorted."""
     d = Path(d)
-    return sorted(p.name for p in d.glob("*.ppm")) + [n for n in ("fhash.txt", "drec.txt") if (d / n).is_file()]
+    return sorted(p.name for p in d.glob("*.ppm")) + [n for n in ("fhash.txt", "drec.txt", "gst.txt") if (d / n).is_file()]
 
 
 def fhash_extract(log, folder):
@@ -1803,6 +1803,19 @@ def drec_cmp(a, b):
         if x != y:
             return 1, ["  drec draw %s DIFF line %d: base %r, row %r" % (seq, i + 1, x, y)]
     return (0 if nd else 1), ["  drec %d draws equal" % nd if nd else "  drec.txt has no draw"]
+
+
+def gst_cmp(a, b):
+    """DO0: (bad, lines) for two gst.txt files, compared line by line. The first differing line names its draw: `gst draw <seq> DIFF`."""
+    la, lb = Path(a).read_text(encoding="utf-8").split("\n"), Path(b).read_text(encoding="utf-8").split("\n")
+    nd = sum(1 for x in la if x.startswith("d "))
+    for i in range(max(len(la), len(lb))):
+        x = la[i] if i < len(la) else None
+        y = lb[i] if i < len(lb) else None
+        if x != y:
+            seq = next((t.split(" ")[1] for t in (x, y) if t and t.startswith("d ")), "?")
+            return 1, ["  gst draw %s DIFF line %d: base %r, row %r" % (seq, i + 1, x, y)]
+    return (0 if nd else 1), ["  gst %d draws equal" % nd if nd else "  gst.txt has no draw"]
 
 
 def shots_diff(a, b):
@@ -2482,6 +2495,13 @@ def cmd_cmp(a):
             print("  %s missing in the row run" % n)
             bad += 1
             continue
+        if n == "gst.txt":  # DO0: one line per drec draw, the first DIFF names its seq
+            fb, lines = gst_cmp(base_dir / n, row_dir / n)
+            print("\n".join(lines))
+            bad += fb
+            if fb == 0:
+                equal += 1
+            continue
         if n == "drec.txt":
             fb, lines = drec_cmp(base_dir / n, row_dir / n)
             print("\n".join(lines))
@@ -2517,7 +2537,7 @@ def cmd_cmp(a):
             print("  %s DIFF %d px bbox x %d..%d y %d..%d, diff %s" % (n, res["px"], x0, x1, y0, y1, posix(out / ("diff_" + n[:-4] + ".png"))))
             bad += 1
     for n in row_names:
-        if n not in base_names:
+        if n not in base_names and n != "gst.txt":  # DO0: the base has no gst.txt (the page: not compared)
             print("  %s extra (not in base)" % n)
             bad += 1
     print("%d/%d byte-equal" % (equal, len(base_names)))
@@ -3066,6 +3086,21 @@ def cmd_rebuild(a):
     return 0
 
 
+def cmd_selftest_gst(a):
+    """DO0: gst_cmp on temporary files: equal gives PASS, one changed hash gives DIFF at its draw."""
+    import tempfile
+    base = "d 0 h 00000001\nd 1 h 00000002\nd 2 h 00000003\n"
+    changed = base.replace("d 1 h 00000002", "d 1 h 00000009")
+    with tempfile.TemporaryDirectory() as td:
+        pa, pb, pc = Path(td) / "a.txt", Path(td) / "b.txt", Path(td) / "c.txt"
+        pa.write_text(base, encoding="utf-8"); pb.write_text(base, encoding="utf-8"); pc.write_text(changed, encoding="utf-8")
+        fe, _ = gst_cmp(pa, pb)
+        fd, lines = gst_cmp(pa, pc)
+    ok = fe == 0 and fd == 1 and "gst draw 1 DIFF" in lines[0]
+    print("selftest-gst %s" % ("PASS" if ok else "FAIL"))
+    return 0 if ok else 1
+
+
 def main(argv):
     p = argparse.ArgumentParser(description="named benches, run log, sample index and area queries")
     sub = p.add_subparsers(dest="cmd", required=True)
@@ -3101,6 +3136,7 @@ def main(argv):
     x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit"); x.add_argument("--expect", help="MCOPY1: a DIFF of drec.txt passes when the log has `WORD f<m>` with m at or before its frame")
     x.set_defaults(f=cmd_cmp)
     x = sub.add_parser("selftest-expect"); x.set_defaults(f=cmd_selftest_expect)
+    x = sub.add_parser("selftest-gst"); x.set_defaults(f=cmd_selftest_gst)
     x = sub.add_parser("import-csv"); x.set_defaults(f=cmd_import_csv)
     x = sub.add_parser("where"); add_area(x); x.set_defaults(f=cmd_where)
     x = sub.add_parser("spots"); add_area(x); x.add_argument("--top", type=int, default=20); x.set_defaults(f=cmd_spots)

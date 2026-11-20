@@ -12,10 +12,12 @@ Objective: rmdl (c1d, FACT 4.33 ms per step on the console) to about 1 to 1.5 ms
 - The record words R2 w1 (final matrix) and R8 (billboard) point into the display context: they alternate between the 2 contexts each step.
 - The stream of the other display context (the last step) stays intact until core 1 records into it again (nd_rec.c:170-180 ch_enter per context).
 ## Design
-- Memo table: 256 entries, open addressing, key = q[12] w0 (geometry address) and q[0] w0. Entry: the last block pointer and size (in the other context's
+- Memo table: 256 entries, open addressing, key = q[24] (R12 w0, the geometry address; page fault fixed) and q[0]. Entry: the last block pointer and size (in the other context's
   stream), the record words with R2 w1, R8 w0 and w1 set to 0, the before snapshot S (an NdMSnap from nd_msnap_take of nd_ds before, ms_pre's 5 words,
   sn_leg, sn_pat, sn_mode5, sn_vprim, the light block bytes R3 names), and the after values A that nd_ds_model writes. Reset at a map load and when
   the entry's context is not the other one.
+- Rings (oracle reply round 1): S holds tst1.ldrec and blk in logical order (`[(n + i) & 3]`, i 0..3), not ldrec_n, blk_n. A holds the loads the model
+  appended (count and entries); a hit appends them at the current n as nd_ds_loadtile does.
 - Hit (all equal): copy the last block into the new room (one memcpy), set R2 w1, R8 from q, j[1] to the new address, p[1] = nd_mkey_a(q), write A into
   nd_ds, run the side effects of nd_snap_dec (sn_leg, sn_mode5, sn_pat, sn_cmds = ~0u: keep its decision call, it is cheap now). Miss: the full path, then store.
 ## Steps

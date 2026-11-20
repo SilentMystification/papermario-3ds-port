@@ -18,6 +18,7 @@
 #define RT_SIZE (1 << RT_BITS)
 #define PT_SIZE 2048
 #define NT_SIZE 2048
+#define OT_SIZE 2048 /* GD1: 2 x MAX_NODES */
 
 typedef struct {
     unsigned node, idx;
@@ -45,6 +46,8 @@ static RT* rtab;
 static float (*repl)[4][4];
 static short* ptab; /* prev leaf index + 1 by hash(node, idx) */
 static short* ntab; /* prev node index + 1 by node id */
+static short* otab; /* GD1: index + 1 of the last node with this (parent, a, b) */
+static unsigned short* nocc; /* GD1: occurrence of each node */
 static int skipped, nleaf, nnode, depth, recording, pnleaf, pnnode;
 static int stack[MAX_DEPTH];
 static unsigned frames, tot_leaves, tot_nodes, peak, peak_nodes, over_leaves, over_nodes, pair_leaves, pair_total;
@@ -56,12 +59,18 @@ static unsigned hash4(unsigned p, unsigned a, unsigned b, unsigned occ) {
     return h;
 }
 
+static unsigned occ_slot(unsigned p, unsigned a, unsigned b) { return ((p * 2654435761u) ^ (a * 2246822519u) ^ (b * 3266489917u)) >> (32 - 11); }
+
 void pm_interp_open(unsigned a, unsigned b) {
     if (!recording) return;
     if (nnode >= MAX_NODES || depth >= MAX_DEPTH - 1) { skipped++; over_nodes++; return; } /* close must pair with it */
-    unsigned parent = nodes[stack[depth]].id, occ = 0;
-    for (int i = 0; i < nnode; i++)
-        if (nodes[i].parent == parent && nodes[i].a == a && nodes[i].b == b) occ++;
+    unsigned parent = nodes[stack[depth]].id, occ = 0, h = occ_slot(parent, a, b);
+    for (; otab[h]; h = (h + 1u) & (OT_SIZE - 1u)) { /* GD1: the slot of this key, or the first free slot */
+        const int k = otab[h] - 1;
+        if (nodes[k].parent == parent && nodes[k].a == a && nodes[k].b == b) { occ = nocc[k] + 1u; break; }
+    }
+    otab[h] = (short)(nnode + 1);
+    nocc[nnode] = (unsigned short)occ;
     nodes[nnode] = (Node){ hash4(parent, a, b, occ), parent, a, b, 0 };
     stack[++depth] = nnode++;
 }
@@ -91,7 +100,7 @@ void pm_interp_start(void) {
     if (!pm_interp_on) return;
     if (!leaves) {
         leaves = malloc(2 * MAX_LEAVES * sizeof(Leaf) + 2 * MAX_NODES * sizeof(Node) + RT_SIZE * sizeof(RT) +
-                        MAX_LEAVES * 64 + (PT_SIZE + NT_SIZE) * sizeof(short));
+                        MAX_LEAVES * 64 + (PT_SIZE + NT_SIZE) * sizeof(short) + OT_SIZE * sizeof(short) + MAX_NODES * sizeof(unsigned short));
         if (!leaves) { pm_log_e("f06: no memory for the tables, fps60 off"); pm_interp_on = 0; return; }
         pleaves = leaves + MAX_LEAVES;
         nodes = (Node*)(pleaves + MAX_LEAVES);
@@ -100,6 +109,8 @@ void pm_interp_start(void) {
         repl = (float (*)[4][4])(rtab + RT_SIZE);
         ptab = (short*)(repl + MAX_LEAVES);
         ntab = ptab + PT_SIZE;
+        otab = ntab + NT_SIZE;
+        nocc = (unsigned short*)(otab + OT_SIZE);
     }
     nleaf = 0;
     nnode = 0;
@@ -107,6 +118,7 @@ void pm_interp_start(void) {
     skipped = 0;
     nodes[nnode] = (Node){ hash4(0, 0x67616d65u, 0x6c6f6769u, 0), 0, 0x67616d65u, 0x6c6f6769u, 0 }; /* "game_logic" */
     stack[0] = nnode++;
+    memset(otab, 0, OT_SIZE * sizeof(short)); otab[occ_slot(0, 0x67616d65u, 0x6c6f6769u)] = 1; nocc[0] = 0; /* GD1: the root is node 0 */
     recording = 1;
 }
 
@@ -194,3 +206,6 @@ void pm_interp_record(float mf[4][4], void* m) {
     l->dest = (Mtx*)m;
     memcpy(l->mf, mf, sizeof(l->mf));
 }
+
+unsigned pm_interp_node_id(int i) { return (i >= 0 && i < nnode) ? nodes[i].id : 0u; } /* GD1: iocc host test */
+int pm_interp_node_n(void) { return nnode; }

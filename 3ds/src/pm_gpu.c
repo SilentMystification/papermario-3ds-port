@@ -601,6 +601,52 @@ static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static u
 unsigned char nd_c0w; static unsigned c0_d, c0_m, c0_c, c0_r, c0_b; extern unsigned nd_snb, nd_snn, nd_snm; /* NAT1 */ static unsigned char c0_spr; /* NAT2J: a native sprite submit */
 static NdDrecSpan drec_span[1 + OFF_N + SMALL_N]; static uint32_t drec_nspan; /* DRECTEX */
 #define DREC_REGS 640u
+/* DO0: the GPU state hash of each drec draw, one line `d <seq> h <hash>` in sdmc:/3ds/PaperMario/shots/gst.txt (bench.py gst_cmp). gst_scan walks the
+ * command words written since the last scan (the PICA format of nd_emit.c: value, header, n - 1 values, a pad word when n is even). gst_r keeps each register
+ * (byte masks merged), gst_f the float uniforms (0x2C0 sets the index and the mode, 0x2C1 takes the words), gst_lut one FNV per LUT (fog, lighting, proctex)
+ * that restarts at its INDEX. The addresses are left out (their values stay 0: they differ from run to run). Cold: runs only in drec frames. */
+static u32 gst_r[0x300], gst_f[96][4], gst_lut[3];
+static FILE* gst_fp; static char* gst_vb; static u32* gst_cb; static u32 gst_off, gst_fvec, gst_fcomp, gst_fn;
+static const unsigned gst_lut_idx[3] = {0xE6u, 0x1C5u, 0xAFu}, gst_lut_dat[3] = {0xE8u, 0x1C8u, 0xB0u}; /* fog, lighting, proctex: INDEX, DATA0 */
+static u32 gst_mix(u32 h, u32 x) { for (int i = 0; i < 4; i++) { h ^= (x >> (8 * i)) & 0xffu; h *= 16777619u; } return h; } /* FNV-1a over the bytes of x */
+static int gst_skip(unsigned reg) { /* the addresses: TEXUNIT0_ADDR1..6, TEXUNIT1/2_ADDR, DEPTH/COLORBUFFER_LOC, ATTRIBBUFFERS_LOC, ATTRIBBUFFER0_OFFSET + 3k, INDEXBUFFER_CONFIG, CMDBUF_ADDR0/1, CMDBUF_JUMP0/1 */
+    return (reg >= 0x85u && reg <= 0x8Au) || reg == 0x95u || reg == 0x9Du || reg == 0x11Cu || reg == 0x11Du || reg == 0x200u
+        || (reg >= 0x203u && reg <= 0x224u && (reg - 0x203u) % 3u == 0u) || reg == 0x227u || (reg >= 0x23Au && reg <= 0x23Du);
+}
+static void gst_put(unsigned reg, unsigned m, u32 x) {
+    if (reg == 0x2C1u) { /* the float uniform data port: one word per value, the index moves on after a vec4 (3 words in f24 mode) */
+        gst_f[gst_fvec][gst_fcomp] = x;
+        if (++gst_fcomp >= gst_fn) { gst_fcomp = 0; if (++gst_fvec >= 96u) gst_fvec = 0; }
+        return;
+    }
+    for (unsigned k = 0; k < 3u; k++) {
+        if (reg == gst_lut_idx[k]) { gst_lut[k] = gst_mix(0x811c9dc5u, x); return; }
+        if (reg >= gst_lut_dat[k] && reg < gst_lut_dat[k] + 8u) { gst_lut[k] = gst_mix(gst_lut[k], x); return; }
+    }
+    if (reg >= 0x300u || gst_skip(reg)) return;
+    if (reg == 0x2C0u) { gst_fvec = x & 0xffu; if (gst_fvec >= 96u) gst_fvec = 0; gst_fcomp = 0; gst_fn = (x >> 31) ? 4u : 3u; }
+    const u32 bm = ((m & 1u) ? 0xffu : 0u) | ((m & 2u) ? 0xff00u : 0u) | ((m & 4u) ? 0xff0000u : 0u) | ((m & 8u) ? 0xff000000u : 0u);
+    gst_r[reg] = (gst_r[reg] & ~bm) | (x & bm);
+}
+static __attribute__((cold, noinline)) void gst_scan(const u32* a, const u32* b) { /* the commands in [a, b): word 0 the value, word 1 the header, then n - 1 values, a pad when n is even */
+    while (a + 2 <= b) {
+        const unsigned reg = a[1] & 0xffffu, m = (a[1] >> 16) & 0xfu, n = ((a[1] >> 20) & 0xffu) + 1u, len = n + 1u + ((n & 1u) == 0u ? 1u : 0u);
+        const int consec = (int)(a[1] >> 31);
+        if (a + len > b) break;
+        for (unsigned i = 0; i < n; i++) gst_put(consec ? reg + i : reg, m, i == 0 ? a[0] : a[i + 1]);
+        a += len;
+    }
+}
+static __attribute__((cold, noinline)) void gst_draw(u32* cb, u32 end) { /* DO0: the state of this draw (the words since the last scan), then its line */
+    if (!gst_fp) return;
+    if (cb != gst_cb || end < gst_off) { gst_cb = cb; gst_off = 0; } /* a split or a new frame: the buffer starts at its base */
+    gst_scan(cb + gst_off, cb + end); gst_off = end;
+    u32 h = 0x811c9dc5u;
+    for (unsigned i = 0; i < 0x300u; i++) h = gst_mix(h, gst_r[i]);
+    for (unsigned i = 0; i < 96u * 4u; i++) h = gst_mix(h, ((const u32*)gst_f)[i]);
+    for (unsigned k = 0; k < 3u; k++) h = gst_mix(h, gst_lut[k]);
+    fprintf(gst_fp, "d %u h %08x\n", drec_seq, h);
+}
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
         char v[24]; drec_win = -1;
@@ -610,12 +656,16 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     drec_on = drec_win > 0 && fr >= drec_first && fr <= drec_first + (drec_count - 1u) * drec_step && (fr - drec_first) % drec_step == 0u;
     if (drec_on) pm_log_evt("drec frame %u seq %u", fr, drec_seq); /* NDR0G2 */
     if (drec_on && drec_f && drec_step > 1u) fprintf(drec_f, "frame %u\n", fr);
+    gst_cb = NULL; /* DO0: a frame starts at buffer offset 0 (C3D_FrameBegin) */
     if (!drec_on || drec_f) return;
     mkdir("sdmc:/3ds/PaperMario/shots", 0777);
     drec_f = fopen("sdmc:/3ds/PaperMario/shots/drec.txt", "wb");
     drec_vb = (char*)malloc(1u << 20); drec_regs = (NdDrecReg*)malloc(DREC_REGS * sizeof(NdDrecReg));
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
+    gst_fp = fopen("sdmc:/3ds/PaperMario/shots/gst.txt", "wb"); gst_vb = (char*)malloc(64u << 10); /* DO0 */
+    if (gst_fp && gst_vb) setvbuf(gst_fp, gst_vb, _IOFBF, 64u << 10); else { if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; }
+    gst_cb = NULL; gst_off = gst_fvec = gst_fcomp = 0; gst_fn = 4u; memset(gst_r, 0, sizeof gst_r); memset(gst_f, 0, sizeof gst_f); memset(gst_lut, 0, sizeof gst_lut);
     drec_seq = drec_over = 0;
     drec_nspan = 0; /* DRECTEX: the spans the GPU writes */
     if (copy_blk) { drec_span[drec_nspan].lo = (uintptr_t)copy_blk; drec_span[drec_nspan++].n = BLK_FULL; }
@@ -627,6 +677,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     if (!drec_f || pm_frame_count() < drec_first + (drec_count - 1u) * drec_step) return;
     const long bytes = ftell(drec_f);
     fclose(drec_f); free(drec_vb); free(drec_regs); free(drec_idx);
+    if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; /* DO0 */
     pm_log_evt("c0src f%u draws %u mdl %u wcomb %u wrnd %u wbind %u snb %u snn %u snm %u", pm_frame_count(), c0_d, c0_m, c0_c, c0_r, c0_b, nd_snb, nd_snn, nd_snm); /* NAT1 */
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
@@ -1176,11 +1227,13 @@ static void ndunit_after(void);
 static uint64_t ndt_sum[NDT_N];
 static uint32_t ndt_t0[4], ndt_in[4];
 static unsigned ndt_sp;
+#define NDT_GC (NDT_GWIN - NDT_GENT + 1)
+static uint64_t ndt_gi[NDT_GC]; static unsigned ndt_gu[NDT_GC], ndt_ga[NDT_GC], ndt_u[4], ndt_a[4]; extern unsigned nd_rnr_n, nd_altu_n; /* GD0, GD0B */
 static uint32_t ndt_top; /* PERF2: the ticks of the outer regions so far (the op class spans subtract them) */
 static int cls_cur = -1; static uint32_t cls_t, cls_top0; /* PERF2: the open op class span: its class, start tick, ndt_top at its start */
 static int ndt_mdl;
 __attribute__((cold, noinline)) void pm_gpu_ndt_push(void) { /* sampled frames only: out of the hot callers */
-    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; }
+    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; ndt_u[ndt_sp] = nd_rnr_n; ndt_a[ndt_sp] = nd_altu_n; }
     ndt_sp++;
 }
 __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
@@ -1189,6 +1242,7 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
     if (i >= 4u) return;
     uint32_t tot = (uint32_t)svcGetSystemTick() - ndt_t0[i], in = ndt_in[i];
     ndt_sum[k] += tot > in ? tot - in : 0u;
+    if (k >= NDT_GENT && k <= NDT_GWIN) { ndt_gi[k - NDT_GENT] += tot; ndt_gu[k - NDT_GENT] += nd_rnr_n - ndt_u[i]; ndt_ga[k - NDT_GENT] += nd_altu_n - ndt_a[i]; } /* GD0, GD0B */
     if (i) ndt_in[i - 1] += tot; else ndt_top += tot;
 }
 /* PERF2 step 6: the op class timer of the walk (sampled frames, walk_dbg_op with WD_PH). Outside the regions only (a region times its own ops); a span ends at
@@ -1200,6 +1254,9 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_cls(int k) {
     cls_cur = k; cls_t = now; cls_top0 = ndt_top;
 }
 void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
+void pm_gpu_ndt_take_g(uint64_t o[NDT_GC], unsigned u[NDT_GC], unsigned a[NDT_GC]) { /* GD0: the core 1 class ticks (with their recorder regions) and nd_rec_nr calls, then reset; GD0B: and the alt units */
+    for (int k = 0; k < NDT_GC; k++) { o[k] = ndt_gi[k]; u[k] = ndt_gu[k]; a[k] = ndt_ga[k]; ndt_gi[k] = 0; ndt_gu[k] = 0; ndt_ga[k] = 0; }
+}
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
@@ -1312,7 +1369,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
       const unsigned nw_ = nd_emit_draw(cb + coff, &ndn_sh, d);
-      GPUCMD_SetBufferOffset(coff + nw_); sc_gd[0]++; sc_gw[0] += nw_; } /* MDLBLK: one emit path */
+      GPUCMD_SetBufferOffset(coff + nw_); sc_gd[0]++; sc_gw[0] += nw_;
+      if (__builtin_expect(drec_on, 0)) gst_draw(cb, coff + nw_); } /* MDLBLK: one emit path; DO0: the state hash of this draw (drec_seq is its seq) */
     if (tex) ndunit_after();
     if (__builtin_expect(drec_on, 0)) c0_count(d); /* NAT1 */
     if (__builtin_expect(drec_on, 0)) drec_draw(d, ndt_mdl || nb.gi_kind == 1); /* HOSTCORE2: the golden record of this draw */
