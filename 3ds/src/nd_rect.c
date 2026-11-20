@@ -237,7 +237,7 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { /
     /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
     zcol = nd_tgt.siz == 2 && (nd_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)); /* NWS4B */
     if (zcol) { zslot_on = 1; rc_render(); }
-    else if (nd_img_role(0) == ROLE_SLOT) rc_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
+    else if (ND_ROLE(0) == ROLE_SLOT) rc_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
     nd_img_check();
     if (sn_armed) nd_snapchk_tri(); /* NDR1B: the compare, then the snap combine */
     else if (rc_sn) nd_snap_comb(); /* NDR1C */
@@ -319,8 +319,8 @@ __attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) { /* NWS4B */
     int lry = FILL_SX10(w0 >> 2);
     int ulx = FILL_SX10(w1 >> 14);
     int uly = FILL_SX10(w1 >> 2);
-    if (nd_img_role(1) == ROLE_CPUFILL) { nd_fillrect_cpu(ulx, uly, lrx, lry); return; }
-    if (nd_img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
+    if (ND_ROLE(1) == ROLE_CPUFILL) { nd_fillrect_cpu(ulx, uly, lrx, lry); return; }
+    if (ND_ROLE(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
         pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ap->fill)); /* NWS4B */
         return;
     }

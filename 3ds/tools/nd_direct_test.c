@@ -19,11 +19,13 @@
 /* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that ap_sync (run before each nd_direct call below) fills from nd_c0. */
 static NdSnapChk ap_stub;
 const NdSnapChk* nd_ap = &ap_stub;
+NdGs* nd_gs; /* NC0R: no static call on the host */
+static unsigned t_oml; /* NC0R: the other mode low word of the stub snap (nd_c0 no longer holds it) */
 int pm_drec_now(void) { return 1; }
 extern int dual_on; extern unsigned keyc, keys;
 static void ap_sync(void) {
     memset(&ap_stub, 0, sizeof ap_stub);
-    ap_stub.in.w0 = nd_c0.comb_w0; ap_stub.in.w1 = nd_c0.comb_w1; ap_stub.in.omode_h = nd_c0.omode_h; ap_stub.oml = nd_c0.omode_l;
+    ap_stub.in.w0 = nd_c0.comb_w0; ap_stub.in.w1 = nd_c0.comb_w1; ap_stub.in.omode_h = nd_c0.omode_h; ap_stub.oml = t_oml;
     ap_stub.in.prim = nd_c0.prim; ap_stub.plod = nd_c0.prim_lod; ap_stub.in.env = nd_c0.envc;
     ap_stub.in.dual_on = dual_on; ap_stub.in.key_c = keyc; ap_stub.in.key_s = keys;
 }
@@ -144,7 +146,7 @@ int main(void) {
     NdPsoN64 cc = { 0xfc000003u, 0u, 0x00504340u, 0u, 0u };
     NdPso ia, ib, it1, ipl, icc;
     memset(&nd_c0, 0, sizeof nd_c0);
-    nd_c0.omode_l = 0x5u;
+    t_oml = 0x5u;
     comb_set = 1;
     ia = nd_pso_n64(&a); ib = nd_pso_n64(&b);
     CHECK(ia != ib);
@@ -155,7 +157,6 @@ int main(void) {
     /* a bind: the other mode as the stream sets it (the render mode replaces bits 3 to 31, bits 0 to 2 stay), the combine words, the primitive colour */
     nd_c0.omode_h = 0; n_filter = 0;
     CHECK(nd_direct_bind(ia, 0xff804020u, 0x55u) == 1);
-    CHECK(nd_c0.omode_l == (0x5u | 0x00504340u));
     CHECK(nd_c0.comb_w0 == 0xfc000010u && nd_c0.comb_w1 == 0x11111111u);
     CHECK(nd_c0.prim == 0xff804020u && last_prim == 0xff804020u && nd_c0.prim_lod == 0u && nd_c0.envc == 0x55u);
     CHECK(n_leg == 1 && last_leg == 2u && leg_mode == 2 && n_plan == 0 && nd_snap_render_n >= 1);

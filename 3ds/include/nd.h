@@ -163,7 +163,7 @@ typedef struct NdWs {
 } NdWs;
 /* NWS3: the core 0 draw state (the RSP and texture state the native records write). NdWs above stays the core 1 field model (NdDs.w). */
 typedef struct NdC0 {
-    unsigned omode_h, omode_l;         /* other mode high and low */
+    unsigned omode_h;                  /* other mode high; NC0R: the low word lives in the snap */
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
     unsigned prim_z;                   /* G_SETPRIMDEPTH, 15 bit */
@@ -411,9 +411,9 @@ int nd_model_state(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st
 int nd_model_state_spr(const uint32_t* rec, const NdMCtx* c, NdDraw* d, NdMState* st); /* PERF1-5: nd_model_state for the sprite context (pm_gpu_spr_build) through a 16-entry memo */
 /* S3N-3c: the static ranges of a shape list (the former pm_gbi.c pm_dlc_native_ranges): index pool pointer, index count, geometry mode of the batch. */
 typedef struct NdRng { const uint16_t* sd; unsigned nidx; uint32_t geom; } NdRng;
-int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned max); /* -1 the walker would not replay the list statically, -2 out full */
+int pm_dlc_native_ranges(const void* list, uint32_t entry, NdRng* out, unsigned max, uint32_t oml, uint32_t omh); /* -1 the walker would not replay the list statically, -2 out full */
 extern uint64_t pm_dlc_vm; extern int pm_dlc_vm_ok; /* PERF1-4b: the groups in view of the last pm_dlc_native_ranges (bit k: group k); ok when it returned >= 0 for 64 groups or fewer */
-int pm_dlc_vis_mask(const void* list, uint64_t* out);
+int pm_dlc_vis_mask(const void* list, uint64_t* out, uint32_t oml, uint32_t omh); /* NC0R: the record's other mode words */
 int pm_dlc_geom_keep(const void* list, uint32_t* keep); /* MAPX-2: the entry geometry bits the groups of the list keep; -1 when the list is not built */ /* PERF1-4b: the groups of the list in view now (box test only); -1 when the list has no built static entry */
 /* S3N-3c: a model record as native draws. c: the record state (geom_at is set per range). list: the geometry list (R12). emit 0: build only (ndmcheck);
  * emit 1: flush, then submit each draw (S3N-4). Returns the draw count, -1 fallback (nd_nat_why), -2 nost. Draws are read with nd_model_native. */

@@ -202,8 +202,8 @@ void nd_snap_rlog(void) { /* NWS4B */
     if (!pm_drec_now() || pm_frame_count() == sc_rfr) return;
     NdRender w; unsigned wc;
     const int wk = nd_snap_mix(nd_ap->oml, nd_ap->fogc, nd_ap->blendc, pm_nofog, &wc); /* NWS4B */
-    nd_render_state(nd_ap->in.omode_h, nd_ap->oml, nd_img_role(0) == ROLE_DEPTH, &w); /* NWS4B */
-    if (memcmp(&nd_ap->rs, &w, sizeof w) || nd_ap->mixk != wk || nd_ap->mixc != wc || nd_ap->role != nd_img_role(0) || nd_snap_bnew(NULL)) {
+    nd_render_state(nd_ap->in.omode_h, nd_ap->oml, ND_ROLE(0) == ROLE_DEPTH, &w); /* NWS4B */
+    if (memcmp(&nd_ap->rs, &w, sizeof w) || nd_ap->mixk != wk || nd_ap->mixc != wc || nd_ap->role != ND_ROLE(0) || nd_snap_bnew(NULL)) {
         sc_rfr = pm_frame_count();
         pm_log_d("rectsnap f%u", sc_rfr);
     }
