@@ -232,8 +232,8 @@ void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak belo
  * with the real block and the real nd_ds (log `mmemo f<n> diff ...`). */
 unsigned pm_frame_count(void);
 void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim */
-#define MM_SETS 16u
-#define MM_WAYS 8u
+#define MM_N 256u /* slots: open addressing, linear probe of MM_PROBE */
+#define MM_PROBE 8u
 #define MM_D 24u
 #define MM_L1 8u
 #define MM_LW ((unsigned)(sizeof(((NdTst*)0)->ldrec[0]) / 4u))
@@ -249,7 +249,7 @@ static unsigned mm_nc[8], mm_wc[40]; static MmS mm_s; static NdDs mm_b;
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
 void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); { char o[400]; int n = 0; for (unsigned i = 0; i < 34u; i++) if (mm_wc[i]) n += snprintf(o + n, sizeof o - (unsigned)n, " %u:%u", i, mm_wc[i]); pm_log_evt("mmemo why%s", o); }
-    pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * MM_WAYS * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
+    pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
 #define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
 #define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
 #define MM_L0 ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, ldrec)) / 4u))
@@ -311,19 +311,20 @@ static __attribute__((cold, noinline)) void mm_why(const MmEnt* e, const uint32_
 }
 static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned* hit) {
     *hit = 0;
-    if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_SETS * MM_WAYS * sizeof *mm_t); }
-    if (!mm_t) { if (mm_tried) return NULL; mm_tried = 1; mm_t = (MmEnt*)calloc(MM_SETS * MM_WAYS, sizeof *mm_t); if (!mm_t) return NULL; }
+    if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_N * sizeof *mm_t); }
+    if (!mm_t) { if (mm_tried) return NULL; mm_tried = 1; mm_t = (MmEnt*)calloc(MM_N, sizeof *mm_t); if (!mm_t) return NULL; }
     mm_s_take(&mm_s);
-    MmEnt* const w = &mm_t[(((r[24] * 2654435761u) ^ (r[0] * 2246822519u) ^ ((mm_s.m.prim ^ mm_s.m.envc * 40503u ^ mm_s.m.cw1 * 9973u) * 3266489917u)) >> 28) * MM_WAYS]; MmEnt* v = NULL; unsigned wk = 0; /* the before state is in the index: two instances of one geometry in a step keep their own entries */
-    for (unsigned k = 0; k < MM_WAYS; k++) {
-        MmEnt* const e = &w[k];
+    const unsigned h0 = (((r[24] * 2654435761u) ^ (r[0] * 2246822519u)) >> 24) & (MM_N - 1u); MmEnt* v = NULL; unsigned wk = 0; /* DO1: the key only; entries of one geometry with other states follow in the probe run */
+    for (unsigned k = 0; k < MM_PROBE; k++) {
+        MmEnt* const e = &mm_t[(h0 + k) & (MM_N - 1u)];
+        if (!e->blk) { if (!v) v = e; break; }
         if (mm_match(e, r, words, keep, &mm_s)) { *hit = 1; return e; }
         if (e->ok && e->kg == r[24] && e->k0 == r[0] && e->cg == mm_cg[e->ctx] && (int)e->ctx != rec_ctx && e->keep == keep && mm_r13_eq(e, r, words) && mm_list_eq(e, r)) mm_near(e, &mm_s); /* DO1 census: S is the only difference */
         if (e->ok && e->kg == r[24] && e->k0 == r[0]) { mm_why(e, r, words, keep); wk = 1; }
-        if (!v && (!e->ok || (int)e->ctx != rec_ctx || e->cg != mm_cg[e->ctx])) v = e; /* free, or an entry of the step before that did not hit: the entries of this step stay for the next */
+        if (!v && (!e->ok || e->cg != mm_cg[e->ctx])) v = e; /* an entry whose block is gone (its context was built again) or that failed to store */
     }
     if (!wk) mm_wc[33]++;
-    return v ? v : &w[mm_tog++ & (MM_WAYS - 1u)];
+    return v ? v : &mm_t[(h0 + (mm_tog++ & (MM_PROBE - 1u))) & (MM_N - 1u)];
 }
 /* The census of a hit (step 1): the copy of the last block and the nd_ds delta against the real ones. */
 static __attribute__((cold, noinline)) void mm_census(MmEnt* e, const uint32_t* r, unsigned keep, const uint32_t* p) {
