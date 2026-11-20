@@ -4,7 +4,6 @@ interp nd_list_run
 interp nd_ent_units
 interp nd_ntab_run
 interp nd_scomp_run
-interp gt_run
 interp nr_geo
 interp nr_ctl
 interp part_units

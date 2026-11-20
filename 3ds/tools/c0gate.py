@@ -91,7 +91,7 @@ def selftest(elf):
     base = elf_hits(elf, interp, state)[0]
     seeded = elf_hits(elf, interp | {"nd_stream_run"}, state)[0]
     a_ok = set(seeded) - set(base) == {"nd_stream_run"}
-    b_ok = sum(src_calls([fix], interp).values()) == 2
+    b_ok = sum(src_calls([fix], {"nd_nr_run", "nd_nr_exec", "nd_comb_sync", "nd_rnd_sync"}).values()) == 2  # NAT6G2: the fixture names, not the live list (NAT6F removed nd_nr_exec)
     print("c0gate selftest A " + ("ok" if a_ok else "FAIL"))
     print("c0gate selftest B " + ("ok" if b_ok else "FAIL"))
     if a_ok and b_ok:
