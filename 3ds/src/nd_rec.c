@@ -482,6 +482,10 @@ void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uin
 }
 /* NAT5T, core 1: as nd_rec_alt, the fallback units au copied raw (tile sizes of tile 0 and 1 carry their window); the units apply to a scratch copy of core 1 state, which stays as it was. */
 void nd_alt_put(uint32_t w0, uint32_t w1);
+static void alt_call_raw(const NdDs* sc, uint32_t w0, uint32_t w1) { /* NAT6E1: a call unit of a raw fallback range as a nested raw copy (as nd_rec_nr), from a copy of sc */
+    static NdDs cs; cs = *sc; const NdDs* const sa = alt_s; const unsigned char om = nd_alt_raw_on; alt_s = &cs; nd_alt_raw_on = 1;
+    uint32_t* const blk = nd_alt_call(w0, w1); nd_ds_list(&cs, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk);
+    nd_alt_raw_on = om; alt_s = sa; }
 void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an) {
     if (units + 1u > 255u) napi_bad(units + 1u);
     rec_open(); uint32_t* p = rec_take(4u + 2u * units); ndc_n[NDC_NAPI]++; if (s) ndc_snapc++;
@@ -489,7 +493,7 @@ void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const
     uint32_t* const ab = p + 2u + 2u * units; ab[0] = ab[1] = 0u;
     uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; ab[0] = (uint32_t)(uintptr_t)wp; nd_snap_task();
     NdDs* const sc = nd_alt_scr_on();
-    for (unsigned k = 0; k < an; k++) { const uint32_t w0 = au[2u * k], w1 = au[2u * k + 1u]; const int lost = sc->sc_lost, dirty = sc->sc_dirty; nd_alt_put(w0, w1); nd_alt_mark(nd_ds_ep_rule(w0, nd_ds_apply(sc, w0, w1), lost, dirty)); } /* NAT6B */
+    for (unsigned k = 0; k < an; k++) { const uint32_t w0 = au[2u * k], w1 = au[2u * k + 1u]; if ((w0 >> 24) == ND_FS_CALL) { alt_call_raw(sc, w0, w1); continue; } /* NAT6E1 */ const int lost = sc->sc_lost, dirty = sc->sc_dirty; nd_alt_put(w0, w1); nd_alt_mark(nd_ds_ep_rule(w0, nd_ds_apply(sc, w0, w1), lost, dirty)); } /* NAT6B */
     nd_alt_scr_off();
     st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp;
 }

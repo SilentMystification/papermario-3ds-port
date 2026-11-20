@@ -1,4 +1,4 @@
-/* nd_alt_et_test.c: host test of the cut table of a flat copy (NAT5A, nd_alt_et_begin, nd_alt_eput, nd_alt_et_end). Prints "nat5a cases 4 bad <b>". */
+/* nd_alt_et_test.c: host test of the cut table of a flat copy (NAT5A, nd_alt_et_begin, nd_alt_eput, nd_alt_et_end). Prints "nat5a cases 6 bad <b>". */
 #include <stdint.h>
 #include <stdio.h>
 #include <string.h>
@@ -113,7 +113,15 @@ int main(void) {
         chk(n == 2u && ns == 1u, "c5 n ns");
         if (ns == 1u) { chk(hs[0][1] == (uint32_t)(uintptr_t)nd_cpy_run && ((hs[0][0] >> 16) & 0xffu) == 4u, "c5 hdr"); chk(hs[0][2] == ND_C6_MARK && hs[0][4] == l[0] && hs[0][6] == ND_NOP_A && hs[0][8] == l[2], "c5 slots"); }
     }
+    { /* case 6 NAT6E1: a call unit of a raw fallback range is a nested raw copy (CALL | 2), the top range keeps 3 units */
+        static const uint32_t in6[] = { U(ND_FS_VTX, 0), U(ND_FS_END, 0) };
+        const uint32_t au6[] = { U(ND_FS_OMH, 0), ND_OP_CALL_W0, (uint32_t)(uintptr_t)in6, U(ND_FS_OMH, 0) }; const uint32_t r6[2] = { 0u, 0u }; /* NAT6E1 */
+        nd_rec_alt_raw(nd_sci_run, r6, 1u, 0, au6, 3u);
+        const uint32_t* const ab6 = nd_rec_last_pay() + 2u; /* NAT6E1 */
+        uint32_t out[32]; const uint32_t* hs[16]; unsigned ns; const unsigned n = walk(ab6, out, 16u, hs, &ns);
+        chk(n == 3u && out[0] == au6[0] && out[2] == (ND_OP_CALL_W0 | 2u) && out[4] == au6[4], "c6 call");
+    }
     chk(nd_alt_et_end(0u) == NULL, "c3 end");
-    printf("nat5a cases 5 bad %u\n", bad);
+    printf("nat5a cases 6 bad %u\n", bad);
     return bad ? 1 : 0;
 }
