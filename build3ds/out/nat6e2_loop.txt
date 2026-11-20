@@ -1,0 +1,7 @@
+LOOP NAT6E2 host rc 0, build rc 0, 45 s
+STAGE key-inputs 3 s STAGE slot-wait 1 s STAGE gen 19 s STAGE key 0 s STAGE asset-check 0 s STAGE romfs 0 s STAGE sync 0 s STAGE configure 1 s STAGE compile-link 11 s STAGE copy-out 2 s STAGE tail 2 s 
+
+cmp entcape_kmr03_drec: 1/1 byte-equal 
+cmp spot_mac01_drec: 1/1 byte-equal 
+LOOP TIME host+build 45 s, run+cmp 56 s, total 101 s
+LOOP PASS
