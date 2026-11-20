@@ -3988,7 +3988,8 @@ static void ndn_log(unsigned f) { /* PROF2-3: census lines, from cen_lines_frame
  * combined matrix). The cut reads only those groups and the state in the key, so equal masks give the stored ranges; the re-walk of the ranges is gone. */
 static int model_vis_same(const NdMKey* k, const NdMEnt* e) {
     uint64_t vm;
-    return pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
+    { const uint32_t* kw = nd_msnap_key((const uint32_t*)(uintptr_t)k->rp); static const uint32_t w5[5]; if (!kw) kw = w5; /* NC0R */
+    return pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm, kw[1], kw[0]) == 0 && vm == e->vmask; }
 }
 /* S3N-6 check (ndmcheck, emit 0): a cached entry of key k that the hit would take (same ranges) against the fresh draws of this record: every field the draw
  * sends. hit / miss counts the entries; diff counts the differing fields (the first 20 lines are printed). The unit words are the hinted ones, as the hit sends them. */
@@ -4122,7 +4123,7 @@ static __attribute__((cold, noinline)) void ffog_note(const NdMKey* k, const NdM
     }
     const int ig = (((const uint32_t*)(uintptr_t)k->rp)[6] & 256u) != 0;
     uint64_t vm = 0;
-    const int same = pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm) == 0 && vm == e->vmask;
+    static const uint32_t w5v[5]; const uint32_t* kwv = nd_msnap_key((const uint32_t*)(uintptr_t)k->rp); if (!kwv) kwv = w5v; const int same = pm_dlc_vis_mask((const void*)(uintptr_t)k->w[24], &vm, kwv[1], kwv[0]) == 0 && vm == e->vmask;
     float fresh[4][4];
     nd_mtx_combine(fresh);
     hit_++;

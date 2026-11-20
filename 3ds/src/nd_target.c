@@ -10,6 +10,7 @@
 #include "pm_gpu.h"
 #include "nd.h"
 #include "nd_fs.h"
+#include "nd_snap.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -73,9 +74,16 @@ void grab_cur(const void* src, int w, int h) {
     r = pm_gpu_grab(nd_cfb, y, y + (h < 1 ? 1 : h));
     if (r == 2) { n_grabs++; n_splits++; }
 }
+/* NC0R census (step 1): the role from the recorded words; a cold line when the old nd_c0 words give another role */
+int nd_role_c(int ff, uint32_t oml, uint32_t omh, const char* f, int l) {
+    int r = nd_img_role_m(ff, oml, omh);
+    int o = nd_tgt_role(nd_tgt.kind, nd_tgt.siz, ff, nd_c0.omode_l, nd_c0.omode_h, zcol);
+    if (__builtin_expect(r != o, 0)) { static int n; if (n < 16) { n++; pm_log_w("rolediff f%u %s:%d new %d old %d", pm_frame_count(), f, l, r, o); } }
+    return r;
+}
 void nd_img_check(void) {
     int r;
-    r = nd_img_role(0);
+    r = ND_ROLE(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
     if ((r == ROLE_SLOT || r == ROLE_DEPTHQ)) {
         /* FSELLAG2: a window image (draw_box: scissor 0, 0, width, height, then the fill of that rectangle) needs a clear only in the row blocks of its height.

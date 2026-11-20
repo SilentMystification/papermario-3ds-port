@@ -8,6 +8,7 @@
 #include "nd_ds.h"
 #include "nd_api.h"
 #include "nd_apw.h" /* NWS4B */
+#include "nd_tgt.h" /* NC0R */
 
 typedef struct NdSnapBind {
     NdTd td; unsigned wrap[4]; int sz[4]; unsigned shift[2]; /* NDR0G1: tile n as nd_tile_bind and dual_bind read it */
@@ -99,6 +100,7 @@ extern const NdSnapChk* nd_ap; void nd_snap_hold(void); void nd_snap_ctx(void); 
 /* NC0B: the geometry mode, the texture scale word and the other mode words of a static call (core 1 writes them in an entry record). Core 0 reads the snap outside a static call. */
 typedef struct NdGs { uint32_t geom, tss, oml, omh; } NdGs;
 extern NdGs* nd_gs; extern NdGs nd_ew;
+#define ND_ROLE(ff) nd_role_c((ff), nd_gs ? nd_gs->oml : nd_ap->oml, nd_gs ? nd_gs->omh : nd_ap->in.omode_h, __FILE__, __LINE__) /* NC0R */
 #define ND_GEOM() (nd_gs ? nd_gs->geom : nd_ap->geom)
 #define ND_TSS() (nd_gs ? nd_gs->tss : nd_ap->tss)
 #endif

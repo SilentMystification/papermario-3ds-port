@@ -19,6 +19,8 @@
 /* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that ap_sync (run before each nd_direct call below) fills from nd_c0. */
 static NdSnapChk ap_stub;
 const NdSnapChk* nd_ap = &ap_stub;
+NdGs* nd_gs; /* NC0R: no static call on the host */
+int nd_role_c(int ff, uint32_t oml, uint32_t omh, const char* f, int l) { (void)f; (void)l; return nd_img_role_m(ff, oml, omh); }
 int pm_drec_now(void) { return 1; }
 extern int dual_on; extern unsigned keyc, keys;
 static void ap_sync(void) {

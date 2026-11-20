@@ -35,7 +35,7 @@ void pm_tex_set_filter(int linear);                  /* pm_tex.c */
 extern PmPlan cur_plan;                            /* nd_comb.c */
 
 int nd_direct_ready(void) {
-    if (nd_img_role(0) != ROLE_MAIN || (nd_tgt.kind & NDK_ZERO)) return -1;  /* the main colour image: no off-screen target, no depth role, no z-buffer copy */
+    if (ND_ROLE(0) != ROLE_MAIN || (nd_tgt.kind & NDK_ZERO)) return -1;  /* the main colour image: no off-screen target, no depth role, no z-buffer copy */
     if (nd_tgt.img && !(nd_tgt.kind & NDK_CFB)) return -2;    /* rect_to_image draws into a non-frame-buffer image */
     if (m1.valid) return -3;                                /* a shaded sprite tile 1 raster: nd_tsz_set takes tex_shaded0 */
     if (pm_tex_aux_off_idx() >= 0) return -4;                /* t1_fold would move the tile 1 map */
