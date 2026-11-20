@@ -1,0 +1,1269 @@
+texkey_bake: cache hit
+gen_shapes: cache hit
+gen_gfx_tab: cache hit
+gen_pso_tab: cache hit
+STAGE key-inputs 3 s
+STAGE gen 1 s
+STAGE key 0 s
+buildslot: slot 1 taken
+STAGE slot-wait 0 s
+sync: 14 changed, 0 deleted (workspace ws1)
+STAGE asset-check 0 s
+STAGE romfs 0 s
+STAGE sync 0 s
+-- Configuring done (0.1s)
+-- Generating done (0.2s)
+-- Build files have been written to: /work/build
+STAGE configure 1 s
+[0/2] Re-checking globbed directories...
+[1/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_api.o
+[2/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_decide.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_decide.c:19:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[3/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_cen.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_cen.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_cen.c:23:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[4/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_ds.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/src/nd_ds.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/src/nd_ds.c:14:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[5/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_comb.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_comb.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_comb.c:20:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[6/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_ent.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_ent.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_ent.c:21:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[7/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_geo.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_geo.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[8/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_direct.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_direct.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[9/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_geom.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_geom.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_geom.c:19:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[10/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_model_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_model_set.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[11/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_msnap.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_msnap.c:4:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[12/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_ntab_descs.o
+[13/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_gtab.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/nd_gtab.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_gtab.c:90:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[14/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_model.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/nd_model.c:10:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_model.c:11:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[15/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_msnap_in.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/src/nd_msnap_in.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[16/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_pso_seen.o
+[17/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_mtx_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_mtx_set.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_mtx_set.c:13:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[18/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_psochk.o
+[19/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_psokey.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_psokey.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[20/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_psolk.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_psolk.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[21/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_pso_tab.o
+[22/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_rect.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_rect.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[23/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_rmtab.o
+[24/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_rec.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_rec.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_rec.c:10:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[25/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_recs.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_recs.c:4:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_recs.c:12:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[26/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_scomp.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_scomp.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[27/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_set.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_set.c:15:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[28/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_snap.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_snap.c:9:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[29/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_snap_in.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/include/nd_ds.h:8,
+                 from /src/3ds/src/nd_snap_in.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[30/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_st.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_st.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[31/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_target.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_target.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_target.c:15:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[32/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_shape.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_shape.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_shape.c:18:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[33/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_tex.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/src/nd_tex.c:10:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_tex.c:15:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[34/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_tex_set.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_int.h:9,
+                 from /src/3ds/src/nd_tex_set.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_tex_set.c:11:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[35/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_val.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_val.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[36/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_gfx_tab.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/../include/common.h:4,
+                 from /src/3ds/src/nd_gfx_tab.c:2:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/common.h:6:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+In file included from /src/3ds/../include/common.h:8:
+/src/3ds/../include/functions.h:270:5: warning: conflicting types for built-in function 'round'; expected 'double(double)' [-Wbuiltin-declaration-mismatch]
+  270 | s32 round(f32);
+      |     ^~~~~
+/src/3ds/../include/functions.h:10:1: note: 'round' is declared in header '<math.h>'
+    9 | #include "libc/xstdio.h"
+  +++ |+#include <math.h>
+   10 | 
+/src/3ds/../include/functions.h:271:5: warning: conflicting types for built-in function 'atan2'; expected 'double(double,  double)' [-Wbuiltin-declaration-mismatch]
+  271 | f32 atan2(f32 startX, f32 startZ, f32 endX, f32 endZ);
+      |     ^~~~~
+/src/3ds/../include/functions.h:271:5: note: 'atan2' is declared in header '<math.h>'
+[37/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_texwin.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_texwin.c:4:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[38/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_xf.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_xf.c:5:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+[39/607] Building C object CMakeFiles/pm_3ds.dir/src/nd_walk.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/src/nd_walk.c:8:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/macros.h:4,
+                 from /src/3ds/../include/common_structs.h:4,
+                 from /src/3ds/../include/variables.h:5,
+                 from /src/3ds/src/nd_walk.c:16:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+[40/607] Building C object CMakeFiles/pm_3ds.dir/src/pm_map.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/../include/common.h:4,
+                 from /src/3ds/src/pm_map.c:3:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/common.h:6:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+In file included from /src/3ds/../include/common.h:8:
+/src/3ds/../include/functions.h:270:5: warning: conflicting types for built-in function 'round'; expected 'double(double)' [-Wbuiltin-declaration-mismatch]
+  270 | s32 round(f32);
+      |     ^~~~~
+/src/3ds/../include/functions.h:10:1: note: 'round' is declared in header '<math.h>'
+    9 | #include "libc/xstdio.h"
+  +++ |+#include <math.h>
+   10 | 
+/src/3ds/../include/functions.h:271:5: warning: conflicting types for built-in function 'atan2'; expected 'double(double,  double)' [-Wbuiltin-declaration-mismatch]
+  271 | f32 atan2(f32 startX, f32 startZ, f32 endX, f32 endZ);
+      |     ^~~~~
+/src/3ds/../include/functions.h:271:5: note: 'atan2' is declared in header '<math.h>'
+[41/607] Building C object CMakeFiles/pm_3ds.dir/src/src/state_logos.o
+[42/607] Building C object CMakeFiles/pm_3ds.dir/src/pm_gpu.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/include/nd_op.h:6,
+                 from /src/3ds/src/pm_gpu.c:15:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+/src/3ds/src/pm_gpu.c: In function 'pm_gpu_mfr_rec':
+/src/3ds/src/pm_gpu.c:4131:62: warning: passing argument 1 of 'nd_mc_nat' discards 'const' qualifier from pointer target type [-Wdiscarded-qualifiers]
+ 4131 |                 if (e && e->n) { const NdNatC* q = nd_mc_nat(e, 0u);
+      |                                                              ^
+In file included from /src/3ds/src/pm_gpu.c:14:
+/src/3ds/include/nd.h:436:27: note: expected 'NdMEnt *' but argument is of type 'const NdMEnt *'
+  436 | NdNatC* nd_mc_nat(NdMEnt* e, unsigned j);                      /* draw j of an entry (j < e->n) */
+      |                   ~~~~~~~~^
+[43/607] Building C object CMakeFiles/pm_3ds.dir/src/pm_xfer.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/../include/common.h:4,
+                 from /src/3ds/src/pm_xfer.c:15:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/common.h:6:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+In file included from /src/3ds/../include/common.h:8:
+/src/3ds/../include/functions.h:270:5: warning: conflicting types for built-in function 'round'; expected 'double(double)' [-Wbuiltin-declaration-mismatch]
+  270 | s32 round(f32);
+      |     ^~~~~
+/src/3ds/../include/functions.h:10:1: note: 'round' is declared in header '<math.h>'
+    9 | #include "libc/xstdio.h"
+  +++ |+#include <math.h>
+   10 | 
+/src/3ds/../include/functions.h:271:5: warning: conflicting types for built-in function 'atan2'; expected 'double(double,  double)' [-Wbuiltin-declaration-mismatch]
+  271 | f32 atan2(f32 startX, f32 startZ, f32 endX, f32 endZ);
+      |     ^~~~~
+/src/3ds/../include/functions.h:271:5: note: 'atan2' is declared in header '<math.h>'
+[44/607] Building C object CMakeFiles/pm_3ds.dir/src/pm_warp.o
+In file included from /src/3ds/stub_include/PR/abi.h:5,
+                 from /src/3ds/../include/PR/mbi.h:71,
+                 from /src/3ds/../include/ultra64.h:31,
+                 from /src/3ds/../include/common.h:4,
+                 from /src/3ds/src/pm_warp.c:7:
+/src/3ds/include/pm_rsp_audio.h:51:9: warning: 'aPoleFilter' redefined
+   51 | #define aPoleFilter(pkt, f, g, t, s) ((void)(pkt), aPoleFilterImpl(f, g, t, s))
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/stub_include/PR/abi.h:4:
+/src/3ds/../include/PR/abi.h:280:9: note: this is the location of the previous definition
+  280 | #define aPoleFilter(pkt, f, g, s)                                       \
+      |         ^~~~~~~~~~~
+In file included from /src/3ds/../include/common.h:6:
+/src/3ds/../include/types.h:13:13: warning: 'nullptr' redefined
+   13 |     #define nullptr (void*)0
+      |             ^~~~~~~
+<command-line>: note: this is the location of the previous definition
+In file included from /src/3ds/../include/common.h:8:
+/src/3ds/../include/functions.h:270:5: warning: conflicting types for built-in function 'round'; expected 'double(double)' [-Wbuiltin-declaration-mismatch]
+  270 | s32 round(f32);
+      |     ^~~~~
+/src/3ds/../include/functions.h:10:1: note: 'round' is declared in header '<math.h>'
+    9 | #include "libc/xstdio.h"
+  +++ |+#include <math.h>
+   10 | 
+/src/3ds/../include/functions.h:271:5: warning: conflicting types for built-in function 'atan2'; expected 'double(double,  double)' [-Wbuiltin-declaration-mismatch]
+  271 | f32 atan2(f32 startX, f32 startZ, f32 endX, f32 endZ);
+      |     ^~~~~
+/src/3ds/../include/functions.h:271:5: note: 'atan2' is declared in header '<math.h>'
+[45/607] Building C object CMakeFiles/pm_3ds.dir/src/src/43F0.o
+[46/607] Building C object CMakeFiles/pm_3ds.dir/src/src/model.o
+[47/607] Building C object CMakeFiles/pm_3ds.dir/src/src/screen_render_util.o
+[48/607] Building C object CMakeFiles/pm_3ds.dir/src/src/evt/map_api.o
+[49/607] Building C object CMakeFiles/pm_3ds.dir/src/src/evt/model_api.o
+[50/607] Building C object CMakeFiles/pm_3ds.dir/src/src/heaps.o
+[51/607] Building C object CMakeFiles/pm_3ds.dir/src/src/background.o
+[52/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/attack_result_text.o
+[53/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/big_smoke_puff.o
+[54/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/aura.o
+[55/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/balloon.o
+[56/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/big_snowflakes.o
+[57/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/bombette_breaking.o
+[58/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/breaking_junk.o
+[59/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/bulb_glow.o
+[60/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/blast.o
+[61/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/butterflies.o
+[62/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/chapter_change.o
+[63/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/chomp_drop.o
+[64/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/cloud_puff.o
+[65/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/cloud_trail.o
+[66/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/cold_breath.o
+[67/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/confetti.o
+[68/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/damage_indicator.o
+[69/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/damage_stars.o
+[70/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/debuff.o
+[71/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/disable_x.o
+[72/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/drop_leaves.o
+[73/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/dust.o
+[74/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/effect_46.o
+[75/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/effect_3D.o
+[76/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/effect_63.o
+[77/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/effect_65.o
+[78/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/effect_86.o
+[79/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/effect_75.o
+[80/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/embers.o
+[81/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/emote.o
+[82/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/ending_decals.o
+[83/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/energy_in_out.o
+[84/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/energy_orb_wave.o
+[85/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/explosion.o
+[86/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/energy_shockwave.o
+[87/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/falling_leaves.o
+[88/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/fire_breath.o
+[89/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/fire_flower.o
+[90/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/firework.o
+[91/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/firework_rocket.o
+[92/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/flame.o
+[93/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/flashing_box_shockwave.o
+[94/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/floating_cloud_puff.o
+[95/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/floating_flower.o
+[96/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/floating_rock.o
+[97/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/flower_splash.o
+[98/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/flower_trail.o
+[99/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/footprint.o
+[100/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/fright_jar.o
+[101/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/gather_magic.o
+[102/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/gather_energy_pink.o
+[103/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/got_item_outline.o
+[104/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/green_impact.o
+[105/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/hieroglyphs.o
+[106/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/huff_puff_breath.o
+[107/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/ice_shard.o
+[108/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/ice_pillar.o
+[109/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/landing_dust.o
+[110/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/lens_flare.o
+[111/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/light_rays.o
+[112/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/lightning.o
+[113/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/lightning_bolt.o
+[114/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/lil_oink.o
+[115/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/merlin_house_stars.o
+[116/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/misc_particles.o
+[117/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/motion_blur_flame.o
+[118/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/moving_cloud.o
+[119/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/music_note.o
+[120/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/partner_buff.o
+[121/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/peach_star_beam.o
+[122/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/pink_sparkles.o
+[123/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/purple_ring.o
+[124/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/quizmo_answer.o
+[125/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/quizmo_assistant.o
+[126/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/quizmo_audience.o
+[127/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/quizmo_stage.o
+[128/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/radial_shimmer.o
+[129/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/radiating_energy_orb.o
+[130/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/recover.o
+[131/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/red_impact.o
+[132/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/ring_blast.o
+[133/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/rising_bubble.o
+[134/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/shape_spell.o
+[135/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/shattering_stones.o
+[136/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/shimmer_burst.o
+[137/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/shimmer_wave.o
+[138/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/shiny_flare.o
+[139/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/shockwave.o
+[140/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/sleep_bubble.o
+[141/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/small_gold_sparkle.o
+[142/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/smoke_burst.o
+[143/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/smoke_impact.o
+[144/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/smoke_ring.o
+[145/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/snaking_static.o
+[146/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/snowfall.o
+[147/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/snowflake.o
+[148/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/snowman_doll.o
+[149/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/something_rotating.o
+[150/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/spiky_white_aura.o
+[151/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/spirit_card.o
+[152/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/sparkles.o
+[153/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/squirt.o
+[154/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/star.o
+[155/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/star_outline.o
+[156/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/stars_burst.o
+[157/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/star_spirits_energy.o
+[158/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/stars_orbiting.o
+[159/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/stars_shimmer.o
+[160/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/stat_change.o
+[161/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/static_status.o
+[162/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/stars_spread.o
+[163/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/steam_burst.o
+[164/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/stop_watch.o
+[165/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/sun.o
+[166/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/throw_spiny.o
+[167/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/sweat.o
+[168/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/thunderbolt_ring.o
+[169/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/underwater.o
+[170/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/walking_dust.o
+[171/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/tubba_heart_attack.o
+[172/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/water_block.o
+[173/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/water_fountain.o
+[174/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/water_splash.o
+[175/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/waterfall.o
+[176/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/whirlwind.o
+[177/607] Building C object CMakeFiles/pm_3ds.dir/src/src/effects/windy_leaves.o
+[178/607] Building C object CMakeFiles/pm_3ds.dir/src/src/sprite.o
+[179/607] Building C object CMakeFiles/pm_3ds.dir/src/src/imgfx.o
+[180/607] Building C object CMakeFiles/pm_3ds.dir/src/src/msg.o
+[181/607] Building C object CMakeFiles/pm_3ds.dir/src/src/msg_draw.o
+[182/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/script_api/rooms.o
+[183/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/Block.o
+[184/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/SimpleSpring_anim.o
+[185/607] Building C object CMakeFiles/pm_3ds.dir/src/src/encounter.o
+[186/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/ShatteringBlock.o
+[187/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/ShatteringBlock_common.o
+[188/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/default/BombableRock.o
+[189/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/ScriptSpring_anim.o
+[190/607] Building C object CMakeFiles/pm_3ds.dir/src/src/collision.o
+[191/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity.o
+[192/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity_model.o
+[193/607] Building C object CMakeFiles/pm_3ds.dir/src/src/animator.o
+[194/607] Building C object CMakeFiles/pm_3ds.dir/src/src/hud_element.o
+[195/607] Building C object CMakeFiles/pm_3ds.dir/src/src/draw_img_util.o
+[196/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_20/records.o
+[197/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_20/bushes.o
+[198/607] Building C object CMakeFiles/pm_3ds.dir/src/src/item_entity.o
+[199/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_20/npc_epilogue.o
+[200/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_20/documents.o
+[201/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_20/npc_intro.o
+[202/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_20/trees.o
+[203/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_osr/osr_00/scenes.o
+[204/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_hos/hos_05/intro.o
+[205/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_hos/hos_05/misc.o
+[206/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_hos/hos_05/model_fx.o
+[207/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_hos/hos_05/star_ship.o
+[208/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_02/foliage.o
+[209/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_02/npc.o
+[210/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/Shadow.o
+[211/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_00/npc.o
+[212/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_00/water_gfx.o
+[213/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/world.o
+[214/607] Building C object CMakeFiles/pm_3ds.dir/src/src/curtains.o
+[215/607] Building C object CMakeFiles/pm_3ds.dir/src/pm_wdog.o
+[216/607] Building C object CMakeFiles/pm_3ds.dir/src/src/i_spy.o
+[217/607] Building C object CMakeFiles/pm_3ds.dir/src/src/speech_bubble.o
+[218/607] Building C object CMakeFiles/pm_3ds.dir/src/src/pulse_stone.o
+[219/607] Building C object CMakeFiles/pm_3ds.dir/src/src/global_hud_scripts.o
+[220/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/Hammer3Block.o
+[221/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/BrickBlock.o
+[222/607] Building C object CMakeFiles/pm_3ds.dir/src/src/screen_overlays.o
+[223/607] Building C object CMakeFiles/pm_3ds.dir/src/src/status_star_shimmer.o
+[224/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/Hammer1Block.o
+[225/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/jan_iwa/Plants1.o
+[226/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/CymbalPlant_anim.o
+[227/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/PinkFlower_anim.o
+[228/607] Building C object CMakeFiles/pm_3ds.dir/src/src/inspect_icon.o
+[229/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/BlueWarpPipe.o
+[230/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/SaveBlock.o
+[231/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/ScriptSpring_gfx.o
+[232/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/HiddenPanel.o
+[233/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HiddenPanel.o
+[234/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/script_api/shops.o
+[235/607] Building C object CMakeFiles/pm_3ds.dir/src/src/state_pause.o
+[236/607] Building C object CMakeFiles/pm_3ds.dir/src/src/state_file_select.o
+[237/607] Building C object CMakeFiles/pm_3ds.dir/src/src/state_title_screen.o
+[238/607] Building C object CMakeFiles/pm_3ds.dir/src/src/filemenu/filemenu_common.o
+[239/607] Building C object CMakeFiles/pm_3ds.dir/src/src/filemenu/filemenu_msg.o
+[240/607] Building C object CMakeFiles/pm_3ds.dir/src/src/pause/pause_badges.o
+[241/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_20/bed.o
+[242/607] Building C object CMakeFiles/pm_3ds.dir/src/src/pause/pause_partners.o
+[243/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/ShatteringBrickBlock.o
+[244/607] Building C object CMakeFiles/pm_3ds.dir/src/src/pause/pause_spirits.o
+[245/607] Building C object CMakeFiles/pm_3ds.dir/src/src/pause/pause_map.o
+[246/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/190B20.o
+[247/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/dig/stage/dig_03.o
+[248/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/flo2/actor/huff_n_puff.o
+[249/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kmr_part_2/actor/goomnut_tree.o
+[250/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kmr_part_3/actor/final_jr_troopa.o
+[251/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kpa2/actor/final_bowser_1.o
+[252/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_02/rooms_1.o
+[253/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kpa2/actor/final_bowser_2.o
+[254/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kpa2/actor/hallway_bowser.o
+[255/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kpa2/actor/intro_bowser.o
+[256/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kpa2/actor/unused_bowser.o
+[257/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kpa3/actor/duplighost.o
+[258/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kzn2/anim/unused_gfx.o
+[259/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/mac/actor/lee.o
+[260/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/omo/stage/omo_01.o
+[261/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/ShatteringHammer1Block.o
+[262/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/ShatteringHammer2Block.o
+[263/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/omo2/actor/general_guy.o
+[264/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/omo3/stage/omo_01.o
+[265/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/ShatteringHammer3Block.o
+[266/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/pra3/actor/duplighost.o
+[267/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/BombableRock.o
+[268/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/sam/actor/duplighost.o
+[269/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/sam2/dlist.o
+[270/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/SpinningFlower.o
+[271/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/sbk/stage/sbk_02.o
+[272/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/CymbalPlant_gfx.o
+[273/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/PinkFlower_gfx.o
+[274/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik/stage/tik_01.o
+[275/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik/stage/tik_02.o
+[276/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik/stage/tik_03.o
+[277/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/BlueWarpPipe.o
+[278/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik2/actor/electro_blooper.o
+[279/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik2/actor/super_blooper.o
+[280/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik2/stage/tik_02.o
+[281/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik2/stage/tik_01.o
+[282/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik2/stage/tik_03.o
+[283/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/SaveBlock.o
+[284/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik3/stage/tik_01.o
+[285/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik3/stage/tik_02.o
+[286/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/tik3/stage/tik_03.o
+[287/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/trd_part_2/actor/fake_bowser.o
+[288/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/btl_states_actions.o
+[289/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/level_up.o
+[290/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/fire_flower.o
+[291/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/fright_jar.o
+[292/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/shooting_star.o
+[293/607] Building C object CMakeFiles/pm_3ds.dir/src/src/filemenu/filemenu_gfx.o
+[294/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/snowman_doll.o
+[295/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/stop_watch.o
+[296/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/thunder_bolt.o
+[297/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/thunder_rage.o
+[298/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/chill_out.o
+[299/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/focus.o
+[300/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/lullaby.o
+[301/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/peach_beam.o
+[302/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/peach_focus.o
+[303/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/peach_focus_alt.o
+[304/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/refresh.o
+[305/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/smooch.o
+[306/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/star_beam.o
+[307/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/star_storm.o
+[308/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/time_out.o
+[309/607] Building C object CMakeFiles/pm_3ds.dir/src/src/pause/pause_gfx.o
+[310/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/star_power/up_and_away.o
+[311/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/partner/watt.o
+[312/607] Building C object CMakeFiles/pm_3ds.dir/src/src/state_battle.o
+[313/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/player_events.o
+[314/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/entity_model_icons.o
+[315/607] Building C object CMakeFiles/pm_3ds.dir/src/pm_options.o
+[316/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_01/crystal_ball_gfx.o
+[317/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/dusty_hammer.o
+[318/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/coconut.o
+[319/607] Building C object CMakeFiles/pm_3ds.dir/src/src/starpoint.o
+[320/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/PowBlock.o
+[321/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_01/foliage.o
+[322/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_02/foliage.o
+[323/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_02/rooms.o
+[324/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/pebble.o
+[325/607] Building C object CMakeFiles/pm_3ds.dir/src/pm_main.o
+[326/607] Building C object CMakeFiles/pm_3ds.dir/src/src/level_up.o
+[327/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/egg_missile.o
+[328/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/sam2/actor/monstar.o
+[329/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/insecticide_herb.o
+[330/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_02/npc.o
+[331/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_04/main.o
+[332/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_03/npc.o
+[333/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_03/foliage.o
+[334/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_04/foliage.o
+[335/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_01/drips.o
+[336/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_04/npc.o
+[337/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_06/npc.o
+[338/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_05/npc.o
+[339/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_02/drips.o
+[340/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_04/platforms.o
+[341/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_03/drips.o
+[342/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_04/drips.o
+[343/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_05/drips.o
+[344/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_06/drips.o
+[345/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_08/drips.o
+[346/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_09/drips.o
+[347/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_07/drips.o
+[348/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_10/drips.o
+[349/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_12/drips.o
+[350/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_14/drips.o
+[351/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_15/drips.o
+[352/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_18/drips.o
+[353/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_20/main.o
+[354/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_21/main.o
+[355/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/mystery.o
+[356/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_24/drips.o
+[357/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_22/main.o
+[358/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_23/main.o
+[359/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tik/tik_25/main.o
+[360/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_00/revival.o
+[361/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_03/foliage.o
+[362/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_05/foliage.o
+[363/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_10/foliage.o
+[364/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_11/main.o
+[365/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_11/foliage.o
+[366/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_21/main.o
+[367/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_iwa/iwa_10/foliage.o
+[368/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dro/dro_02/main.o
+[369/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dro/dro_01/npc.o
+[370/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dro/dro_01/main.o
+[371/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dro/dro_01/foliage.o
+[372/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_06/foliage.o
+[373/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_02/ruins.o
+[374/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_24/foliage.o
+[375/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_26/foliage.o
+[376/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/hammer/hammer_throw.o
+[377/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_16/foliage.o
+[378/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_25/foliage.o
+[379/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_30/foliage.o
+[380/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_30/main.o
+[381/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_34/foliage.o
+[382/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_35/foliage.o
+[383/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_36/foliage.o
+[384/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_55/foliage.o
+[385/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_56/foliage.o
+[386/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_66/foliage.o
+[387/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle_ui_gfx.o
+[388/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sbk/sbk_46/foliage.o
+[389/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_isk/isk_01/haze.o
+[390/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_isk/isk_16/boss.o
+[391/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_02/foliage.o
+[392/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_01/foliage.o
+[393/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_02/npc.o
+[394/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_12/foliage.o
+[395/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_04/npc.o
+[396/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_11/npc.o
+[397/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_15/foliage.o
+[398/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_hos/hos_03/foliage.o
+[399/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_hos/hos_06/merluvlee.o
+[400/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_03/main.o
+[401/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_10/npcs_early.o
+[402/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_11/npcs_early.o
+[403/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_10/npcs_later.o
+[404/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_11/npcs_later.o
+[405/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_12/npc.o
+[406/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/move/item/sleepy_sheep.o
+[407/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_14/main.o
+[408/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_13/main.o
+[409/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_15/main.o
+[410/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_16/npcs_later.o
+[411/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_16/npcs_early.o
+[412/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_18/main.o
+[413/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_23/npcs_peach.o
+[414/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_27/main.o
+[415/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_01/foliage.o
+[416/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_00/foliage.o
+[417/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_02/foliage.o
+[418/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_02/npc.o
+[419/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_03/foliage.o
+[420/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_04/trees.o
+[421/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_04/bushes.o
+[422/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_05/log.o
+[423/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_05/trees.o
+[424/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_05/bushes.o
+[425/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_06/log.o
+[426/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_06/trees.o
+[427/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_06/bushes.o
+[428/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_07/trees.o
+[429/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_08/bushes.o
+[430/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_07/bushes.o
+[431/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_08/trees.o
+[432/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_09/bushes.o
+[433/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_09/trees.o
+[434/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_10/log.o
+[435/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_10/trees.o
+[436/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_10/bushes.o
+[437/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_11/main.o
+[438/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_12/vines.o
+[439/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_12/trees.o
+[440/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_13/trees.o
+[441/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_14/vines.o
+[442/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_14/trees.o
+[443/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_15/trees.o
+[444/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_16/main.o
+[445/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_16/bushes.o
+[446/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_22/bushes.o
+[447/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mim/mim_01/hint.o
+[448/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_22/trees.o
+[449/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mim/mim_03/hint.o
+[450/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mim/mim_06/hint.o
+[451/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mim/mim_11/foliage.o
+[452/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_obk/obk_01/chandelier.o
+[453/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_obk/obk_03/rocking_chair.o
+[454/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_obk/obk_05/rocking_chair.o
+[455/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/settings.o
+[456/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/music.o
+[457/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/main.o
+[458/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/bridges.o
+[459/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/entity.o
+[460/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/npc.o
+[461/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_iwa/iwa_01/splash.o
+[462/607] Building C object CMakeFiles/pm_3ds.dir/src/src/battle/area/kzn2/actor/lava_piranha.o
+[463/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_04/foliage.o
+[464/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img0.o
+[465/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img1.o
+[466/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img3.o
+[467/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img2.o
+[468/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kzn/kzn_06/extra.o
+[469/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/gfx.o
+[470/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kzn/kzn_07/main.o
+[471/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kzn/kzn_08/settings.o
+[472/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kzn/kzn_08/main.o
+[473/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kkj/kkj_20/npc.o
+[474/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_03/foliage.o
+[475/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_07/npc.o
+[476/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_08/foliage.o
+[477/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_09/foliage.o
+[478/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_10/waterfx.o
+[479/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_10/foliage.o
+[480/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_14/bubbles.o
+[481/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_12/npc.o
+[482/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img4.o
+[483/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_18/foliage.o
+[484/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_22/foliage.o
+[485/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_24/foliage.o
+[486/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_flo/flo_25/foliage.o
+[487/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_01/npc.o
+[488/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kmr/kmr_22/npc.o
+[489/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_02/main.o
+[490/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_04/main.o
+[491/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/settings.o
+[492/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/music.o
+[493/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/main.o
+[494/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/entity.o
+[495/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/scenes.o
+[496/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/monstar_gfx.o
+[497/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/monstar_vtx.o
+[498/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_06/main.o
+[499/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_07/frozen_pit.o
+[500/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_11/main.o
+[501/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_11/entity.o
+[502/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_11/npc.o
+[503/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/settings.o
+[504/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/music.o
+[505/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/npc.o
+[506/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/main.o
+[507/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/puzzle.o
+[508/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kpa/kpa_91/npc.o
+[509/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img5.o
+[510/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kpa/kpa_95/npc.o
+[511/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img6.o
+[512/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/stairs_skele.o
+[513/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/stairs_anim.o
+[514/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/stairs_lights.o
+[515/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/stairs_vtx.o
+[516/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_omo/omo_01/gizmos.o
+[517/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_omo/omo_02/gizmos.o
+[518/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_omo/omo_02/barricade.o
+[519/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_omo/omo_09/slot_machine.o
+[520/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_omo/omo_11/gizmos.o
+[521/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_omo/omo_13/gizmos.o
+[522/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dgb/dgb_01/img7.o
+[523/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tst/tst_04/reflection.o
+[524/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_tst/tst_13/main.o
+[525/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_end/end_01/opera_float.o
+[526/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_end/end_01/shyguy_float.o
+[527/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mgm/mgm_00/scoreboard.o
+[528/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mgm/mgm_02/npc.o
+[529/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/Switch.o
+[530/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/ItemBlock.o
+[531/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/HeartBlock.o
+[532/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/SuperBlock.o
+[533/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/WoodenCrate.o
+[534/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/Chest.o
+[535/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/Signpost.o
+[536/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/jan_iwa/ArrowSign.o
+[537/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/default/Padlock.o
+[538/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/sbk_omo/Tweester.o
+[539/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/default/BoardedFloor.o
+[540/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/sbk_omo/StarBoxLauncher.o
+[541/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/texture_1.o
+[542/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/texture_2.o
+[543/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_pra/pra_31/texture_3.o
+[544/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_hos/hos_03/npc.o
+[545/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/Hammer2Block.o
+[546/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/RedBlock.o
+[547/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/YellowBlock.o
+[548/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/UnusedBlock.o
+[549/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HitYellowBlock_anim.o
+[550/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/PushBlock.o
+[551/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/InertYellowBlock.o
+[552/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_05/npc.o
+[553/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/InertRedBlock.o
+[554/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HitFloatingYellowBlock_anim.o
+[555/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_jan/jan_03/npc.o
+[556/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HitRedBlock_anim.o
+[557/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HeartBlockContent.o
+[558/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/UltraBlockContent.o
+[559/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_nok/nok_01/npc.o
+[560/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HeartBlock.o
+[561/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/SuperBlock.o
+[562/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_dro/dro_02/npc.o
+[563/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HitYellowBlock_gfx.o
+[564/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/UltraBlock.o
+[565/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_kzn/kzn_19/npc.o
+[566/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HitFloatingYellowBlock_gfx.o
+[567/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_02/npc.o
+[568/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/HitRedBlock_gfx.o
+[569/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/SuperBlockContent.o
+[570/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/StarBoxLauncher.o
+[571/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/BoardedFloor.o
+[572/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/WoodenCrate.o
+[573/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/Signpost.o
+[574/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/BellbellPlant_anim.o
+[575/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/TrumpetPlant_anim.o
+[576/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/Tweester.o
+[577/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaReset_anim.o
+[578/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/ArrowSign.o
+[579/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/Padlock.o
+[580/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/PadlockRedFrame.o
+[581/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaGrab_anim.o
+[582/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaEnvelop_anim.o
+[583/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/PadlockRedFace.o
+[584/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaBeginChew_anim.o
+[585/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/PadlockBlueFace.o
+[586/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_sam/sam_06/npc.o
+[587/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/GreenStompSwitch.o
+[588/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaChewing_anim.o
+[589/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaSpitOut_anim.o
+[590/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaReset1_anim.o
+[591/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/RedSwitch.o
+[592/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/Chest.o
+[593/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/BlueSwitch.o
+[594/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/SimpleSpring_gfx.o
+[595/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/BellbellPlant_gfx.o
+[596/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/TrumpetPlant_gfx.o
+[597/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaReset_gfx.o
+[598/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaGrab_gfx.o
+[599/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaChewing_gfx.o
+[600/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaEnvelop_gfx.o
+[601/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaBeginChew_gfx.o
+[602/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaSpitOut_gfx.o
+[603/607] Building C object CMakeFiles/pm_3ds.dir/src/src/entity/model/MunchlesiaReset1_gfx.o
+[604/607] Building C object CMakeFiles/pm_3ds.dir/src/src/world/area_mac/mac_01/npc.o
+[605/607] Linking C executable pm_3ds.elf
+[606/607] Generating pm_3ds.smdh
+[607/607] Building 3DSX executable target pm_3ds_3dsx
+STAGE compile-link 7 s
+STAGE copy-out 1 s
+memcheck: static 21596 margin 390 device o3ds_xl OK
+  sum KB: commit 65536 - static 21596 - loader 8 - linear 14208 - soc 128 - leave 3458 - rom_need 25747 = margin 390 (safety 256; commit_kb measured, loader_kb measured)
+  sections KB: .text 3314 .rodata 547 .data 8794 .bss 8932
+  largest .data/.bss:
+       3010 KB  .bss                                     heaps3.o
+        468 KB  .bss                                     heaps.o
+        416 KB  .bss                                     texture_memory.o
+        368 KB  .bss.mc_keyw                             nd_model.o
+        257 KB  .bss.D_80164000                          main_loop.o
+        256 KB  .bss.gBackgroundImage                    pm_buffers.o
+        256 KB  .bss.slots                               pm_log.o
+        256 KB  .bss.ring                                pm_log.o
+        256 KB  .bss.gMapShapeData                       pm_map.o
+        224 KB  .bss.D_80200000                          pm_map.o
+hotset: detached, its line goes to build3ds/lane-base_728348b9a/hotset_line.txt
+STAGE tail 1 s
+base 728348b9a: build stored in basebin (entry 31f31bc5de3d36e5)
+basebin 728348b9a: ready, build 7439
