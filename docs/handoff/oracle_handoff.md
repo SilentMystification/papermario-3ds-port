@@ -12,9 +12,9 @@ State: main c23333bb73 plus the pages of oracle NATIVE15, 2026-11-20.
 - Gate benches (drec, byte-equal shots): spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec, hudfb_drec (debug words in 3ds/tools/azt.d/*.json).
 - Prof lines (pm_phase.c:575-703): fps, core2 lgms, c1n, c1t, cls, ndc, pmu. PERF0 adds c1s (core 1 logic and list ms) and c1a (alt words, GPU draw words).
 ## Open work (order)
-1. Merged: PERF0, PERF1, PERF3 (main c23333bb73). PERF2 dropped by the user. No console capture until the user asks. Haiku only.
-2. Pages on main, parallel: ws_MDLBLK, ws_SNAPD, ws_DUPMS, ws_ALTU (plan_perf.md section 6 ranks 1 to 4, regions listed there).
-3. After Merge DUPMS: write NC0A (sprite known bits from core 1), then NC0B to NC0G in order (plan_perf.md section 6, 7). C1HOT and MDLHIT2 wait for a capture.
+1. Merged up to 0b1ba0f322: PERF0, PERF1, PERF3, MDLBLK, SNAPD, DUPMS, ALTU, CNTFIX. No console until the user asks. Haiku only.
+2. Pages on main, parallel: ws_NC0A, ws_C1MIC (plan_perf.md section 6).
+3. Next pass: one closed page per NC0 row (NC0B first). User questions: MCOPY design, console capture for C1HOT and MDLHIT2 (section 7a).
 ## Facts that cost time
 - Sources are CRLF. Git Bash `sed -i` turns them into LF: pages say `sed -b -i` or the Edit tool.
 - Host -Werror units link some files: nd_rec.c with nd_ds.c (geounit, hunit, nat5a, nmdl0, ns3unit, stunit), nd_ds.c alone (nst1, nset1),
@@ -25,6 +25,7 @@ State: main c23333bb73 plus the pages of oracle NATIVE15, 2026-11-20.
 - The c1t timers run in sampled steps only. The alt timer is per unit: subtract altu x cal ticks (cal 303 ticks per pair) for real ms.
 - mx in the core2 wait line is mixer wall time (pm_au2.c:168-176), not CPU.
 - Model cache hit path (nd_recs.c:251-276) runs no rec_apply, no nd_msnap_use: core 0 state on a hit comes from hit_apply only.
+- altw copy words count words written since CNTFIX (b17ad66e08); before it a range over a chunk jump counted the heap distance.
 - PERF0 altw (drec end) and PERF1 snapi lines are cumulative from boot: compare a tip run with its base log, never with a steady-state rate.
 - Snap memo: a new snap needs a new command between draws (sn_cmds, nd_snap.c:53). nd_snap_alt and nd_snap_now force the next snap new.
 - Core 1 runs while core 0 walks. Det runs are serial: a race does not show in a bench.

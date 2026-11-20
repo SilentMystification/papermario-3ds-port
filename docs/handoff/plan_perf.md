@@ -69,33 +69,35 @@ Record formats on the stream: NDC MODEL, SPR, ENT, TEXRECT, NAPI (about 40 runne
 | F8 core 1 list table NdDs copy, ls_find byte-wise FNV over 760 B | nd_snap.c:79, :95 | core 1 0.3 ms |
 PICA use is sound in the base: raw words straight into the command buffer (pm_gpu.c:1361-1362), a per-register shadow (nd_emit.c:55), one BufInfo (:1349),
 one flush per split (:294-303), one FrameBegin and FrameEnd per frame (:2953, :3249), C3Di_UpdateContext only on dirty state (:1357-1360).
-## 6. Rows (merged: PERF0, PERF1, PERF3 at c23333bb73; PERF2 dropped by the user. Order = gain per risk. All Haiku)
-Data (FACT Azahar, cumulative boot to f201): kmr_03 altw c1 m 950414 e 2456286 c 0 o 2360, c0 all 742956 m 199680 e 483414; gd 8853 gw 658262 bd 4060 bw 740594.
-snapi spot f201 new 10126 hit 9446; fxparts f701 new 57877 hit 46675 full 1549. So 80 percent of copy words never run, a block draw is 182 words against 74, the intern hits about 47 percent.
-| rank | row | what | files and regions (main c23333bb73) | gain GUESS, Azahar proxy | gate | WAIT |
+## 6. Rows (merged: PERF0, PERF1, PERF3, MDLBLK, SNAPD, DUPMS, ALTU, CNTFIX at 0b1ba0f322. All Haiku)
+Data (FACT Azahar, boot to f201, CNTFIX and base logs of 0b1ba0f322):
+- spot: c1 m 1752678 copy words written, c0 m 29178 run (1.7 percent). c1 e 328656. GPU gd 14067 draws, gw 899792 words (64 per draw, 30 of them the fixed trailer nd_emit.c:120-135), bd 0.
+- entcape: c1 m 949322, c0 m 200130; c1 e 1714282, c0 e 459992 (27 percent); d 10981.
+- snapi spot new 10126 hit 9446 dec 2580 dhit 7546; entcape new 10018 hit 5888 dec 3812 dhit 6206.
+- MDLBLK halved the GPU words: spot gw + bw 2067904 before, 899792 after (FACT). About 4500 words (18 KB) per frame are left: a small GPU load (GUESS).
+| rank | row | what | files and regions (main 0b1ba0f322) | proxy (base against tip) | gate | page |
 |---|---|---|---|---|---|---|
-| 1 | MDLBLK | delete the full-state model block path; all draws emit deltas | pm_gpu.c:1280-1327, :1356-1357, :4232, :4234; nd_emit.c:38-179; nd.h:324-326, :435; nd_model.c:677; blkchk json | GPU words -2000 per frame kmr_03, 256 KB heap; proxy altw gw vs base gw + bw | spot_mac01_drec, entcape_kmr03_drec | none |
-| 2 | SNAPD | persistent core 1 cache of the snap combine decision | nd_snap.c includes, :25-28, :60, :63-67 | core 1 -0.3 to -1.5; proxy snapi dec against new | spot_mac01_drec, fxparts_drec | none |
-| 3 | DUPMS | model snap always present: delete nd_c0 key fallbacks, nd_c0_to_ws, nos fallback, cdiff | nd_msnap.c:17, :29-41; nd_state.c:46-51; nd.h:191; pm_gpu.c:3829, :3866; nd_snap.c:240-245 | 0, 1.4 KB BSS; proxy no msnap line | spot_mac01_drec, entcape_kmr03_drec | none |
-| 4 | ALTU | drop copy state units that core 0 never applies | nd_rec.c:506, :513; nd_ds.c:17; pm_gpu.c:632 | core 1 -0.3 to -1, stream bytes; proxy altw d, c1 m + e | entcape_kmr03_drec, fxparts_drec | none |
-| 5 | NC0A | sprite known bits from core 1 (record word), then the known-bit bookkeeping goes: cp_vside OMH/OML arms, nd_omh_run, nd_oml_run, hit_apply kh/kl, nd_sv_omh/oml kh/kl, nd_lsr_end om_kl | pm_gpu.c:4632, nd_rec.c:231-240, nd_walk.c:260-264, nd_set.c:98-105, nd_recs.c:148-149, nd_snap.c:203 | core 0 small; proxy c0gate field count | spot_mac01_drec, hudfb_drec | DUPMS (field list) |
-| 6 | NC0B | vertex params from the snap: geom, tex_on, tss in nd_ap; fog factors into the snap | nd_geom.c:97-124, :195-203, :454-530; nd_snap.c snap inputs | core 0 small | spot_mac01_drec, fxparts_drec | DUPMS |
-| 7 | NC0C | tile binds always from nd_ap->b (nd_bsrc never NULL); delete the nd_c0 tile arms | nd_snap.h:32-35; nd_tex_set.c:27-32, :291-447 | core 0 -0.3 to -1 | all 5 drec | NC0B |
-| 8 | NC0D | rectangles: scissor and tile uv from the rectangle record and the snap | nd_rect.c:61-167, :221-295, :314-346 | small | hudfb_drec, wscmb_pause_drec | NC0C |
-| 9 | NC0E | direct draws take the core 1 pso snap, no nd_c0 writes | nd_direct.c:48-137, nd_snap.c:99-106 | small | hudfb_drec, wscmb_pause_drec | NC0C |
-| 10 | NC0F | core 1 resolves segment addresses at record time; core 0 keeps no segbase | nd_ds.c:36-47, nd_walk.c:435-443, nd_ent.c:361, nd_set.c:93 | small | spot_mac01_drec, entcape_kmr03_drec | NC0E |
-| 11 | NC0G | delete the appliers left, NdC0 and the model hit delta: c0gate state 0 | nd_set.c, nd_state.c, nd.h:165-190, nd_recs.c:86-151 | c0gate state 1 to 0 | all 5 drec | NC0F |
-| 12 | C1HOT | core 1 code layout (hot recorder functions in one section, cold arms out of line) | nd_rec.c, nd_ds.c, nd_snap.c, nd_snap_in.c, linker script | core 1 -2 to -5; needs a console capture (Azahar has no cache model) | all 5 drec | the user asks for a capture |
-| 13 | MDLHIT2 | model hit path: flush per hit (pm_gpu.c:4220), tmpl touch loop (:4213) | pm_gpu.c:4183-4240 | core 0 -1 to -2; needs a console capture | spot_mac01_drec, hudfb_drec | MDLBLK, a capture |
-Dropped with reason (FACT code read): ALTM (a cached model copy block) is not exact: the marks and the applier values depend on the core 1 state before the
-record (nd_ds.c:408-414, :460, nd_rec.c:506). ALTE (one entity copy) is not exact: the mode 1 copy runs nested calls through ent_gdl and nd_sg_try, the flat copy
-runs them inline (nd_walk.c:209-232, nd_ds.c:425). ALTU takes the exact part of both. PERF2 dropped by the user.
-Parallel now: MDLBLK, SNAPD, DUPMS, ALTU. Shared files, separate regions: pm_gpu.c (MDLBLK :1280-1357, :4232-4234; DUPMS :3829, :3866; ALTU :632),
-nd_snap.c (SNAPD :1-67; DUPMS :240-245), nd.h (MDLBLK :324-326, :435; DUPMS :191). NC0 pages come after DUPMS merges: they read the field list it leaves.
+| 1 | NC0A | sprite known bits from core 1; nd_c0 loses om_kh, om_kl, omode_l, fill, use_t1; known-bit bookkeeping and stat_call go | nd_snap.h, nd_apw.h, nd_snap.c:59, :129, :213, pm_gpu.c:4582, nd.h:167-180, nd_state.c:11, nd_direct.c:57-58, nd_recs.c:148-149, nd_rect.c:323, nd_set.c:99-107, nd_walk.c:209-264, nd_core.c:18 | nd_c0 symbol size -20 B | hudfb_drec, spot_mac01_drec | ws_NC0A |
+| 2 | C1MIC | snap build: no dead NdCombOut clear and copy; decision cache 32 to 128; ds_pairs ep rule once | nd_snap.c:28, :50-53, :70-82, nd_ds.c:432-434 | snapi dec falls; 370 B less per snap build | spot_mac01_drec, entcape_kmr03_drec | ws_C1MIC |
+| 3 | NC0B | vertex params read the snap: geom, tex_on, tss; fog factors into the snap | nd_geom.c:97-124, :195-203, :454-530, nd_snap.c snap inputs | nd_c0 size | spot_mac01_drec, fxparts_drec | next pass |
+| 4 | NC0C | tile binds always from nd_ap->b; the nd_c0 tile arms go | nd_snap.h:32-35, nd_tex_set.c:27-447 | nd_c0 size, nd_tex_set.c text size | all 5 drec | after NC0B |
+| 5 | NC0D, NC0E | rectangles and direct draws from records and the pso snap | nd_rect.c, nd_direct.c | nd_c0 size | hudfb_drec, wscmb_pause_drec | after NC0C |
+| 6 | NC0F, NC0G | core 1 resolves segment addresses; the appliers left, NdC0 and the hit delta go: c0gate state 0 | nd_ds.c:36-47, nd_walk.c:435-443, nd_ent.c:361, nd_set.c, nd_state.c, nd.h, nd_recs.c:86-151 | c0gate state 1 to 0 | all 5 drec | after NC0E |
+Rows that need the user (not Haiku-closed or not measurable in Azahar):
+- MCOPY: core 1 writes the model copy ranges at every record, core 0 runs 1.7 percent of them (spot, FACT above). Core 0 decides hit or miss from its
+  model cache (nd_recs.c:251-276; key words from core 0 generations, pm_gpu.c:3858-3871). An exact fix needs core 1 to know hit or miss, or core 0 to rebuild
+  the miss state from the record. Both are designs, not closed edits. A cached copy block is not exact (marks depend on the state before the record, nd_ds.c:408-414). GUESS gain core 1 -1 to -3 ms.
+- GPUTRL: the 30-word draw trailer copies the citro3d draw sequence (nd_emit.c:120-135, 0x25E twice). A shorter sequence needs a console check: Azahar
+  does not show PICA hangs. GUESS gain small (GPU words are 18 KB per frame).
+- C1HOT (core 1 code layout) and MDLHIT2 (model hit path, pm_gpu.c:4183-4240): Azahar has no cache model and no console timing.
+Parallel now: NC0A and C1MIC (nd_snap.c: NC0A :59, :129, :213; C1MIC :28, :50-82).
 ## 7. nd_c0 removal (user goal: core 0 decides nothing)
 Each class B reader of section 1 must read a recorded value. Core 1 has every value: the snap carries geom, tss, oml, fill, primz and the tile binds b[2];
-core 1 NdDs.w has om_kh and om_kl. Rows NC0A to NC0G in section 6. The texture cache, the model cache and the GPU memos stay on core 0 (class C).
-FACT after DUPMS: nd_c0.omode_l has no reader; fill and use_t1 have no reader (nd_state.c:46-51 was the only one). NC0A deletes them with the known bits.
+core 1 NdDs.w has om_kh and om_kl. NC0A to NC0G in section 6, one closed page per pass (each row needs its own code read of the readers it moves).
+The texture cache, the model cache and the GPU memos stay on core 0 (class C). c0gate state reaches 0 at NC0G.
+## 7a. Console capture (when the user asks): what it must read
+- Recipe: section 9. Lines: core2 lgms and cyc1, ic1, dc1 (C1HOT), c1s logic and dl, c1t snap and alt, cls rec (MDLHIT2), wk - wwait, gb.
+- Decide: C1HOT starts when ic1 is still above 60K per step. MDLHIT2 starts when cls rec is above 3 ms. MCOPY is worth a design when c1s dl minus c1t snap is above 15 ms.
 ## 8. Balance (user: spread the work, judge by frame time)
 - The step time is max(core 1, core 0) plus the queue wait. FACT now: core 1 is the long pole by 20 to 30 ms.
 - After PERF1, SNAPD, ALTU and C1HOT core 1 falls 6 to 12 ms (GUESS). Then core 1 is about 32 to 40 ms and core 0 about 18 to 25 ms.
