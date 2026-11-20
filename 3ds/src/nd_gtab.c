@@ -136,7 +136,7 @@ void nd_rec_ntab(const void* list) {
     gtr_tab++;
     fl &= 1u;
     const int ent = dl_ent || __builtin_expect(PMDL("entcap"), 0), ls = !fl;
-    const uint32_t r8[8] = { (uint32_t)(uintptr_t)t, fl | (ls ? 2u : 0u), ent ? (dl_site ? dl_site : (uint32_t)(uintptr_t)__builtin_return_address(0)) : 0u, (uint32_t)(uintptr_t)dl_ent, 0u, 0u, 0u, 0u };
+    const uint32_t r8[8] = { (uint32_t)(uintptr_t)t, fl | (ls ? 2u : 0u) | 4u, ent ? (dl_site ? dl_site : (uint32_t)(uintptr_t)__builtin_return_address(0)) : 0u, (uint32_t)(uintptr_t)dl_ent, 0u, 0u, 0u, 0u };
     nd_rec_napi(dl_ent ? nd_ntab_rec_e : nd_ntab_rec, r8, 4u); /* a drawing list holds its snap table at rec[4] */
     uint32_t* const pay = nd_rec_last_pay(); uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 1; /* NAT5F: the units as a raw alt range */
     if (ls) nd_lsc_begin();
