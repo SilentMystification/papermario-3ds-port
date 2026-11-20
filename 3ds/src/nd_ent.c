@@ -328,6 +328,7 @@ __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSeg* s) {
 extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal with blend (two native passes at the close) */
 unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
 
+static unsigned ent_cf[3]; /* NAT5A: copy runs, fw runs */
 void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (frame end, pm_cen_lines) */
     static unsigned next = 300u;
     unsigned f = pm_frame_count();
@@ -408,7 +409,6 @@ int ent_draw(const NdW2* rec, const uint32_t* et) {
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
-static unsigned ent_cf[3]; /* NAT5A: copy runs, fw runs */
 static __attribute__((cold, noinline)) void ent_fb_note(const EntKey* k, unsigned why) { static unsigned c[3]; if (why > 2u || c[why] >= 3u) return; c[why]++; pm_log_evt("entfb f%u l %08x why %u nops %u", pm_frame_count(), (unsigned)k->list, why, (unsigned)k->nops); }
 static void ent_run(const EntKey* k, const uint32_t* et, u32 a, u32 b) { /* NAT5A */
     nd_ent_gbi++;
