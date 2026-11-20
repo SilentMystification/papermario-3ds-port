@@ -127,12 +127,13 @@ uint32_t nd_apw(int k) { const NdSnapChk* a = nd_ap; switch (k) { case NDAPW_W0:
 void nd_apw_gvc(NdGvC* c) { c->fogf = ND_FOGF(); c->tex_on = ND_TEXON(); nd_tf_chk(c->fogf, c->tex_on, 1u); /* NC0V */ c->w0 = nd_ap->in.w0; c->w1 = nd_ap->in.w1; c->env = nd_ap->in.env; c->oml = nd_ap->oml; c->primz = nd_ap->primz; c->use_t1 = nd_ap->in.use_t1; c->dual_on = nd_ap->in.dual_on; } /* NWS4C */
 /* NC0V census: the recorded fog and tex_on against nd_c0 (drec frames, once per site and frame) */
 unsigned pm_frame_count(void); int pm_drec_now(void);
+unsigned char nd_tf_w;
 __attribute__((cold, noinline)) void nd_tf_chk(uint32_t fogf, int ton, unsigned site) {
     static unsigned fr[8];
     if (site > 7u || !pm_drec_now()) return;
     if (fogf == ND_FOGPK(nd_c0.fog_fm, nd_c0.fog_fo) && ton == nd_c0.tex_on) return;
     const unsigned f = pm_frame_count(); if (fr[site] == f + 1u) return; fr[site] = f + 1u;
-    pm_log_evt("texfog f%u s%u", f, site);
+    pm_log_evt("texfog f%u s%u ton %d/%d fog %08x/%08x w%u", f, site, ton, nd_c0.tex_on, (unsigned)fogf, (unsigned)ND_FOGPK(nd_c0.fog_fm, nd_c0.fog_fo), (unsigned)nd_tf_w);
 }
 static NdSnapBind sc_eb[2];
 static unsigned sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */
@@ -195,7 +196,7 @@ void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch sn
     { /* NWS4D: the GPU memo of the applied words (the walker shadow is gone) */
         const NdCombIn* i = &nd_ap->in;
         ls_gpu(i->w0, i->w1, i->comb_set, i->prim, nd_ap->plod, i->env, i->conv_k4); /* NCONV2D; NAT4D: also for stream snaps */
-        nd_c0.comb_w0 = i->w0; nd_c0.comb_w1 = i->w1; nd_c0.omode_h = i->omode_h; nd_c0.prim = i->prim; nd_c0.envc = i->env; nd_c0.conv_k4 = i->conv_k4; nd_c0.tex_on = i->tex_on;
+        nd_c0.comb_w0 = i->w0; nd_c0.comb_w1 = i->w1; nd_c0.omode_h = i->omode_h; nd_c0.prim = i->prim; nd_c0.envc = i->env; nd_c0.conv_k4 = i->conv_k4; nd_c0.tex_on = i->tex_on; nd_tf_w = 3;
     }
 }
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */

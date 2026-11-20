@@ -489,7 +489,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
             if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } } /* NAT4K: a marked combine class unit is not recorded */
     if (id == ND_FS_CALL) { /* NAT5T: the called static list as a raw alt range, its tile sizes carry the core 1 window; core 1 state keeps no nested state */
         NdDs* const sc = nd_alt_scr_on(); const unsigned char om = nd_alt_raw_on; nd_alt_raw_on = 1; uint32_t* const blk = nd_alt_call(w0, w1);
-        nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_altw[2] += nd_wdiff(blk[1], blk[2]); nd_alt_raw_on = om; nd_alt_scr_off(); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
+        nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_ds.w.tex_on = sc->w.tex_on; nd_ds.fog_fm = sc->fog_fm; nd_ds.fog_fo = sc->fog_fo; /* NC0V: these 3 fields leak out of a called list, as core 0 nd_c0 did */ nd_alt_call_end(blk); nd_altw[2] += nd_wdiff(blk[1], blk[2]); nd_alt_raw_on = om; nd_alt_scr_off(); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
     if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { cp_put(&nd_ds, ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } /* NAT5T */
     cp_put(&nd_ds, t[0], t[1]); /* NAT4A */
     rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR);
