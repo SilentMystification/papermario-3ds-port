@@ -146,7 +146,7 @@ static void hit_apply(const NdW2* q, const NdMEnt* e) {
     if (__builtin_expect(PMDL("hitst"), 0)) hitst_note(d);
     if (d->fl & HD_COMB) hd_comb(d);
     nd_c0.omode_h = (nd_c0.omode_h & ~d->omh_m) | d->omh_v; nd_c0.omode_l = (nd_c0.omode_l & ~d->oml_m) | d->oml_v;
-    nd_c0.om_kh |= d->kh; nd_c0.om_kl |= d->kl; nd_c0.geom = (nd_c0.geom & d->g_and) | d->g_or;
+    nd_c0.geom = (nd_c0.geom & d->g_and) | d->g_or;
     if (d->fl & (HD_PRIM | HD_ENV | HD_FOG | HD_BLEND | HD_TEX | HD_FOGF)) hd_rare(d);
 }
 /* HC6 step 2 debug switch mkchk: per record, the entry key A + key B found against the entry the old compare (full key words) finds. */

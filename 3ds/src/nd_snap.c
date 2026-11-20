@@ -54,7 +54,7 @@ static const NdSnapChk* snap_build0(const NdDs* s, int zc) { /* NDR0E2: the snap
     nd_snap_rnd(s, &r);
     r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, s->w.omode_l, s->w.omode_h, zc);
     r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of nd_rnd_sync */
-    r.fill = s->w.fill; r.primz = s->w.prim_z; /* NAT4H */
+    r.fill = s->w.fill; r.primz = s->w.prim_z; /* NAT4H */ r.kh = s->w.om_kh; r.kl = s->w.om_kl; /* NC0A */
     nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of nd_rnd_sync */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
     if (sn_cmds == nd_rec_cmds() && si_eq(&r, sn_lp)) return NULL;
@@ -123,7 +123,7 @@ unsigned char nd_snap_live; /* NDR1C: a snap is armed for this rectangle run; a 
 unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cleared after nd_gv_tri and by nd_snap_render */
 static NdSnapChk sc_cur;
 const NdSnapChk* nd_ap = &sc_cur; /* PERF1: the applied snap, in the stream or the hold copy */
-uint32_t nd_apw(int k) { const NdSnapChk* a = nd_ap; switch (k) { case NDAPW_W0: return a->in.w0; case NDAPW_W1: return a->in.w1; case NDAPW_OH: return a->in.omode_h; case NDAPW_OL: return a->oml; case NDAPW_PRIM: return a->in.prim; case NDAPW_PLOD: return a->plod; case NDAPW_ENV: return a->in.env; case NDAPW_FOGC: return a->fogc; case NDAPW_DUAL: return (uint32_t)a->in.dual_on; default: return (uint32_t)a->in.use_t1; } } /* NWS4B: pm_gpu.c does not include nd_snap.h */
+uint32_t nd_apw(int k) { const NdSnapChk* a = nd_ap; switch (k) { case NDAPW_W0: return a->in.w0; case NDAPW_W1: return a->in.w1; case NDAPW_OH: return a->in.omode_h; case NDAPW_OL: return a->oml; case NDAPW_PRIM: return a->in.prim; case NDAPW_PLOD: return a->plod; case NDAPW_ENV: return a->in.env; case NDAPW_FOGC: return a->fogc; case NDAPW_DUAL: return (uint32_t)a->in.dual_on; case NDAPW_KH: return a->kh; case NDAPW_KL: return a->kl; default: return (uint32_t)a->in.use_t1; } } /* NWS4B: pm_gpu.c does not include nd_snap.h */
 void nd_apw_gvc(NdGvC* c) { c->w0 = nd_ap->in.w0; c->w1 = nd_ap->in.w1; c->env = nd_ap->in.env; c->oml = nd_ap->oml; c->primz = nd_ap->primz; c->use_t1 = nd_ap->in.use_t1; c->dual_on = nd_ap->in.dual_on; } /* NWS4C */
 static NdSnapBind sc_eb[2];
 static unsigned sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */
@@ -207,7 +207,7 @@ void nd_lsr_end(void) { /* NCONV2D: list end: the GPU memo of the skipped units 
     if (nd_ls_on && lr_geo) {
         const uint32_t* const c = (const uint32_t*)(const void*)((const char*)lr_b + ND_LS_HDR(lr_b[0] + lr_b[1]));
         ls_gpu(c[0], c[1], (int)c[2], c[3], c[4], c[5], c[6]);
-        nd_c0.om_kl = c[7]; nd_c0.prim = c[3]; nd_c0.envc = c[5]; nd_c0.comb_w0 = c[0]; nd_c0.comb_w1 = c[1]; nd_c0.conv_k4 = c[6];
+        nd_c0.prim = c[3]; nd_c0.envc = c[5]; nd_c0.comb_w0 = c[0]; nd_c0.comb_w1 = c[1]; nd_c0.conv_k4 = c[6];
     }
     lr_geo = 0; nd_ls_on = 0; } /* NWS4D */
 void nd_lsr_seg(unsigned ord) { nd_lsr_tri(ord); }

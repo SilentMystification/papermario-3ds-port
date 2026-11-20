@@ -167,9 +167,7 @@ typedef struct NdC0 {
     unsigned omode_h, omode_l;         /* other mode high and low */
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
-    unsigned fill;                     /* fill colour */
     unsigned prim_z;                   /* G_SETPRIMDEPTH, 15 bit */
-    uint32_t om_kh, om_kl;             /* B8: other mode bits the state has a value for (SETOTHERMODE sets them) */
     uint32_t prim_lod;                 /* G_SETPRIMCOLOR w0 low 16 bits (m and l) */
     int tex_on;
     const void* timg;
@@ -177,7 +175,7 @@ typedef struct NdC0 {
     int tlut_n;
     int tile_x0, tile_y0;
     float tile_fx, tile_fy;
-    int cur_tile, use_t1;
+    int cur_tile;
     unsigned tex_ss, tex_ts;
     uint32_t segbase[16];
     unsigned comb_w0, comb_w1;

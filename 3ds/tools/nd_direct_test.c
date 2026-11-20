@@ -24,7 +24,7 @@ extern int dual_on; extern unsigned keyc, keys;
 static void ap_sync(void) {
     memset(&ap_stub, 0, sizeof ap_stub);
     ap_stub.in.w0 = nd_c0.comb_w0; ap_stub.in.w1 = nd_c0.comb_w1; ap_stub.in.omode_h = nd_c0.omode_h; ap_stub.oml = nd_c0.omode_l;
-    ap_stub.in.prim = nd_c0.prim; ap_stub.plod = nd_c0.prim_lod; ap_stub.in.env = nd_c0.envc; ap_stub.in.use_t1 = nd_c0.use_t1;
+    ap_stub.in.prim = nd_c0.prim; ap_stub.plod = nd_c0.prim_lod; ap_stub.in.env = nd_c0.envc;
     ap_stub.in.dual_on = dual_on; ap_stub.in.key_c = keyc; ap_stub.in.key_s = keys;
 }
 

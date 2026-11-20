@@ -4579,7 +4579,7 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = gs.r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
     c.env = sn ? sv[0] : nd_apw(NDAPW_ENV); c.prim = sn ? sv[1] : nd_apw(NDAPW_PRIM); c.prim_lod = nd_apw(NDAPW_PLOD); c.cconst = cconst; c.mixcol = r_mixcol; /* NWS4B */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = sn ? sv[2] : nd_apw(NDAPW_OH); c.base_ol = sn ? sv[3] : nd_apw(NDAPW_OL); c.known_h = nd_c0.om_kh; c.known_l = nd_c0.om_kl; /* NWS4B */
+    c.base_oh = sn ? sv[2] : nd_apw(NDAPW_OH); c.base_ol = sn ? sv[3] : nd_apw(NDAPW_OL); c.known_h = nd_apw(NDAPW_KH); c.known_l = nd_apw(NDAPW_KL); /* NC0A */ /* NWS4B */
     if (sn) { c.r_mix = (int)sv[7]; c.mixcol = sv[7] ? sv[8] : r_mixcol; } else /* NDR4: the mix of the snap */
     { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as nd_rnd_sync), not gs.r_mix of the last model's nd_rnd_sync:
        * a sprite drawn after a shrouded model took its shroud (star power). */

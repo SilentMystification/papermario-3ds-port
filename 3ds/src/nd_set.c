@@ -96,15 +96,15 @@ void nd_tex_run(const uint32_t* r) { const unsigned on = r[0] & 0xffffffu, ss = 
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_TEXTURE; if (mk) gv_epoch++; if (same) return;
     nd_c0.tex_on = (int)on; nd_c0.tex_ss = ss; nd_c0.tex_ts = ts; }
 void nd_omh_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */ /* NWS4B */
-    const int same = (v & m) == (nd_ap->in.omode_h & m); if (same) nd_c0.om_kh |= m; /* NWS4B */
+    const int same = (v & m) == (nd_ap->in.omode_h & m); /* NWS4B */
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_OMH; if (mk) gv_epoch++;
     if (!same) { const uint32_t sv[2] = { m, v & m }; nd_sv_omh(sv); } } /* NSET1: core 1 bit 30 is the cycle sync of set_om */
 void nd_sv_nop(const uint32_t* r) { (void)r; } /* NSET1: LOADBLOCK, LOADTILE: no core 0 state */
-void nd_sv_omh(const uint32_t* r) { const uint32_t m = r[0], tf = nd_c0.omode_h & (3u << 12); nd_c0.omode_h = (nd_c0.omode_h & ~m) | r[1]; nd_c0.om_kh |= m; /* NSET1: set_om H without the sync */
+void nd_sv_omh(const uint32_t* r) { const uint32_t m = r[0], tf = nd_c0.omode_h & (3u << 12); nd_c0.omode_h = (nd_c0.omode_h & ~m) | r[1]; /* NSET1: set_om H without the sync */
     if ((nd_c0.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_c0.omode_h & (3u << 12)) != 0); } }
-void nd_sv_oml(const uint32_t* r) { nd_c0.omode_l = (nd_c0.omode_l & ~r[0]) | r[1]; nd_c0.om_kl |= r[0]; } void nd_sv_geom(const uint32_t* r) { nd_c0.geom = (nd_c0.geom & r[0]) | r[1]; pm_gpu_set_mode((nd_c0.geom & G_ZBUFFER) != 0, (nd_c0.geom & G_LIGHTING) != 0); }
+void nd_sv_oml(const uint32_t* r) { nd_c0.omode_l = (nd_c0.omode_l & ~r[0]) | r[1]; } void nd_sv_geom(const uint32_t* r) { nd_c0.geom = (nd_c0.geom & r[0]) | r[1]; pm_gpu_set_mode((nd_c0.geom & G_ZBUFFER) != 0, (nd_c0.geom & G_LIGHTING) != 0); }
 void nd_sv_prim(const uint32_t* r) { GP_SET(1, nd_c0.prim == r[1] && (u8)nd_c0.prim_lod == (u8)r[0]); pm_gpu_set_prim(r[1], r[0]); nd_c0.prim = r[1]; nd_c0.prim_lod = r[0]; } void nd_sv_env(const uint32_t* r) { GP_SET(2, nd_c0.envc == r[1]); nd_c0.envc = r[1]; pm_gpu_set_env(nd_c0.envc); }
-void nd_sv_fog(const uint32_t* r) { (void)r; } void nd_sv_blend(const uint32_t* r) { (void)r; } /* NWS4D: fog and blend colours live in the snaps */ void nd_sv_fill(const uint32_t* r) { nd_c0.fill = r[1]; } void nd_sv_primz(const uint32_t* r) { nd_c0.prim_z = r[1]; { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_c0.prim_z); } }
+void nd_sv_fog(const uint32_t* r) { (void)r; } void nd_sv_blend(const uint32_t* r) { (void)r; } /* NWS4D: fog and blend colours live in the snaps */ void nd_sv_fill(const uint32_t* r) { (void)r; } void nd_sv_primz(const uint32_t* r) { nd_c0.prim_z = r[1]; { extern void pm_gpu_dbg_primz(unsigned z); pm_gpu_dbg_primz(nd_c0.prim_z); } }
 void nd_sv_sci(const uint32_t* r) { nd_c0.sci_x0 = (int16_t)r[0]; nd_c0.sci_y0 = (int16_t)(r[0] >> 16); nd_c0.sci_x1 = (int16_t)r[1]; nd_c0.sci_y1 = (int16_t)(r[1] >> 16); pm_gpu_set_scissor(nd_c0.sci_x0, nd_c0.sci_y0, nd_c0.sci_x1, nd_c0.sci_y1); } void nd_sv_tex(const uint32_t* r) { nd_c0.tex_on = (int)r[0]; nd_c0.tex_ss = r[1] >> 16; nd_c0.tex_ts = r[1] & 0xffffu; }
 void nd_sv_nlt(const uint32_t* r) { lit_freeze(); lt_n = r[1]; } void nd_sv_lcol(const uint32_t* r) { lt[r[0]].col[0] = (u8)(r[1] >> 24); lt[r[0]].col[1] = (u8)(r[1] >> 16); lt[r[0]].col[2] = (u8)(r[1] >> 8); } void nd_sv_fogf(const uint32_t* r) { nd_c0.fog_fm = (s16)(r[1] >> 16); nd_c0.fog_fo = (s16)r[1]; }
 void nd_sv_seg(const uint32_t* r) { nd_c0.segbase[r[0]] = r[1]; } void nd_sv_conv(const uint32_t* r) { nd_c0.conv_k4 = r[1]; pm_comb_set_k4(nd_c0.conv_k4); } void nd_sv_keyr(const uint32_t* r) { (void)r; }
