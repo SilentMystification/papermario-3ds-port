@@ -558,6 +558,9 @@ void nd_range_run(const uint32_t* a) {
     gv_streak_flush();
     tex_streak_flush();
 }
+void nd_mls_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; sc_ok = 0; sr_ok = 0; pm_walk_side++; ex_depth++; } /* NAT5B: nd_nr_list keep 0 start */
+void nd_mle_run(const uint32_t* r) { (void)r; ex_depth--; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); if (__builtin_expect(pm_walk_dbg & WD_CEN, 0) && ex_depth == 0) ops_cen_end(); } /* NAT5B: its end */
+void nd_mdl_alt(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5B: a model alt range, as rec_top ran it */
 /* ---- MV-7: walk core, cut from the former pm_gbi.c (no change): host range, pointer resolve, init, cold modifyvtx, lt compare, run entry, fallback ---- */
 extern char __end__[]; /* linker: end of .bss */
 int is_host(u32 p) {

@@ -445,10 +445,14 @@ void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(ui
 /* NST2b nd_ds_model (design_nstate.md section 5, row NST2b): the state units of one model record, in the order of rec_apply (nd_recs.c:72-103)
  * and rec_lights (nd_mtx_set.c:202). q: the record payload (pair Rk = q[2k], q[2k+1]). The R13 units (kept count q[26], from q[28]) and the
  * render mode pairs rm (nrm) go through unit. Left out: the matrix loads, the ranges (R11) and the billboard matrix (R8). */
-#define T(id, a, b) nd_ds_apply(s, ND_FS_W0(id, a), (b))
+__attribute__((weak)) uint32_t* nd_alt_open(void) { return NULL; } __attribute__((weak)) void nd_alt_close(uint32_t* br, uint32_t* ab) { (void)br; (void)ab; } __attribute__((weak)) void nd_alt_lst(unsigned end) { (void)end; } /* NAT5B */
+static unsigned char dm_on; /* NAT5B */
+static void dm_u(NdDs* s, uint32_t w0, uint32_t w1, NdDsUnitFn unit) { if (dm_on) nd_alt_put(w0, w1); if (unit) unit(s, w0, w1); else nd_ds_apply(s, w0, w1); } /* NAT5B: put, then apply */
+#define T(id, a, b) dm_u(s, ND_FS_W0(id, a), (b), NULL) /* NAT5B */
 #define FOGP(x) T(ND_FS_MW, ND_FS_MW_FOG << 16, x)
-void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit) {
+void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit, uint32_t* ab) {
     const uint32_t f = q[6];
+    uint32_t* br = ab ? nd_alt_open() : NULL; dm_on = br != NULL; /* NAT5B */
     if (f & 4u) T(ND_FS_PRIM, 0, q[12]);
     if (f & 8u) T(ND_FS_ENV, 0, q[13]);
     if (f & 64u) { T(ND_FS_FOG, 0, q[8]); FOGP(q[11]); }
@@ -460,15 +464,20 @@ void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, N
             T(ND_FS_MOVEMEM, (((uint32_t)sizeof(Light) - 1u) / 8u) << 19 | (3u * i + 3u) << 8 | G_MV_LIGHT,
               (uint32_t)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a));
     }
-    if (q[26]) { for (unsigned k = 0; k < q[26]; k++) unit(s, q[28 + 2 * k], q[29 + 2 * k]); }
-    else if (q[1]) for (const uint32_t* u = (const uint32_t*)(uintptr_t)q[1]; (u[0] >> 24) != ND_FS_END; u += 2) nd_ds_apply(s, u[0], u[1]);
-    if (q[9]) { const uint32_t* c = (const uint32_t*)(uintptr_t)q[9]; nd_ds_apply(s, c[0], c[1]); }
-    for (unsigned k = 0; k < nrm; k++) unit(s, rm[2 * k], rm[2 * k + 1]);
+    if (q[26]) { if (dm_on) nd_alt_lst(0u); /* NAT5B */ for (unsigned k = 0; k < q[26]; k++) dm_u(s, q[28 + 2 * k], q[29 + 2 * k], unit); if (dm_on) nd_alt_lst(1u); /* NAT5B */ }
+    else if (q[1]) for (const uint32_t* u = (const uint32_t*)(uintptr_t)q[1]; (u[0] >> 24) != ND_FS_END; u += 2) dm_u(s, u[0], u[1], NULL); /* NAT5B */
+    if (q[9]) { const uint32_t* c = (const uint32_t*)(uintptr_t)q[9]; dm_u(s, c[0], c[1], NULL); } /* NAT5B */
+    if (dm_on && rm) nd_alt_lst(0u); /* NAT5B */
+    for (unsigned k = 0; k < nrm; k++) dm_u(s, rm[2 * k], rm[2 * k + 1], unit); /* NAT5B */
+    if (dm_on && rm) nd_alt_lst(1u); /* NAT5B */
     if (f & 32u) { T(ND_FS_OML, ND_FS_A_RENDERMODE, (uint32_t)(PM_RM_SHROUD) | q[15]); T(ND_FS_FOG, 0, q[8]); if (f & 16u) T(ND_FS_BLEND, 0, q[14]); FOGP(q[11]); }
     else if (f & 2u) { T(ND_FS_FOG, 0, q[8]); FOGP(q[11]); }
+    if (br) { dm_on = 0; nd_alt_close(br, ab); } /* NAT5B: the units before the pre range */
     if (q[22]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[22], NULL); /* NST2D: custom gfx pre (R11, nd_range_run) */
-    if (q[18]) nd_ds_apply(s, q[18], q[19]);
-    if (q[20]) nd_ds_apply(s, q[20], q[21]);
+    br = ab ? nd_alt_open() : NULL; dm_on = br != NULL; /* NAT5B */
+    if (q[18]) dm_u(s, q[18], q[19], NULL); /* NAT5B */
+    if (q[20]) dm_u(s, q[20], q[21], NULL); /* NAT5B */
+    if (br) { dm_on = 0; nd_alt_close(br, ab + 2); } /* NAT5B: the panner units after the pre range */
     s->sc_lost = 1; /* NST2J: the model runner leaves sc_ok 0 before the post range NREC1A: the caller applies the post range */
 }
 #undef T

@@ -32,7 +32,7 @@ void nd_ds_list(NdDs* s, const void* l, int depth);
 /* NST2b: applies one typed unit of a record (the ds_unit of nd_rec.c: nd_ds_apply, the ND_FS_CALL list, the ep rule). */
 typedef void (*NdDsUnitFn)(NdDs* s, uint32_t w0, uint32_t w1);
 /* NST2b: the state units of one model record q (the payload, pair Rk = q[2k], q[2k+1]), its R13 units and the render mode pairs rm (nrm). */
-void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit);
+void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit, uint32_t* ab); /* NAT5B: ab NULL: no alt range */
 /* NST2C: one typed unit into the core 1 state (ds_unit of nd_rec.c: nd_ds_apply, the ND_FS_CALL list, the ep rule). */
 void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1);
 unsigned nd_ds_ep_rule(uint32_t w0, unsigned ch, int lost, int dirty); void nd_lsc_ep(void); /* NCONV2C: nd_ds.c; nd_snap.c */
