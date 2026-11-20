@@ -192,8 +192,8 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { /* NWS4B */
     uint32_t v[48]; unsigned n = 0;
     v[n++] = nd_ap->in.env; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx; /* NWS4B */
     v[n++] = (uint32_t)nd_ap->in.dual_on; v[n++] = nd_ap->in.tst[8]; v[n++] = nd_ap->in.tst[9]; v[n++] = nd_ap->in.tst[10]; v[n++] = nd_ap->in.tst[11]; /* NWS4B */
-    v[n++] = (uint32_t)nd_cw_ashade(nd_ap->in.w0, nd_ap->in.w1); /* NWS2 */ v[n++] = (uint32_t)nd_ap->in.use_t1; v[n++] = (uint32_t)ND_TEXON(); v[n++] = (uint32_t)nd_c0.tile_x0; v[n++] = (uint32_t)nd_c0.tile_y0; /* NWS4B */
-    v[n++] = gvk_bits(nd_c0.tile_fx); v[n++] = gvk_bits(nd_c0.tile_fy);
+    v[n++] = (uint32_t)nd_cw_ashade(nd_ap->in.w0, nd_ap->in.w1); /* NWS2 */ v[n++] = (uint32_t)nd_ap->in.use_t1; v[n++] = (uint32_t)ND_TEXON(); v[n++] = (uint32_t)nd_bo.x0; v[n++] = (uint32_t)nd_bo.y0; /* NWS4B */
+    v[n++] = gvk_bits(nd_bo.fx); v[n++] = gvk_bits(nd_bo.fy);
     v[n++] = nd_c0.tst1.tile_shift[0][0]; v[n++] = nd_c0.tst1.tile_shift[0][1]; v[n++] = nd_c0.tst1.tile_shift[1][0]; v[n++] = nd_c0.tst1.tile_shift[1][1];
     v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
     v[n++] = nd_ap->oml; v[n++] = nd_ap->primz; v[n++] = (uint32_t)(int32_t)(int16_t)(ND_FOGF() >> 16); v[n++] = (uint32_t)(int32_t)(int16_t)ND_FOGF(); /* NC0V */ v[n++] = (uint32_t)fogmix_on; /* NWS4B */
@@ -246,7 +246,7 @@ static __attribute__((cold, noinline)) void dual_bind_load(unsigned key) { /* HC
     pm_tex_load(ND_BTD(1)->src, ND_BTD(1)->fmt, ND_BTD(1)->siz, ND_BTD(1)->w, ND_BTD(1)->h, ND_BTD(1)->pal, ND_BTD(1)->pal_n, ND_BTD(1)->stride);
     pm_tex_set_aux(ND_BWR(1)[0], ND_BWR(1)[1], ND_BWR(1)[2], ND_BWR(1)[3]);
     aux_key = key;
-    nd_c0.cur_tile = -1;
+    nd_bo.cur = -1;
     ens_clear();
 }
 
@@ -272,8 +272,8 @@ void dual_bind(void) {
         /* WATER (F1): both tile origins with their quarter-texel fractions (tile 0: tile_fx, which unit 0's offset holds; tile 1: SetTileSize uls & 3,
          * which td[1].x0 drops). Without them a panned overlay was off by up to 0.75 texel against tile 0, a different amount every 1 to 3 frames. */
         const float fx1 = (float)(ND_BSZ(1)[0] & 3) * 0.25f, fy1 = (float)(ND_BSZ(1)[1] & 3) * 0.25f;
-        t1_p[2] = (((float)nd_c0.tile_x0 + nd_c0.tile_fx) * rs - ((float)(ND_BTD(1)->x0 - ox1) + fx1)) / (float)tw1;
-        t1_p[3] = (((float)nd_c0.tile_y0 + nd_c0.tile_fy) * rt - ((float)(ND_BTD(1)->y0 - oy1) + fy1)) / (float)th1;
+        t1_p[2] = (((float)nd_bo.x0 + nd_bo.fx) * rs - ((float)(ND_BTD(1)->x0 - ox1) + fx1)) / (float)tw1;
+        t1_p[3] = (((float)nd_bo.y0 + nd_bo.fy) * rt - ((float)(ND_BTD(1)->y0 - oy1) + fy1)) / (float)th1;
         t1_ox = ox1; t1_oy = oy1; t1_w = tw1; t1_h = th1;
         pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);
     }
@@ -325,8 +325,8 @@ void t1_fold_tri(const unsigned ri[3], unsigned tss) { /* NWS4B */
         const Vtx* r = (const Vtx*)(pm_gpu_gring() + 16u * ri[k]);
         float s0 = ton ? (float)r->v.tc[0] * (float)(tss >> 16) / 65536.f : 0.f;
         float t0 = ton ? (float)r->v.tc[1] * (float)(tss & 0xffffu) / 65536.f : 0.f;
-        u[k] = (s0 / 32.f * ms - (float)nd_c0.tile_x0 - nd_c0.tile_fx) / (float)tw;
-        v[k] = (t0 / 32.f * mt - (float)nd_c0.tile_y0 - nd_c0.tile_fy) / (float)th;
+        u[k] = (s0 / 32.f * ms - (float)nd_bo.x0 - nd_bo.fx) / (float)tw;
+        v[k] = (t0 / 32.f * mt - (float)nd_bo.y0 - nd_bo.fy) / (float)th;
         if (!ton) { u[k] += 0.5f / (float)tw; v[k] += 0.5f / (float)th; }
     }
     pm_gpu_set_tex1(t1_p[0], t1_p[1], t1_p[2], t1_p[3]);

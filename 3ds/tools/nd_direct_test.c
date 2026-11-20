@@ -36,6 +36,7 @@ static int fails;
 void pm_log_e(const char* fmt, ...) { (void)fmt; }
 void pm_log_d(const char* fmt, ...) { (void)fmt; }
 void pm_log_evt(const char* fmt, ...) { (void)fmt; } /* NAT5D: link stub for the census line in nd_direct.c */
+NdBo nd_bo; /* NC0T1 */
 unsigned pm_frame_count(void) { return 0; }
 void pm_fatal_stop(const char* msg) { printf("FAIL nd_direct fatal %s\n", msg); exit(1); }
 
@@ -192,13 +193,13 @@ int main(void) {
     CHECK(nd_direct_ready() < 1);
     fake_aux = -1;
     /* a rectangle: upper left (10, 20), lower right (42, 36), s 0, t 0, 1:1 on a 32 x 16 texture (inclusive lower right pixel is exclusive here) */
-    nd_c0.tile_x0 = 0; nd_c0.tile_y0 = 0; nd_c0.tile_fx = nd_c0.tile_fy = 0.f;
+    nd_bo.x0 = 0; nd_bo.y0 = 0; nd_bo.fx = nd_bo.fy = 0.f;
     nd_direct_rect((42u * 4u) << 12 | (36u * 4u), (10u * 4u) << 12 | (20u * 4u), 0u, (1024u << 16) | 1024u);
     CHECK(n_rect == 1 && last_rect[0] == 10 && last_rect[1] == 20 && last_rect[2] == 41 && last_rect[3] == 35);
     CHECK(last_st[0] == 0.f && last_st[1] == 0.f && last_st[2] == 1.f && last_st[3] == 1.f);
     n_forget = 0; n_end_clear = 0; gv_epoch = 7;
     nd_direct_end();
-    CHECK(n_end_clear == 1 && n_forget == 1 && nd_c0.cur_tile == -1 && gv_epoch == 8);
+    CHECK(n_end_clear == 1 && n_forget == 1 && nd_bo.cur == -1 && gv_epoch == 8);
     /* S5TRECT: nd_trect_run of a 32 x 32 RGBA16 window (uls 0, ult 0, lrs 31, lrt 31): the window arguments are the HUD ones (sh 2, stride = width,
      * the lower right in quarter texels), then the direct rectangle (the same words as the case above) */
     {

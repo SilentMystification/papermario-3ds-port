@@ -212,6 +212,8 @@ unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 extern int comb_mode5, plan_active, box_pat, leg_mode;
 int nd_cw_t1only(uint32_t w0, uint32_t w1); /* NWS4C, nd_comb.c */ int nd_cw_ashade(uint32_t w0, uint32_t w1); int nd_cw_box_prod(uint32_t w0, uint32_t w1); /* NWS2, nd_comb.c */
 extern PmPlan cur_plan; extern float dual_f[4];
+typedef struct NdBo { int x0, y0; float fx, fy; int cur; } NdBo; /* NC0T1: the bind outputs: uv origin and fraction of the bound tile, the bound tile (bind cache) */
+extern NdBo nd_bo;
 void cc_cycle1(const float* t0, const float* t1, float out[4]);
 /* ---- C (ST-2): the combine group in nd_comb.c ---- */
 int const_rgb_tex_alpha(unsigned* out);
