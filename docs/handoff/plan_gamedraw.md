@@ -19,7 +19,7 @@ Tags: FACT (console capture, Azahar log or code read), GUESS, OPEN. Rows GD0 to 
 ### 1.3 execute_render_tasks (c1g task 5.19 = exclusive: the time less rmdl, rent, rspr, rnr, snap, alt, lsc inside it)
 - Sort: 3 exchange sorts, O(n^2), n about 110 (model.c:4171-4222): GUESS 0.2 to 0.4. One FI_OPEN per task (:4260), each a full node scan: part of GD1.
 - appendGfx code: record fill (model.c:954-1508), group model copies (model.c:2611, :2622), entity setters (entity_model.c:356-465).
-- Untimed recorder in it: nd_xf_push and nd_xf_pop (nd_xf.c xf_rec: nd_ds_unit decode plus a record). GD0 times it (rxf).
+- Untimed recorder in it: nd_xf_push and nd_xf_pop (nd_xf.c xf_rec: nd_ds_unit decode plus a record). GD0B times it (rxf).
 - Timer cost: a sampled step runs about 1385 child timer pairs (FACT counts: 693 rnr, 477 alt, 95 rmdl, 76 snap, 27 lsc, 17 rent and rspr). One pair
   costs 1.15 us inside (cal 307 ticks); a similar part falls into the parent class. GUESS 0.7 to 1.5 ms of task is timer cost, not game work.
 - Rest GUESS 2 to 3 ms: game code plus I-cache refills after each recorder call (core2 ic1 67387 now, 33606 in the old build, FACT).
@@ -42,10 +42,11 @@ Tags: FACT (console capture, Azahar log or code read), GUESS, OPEN. Rows GD0 to 
 | row | model | what | needs | gate | core 1 |
 |---|---|---|---|---|---|
 | GD1 | Haiku | pm_interp_open: (parent, a, b) hash table, same node ids | none | host iocc (seeded), spot_mac01_fps60_det byte-equal | -1.5 to -3.5 |
-| GD0 | Haiku | census: frame push out of ui (gsub), ui split (hud, mode, win), rxf timer, c1G whole time, c1u and c1v units per class | none | hudfb_drec byte-equal, capture_check | 0 (ui reads about 2 ms) |
-| GD7 | Sonnet | HUD rect record memo: an equal NdHudRec plus equal entry state copies its last stream block and skips direct, emit, snap, alt | GD0 c1x mode, c1v mode; NATIVE17 (alt) | hudfb_drec, spot_mac01_drec byte-equal; census `hmemo diff 0` | -0.8 to -2 |
+| GD0 | Haiku | census c1G, c1u (merged ff6e9cc1ea) | none | done | 0 |
+| GD0B | Haiku | census 2: frame push out of ui (gsub), ui split (hud, mode, win), rxf timer, c1v alt units per class | none | hudfb_drec byte-equal, capture_check | 0 (ui reads about 2 ms) |
+| GD7 | Sonnet | HUD rect record memo: an equal NdHudRec plus equal entry state copies its last stream block and skips direct, emit, snap, alt | GD0B c1x mode, c1v mode; NATIVE17 (alt) | hudfb_drec, spot_mac01_drec byte-equal; census `hmemo diff 0` | -0.8 to -2 |
 | GD2 | Haiku | execute_render_tasks: sort on a local key array; memo of the order when all dist equal | c1g task > 0.5 (FACT met) | 2 drec benches, self-check `gdsort bad 0` | -0.2 to -0.4 |
-| GD4 | Haiku | group models: child render mode and texture id from a per-map table, no Model copy | GD0 task split | 2 drec benches | 0 to -0.3 |
+| GD4 | Haiku | group models: child render mode and texture id from a per-map table, no Model copy | GD0B task split | 2 drec benches | 0 to -0.3 |
 | GD6 | Sonnet | fixed setter blocks (camera, entity, sprite setup) replayed by the recorder | GD0 c1u (NATIVE17 agreed, 4 conditions) | 4 drec benches, census `gdblk diff 0` | -1 to -2.5 |
 Total GD1, GD2, GD4, GD6, GD7: -3.5 to -8.7 ms core 1 (GUESS), on top of DO1 to DO4. Core 0: 0 (GD rows keep the stream bytes).
 Why Sonnet (GD6, GD7): the memo key must hold every input of the record; the census names missing fields (a design loop, as DO1).
@@ -68,8 +69,8 @@ Why Sonnet (GD6, GD7): the memo key must hold every input of the record; the cen
 - L1: GD1 replaces a 7.8 KB scan per open by 1 to 2 lines. GD2 compares a 1 KB key array. GD7 reads one key and copies one block per hit (sequential).
 
 ## 6. Order and dependencies
-1. GD1 (gated in its worktree) and GD0 now. GD2 now (FACT c1g task 5.19 > 0.5; Haiku page after GD0 merges: it edits model.c only).
-2. A prof-mode capture after GD0 and GD1 merge: c1x gives the real ui split; c1v mode gives the HUD alt units. Then GD7 (page ready on the user's
+1. GD1 (gated in its worktree), GD0 (merged) and GD0B now. GD2 now (FACT c1g task 5.19 > 0.5; Haiku page after GD0B merges: it edits model.c only).
+2. A prof-mode capture after GD0B and GD1 merge: c1x gives the real ui split; c1v mode gives the HUD alt units. Then GD7 (page ready on the user's
    Sonnet yes and NATIVE17's yes for the alt record copy), GD4 by the task split, GD6 by c1u.
 
 ## 7. Risks and fallbacks

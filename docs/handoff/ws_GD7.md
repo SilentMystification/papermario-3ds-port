@@ -1,10 +1,10 @@
 # ws_GD7 (Sonnet): HUD rect record memo: an unchanged HUD rect copies its last stream block (GAMEDRAW row 7)
-Designer: oracle NATIVE18 (plan_gamedraw.md 1.4, 4). Worktree build3ds/wt/GD7, branch GD7. PM_ROW=GD7 PM_LANE=GD7. Start: main after GD0 merges.
+Designer: oracle NATIVE18 (plan_gamedraw.md 1.4, 4). Worktree build3ds/wt/GD7, branch GD7. PM_ROW=GD7 PM_LANE=GD7. Start: main after GD0B merges.
 WAIT: start only on the user's Sonnet yes and oracle NATIVE17's yes for the alt record copy (nd_rec.c is its recorder). Do not edit nd_rec_alt or nd_rec_model.
 Why Sonnet: the memo key must hold every input of the HUD rect path; the census names missing fields and the coder adds them (a design loop, as ws_DO1).
 Objective: the status bar draws about 12 HUD rects per step with the same NdHudRec each step. Each runs hud_rect_direct, hud_rect_emit, nd_snap_pso (a full
 NdDs copy and a snap build) and nd_rec_alt (its units through nd_rec_nr). A hit copies the last block instead. Counter: console c1x mode and c1v mode
-(GD0 lines), core 1 busy; GUESS -0.8 to -2 ms per step. Stream bytes unchanged.
+(GD0B lines), core 1 busy; GUESS -0.8 to -2 ms per step. Stream bytes unchanged.
 ## Facts (FACT code read)
 - The path: src/hud_element.c:873-879 (hud_rect_direct :472, hud_rect_emit :285 into a static 1024-word buffer, then nd_dir_rec_alt or nd_rec_alt).
   nd_dir_rec_alt (3ds/src/nd_direct.c:257) = nd_snap_pso (nd_snap.c:124-131, reads all of nd_ds) + nd_rec_alt (nd_rec.c:502-514).

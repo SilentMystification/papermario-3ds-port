@@ -13,7 +13,7 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 ## Open work (order)
 1. MSNAP2 and PROF3 merged (MSNAP2: snn 19572 to 3957, spot_mac01 f201). Capture 1 (plan_60fps.md section 5 words, prof mode, no phase=on) reads c1g.
    The first capture 1 ran with phase=on: s0, all timers 0.00 (live_cap1_170.txt). The push of the retry failed (cap1b is the same run).
-2b. GAMEDRAW (oracle NATIVE18): plan_gamedraw.md. GD1 gated in its worktree; ws_GD0 (census: gsub out of ui, ui split, rxf, c1G, c1u, c1v), ws_GD7 (HUD rect memo, Sonnet, WAIT user and NATIVE17). c1g ui 7.98 is mostly the inline frame walk of sampled steps.
+2b. GAMEDRAW (oracle NATIVE18): plan_gamedraw.md. GD1 gated in its worktree; GD0 merged; ws_GD0B (census 2: gsub out of ui, ui split, rxf, c1v), ws_GD7 (HUD rect memo, Sonnet, WAIT user and NATIVE17). c1g ui 7.98 is mostly the inline frame walk of sampled steps.
 2. DRAWOBJ (user yes 20 Nov): plan_drawobj.md, pages ws_DO0 (Haiku, gst.txt state hash tool) and ws_DO1 (Sonnet, model record memo).
    The user reads plan_drawobj.md before a DO coder starts. DO2 to DO4 pages after DO0 merges (DO3 needs gst). DO5 needs the user.
 3. plan_perf.md section 11 rows C1, C3 (= DO1), C4 (= DO4), K1, K2 (= DO3): pick by the capture 1 numbers. Content cuts: none unless the user decides.
