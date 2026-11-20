@@ -166,9 +166,6 @@ typedef struct NdC0 {
     const void* timg;
     const void* tlut;
     int tlut_n;
-    int tile_x0, tile_y0;
-    float tile_fx, tile_fy;
-    int cur_tile;
     uint32_t segbase[16];
     NdTst tst1;
     NdTd td[2];

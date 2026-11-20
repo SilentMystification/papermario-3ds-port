@@ -93,10 +93,10 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
 
 /* Tile 0 = d: the state nd_tsz_set leaves for the bind (origin, quarter texel offsets, the repeated-load record) and the bind. */
 int nd_direct_tex(const NdBindDesc* d) {
-    nd_c0.tile_x0 = d->x0;
-    nd_c0.tile_y0 = d->y0;
-    nd_c0.tile_fx = (float)(d->sz[0] & 3) * 0.25f; /* PT38 */
-    nd_c0.tile_fy = (float)(d->sz[1] & 3) * 0.25f;
+    nd_bo.x0 = d->x0;
+    nd_bo.y0 = d->y0;
+    nd_bo.fx = (float)(d->sz[0] & 3) * 0.25f; /* PT38 */
+    nd_bo.fy = (float)(d->sz[1] & 3) * 0.25f;
     tsz_last.ok = 0;
     tsz_last.src = (const u8*)d->src; tsz_last.fmt = d->fmt; tsz_last.siz = d->siz; tsz_last.w = d->w; tsz_last.h = d->h;
     tsz_last.stride = d->stride; tsz_last.pal = d->pal; tsz_last.pal_n = d->pal_n;
@@ -114,8 +114,8 @@ void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     gp3_t0_surv();
     pm_tex_size(&tw, &th);
     {
-        float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)nd_c0.tile_x0 - nd_c0.tile_fx) / (float)tw;
-        float t0 = ((float)(s16)(hs & 0xffff) / 32.f - (float)nd_c0.tile_y0 - nd_c0.tile_fy) / (float)th;
+        float s0 = ((float)(s16)(hs >> 16) / 32.f - (float)nd_bo.x0 - nd_bo.fx) / (float)tw;
+        float t0 = ((float)(s16)(hs & 0xffff) / 32.f - (float)nd_bo.y0 - nd_bo.fy) / (float)th;
         float dsdx = (float)(s16)(hd >> 16) / 1024.f;
         float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
         float width = (float)(xh - xl) / 4.f;
@@ -129,7 +129,7 @@ void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
 
 void nd_direct_end(void) {
     ens_clear();
-    nd_c0.cur_tile = -1;
+    nd_bo.cur = -1;
     nd_dq_on = 0;
     nd_sr_forget();
     gv_epoch++; /* the ops of the stream path each raise it: the first triangle after this draw takes its state again */
@@ -173,8 +173,8 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
     dual_bind();
     pm_tex_size(&tw, &th);
     {
-        const float s0 = ((float)(s16)s / 32.f - (float)nd_c0.tile_x0 - nd_c0.tile_fx) / (float)tw;
-        const float t0 = ((float)(s16)t / 32.f - (float)nd_c0.tile_y0 - nd_c0.tile_fy) / (float)th;
+        const float s0 = ((float)(s16)s / 32.f - (float)nd_bo.x0 - nd_bo.fx) / (float)tw;
+        const float t0 = ((float)(s16)t / 32.f - (float)nd_bo.y0 - nd_bo.fy) / (float)th;
         const float dsdx = (float)(s16)dsdx_ / 1024.f;
         const float dtdy = (float)(s16)dtdy_ / 1024.f;
         const float width = (float)(xh - xl) / 4.f;

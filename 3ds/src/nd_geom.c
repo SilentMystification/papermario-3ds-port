@@ -114,7 +114,7 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o, const NdGv
     in.shs = ND_BSH(st)[0]; in.sht = ND_BSH(st)[1];
     in.tex_on = gc->tex_on; /* NC0V */
     in.vp[0] = vp_sx; in.vp[1] = vp_sy; in.vp[2] = vp_tx; in.vp[3] = vp_ty;
-    in.tile_x0 = nd_c0.tile_x0; in.tile_y0 = nd_c0.tile_y0; in.tile_fx = nd_c0.tile_fx; in.tile_fy = nd_c0.tile_fy;
+    in.tile_x0 = nd_bo.x0; in.tile_y0 = nd_bo.y0; in.tile_fx = nd_bo.fx; in.tile_fy = nd_bo.fy;
     in.fogmix = fogmix_on && (geo & G_FOG);
     in.zc_ok = 0; in.za = 1.f; in.zb = 0.f;
     if (in.fogmix) in.zc_ok = pm_gpu_gv_zcoef(&in.za, &in.zb);

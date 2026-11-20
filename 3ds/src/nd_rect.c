@@ -155,7 +155,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
             pm_gpu_tex_rect(xs, ys, xs + cw - 1, ys + ch - 1, 0.f, 0.f, (float)cw / (float)tw, (float)ch / (float)th);
         }
     }
-    nd_c0.cur_tile = -1; /* the bound texture is the composite */
+    nd_bo.cur = -1; /* the bound texture is the composite */
     ens_clear();
     return 1;
 }
@@ -187,11 +187,11 @@ __attribute__((noinline)) static void nd_texrect_copy_span(int xl, int yl, int x
 /* BG1 cause 3: a NOMASK tile (mask 0) clamps at its lower edge, as the RDP does. The end is the tile lrs (10.2, inclusive) plus one texel, minus the uls part. */
 __attribute__((noinline)) static void nd_texrect_copy_clamp(int xl, int yl, int xh, int yh, int rtile, int tw, int th, float s0, float t0, float* s1, float* t1) {
     float s1pre = *s1, t1pre = *t1;
-    if (!ND_BWR(rtile)[2] && *s1 > s0) { float smax = ((float)(ND_BSZ(rtile)[2] >> 2) + 1.f - (float)nd_c0.tile_x0 - nd_c0.tile_fx) / (float)tw; if (*s1 > smax) *s1 = smax; }
-    if (!ND_BWR(rtile)[3] && *t1 > t0) { float tmax = ((float)(ND_BSZ(rtile)[3] >> 2) + 1.f - (float)nd_c0.tile_y0 - nd_c0.tile_fy) / (float)th; if (*t1 > tmax) *t1 = tmax; }
+    if (!ND_BWR(rtile)[2] && *s1 > s0) { float smax = ((float)(ND_BSZ(rtile)[2] >> 2) + 1.f - (float)nd_bo.x0 - nd_bo.fx) / (float)tw; if (*s1 > smax) *s1 = smax; }
+    if (!ND_BWR(rtile)[3] && *t1 > t0) { float tmax = ((float)(ND_BSZ(rtile)[3] >> 2) + 1.f - (float)nd_bo.y0 - nd_bo.fy) / (float)th; if (*t1 > tmax) *t1 = tmax; }
     if (PMDL("bgclamp") && pm_frame_count() >= 100u && pm_frame_count() <= 160u) {
         static int nbc = 0;
-        if (nbc < 400) { nbc++; pm_log_d("bgclamp f%u rect %d,%d-%d,%d s %.2f>%.2f t %.2f>%.2f tex %dx%d mask %u %u lrs %d lrt %d ux %d fx %.2f", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, s1pre * tw, *s1 * tw, t1pre * th, *t1 * th, tw, th, (unsigned)ND_BWR(rtile)[2], (unsigned)ND_BWR(rtile)[3], ND_BSZ(rtile)[2], ND_BSZ(rtile)[3], nd_c0.tile_x0, nd_c0.tile_fx); }
+        if (nbc < 400) { nbc++; pm_log_d("bgclamp f%u rect %d,%d-%d,%d s %.2f>%.2f t %.2f>%.2f tex %dx%d mask %u %u lrs %d lrt %d ux %d fx %.2f", pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, s1pre * tw, *s1 * tw, t1pre * th, *t1 * th, tw, th, (unsigned)ND_BWR(rtile)[2], (unsigned)ND_BWR(rtile)[3], ND_BSZ(rtile)[2], ND_BSZ(rtile)[3], nd_bo.x0, nd_bo.fx); }
     }
 }
 static unsigned char rc_sn; /* NDR1C: the rectangle in progress has a live snap */
@@ -257,8 +257,8 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { /
     /* V12b: the tile shift scales a texrect coordinate too (bulb glow uses shift 1 1). It applies after the interpolation, so it scales the step as well. */
     float ms = shift_mul(ND_BSH(rtile)[0]);
     float mt = shift_mul(ND_BSH(rtile)[1]);
-    float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)nd_c0.tile_x0 - nd_c0.tile_fx) / (float)tw;
-    float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)nd_c0.tile_y0 - nd_c0.tile_fy) / (float)th;
+    float s0 = ((float)(s16)(hs >> 16) / 32.f * ms - (float)nd_bo.x0 - nd_bo.fx) / (float)tw;
+    float t0 = ((float)(s16)(hs & 0xffff) / 32.f * mt - (float)nd_bo.y0 - nd_bo.fy) / (float)th;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f * ms;
     float dtdy = (float)(s16)(hd & 0xffff) / 1024.f * mt;
     float width = (float)(xh - xl) / 4.f;
