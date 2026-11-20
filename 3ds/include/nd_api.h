@@ -93,6 +93,8 @@ void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uin
 uint32_t* nd_alt_open(void); void nd_alt_close(uint32_t* br, uint32_t* ab); extern unsigned char nd_alt_raw_on; /* NAT5F, nd_rec.c and nd_ds.c, core 1 */
 void nd_alt_eput(uint32_t w0, uint32_t w1); void nd_alt_et_begin(void); uint32_t* nd_alt_et_end(uint32_t end); /* NAT5A, nd_rec.c, core 1 */
 uint32_t* nd_alt_call(uint32_t w0, uint32_t w1); void nd_alt_call_end(uint32_t* blk); /* NAT5N */
+#define ND_C6_MARK ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16) /* NAT6B */
+void nd_cpy_run(const uint32_t* rec); void nd_alt_mark(unsigned rc); /* NAT6B: copy state records (nd_walk.c, core 0), the slot patch (nd_rec.c, core 1) */
 struct NdDs; struct NdDs* nd_alt_scr_on(void); void nd_alt_scr_off(void); void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an); void nd_alt_run_x(const uint32_t* ab); /* NAT5T */
 void nd_alt_run(const uint32_t* ab); /* nd_rec.c, core 0, NAT5R: the alt range [ab[0], ab[1]) of a record (a spare unit) */
 void nd_dir_rec_alt(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an); /* nd_direct.c, NAT5R */

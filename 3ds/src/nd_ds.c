@@ -14,6 +14,7 @@
 #include "macros.h"
 #include "nd_fs.h"
 unsigned char nd_alt_raw_on; __attribute__((weak)) void nd_alt_put(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; } /* NAT5F */
+__attribute__((weak)) void nd_alt_mark(unsigned rc) { (void)rc; } /* NAT6B */
 __attribute__((weak)) void nd_alt_eput(uint32_t w0, uint32_t w1) { nd_alt_put(w0, w1); } __attribute__((weak)) void nd_alt_et_begin(void) {} /* NAT5A */
 __attribute__((weak)) uint32_t* nd_alt_call(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; return NULL; } __attribute__((weak)) void nd_alt_call_end(uint32_t* b) { (void)b; } /* NAT5N */
 unsigned char nd_lsc_on; __attribute__((weak)) void nd_lsc_unit(uint32_t w0) { (void)w0; } /* NCONV1D1: the list units of a snap collector (nd_snap.c) */ __attribute__((weak)) void nd_lsc_tris(unsigned n) { (void)n; } /* NREC4 */ __attribute__((weak)) void nd_lsc_ep(void) {} /* NCONV2C */
@@ -426,6 +427,7 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
             if (w0 & 1u) return;
         } else {
             const int lost = s->sc_lost, dirty = s->sc_dirty; const unsigned ch = nd_ds_apply(s, w0, w1);
+            if (nd_alt_raw_on) nd_alt_mark(nd_ds_ep_rule(w0, ch, lost, dirty)); /* NAT6B */
             if (nd_lsc_on) { if (nd_ds_ep_rule(w0, ch, lost, dirty)) nd_lsc_ep(); nd_lsc_unit(w0); } /* NCONV2C */
         }
     }
@@ -454,7 +456,7 @@ void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(ui
  * render mode pairs rm (nrm) go through unit. Left out: the matrix loads, the ranges (R11) and the billboard matrix (R8). */
 __attribute__((weak)) uint32_t* nd_alt_open(void) { return NULL; } __attribute__((weak)) void nd_alt_close(uint32_t* br, uint32_t* ab) { (void)br; (void)ab; } __attribute__((weak)) void nd_alt_lst(unsigned end) { (void)end; } /* NAT5B */
 static unsigned char dm_on; /* NAT5B */
-static void dm_u(NdDs* s, uint32_t w0, uint32_t w1, NdDsUnitFn unit) { if (dm_on) nd_alt_put(w0, w1); if (unit) unit(s, w0, w1); else nd_ds_apply(s, w0, w1); } /* NAT5B: put, then apply */
+static void dm_u(NdDs* s, uint32_t w0, uint32_t w1, NdDsUnitFn unit) { if (!dm_on) { if (unit) unit(s, w0, w1); else nd_ds_apply(s, w0, w1); return; } const int lost = s->sc_lost, dirty = s->sc_dirty; nd_alt_put(w0, w1); nd_alt_mark(nd_ds_ep_rule(w0, nd_ds_apply(s, w0, w1), lost, dirty)); } /* NAT5B; NAT6B: unit is nd_ds_unit = nd_ds_apply */
 #define T(id, a, b) dm_u(s, ND_FS_W0(id, a), (b), NULL) /* NAT5B */
 #define FOGP(x) T(ND_FS_MW, ND_FS_MW_FOG << 16, x)
 void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, NdDsUnitFn unit, uint32_t* ab) {
