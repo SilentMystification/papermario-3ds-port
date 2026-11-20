@@ -54,7 +54,7 @@ Tags: FACT (console capture, Azahar log or code read), GUESS, OPEN. Rows GD0 to 
 | GD3 | Haiku | render_models: cull and depth memo per model (camera matrix bytes, center, flags equal) | c1g mdl > 0.4 | 2 drec benches, `gdcull bad 0` | -0.1 to -0.3 still camera, 0 moving |
 | GD4 | Haiku | group models: child render mode and texture id from a per-map table, no Model copy | c1g task after GD2 > 0.5 | 2 drec benches | 0 to -0.3 |
 | GD5 | Haiku | player and sprite component matrix memo (same float inputs: reuse the Mtx) | c1g ply + npc > 0.3 | spot_mac01_drec, entcape_kmr03_drec | -0.05 to -0.3 |
-| GD6 | Sonnet | fixed setter blocks (camera, entity, sprite, HUD setup) get a block id; the recorder replays a block with equal words and entry state | GD0 c1u, NATIVE17 D2 | 4 drec benches, census `gdblk diff 0` | -1 to -2.5 |
+| GD6 | Sonnet | fixed setter blocks (camera, entity, sprite, HUD setup) get a block id; the recorder replays a block with equal words and entry state | GD0 c1u (NATIVE17 agreed, 4 conditions) | 4 drec benches, census `gdblk diff 0` | -1 to -2.5 |
 Total GD1 to GD6: -2.4 to -7.3 ms core 1 (GUESS), on top of DO1 to DO4 (core 1 -3.5 to -5, plan_drawobj.md). Core 0: 0 (GD rows keep the stream bytes).
 
 ## 4. Change detection (the retained form)
@@ -65,6 +65,9 @@ Total GD1 to GD6: -2.4 to -7.3 ms core 1 (GUESS), on top of DO1 to DO4 (core 1 -
   visible bit and the distance. Reset at clear_render_tasks (model.c:4030-4047, map load).
 - GD4: the render mode property and the texture id of a group child are map data (shape file, gCurrentModelTreeNodeInfo): fill once per map load.
 - GD5: per component the float inputs of spr_transform_point and the matrix chain. GD6: the recorder compares block words and entry state (as DO1).
+- GD6 conditions (agreed with oracle NATIVE17, plan_drawobj.md section 6): (1) a replayed block gives the same stream bytes and the same nd_ds after it as
+  the unit path (census `gdblk diff 0`); (2) a block holds state setters only, no TRI or RECT unit; (3) the entry state compare includes sc_lost, sc_dirty
+  and the stream shadow; (4) a block never spans a CALL or a model record. GD6 does not edit nd_rec_model (DO1 works there). ws_GD6 states all 5.
 - DO5 (skip the record fill, plan_drawobj.md): drop. The fill is GUESS 1 us per model; a check of its 12 inputs costs the same.
 
 ## 5. Memory and cache
@@ -76,7 +79,7 @@ Total GD1 to GD6: -2.4 to -7.3 ms core 1 (GUESS), on top of DO1 to DO4 (core 1 -
 ## 6. Order and dependencies
 1. GD1 and GD0 now (no c1g dependency): ws_GD1.md, ws_GD0.md. Different files: they run in parallel.
 2. A console capture in prof mode (plan_60fps.md section 5 words) after GD0 merges. Then GD2, GD3, GD4, GD5 by the thresholds in section 3.
-3. GD6 after GD0 names the classes with the most units, and after oracle NATIVE17 agrees the recorder side (plan_perf.md D2 owner).
+3. GD6 after GD0 names the classes with the most units. Recorder side agreed by oracle NATIVE17 under the 4 conditions of section 4.
 
 ## 7. Risks and fallbacks
 - GD1: an occurrence count that differs changes the key frame pairs. The iocc host test checks ids against the old scan (overflow and depth caps in).
