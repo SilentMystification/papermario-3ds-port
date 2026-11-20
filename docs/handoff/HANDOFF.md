@@ -1,21 +1,39 @@
 # HANDOFF (orchestrator, overwritten at each handoff)
 
-State: main at the last commit (git log). The orchestrator chain changed: the orchestrator talks to the user, the dispatcher runs all agents.
-Start: read this file, docs/handoff/orchestrator_rules.md (its CORE block is printed every turn by a hook), CLAUDE.md, docs/handoff/dispatcher.md, docs/handoff/push_runbook.md and the memory index. Then `date`, ListAgents.
+State at the handoff: 20 Nov, about 01:20, main near 77672ca2ab (`git log`). Goal of the session: a fully native draw path (core 0 runs no N64-style state machine). The old goal (remove the display list system) is done.
+Start: read this file, docs/handoff/orchestrator_rules.md (its CORE block is printed every turn by a hook), CLAUDE.md, docs/handoff/plan_native.md, docs/handoff/oracle_handoff.md, docs/handoff/merge_protocol.md, docs/handoff/push_runbook.md and the memory index. Then `date`, ListAgents, `git log --oneline -15`, `git status`, build3ds/out/dispatch_state.md.
 
-## First actions
-1. NO dispatcher agent exists any more. The orchestrator starts the coaches (cluster leads, one per topic), design oracles and mergers itself and keeps build3ds/out/dispatch_state.md (duties: docs/handoff/dispatcher.md). Chat: one line per merge, fault or decision.
-2. SATURATE every turn: quota 5 coders, a lead writes pages ahead from branch data. Related tasks go to the lead of that topic (SendMessage resumes it), unrelated tasks to a new lead.
-3. Read build3ds/out/dispatch_state.md and `git log` first, then ListAgents. Open cleanup (deletions only on the user's word): stale plans in docs/handoff, dead tools in 3ds/tools, duplicate memory notes, unmerged branches, leftover build3ds/wt folders (Permission denied).
-4. No console check until the last row (S9GATE). Push only on the user's word.
+## Numbers (FACT, c0gate.py: calls / interp / state; target 0 / 0 / 0)
+- Start of the plan 127 / 37 / 23. Main 9576c03383: 90 / 34 / 23. `listcen` totals all 0.
+- `c0gate` counts calls from the SOURCE TREE it runs in: take the base value from a clean `git archive` of the base commit, never from a stale ELF (build3ds/lane-main is stale).
+- Old O3DS capture (build 7079, build3ds/hw_o3ds_live.txt, frame f1618, mac_01 0 0 200): core 0 wks 52.60 ms incl 13.2 ms prof overhead (clean 39.40), core 1 lgms 40.41, wwait 0.54, fts 53.02 (clean 42.00); walk nd 22.04: rest 4.74, native submit 4.19, ent 3.69, comb 3.24, rec 2.45, raw 1.93, tex 1.00. UD-N1 is P1 (pure decisions on core 1 at snap time) because wwait is below 2 ms.
+- Build 9576c03383 is READY (binchk OK, key b31fce9e47d4) and waits for the user's console word. Push: `powershell -NoProfile -File 3ds/go.ps1 push o|n -ip <addr> -NoBuild -Seconds 90 -Profile prof -GameDebug "warp=mac_01:0 pos=0:0:200 profdisk=1"` as a background job, then `python 3ds/tools/pm_logrecv.py --ip <addr> --label <o3ds|n3ds> --timeout 40 --retry 10` while the game runs (FTP pull fails while the game runs). O3DS .170 has no core 2: the core2 lines are the core 1 thread. N3DS .224, O3DS XL .131. Rebuild main first if main moved (sh 3ds/build.sh in the background, binchk, key check). Capture steps: capture_NAT8.md (NATIVE7) if committed, else capture_NATM.md.
 
-## Work state
-Goal: remove the display list system. Done only when `elfgate.py` prints `func 0 data 0 gfxnames 0` and all `listcen.py` totals are 0 (`sh 3ds/tools/epic_status.sh`). Plan: plan_finish.md. Oracle facts: oracle_handoff.md.
-Ready pages on main: NDR0G2 (starts now), then NDR1C, NDR2A, NDR2B || NDR2C || NDR4, NDR2D. NCONV1D needs a design oracle first, then NCONV2, NREC1A-5 and the DEL rows are written.
-User decisions: expected-diff gate for NDR0G2 and NDR1C (option A), cap 5 coders, Sonnet rows approved (NMDL0 NTGT NIMGM MAPCONV NCONV1D), UD4 keep nd_comb_core on core 1, plan scope = end proof only, dschk_base.txt write allowed for every NST2 row, Azahar runs need no permission.
-Parked: ASSETFREE, CIA, QTM. Build pipeline: build_pipeline.md (repeat build 4 s, fresh lane 18 s, cold 93 s). Merge: merge_protocol.md (a Haiku merger).
+## Plan and pages (docs/handoff)
+- plan_native.md: W1 to W5. Done: W1, W2, W3 (NAT4A-K), W4 rows NAT5C, NAT5E, NAT5B, NAT5A, NAT5R, NAT5F, NAT5N, NAT5W, NAT5S, NAT5Y. 17+ merges since 19 Nov. BASEREUSE (base copy at merge) is merged.
+- Open rows in order: NAT5T (tile units, ND_FS_TXR, core 0 texture model deleted; interp -2, calls about -4): code is in worktree build3ds/wt/NAT5T (commits afb4f80aa4, b0a201ac85 on branch NAT5T), the gate (full bases, rowloop, c0gate) was running when this file was written. Then NAT5G (page ws_NAT5G.md, DRAFT: refresh the line facts after the NAT5T merge; one page for geometry and control records), then NAT6 (page not written: design in plan_native.md W5 row; deletes nd_ws, F3 globals, interpreter; expect epcut DIFFs under UD-N5), then the final even-load capture.
+- NATIVE6 pages NAT7x (rows that do not touch NAT5T files) and NATIVE7 pages ws_NAT8A (prof counters for core 1 snap and alt-put cost) and capture_NAT8.md: check `ls docs/handoff | grep -E "^(ws_|capture_)"`. Nothing was started from them in the previous session (user order: no more new work in that chat).
 
-## User rules that cost time before
-- A user question is answered first. A state the user reports is fact. No double posts (the Stop hook only logs now). Short chat: one line per merge, no echo of notices.
-- ASD-STE100 style in chat: sentences of 20 words or fewer, no semicolons, no agreement or apology phrases.
-- No push without the user's word. No AskUserQuestion popup for a push. Hooks block the phrases `debug line` and `log line` in agent messages and block sleep loops.
+## User decisions (all yes) and positions
+UD-N1 P1. UD-N2 particle vprim expected-diff. UD-N3 console capture. UD-N4 static GPU pool. UD-N5 epcut rule: cuts only where core 1 marks, expected-diff gate (a DIFF passes only in frames that log an `epcut f<n>` line). UD-N6 glyph fallback binds the tiles it just loaded (a DIFF passes only with a `glyphalt f<n>` line at or before the first DIFF frame; merged in NAT5Y).
+No feature toggle (CLAUDE.md rule 7): the user asked for placement to be easy to change; the answer is that pure decision functions run on either core from their call sites (NAT7 rows later if the even-load gate needs it). The user wants work spread about evenly between the two cores and judged by frame time: after each wave compare core 0 `wks` with core 1 `lgms` (core 1 more than about 20 percent above core 0: move pure decisions to core 0 at their call sites).
+
+## How the orchestrator works now (no dispatcher agent)
+- The orchestrator starts oracles (Opus, type oracle), coders (type coder; Sonnet for big rows, Haiku for closed edits) and Haiku mergers (type general-purpose) itself. Label every Agent call `[Model role] ROW - task`. Chat: one line per merge, fault or decision; ASD-STE100; no agreement or apology phrases; FACT/GUESS/OPEN tags; user question first; status table with last/now/delta from build3ds/out/epic_last.txt on request.
+- Keep build3ds/out/dispatch_state.md current: the facts hook counts its `RUN` lines (one per running agent). Put state in files, not in the ScheduleWakeup prompt (the prompt text goes stale).
+- Page flow: an oracle writes a closed page (files, lines, before:/after: blocks, gate values, oracle id in the header) and commits it at once. An untracked file in docs/handoff blocks `merge_row.sh` (it refuses): ask the oracle to commit.
+- Coder order (put in every coder prompt): the bench queue grants 2 Azahar slots (wait in the queue, run jobs in the background with a tool timeout); `PM_AZT_BASE_SLOT=2` if a base fails with "warm 0"; use `bench.py base <bench>` as the page says (the tool copies bases when inputs are equal; never copy a base by hand); run the rowloop only from a clean committed worktree (a dirty run refuses adoption); c0gate base from a clean git archive of the branch start commit; end a turn with a job running with a last line `waiting for <job>`; `git add -f` runs.jsonl and the out files in the gate commit (the gate commit deletes the page); if main moved while the coder worked, merge main into the branch, recount `3ds/tests/lkey/allow.txt` with `python 3ds/tools/lkey_cen.py` (keep both sides) and rerun the gate. Design questions and DIFF lines go to the oracle named in the page by SendMessage with its agent id (names do not resolve). Budget (8 Azahar starts): the orchestrator resets it once per designer correction: from the worktree `powershell -NoProfile -File 3ds/run_azahar.ps1 -ResetBudget ROW`.
+- A coder shown as "completed" with the note "waiting on its own background work" may be idle: SendMessage it with an order to resume.
+- Merge: pre-check `git merge-tree --write-tree --name-only HEAD <branch>` (a modify/delete conflict on the ws page: `git rm` the page on main and commit first, step 2 of merge_protocol.md). Haiku merger prompt: follow merge_protocol.md, no other git command in main while merge_row.sh runs, on exit 5 (index.lock race) finish steps 5 to 8 by hand in a background job (commit runs.jsonl, `wt_gc.sh --apply --only ROW`, `git branch -d ROW`, `postmerge_bg.sh --queue HEAD`, `listcen.py`), report the base adopt line verbatim. An expected-diff merge passes a message file with the word `expected-diff` and the evidence as merge_row.sh argument 2. One merger at a time. The directory build3ds/wt/<ROW> often stays on disk after the merge (Permission denied): ignore.
+- If `build3ds/out/postmerge_FAIL.txt` exists the merge lane is stopped: read build3ds/out/post_merge_<hash>.txt, fix the tool fault on main (rule 5), then `sh 3ds/tools/postmerge_bg.sh --queue <hash>`.
+- Hooks block the phrases `log line` and `debug line` in agent messages and block sleep loops and polling.
+- Login: a subagent login timeout killed all agents once. After a restart all old agent ids are dead: start fresh agents.
+
+## Agents at the handoff (ids die with the session)
+Coder NAT5T a5239b56c22e30029 (Sonnet; oracle NATIVE3 a86ed4bedc3a8575e). Oracles NATIVE3 a86ed4bedc3a8575e (owns plan_native.md, oracle_handoff.md, NAT5x, NAT6), NATIVE6 a0b4e9ef29efcb10a (NAT7x), NATIVE7 a9028cf1c5e6272e7 (NAT8A, capture_NAT8). A fresh oracle starts from oracle_handoff.md (NATIVE3 is above 580K tokens: use a fresh oracle).
+
+## Open risks and cleanup
+- Stream memory: alt copies add bytes per record; an `ndc: frame stream full` line stops a gate.
+- NAT5T removes the +1 call that NAT5N added (nd_ntab_run fallback for nd_rec_ndev records) and the +2 from NAT4J skip-state moves go in NAT6.
+- Deletions only on the user's word: stale plans in docs/handoff, dead tools in 3ds/tools, duplicate memory notes, unmerged old branches (BOTHUD CONV2MIX ENTCAPR FPS60FL LOOPT SEEDPROBE1 TSTSHK WALKSRC and others), leftover build3ds/wt folders. Parked: ASSETFREE, CIA, QTM. Build pipeline: build_pipeline.md.
+- Push only on the user's word; no console check is a push without the user.
