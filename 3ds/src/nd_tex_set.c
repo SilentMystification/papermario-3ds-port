@@ -117,11 +117,11 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             nd_ws.tst1.tile_sz[tile][1] = ult;
             nd_ws.tst1.tile_sz[tile][2] = lrs;
             nd_ws.tst1.tile_sz[tile][3] = lrt;
-            if (tile == 1) { tex_tile1(tile, uls, ult, lrs, lrt, r); nd_comb_sync(); } /* S25: a plan that reads TEXEL1 needs tile 1 */
+            if (tile == 1) { tex_tile1(tile, uls, ult, lrs, lrt, r); nd_csync_note(); } /* NCS3 */ /* S25: a plan that reads TEXEL1 needs tile 1 */
             if (tile != 0) return;
             nd_ws.td[0].valid = 0;
             nd_ws.cur_tile = -1; /* GP3: defer pm_tex_load to nd_tile_bind(0) at first draw */
-            if (dual_on) { dual_on = 0; nd_comb_sync(); } /* S25: the plan path is off while the shaded sprite is on */
+            if (dual_on) { dual_on = 0; nd_csync_note(); } /* NCS3 */ /* S25: the plan path is off while the shaded sprite is on */
             if (m1.valid && tex_shaded0(uls, ult)) return;
             m1.valid = 0;
             int x0 = uls >> 2;
@@ -477,7 +477,7 @@ __attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
                 nd_ws.tile_fx = nd_ws.tile_fy = 0.f;
                 if (load_shaded_sprite()) {
                     dual_on = 1;
-                    nd_comb_sync();
+                    nd_csync_note(); /* NCS3 */
                     if (PMDL("shadecen")) shc[2]++;
                     return 1;
                 }

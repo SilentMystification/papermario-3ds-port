@@ -463,7 +463,7 @@ static __attribute__((cold, noinline)) void pr_cen(void) {
 void nd_pbeg_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); pr_v++; if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen(); /* NAT5E: the start of the old parts runner */
     pm_walk_side++; gv_epoch++; dlc_on = 1; gp_prev_op = -1; extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; }
 void nd_pdraw_run(const uint32_t* r) { const NdNDev* t = (const NdNDev*)(uintptr_t)r[0]; if (!nd_part_draw(t)) { if (nd_ls_on) nd_lsr_geo(); nd_geo_units(t->u, t->nu); } } /* NAT5E: one instance list */ /* NATFB2: a refused particle list on the native geometry run */
-void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */
+void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; nd_csync_note(); nd_sr_forget(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */ /* NCS3 */
 /* ENTRYCAP: the device switch entcap (PMDL). A static list without a v2 table logs its walker entry description (nd_walker_desc) once per
  * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 4096 keys. */
 static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {

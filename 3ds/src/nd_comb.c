@@ -285,6 +285,9 @@ void nd_comb_sync(void) {
 int pm_drec_now(void); /* NCS2: pm_gpu.c */
 static __attribute__((cold, noinline)) void bfold_log(void) { static unsigned fr = ~0u; if (pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("bfold f%u", fr); } } /* NCS2 */
 void nd_bfold_note(void) { if (__builtin_expect(pm_drec_now(), 0) && (box_prod && nd_ws.td[1].valid && nd_td_white(&nd_ws.td[0])) != box_folded) bfold_log(); } /* NCS2: the drec marker of the deleted core 0 box fold (UD-N5); NWS1 deletes it */
+static __attribute__((cold, noinline)) void ncs3_log(const char* k) { static unsigned fr[2] = { ~0u, ~0u }; const unsigned i = k[0] == 'c'; if (pm_frame_count() != fr[i]) { fr[i] = pm_frame_count(); pm_log_evt("%s f%u", k, fr[i]); } } /* NCS3 */
+void nd_csync_note(void) { if (__builtin_expect(pm_drec_now(), 0) && (!sc_ok || sc_sig_now() != sc_sig)) ncs3_log("csync"); } /* NCS3: the old nd_comb_sync would act here (UD-N5); NWS1 deletes it */
+void nd_rndw_note(void) { if (__builtin_expect(pm_drec_now(), 0)) ncs3_log("rndw"); } /* NCS3: a draw with no live snap; the old nd_rnd_sync ran here (UD-N5); NWS1 deletes it */
 
 float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
 int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
