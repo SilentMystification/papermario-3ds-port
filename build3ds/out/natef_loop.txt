@@ -1,0 +1,8 @@
+LOOP NATEF host rc 0, build rc 0, 146 s
+ND HOST TESTS PASS
+STAGE key-inputs 3 s STAGE slot-wait 0 s STAGE gen 32 s STAGE key 0 s STAGE asset-check 0 s STAGE romfs 1 s STAGE sync 0 s STAGE configure 0 s STAGE compile-link 11 s STAGE copy-out 2 s STAGE tail 2 s 
+
+cmp entcape_kmr03_drec: 1/1 byte-equal 
+cmp fxparts_drec: 1/1 byte-equal 
+LOOP TIME host+build 146 s, run+cmp 49 s, total 195 s
+LOOP PASS

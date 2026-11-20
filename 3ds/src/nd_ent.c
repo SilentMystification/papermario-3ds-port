@@ -328,7 +328,7 @@ __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSeg* s) {
 extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal with blend (two native passes at the close) */
 unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
 
-static unsigned ent_cf[3]; /* NAT5A: copy runs, fw runs */
+static unsigned ent_cf[3]; /* NAT5A: copy runs; NATEF: pieces with no cut */
 void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (frame end, pm_cen_lines) */
     static unsigned next = 300u;
     unsigned f = pm_frame_count();
@@ -344,7 +344,7 @@ void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (fr
     pm_log_w("entnat segwhy lit %u fog %u room %u mtx %u | dlc_seg code (0 none, 1 + gv why, 9 grange) 0:%u 1:%u 2:%u 3:%u 4:%u 5:%u 6:%u 7:%u 8:%u 9:%u", ent_sw[1], ent_sw[2], ent_sw[3], ent_sw[4], ent_sw[5], ent_sw[6], ent_sw[7], ent_sw[8], ent_sw[9], ent_sw[10], ent_sw[11], ent_sw[12], ent_sw[13], ent_sw[14]);
     { extern void pm_gpu_nraw_why(unsigned* o); unsigned nw[10]; pm_gpu_nraw_why(nw); extern unsigned pm_gpu_cmd_split_n(void); extern void pm_gpu_fb2_stat(unsigned* o); unsigned fb[3]; pm_gpu_fb2_stat(fb); pm_log_w("nrawwhy f%u zmark %u tex1 %u unit0 %u tmpl %u cmdsplit %u tmplhi %u evict %u", f, nw[4], nw[6], nw[8], nw[9], pm_gpu_cmd_split_n(), fb[0], fb[1]); }
     pm_log_w("gdl f%u lists %u native %u dyn %u refuse %u skip %u draws native %u walker %u", f, gdl_c.lists, gdl_c.nat, gdl_c.dyn, gdl_c.ref, gdl_c.skip, ent_c.segn, ent_c.segi);
-    pm_log_w("entcopy f%u copy %u fw %u", f, ent_cf[0], ent_cf[1]); /* NAT5A */
+    pm_log_w("entcopy f%u copy %u nocut %u", f, ent_cf[0], ent_cf[1]); /* NAT5A */
     if (entchk_on()) pm_log_w("entsegcmp f%u segs %u eq %u diff %u", f, ent_c.cseg, ent_c.ceq, ent_c.cdiff);
 }
 
@@ -403,21 +403,22 @@ int ent_draw(const NdW2* rec, const uint32_t* et) {
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
     ent_c.draws++;
     EntKey* k = ent_lookup(l, rec[1].words.w1);
+    nd_ent_src = 4u; /* NATEF */
     return nd_eg_run(l, k, rec[1].words.w0 | (rec[2].words.w0 << 8), et);
 }
 
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
-static __attribute__((cold, noinline)) void ent_fb_note(const EntKey* k, unsigned why) { static unsigned c[3]; if (why > 2u || c[why] >= 3u) return; c[why]++; pm_log_evt("entfb f%u l %08x why %u nops %u", pm_frame_count(), (unsigned)k->list, why, (unsigned)k->nops); }
-static void ent_run(const EntKey* k, const uint32_t* et, u32 a, u32 b) { /* NAT5A */
+unsigned char nd_ent_src; /* NATEF: the caller of nd_eg_run for the entfb line: 1 nr_call static, 2 nr_call copy, 3 gt_run0, 4 ent_draw */
+static __attribute__((cold, noinline)) void ent_fb_note(const EntKey* k, unsigned why) { static unsigned c[3]; if (why > 2u || c[why] >= 3u) return; c[why]++; pm_log_evt("entfb f%u l %08x why %u nops %u src %u", pm_frame_count(), (unsigned)k->list, why, (unsigned)k->nops, (unsigned)nd_ent_src); } /* NATEF: src */
+static void ent_cut_run(const EntKey* k, const uint32_t* et, u32 a, u32 b) { /* NAT5A; NATEF: the cut slice only, et is never NULL here (nd_eg_run) */
     nd_ent_gbi++;
-    if (et && et[1u + a] && et[1u + b]) { const uint32_t ab[2] = { et[1u + a], et[1u + b] }; ent_cf[0]++; nd_ent_slice(ab); return; }
-    if (et) ent_fb_note(k, 2u); else ent_fb_note(k, 0u);
-    ent_cf[1]++; nd_ent_units((const uint32_t*)(const void*)(k->fw + a), b - a); }
-static void ent_gap(NdSDef* d, const EntKey* k, const uint32_t* et, u32 a, u32 b) { /* S6E: a gap as a compiled range, with the list start and end of nd_ent_units; only when every value unit precedes the statics (the op order) */
+    if (et[1u + a] && et[1u + b]) { const uint32_t ab[2] = { et[1u + a], et[1u + b] }; ent_cf[0]++; nd_ent_slice(ab); return; }
+    ent_cf[1]++; ent_fb_note(k, 2u); } /* NATEF: a bound with no cut (none by the NAT5A cut rule): the piece is not drawn, one log entry */
+static void ent_gap(NdSDef* d, const EntKey* k, const uint32_t* et, u32 a, u32 b) { /* S6E: a gap as a compiled range, with the list start and end of nd_ent_slice; only when every value unit precedes the statics (the op order) */
     if (d && !d->st) d->st = nd_scomp_analyse(d) ? 1u : 2u;
-    ent_run(k, et, a, b); /* DEL1B; NAT5A */
+    ent_cut_run(k, et, a, b); /* DEL1B; NAT5A; NATEF */
     if (d && d->st == 1u && d->nv == d->pre) sr_ok = 0; /* NREC5: the render resync of the old compiled run */
 }
 /* HC8 step 7: the recompile of a changed entity (content hash), the interpreter run of one segment (the fallback loop) are cold: out of line. */
@@ -428,8 +429,8 @@ static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const N
 static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const uint32_t* et, const EntSeg* e) {
     const NdW2* fw = k->fw;
     ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) ent_run(k, et, i, i + 1u); /* DEL1B; NAT5A */
-    if (e->op1 > e->op0) ent_run(k, et, e->op0, e->op1); /* DEL1B; NAT5A */
+    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) ent_cut_run(k, et, i, i + 1u); /* DEL1B; NAT5A; NATEF */
+    if (e->op1 > e->op0) ent_cut_run(k, et, e->op0, e->op1); /* DEL1B; NAT5A; NATEF */
 }
 int nd_eg_run(const NdW2* l, EntKey* k, u32 segid, const uint32_t* et) {
     const unsigned f = pm_frame_count();
@@ -441,7 +442,7 @@ int nd_eg_run(const NdW2* l, EntKey* k, u32 segid, const uint32_t* et) {
     k->ndraw++; k->segid = segid;
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
     if (entchk_on()) { ent_c.nat++; return 0; }
-    if (et && et[0] != k->nops) { ent_fb_note(k, 1u); et = NULL; } /* NAT5A */
+    if (!et || et[0] != k->nops) { ent_fb_note(k, et ? 1u : 0u); ent_c.fb++; return 0; } /* NAT5A; NATEF: no cut table or another count: the caller runs the list */
     nd_ent_in = 1;
     const unsigned lb = nd_ls_ord;
     for (unsigned s = 0; s < k->nseg; s++) {
