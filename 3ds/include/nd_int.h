@@ -272,6 +272,7 @@ unsigned word_5551(unsigned rgba);
 /* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
 void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list);
 void draw_tri(unsigned w);
+void nd_geo_units(const uint32_t* u, unsigned n); /* NATFB, nd_geom.c */
 void gv_params_calc(unsigned tss, NdGvP* o);
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 void lit_freeze(void);

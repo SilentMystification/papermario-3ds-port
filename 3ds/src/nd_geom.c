@@ -439,6 +439,18 @@ int nd_part_draw(const NdNDev* t) {
     return 1;
 }
 
+void nd_geo_units(const uint32_t* u, unsigned n) { /* NATFB: flat geometry units with the arms of nr_geo and the GEOM arm of nr_set (nd_walk.c) */
+    for (const uint32_t* q = u, *e = u + 2u * n; q < e; q += 2) {
+        const unsigned id = q[0] >> 24; const u32 a = q[0] & 0xffffffu, b = q[1];
+        if (q[0] == ND_NOP_A) continue;
+        if (id == ND_FS_END) break;
+        if (id == ND_FS_GEOM) { const u32 g = (nd_ws.geom & a) | b; const int z = (g & G_ZBUFFER) != 0, l = (g & G_LIGHTING) != 0;
+            if (g == nd_ws.geom && pm_gpu_mode_is(z, l)) continue; /* nd_unit_same */
+            pm_gbi_cur_op = id; gv_epoch++; nd_ws.geom = g; pm_gpu_set_mode(z, l); continue; } /* nr_set cut, set_geom */
+        pm_gbi_cur_op = id;
+        if (id == ND_FS_VTX) nd_geom_vtx(a, b, (const NdW2*)q);
+        else { tri_prep_ok = 0; draw_tri(a); if (id == ND_FS_TRI2) draw_tri(b); } }
+    if (__builtin_expect(pm_walk_dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); }
 void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */
     unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
     ctr_live = 0; /* BTLUI3: a load ends the trace of the last one */
