@@ -208,7 +208,6 @@ void nd_tx_ldtile(u32 a, u32 b);
 void nd_tx_ldtlut(u32 b);
 void nd_tx_tsz(u32 a, u32 b);
 void nd_tx_texon(u32 a, u32 b);
-void nd_bind_run(const uint32_t* u);   /* the typed bind list of a texture handle (rec_apply) */
 
 /* ---- M: the matrix group (nd_mtx.c, GM-1). Globals defined in nd_mtx.c; the former pm_gbi.c and the walker read them. ---- */
 extern float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
@@ -229,7 +228,6 @@ extern float mtx_cache[256][16];
 extern u32 mtx_tag[256];
 void upload_mvp(void);
 void mtx_elem(Mtx* dst, int r, int c, float v);
-void rec_lights(const Lightsn* L, unsigned k);
 void lit_freeze(void);
 extern s8 lk[2][3];
 extern unsigned lt_n;

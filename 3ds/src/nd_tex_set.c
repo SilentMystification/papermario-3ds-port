@@ -542,20 +542,6 @@ __attribute__((cold, noinline)) void tex_win_s25(int* p_uls, int* p_ult, int* p_
     *p_uls = uls; *p_ult = ult; *p_lrs = lrs; *p_lrt = lrt;
 }
 
-/* HC4c (W4): the typed bind list of a texture handle (model.c make_texture_gfx, typed at the texture load) to its ND_FS_END, as the walker ran
- * the word list: every op runs (no skip test), a combine directly before a G_TEXTURE leaves the combine sync to the G_TEXTURE. */
-__attribute__((noinline)) void nd_bind_run(const uint32_t* u) {
-    for (;; u += 2) {
-        const unsigned id = u[0] >> 24;
-        if (id == ND_FS_END) break;
-        pm_gbi_cur_op = id;
-        if (id == ND_FS_COMB) {
-            nd_comb_set(ND_FS_COMB_W0(u[0]), u[1]);
-            if ((u[2] >> 24) != ND_FS_TEXTURE) nd_comb_sync();
-        } else nd_unit_apply(u);
-    }
-}
-
 int glyph_atlas_bound(void) {
     int gx, gy;
     if (!ND_BTD(0)->valid || !ND_BTD(0)->src || ND_BTD(0)->fmt != 2 || ND_BTD(0)->siz != 0 || !ens_src) { return 0; }

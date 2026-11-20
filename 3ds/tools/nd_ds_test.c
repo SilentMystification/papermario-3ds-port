@@ -22,6 +22,12 @@ extern unsigned char nd_lsc_on;
 static unsigned nrec4_tris, nrec4_units;
 void nd_lsc_tris(unsigned n) { nrec4_tris += n; }
 void nd_lsc_unit(uint32_t w0) { (void)w0; nrec4_units++; }
+/* NAT5B: the alt range hooks of nd_ds_model: the order of puts, opens, closes and list markers */
+static unsigned char seq[64]; static unsigned nseq; static uint32_t* cl[4]; static unsigned ncl;
+void nd_alt_put(uint32_t w0, uint32_t w1) { (void)w1; seq[nseq++] = (unsigned char)(w0 >> 24); }
+uint32_t* nd_alt_open(void) { static uint32_t br[2]; seq[nseq++] = 0xF0; return br; }
+void nd_alt_close(uint32_t* br, uint32_t* ab) { (void)br; seq[nseq++] = 0xF1; cl[ncl++] = ab; }
+void nd_alt_lst(unsigned end) { seq[nseq++] = (unsigned char)(0xF2 + end); }
 /* NST2b: the unit of nd_ds_model (the test form of ds_unit: the state write only) */
 static void nd_model_unit(NdDs* s, uint32_t w0, uint32_t w1) { nd_ds_apply(s, w0, w1); }
 #define CHK(name, got, want) do { nf++; if ((unsigned long)(got) != (unsigned long)(want)) { bad++; printf("nst1 BAD %s got %lx want %lx\n", name, (unsigned long)(got), (unsigned long)(want)); } } while (0)
@@ -130,7 +136,7 @@ int main(int argc, char** argv) {
         q[1] = (uint32_t)(uintptr_t)bind;
         q[9] = (uint32_t)(uintptr_t)cb;
         q[18] = ND_FS_W0(ND_FS_TILESIZE, 0); q[19] = 124u << 12 | 124u;
-        nd_ds_model(&m, q, rm, 1, nd_model_unit);
+        nd_ds_model(&m, q, rm, 1, nd_model_unit, NULL);
         C2("prim", m.w.prim, 0x11223344u); C2("envc", m.w.envc, 0x55667788u);
         C2("fogc", m.fogc, 0x0A0B0C0Du); C2("fog_fm", m.fog_fm, 0x0102); C2("fog_fo", m.fog_fo, 0x0304);
         C2("lt_n", m.lt_n, 1); C2("lt0 col0", m.lt[0].col[0], 10); C2("lt0 col1", m.lt[0].col[1], 20); C2("lt0 col2", m.lt[0].col[2], 30);
@@ -139,6 +145,15 @@ int main(int argc, char** argv) {
         C2("comb_w0", m.w.comb_w0, ND_FS_COMB_W0(w0c)); C2("comb_w1", m.w.comb_w1, 0x12345678u);
         C2("omode_l", m.w.omode_l, 0x0C184240u);
         C2("tile_sz0", m.w.tst1.tile_sz[0][2], 124); C2("tile_sz3", m.w.tst1.tile_sz[0][3], 124);
+        { /* NAT5B: a second call with an alt range: the put order and the two ranges */
+            static NdDs m2; static uint32_t ab[4];
+            static const unsigned char want[20] = { 0xF0, ND_FS_PRIM, ND_FS_ENV, ND_FS_FOG, ND_FS_MW, ND_FS_MW, ND_FS_MOVEMEM, ND_FS_MOVEMEM, ND_FS_TIMG, ND_FS_TILE, ND_FS_COMB, 0xF2, ND_FS_OML, 0xF3, ND_FS_FOG, ND_FS_MW, 0xF1, 0xF0, ND_FS_TILESIZE, 0xF1 };
+            nseq = 0; ncl = 0;
+            nd_ds_model(&m2, q, rm, 1, nd_model_unit, ab);
+            C2("nat5b count", nseq, 20u);
+            C2("nat5b order", nseq == 20u && memcmp(seq, want, 20u) == 0, 1u);
+            C2("nat5b ab0", ncl > 0 && cl[0] == ab, 1u); C2("nat5b ab1", ncl > 1 && cl[1] == ab + 2, 1u);
+        }
         printf("nst2b model fields %u bad %u\n", mf, mb);
         bad += (int)mb;
 #undef C2
