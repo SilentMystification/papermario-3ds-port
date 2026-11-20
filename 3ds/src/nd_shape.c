@@ -48,7 +48,6 @@ u32 dlc_hash(const uint32_t* l) {
     }
     return h;
 }
-int stdump_on(void) { return PMDL("stdump"); } /* FLK1 state dump per visible static segment, frames 200 to 205 */
 int pm_gpu_rgb_scale_get(void);
 void dlc_free(DlcEnt* e) {
     for (unsigned k = 0; k < e->ngrp; k++) { free(e->grp[k].ends); free(e->grp[k].bat_q); }
@@ -119,11 +118,6 @@ unsigned dlc_gmi(void);
  * runs through the ring (dlc_run_group). */
 unsigned short* pm_gpu_gidxs_alloc(unsigned n);
 void pm_gpu_gidxs_commit(const unsigned short* p, unsigned n);
-const void* nd_env_vtx(uint32_t w1, unsigned n) {
-    const Vtx* src = (const Vtx*)ptr_of(w1);
-    if (!src || (u32)src - (u32)gMapShapeData >= 0x40000u || n == 0 || n > 64) return NULL;
-    return src;
-}
 uint8_t* nd_env_valloc(unsigned n, unsigned* first) {
     unsigned char* dst = NULL;
     int f = pm_gpu_gstat_alloc(n, &dst);
