@@ -194,6 +194,7 @@ void nd_walk_ent(const NdW2* q, unsigned words) {
 #define ND_LIST_MAX 200000u
 #define ND_LIST_DEPTH 12
 static int ex_depth;
+static unsigned char alt_mode; static void ls_run(const uint32_t* q, unsigned n); /* NAT5F; NAT5N: 0 stream, 1 nd_nr_exec, 2 ls_run */
 static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
     if (t != orb_tag) pm_gpu_flush();
     orb_tag = t;
@@ -202,7 +203,7 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
 /* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
  * static list goes to the entity path (ent_gdl) or a compiled map shape (nd_sg_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_nr_list), inside a list nested. */
-static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1) {
+static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t* ab) { /* NAT5N: ab NULL: the static table */
     NdW2* next = (NdW2*)ptr_of(w1);
     if (!next) return;
     if (!is_host((u32)next)) { nd_bad_next(w1, w0, (u32)(uintptr_t)at); return; }
@@ -222,7 +223,11 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1) {
         NDT_BD(td, dbg); int dh = nd_sg_try(next); NDT_E(td, NDT_DLC);
         if (dh) return;
     }
-    if (!ex_depth) { if (nt) nd_nr_list(nt->u, nt->nu, 1); else nd_nr_list(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
+    if (ab) { const unsigned char m = alt_mode; /* NAT5N: the nested alt range, with the executor the static table took */
+        if (!ex_depth) { PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = 1; alt_mode = 1u; nd_alt_run(ab); ex_depth = 0; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* nd_nr_list keep 1 */
+        else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt && nd_ls_on) nd_lsr_geo(); alt_mode = (nt && nd_ls_on) ? 2u : 1u; nd_alt_run(ab); ex_depth--; }
+        alt_mode = m; }
+    else if (!ex_depth) { if (nt) nd_nr_list(nt->u, nt->nu, 1); else nd_nr_list(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
     else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_nr_exec((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
@@ -312,7 +317,7 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, op, u[0], u[1]);
     switch (id) {
     case ND_FS_CALL:
-        nr_call(dbg, (const NdW2*)at, a, b);
+        nr_call(dbg, (const NdW2*)at, a & ~2u, (a & 2u) ? ((const uint32_t*)(uintptr_t)b)[0] : b, (a & 2u) ? (const uint32_t*)(uintptr_t)b + 1 : NULL); /* NAT5N */
         if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
         break;
     case ND_FS_RECT:
@@ -364,8 +369,7 @@ void nd_nr_exec(const uint32_t* q, unsigned n) { /* DEL1D2: was nd_walk_state */
     }
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
-static unsigned char alt_raw; static void ls_run(const uint32_t* q, unsigned n); /* NAT5F */
-void nd_nr_run(const uint32_t* rec) { const unsigned n = (rec[-2] >> 16) & 0xffu; if (alt_raw && nd_ls_on) ls_run(rec, n); else { ep_stream = !alt_raw; nd_nr_exec(rec, n); ep_stream = 0; } } /* NAT4A; NAT5F: a raw alt run takes the list executor */
+void nd_nr_run(const uint32_t* rec) { const unsigned n = (rec[-2] >> 16) & 0xffu; if (alt_mode == 2u) ls_run(rec, n); else { ep_stream = alt_mode == 0u; nd_nr_exec(rec, n); ep_stream = 0; } } /* NAT4A; NAT5F; NAT5N */
 void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
     nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
 static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of a list with a snap table: nd_walk_state without the combine units */
@@ -411,7 +415,7 @@ static void spr_geo_walk(const uint32_t* g) {
 /* NAT5W: the G_DL unit of a refused entity record: the list start and end of nd_nr_list (keep 1), the CALL arm of nr_ctl. */
 static void ent_dl_walk(unsigned dbg, const NdW2* c) {
     PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
-    const uint32_t* u_ = (const uint32_t*)c; pm_gbi_cur_op = ND_FS_CALL; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1]); /* NAT5W */
+    const uint32_t* u_ = (const uint32_t*)c; pm_gbi_cur_op = ND_FS_CALL; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1], NULL); /* NAT5W; NAT5N */
     ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
 /* DEL1B: n flat units of an entity list (a gap, the loads and ops of a refused segment) with the list start and end of nd_nr_list (keep 1).
  * ENT_GBI (nd_ent.c) ran them with nd_nr_list; the steps and their order are the same. */
@@ -473,7 +477,7 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
 unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
 void nd_ntab_run(const NdNDev* e) { if (nd_ls_on) { nd_lsr_geo(); ls_run(e->u, e->nu); } else nd_nr_exec(e->u, e->nu); } /* NCONV2D: a list with a snap table runs without its combine units */
-static void gt_body(const uint32_t* rec) { nd_gtr_ntab++; if (nd_ls_on) nd_lsr_geo(); alt_raw++; nd_alt_run(rec + 6); alt_raw--; } /* NAT5F: as nd_ntab_run, from the stream copy */
+static void gt_body(const NdNDev* nt, const uint32_t* rec) { nd_gtr_ntab++; if (!(rec[1] & 4u)) { nd_ntab_run(nt); return; } if (nd_ls_on) nd_lsr_geo(); const unsigned char m = alt_mode; alt_mode = nd_ls_on ? 2u : 1u; nd_alt_run(rec + 6); alt_mode = m; } /* NAT5F: as nd_ntab_run, from the stream copy; NAT5N */
 static __attribute__((cold, noinline)) void entcap_so(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
     const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap so l %08x s %08x", a, site); }
@@ -485,7 +489,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
         pm_walk_side++;
         pm_gbi_cur_op = G_PM_LST; gv_epoch++; ent_skipgen = 0; gp_prev_op = -1; /* NAT5W: the MISC_LST unit (nr_ctl) */
-        gt_body(rec);
+        gt_body(nt, rec);
         pm_walk_side--;
         return;
     }
@@ -512,7 +516,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     gp_prev_op = -1;
     pm_walk_side++;
     ex_depth = d + 1;
-    gt_body(rec);
+    gt_body(nt, rec);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();

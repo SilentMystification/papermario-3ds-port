@@ -447,6 +447,12 @@ void nd_alt_put(uint32_t w0, uint32_t w1) {
     st_put(w0, w1); }
 uint32_t* nd_alt_open(void) { rec_open(); uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
 void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }
+/* NAT5N, core 1: a call unit inside a raw alt range. A block {list word, a, b} in stream data, the unit CALL | 2 with w1 = the block,
+ * then a jump over the nested range that ds_pairs fills with the called list; nd_alt_call_end closes it (blk[3] keeps the jump). */
+uint32_t* nd_alt_call(uint32_t w0, uint32_t w1) {
+    uint32_t* const blk = (uint32_t*)nd_rec_data_st(16u); blk[0] = w1; blk[1] = blk[2] = 0u;
+    nd_alt_put(w0 | 2u, (uint32_t)(uintptr_t)blk); blk[3] = (uint32_t)(uintptr_t)nd_alt_open(); return blk; }
+void nd_alt_call_end(uint32_t* blk) { nd_alt_close((uint32_t*)(uintptr_t)blk[3], blk + 1); }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
  * NDC_TEXRECT. Any other packet (a local list) and the branch form of G_DL keep the word; G_ENDDL at the top level is dropped (NDC_END ends a
