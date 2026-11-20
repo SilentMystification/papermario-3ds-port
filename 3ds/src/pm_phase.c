@@ -483,7 +483,8 @@ static void pf_c1_now(unsigned* x) {
 }
 extern unsigned nd_snb, nd_snn, nd_snm, nd_lsf_n, nd_lsb_n, nd_lse_n, nd_altu_n, nd_altr_n; static unsigned lg0_c[8]; /* NAT8A */ static unsigned long long c1s_t[2], c1s_m[2]; static unsigned aw_m[8], gw_m[4]; extern unsigned nd_altw[8]; void pm_gpu_gw_now(unsigned o[4]); /* PERF0 */
 static void pf_c1n_now(unsigned* x) { x[0] = nd_snb; x[1] = nd_snn; x[2] = nd_snm; x[3] = nd_lsf_n; x[4] = nd_lsb_n; x[5] = nd_lse_n; x[6] = nd_altu_n; x[7] = nd_altr_n; } /* NAT8A */
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; c1s_m[0] = c1s_t[0]; c1s_m[1] = c1s_t[1]; memcpy(aw_m, nd_altw, sizeof aw_m); pm_gpu_gw_now(gw_m); } /* NAT8A */ /* PERF0 */
+static unsigned rnr_m; extern unsigned nd_rnr_n; /* PROF2: nd_rec_nr calls at the window start */
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; c1s_m[0] = c1s_t[0]; c1s_m[1] = c1s_t[1]; memcpy(aw_m, nd_altw, sizeof aw_m); pm_gpu_gw_now(gw_m); rnr_m = nd_rnr_n; } /* NAT8A */ /* PERF0; PROF2: the nd_rec_nr calls mark */
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
@@ -605,7 +606,7 @@ static void pf_report(void) {
     { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); PERF2: the op classes split what was rest */
         uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
         unsigned cm[NDT_N], csum = 0;
-        for (int k = 0; k < NDT_N; k++) { cm[k] = pf_cs(ct[k], pf_s); if (k <= NDT_LIST) csum += cm[k]; } /* NAT8A */
+        for (int k = 0; k < NDT_N; k++) { cm[k] = pf_cs(ct[k], pf_s); if (k <= NDT_LIST || k == NDT_MKEY || k == NDT_MMTX || k == NDT_MHIT) csum += cm[k]; } /* NAT8A; PROF2: the core 0 record classes are in the walk */
         /* PERF2 step 6: rest = the walk (nd: gbi_walk ticks) less the classes; task = gbi less the walk (the task start: the GPU tail wait outside its own phases, nd_frame_begin) */
         const unsigned ndw = pf_cs(pf_nd_t, pf_s);
         int rest = (int)ndw - (int)csum; unsigned ra = rest < 0 ? (unsigned)-rest : (unsigned)rest;
@@ -628,6 +629,10 @@ static void pf_report(void) {
             uint64_t c2[NDT_N]; pm_gpu_ndt_take(c2);
             pm_log_prof_line("prof f%u w%u c1t snap %u.%02u lsc %u.%02u alt %u.%02u cal %u", pf_total, pf_w,
                 CS(cm[NDT_SNAP]), CS(cm[NDT_LSC]), CS(cm[NDT_ALT]), (unsigned)(c2[NDT_ALT] >> 4));
+            pm_log_prof_line("prof f%u w%u c1d rmdl %u.%02u rent %u.%02u rspr %u.%02u rnr %u.%02u n %u", pf_total, pf_w,
+                CS(cm[NDT_RMDL]), CS(cm[NDT_RENT]), CS(cm[NDT_RSPR]), CS(cm[NDT_RNR]), nd_rnr_n - rnr_m); /* PROF2 */
+            pm_log_prof_line("prof f%u w%u c0r key %u.%02u mtx %u.%02u hit %u.%02u", pf_total, pf_w,
+                CS(cm[NDT_MKEY]), CS(cm[NDT_MMTX]), CS(cm[NDT_MHIT])); /* PROF2 */
         }
         { /* DIRECT: frame stream commands per drawn frame x 10 (nd_rec.c): model, sprite and entity records, ranges, compound texture loads, texture rectangles; kb = the stream high-water mark */
             unsigned nc[NDC_N], kb, n10[NDC_N], sw;

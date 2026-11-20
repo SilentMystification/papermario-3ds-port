@@ -222,6 +222,7 @@ void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
 }
 void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak below */
 void nd_rec_model(const void* rec, unsigned words) {
+    NDT_B(tq); /* PROF2: core 1 model record class */
     if (words > G_PM_REC_WORDS + ND_REC_AUX_MAX) model_bad(words);
     { const unsigned rmi = (((const uint32_t*)rec)[0] >> 16) & 0xffu; if (rmi < ND_RM_N && !rm_built[rmi]) nd_rm_build(rmi); } /* HC4b: W3 */
     const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
@@ -234,9 +235,11 @@ void nd_rec_model(const void* rec, unsigned words) {
     nd_msnap_pre(&nd_ds); /* NAT2C: the state before the record */
     { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit, p + 4u + 2u * (G_PM_REC_WORDS + keep) + 2u * ND_MSNAP_U); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
+    NDT_E(tq, NDT_RMDL);
 }
 void nd_snap_mesh(void); /* NDR4: strong in nd_snap.c */
 void nd_rec_spr(const void* rec, const void* geo) {
+    NDT_B(tq); /* PROF2 */
     nd_snap_mesh(); /* NDR4: the snap of the sprite draw */
     rec_open();
     uint32_t* p = rec_take(2u + 2u * (G_PM_SPR_WORDS + 2u));
@@ -245,6 +248,7 @@ void nd_rec_spr(const void* rec, const void* geo) {
     p[1] = 0;
     memcpy(p + 2, rec, G_PM_SPR_WORDS * 8u);
     memcpy(p + 2 + 2 * G_PM_SPR_WORDS, geo, 16u);
+    NDT_E(tq, NDT_RSPR);
 }
 /* D3: the draw record of a static list (gbi_custom.h gPmEntDrawRecord) and the G_DL of that list. form: record word 2 w0 (1: the animator form, log). */
 static const NdDs* alt_s; /* NAT6E2: forward (tentative) definition, the initializer is below */
@@ -255,6 +259,7 @@ static uint32_t* ent_m1(const NdDs* s0, const NdNDev* nt, const void* list) { /*
     if (nt) nd_ds_pairs0(&es, nt->u, nt->nu); else nd_ds_list(&es, list, 0);
     nd_alt_close(br, ab); nd_altw[1] += nd_wdiff(ab[0], ab[1]); nd_alt_raw_on = sr; alt_s = sa; nd_lsc_on = sl; return br; }
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form) {
+    NDT_B(tq); /* PROF2 */
     NdW2 r[G_PM_ENT_WORDS + 1];
     gPmEntDrawRecord(r, list, segid, varray);
     r[2].words.w0 = form;
@@ -271,6 +276,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0);
     nd_alt_raw_on = 0; nd_alt_close(br, ab); nd_altw[1] += nd_wdiff(ab[0], ab[1]); x[1] = (uint32_t)(uintptr_t)nd_alt_et_end(ab[1]); /* NAT5A */
     x[0] = (uint32_t)(uintptr_t)(ent_c ? ent_m1(&ent_s0, ent_nt, list) : br); /* NAT6E2: the copy for the G_DL of a refused record */
+    NDT_E(tq, NDT_RENT);
     nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at nd_eg_run or walk_call) NREC2: the list snap table in header word 1 */
 }
 void nd_rec_ent(const void* rec) {
@@ -284,6 +290,7 @@ void nd_rec_ent(const void* rec) {
 void nd_snap_mesh(void); /* NDR0E2: prototype (fix: implicit declaration warning); strong in nd_snap.c */
 void nd_snap_rect(void); /* NDR1C: strong in nd_snap.c */
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
+    NDT_B(tq); /* PROF2 */
     nd_snap_rect(); /* NDR1C: the snap of every texture rectangle (memo: one per new input) */
     rec_open();
     uint32_t* p = rec_take(6);
@@ -294,6 +301,7 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     p[3] = w1;
     p[4] = hs;
     p[5] = hd;
+    NDT_E(tq, NDT_RSPR);
 }
 /* NATIVEAPI: a native draw record (nd_api.h). units 1 to 255. */
 static __attribute__((cold, noinline)) void napi_bad(unsigned units) {
@@ -450,31 +458,34 @@ static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window 
 static void rec_nat2(NdNapiRun run, uint32_t a, uint32_t b, uint32_t c, uint32_t d) { st_take = 1; uint32_t* p = rec_take(6); st_take = 0; ndc_n[NDC_NRUN]++; p[0] = NDC_HDR(NDC_NAPI, 2, 1); p[1] = (uint32_t)(uintptr_t)run; p[2] = a; p[3] = b; p[4] = c; p[5] = d; } /* NSET1: 2 units, flag 1 keeps the snap arm */
 NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
 void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
+static unsigned char rnr_d; unsigned nd_rnr_n; /* PROF2: nd_rec_nr depth (the outer call times) and calls */
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
-    if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
+    const int tq = pm_ph_on && !rnr_d; if (__builtin_expect(tq, 0)) pm_gpu_ndt_push(); rnr_d++; nd_rnr_n++; /* PROF2 */
+    if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
     if ((w0 >> 24) == ND_FS_TRI1 || (w0 >> 24) == ND_FS_TRI2) nd_snap_mesh(); /* NAT2G: every stream triangle has a snap, or the memo says the last one holds */
     if ((w0 >> 24) == ND_FS_RECT && !(w1 & ND_FS_RECT_TEX)) nd_snap_rect(); /* NAT2H: a fill rectangle takes a snap, as a texture rectangle (nd_rec_texrect :264) */
     const unsigned id = w0 >> 24; const int lost = nd_ds.sc_lost, dirty = nd_ds.sc_dirty; /* NAT4A */
     const unsigned ch = nd_ds_apply(&nd_ds, w0, w1); /* NAT4A: nd_ds_unit's work, with the change bit */
-    rec_open(); ndc_sw++; if (sh_drop(t)) return; /* NAT4A: rec_op_t, inline */
+    rec_open(); ndc_sw++; if (sh_drop(t)) { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } /* NAT4A: rec_op_t, inline */
     if (id == ND_FS_SCISSOR || id == ND_FS_GEOM || id == ND_FS_MW || id == ND_FS_TEXTURE || id == ND_FS_OMH) { const uint32_t mk = nd_ds_ep_rule(w0, ch, lost, dirty) ? 0x80000000u : 0u; /* NAT4I: no mark, no unit */
         if (id == ND_FS_SCISSOR) rec_nat(nd_sci_run, ((uint32_t)nd_ds.sci_x0 & 0xffffu) | (uint32_t)nd_ds.sci_y0 << 16, ((uint32_t)nd_ds.sci_x1 & 0xffffu) | (uint32_t)nd_ds.sci_y1 << 16);
         else if (id == ND_FS_GEOM) rec_nat(nd_geo_run, nd_ds.w.geom, mk);
         else if (id == ND_FS_TEXTURE) rec_nat(nd_tex_run, (w0 & 0xffffffu) | mk, w1); /* NAT4J */
         else if (id == ND_FS_OMH) rec_nat(nd_omh_run, (w0 & 0xffffu) | mk | (nd_sv_sync(w0) ? 0x40000000u : 0u), w1); /* NAT4J; NSET1: bit 30 is the cycle sync */
         else { const unsigned k = (w0 >> 16) & 0xffu, g = w0 & 0xffffu; rec_nat(nd_mw_run, (w0 & 0xffffffu) | mk, (k == ND_FS_MW_SEG && g < 16u) ? nd_ds.w.segbase[g] : k == ND_FS_MW_NUMLIGHT ? nd_ds.lt_n : w1); }
-        return; }
+        { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
     if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
-        if (id >= ND_FS_TIMG && !(id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u)) { uint32_t v[2]; const NdNapiRun f = nd_sv_enc(&nd_ds, w0, w1, v); rec_nat2(nd_txs_run, w0, (uint32_t)(uintptr_t)f, v[0], v[1]); return; } /* NSET1 */ /* NAT6A: a texture unit and its mark (rc is never 0 here) */
-        if (!rc && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) { if (id == ND_FS_OML) rec_nat(nd_oml_run, w0 & 0xffffffu, w1); else if (id == ND_FS_PRIM) rec_nat(nd_prim_run, w0 & 0xffffffu, w1); else if (cg_keep) rec_nat(nd_cbd_run, w0, w1); return; } /* NAT6A; NAT6C: a custom gfx range keeps the others as data records */
+        if (id >= ND_FS_TIMG && !(id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u)) { uint32_t v[2]; const NdNapiRun f = nd_sv_enc(&nd_ds, w0, w1, v); rec_nat2(nd_txs_run, w0, (uint32_t)(uintptr_t)f, v[0], v[1]); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } /* NSET1 */ /* NAT6A: a texture unit and its mark (rc is never 0 here) */
+        if (!rc && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) { if (id == ND_FS_OML) rec_nat(nd_oml_run, w0 & 0xffffffu, w1); else if (id == ND_FS_PRIM) rec_nat(nd_prim_run, w0 & 0xffffffu, w1); else if (cg_keep) rec_nat(nd_cbd_run, w0, w1); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } /* NAT6A; NAT6C: a custom gfx range keeps the others as data records */
         if (rc) { rec_nat(nd_epm_run, 0u, rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason; NAT6C: a native record */
-            if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
+            if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } } /* NAT4K: a marked combine class unit is not recorded */
     if (id == ND_FS_CALL) { /* NAT5T: the called static list as a raw alt range, its tile sizes carry the core 1 window; core 1 state keeps no nested state */
         NdDs* const sc = nd_alt_scr_on(); const unsigned char om = nd_alt_raw_on; nd_alt_raw_on = 1; uint32_t* const blk = nd_alt_call(w0, w1);
-        nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_altw[2] += nd_wdiff(blk[1], blk[2]); nd_alt_raw_on = om; nd_alt_scr_off(); return; }
-    if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { cp_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); return; } /* NAT5T */
+        nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_altw[2] += nd_wdiff(blk[1], blk[2]); nd_alt_raw_on = om; nd_alt_scr_off(); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
+    if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { cp_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } /* NAT5T */
     cp_put(t[0], t[1]); /* NAT4A */
+    rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR);
 }
 /* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
  * The spare unit holds the range bounds (nd_alt_run). The units feed nd_ds (nd_rec_nr); the snap memo restarts at both ends. */

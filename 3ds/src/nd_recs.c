@@ -254,20 +254,23 @@ unsigned rec_run(const NdW2* q) {
     /* HC6 step 2: the lookup takes key A (the payload, core 1) and key B (pm_gpu_model_keyb); the full key (the store, the miss diagnostics, ndm, mfr)
      * is built before rec_apply only when the hit is not taken (from the walker state before the record is applied, as before). */
     const int mkc = PMDL("mkchk"), full0 = mkc || mfr_on || pm_gpu_ndm_on();
+    NDT_B(tk); /* PROF2: the key class (key A, key B and the record address memo) */
     if (__builtin_expect(full0, 0)) pm_gpu_model_key((const uint32_t*)q, &mk); /* S3N-6: the cache key, from the walker state before the record is applied */
     else pm_gpu_model_keyb((const uint32_t*)q, &mk);
     /* STARFX: a record with a custom gfx pre list never takes the hit path (MDL-5f, below), so it is not looked up and not stored (model_draw):
      * its list pointer is a key word that moves with the frame's display list, and every rebuild stored its draws again into the pool (the hos_01
      * glowing stars filled the 512-draw pool and cleared the whole cache about every 50 frames). */
     NdMEnt* mce = q[11].words.w0 ? NULL : nd_mc_find_rec(&mk); /* PERF1-4a: the record address memo, else hash and probe */
+    NDT_E(tk, NDT_MKEY);
     if (__builtin_expect(mkc, 0) && !q[11].words.w0) mkchk_note(&mk, mce);
     /* POND (A1): a record with no geometry (q[12] 0) never takes the hit path: its state is its whole effect, so rec_apply must run. */
     if (full0 || !mce || !q[12].words.w0) return rec_miss(q, &mk, mce, full0, 0, mi0);
-    rec_matrix(q); /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */
-    if (!pm_gpu_model_hit(&mk, mce)) return rec_miss(q, &mk, mce, 0, 1, mi0);
+    NDT_B(tm); /* PROF2 */ rec_matrix(q); /* S3N-6: a cached key: its matrix first, the hit test reads the matrix */ NDT_E(tm, NDT_MMTX);
+    NDT_B(th); const int hit_ = pm_gpu_model_hit(&mk, mce); NDT_E(th, NDT_MHIT); /* PROF2 */
+    if (!hit_) return rec_miss(q, &mk, mce, 0, 1, mi0);
     /* S3N-6 hit: rec_apply is not run (its matrix ops ran above); the walker state is the miss's (hit_apply); the sticky shadows are cleared as after a native draw */
     gv_epoch++;
-    hit_apply(q, mce);
+    NDT_B(tha); hit_apply(q, mce); NDT_E(tha, NDT_MHIT); /* PROF2 */
     nd_sr_forget(); /* NWS1 */
     if (q[11].words.w1) rec_range((const uint32_t*)(uintptr_t)q[11].words.w1, 2u); /* S3G-1: custom gfx post (D10a: a stream range) NATRS */
     if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
