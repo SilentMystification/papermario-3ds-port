@@ -606,7 +606,7 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     }
     const unsigned fr = pm_frame_count();
     drec_on = drec_win > 0 && fr >= drec_first && fr <= drec_first + (drec_count - 1u) * drec_step && (fr - drec_first) % drec_step == 0u;
-    if (drec_on) pm_log_d("drec frame %u seq %u", fr, drec_seq); /* NDR0G2 */
+    if (drec_on) pm_log_evt("drec frame %u seq %u", fr, drec_seq); /* NDR0G2 */
     if (drec_on && drec_f && drec_step > 1u) fprintf(drec_f, "frame %u\n", fr);
     if (!drec_on || drec_f) return;
     mkdir("sdmc:/3ds/PaperMario/shots", 0777);

@@ -58,7 +58,7 @@ static unsigned mm_fr = ~0u;
 static __attribute__((cold, noinline)) void mmiss_note(void) { const unsigned f = pm_frame_count(); if (f != mm_fr) { mm_fr = f; pm_log_evt("mmiss f%u", f); } } /* the miss path takes the hit state: marker of the expected-diff gate */
 static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone, const NdMEnt* e) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
-    gv_epoch++; if (__builtin_expect(pm_drec_now(), 0)) mmiss_note(); hit_apply(q, e); rec_lights(q); nd_sr_forget(); /* MCOPY1: the hit state, the lights; the tile blocks come from the model snap */
+    gv_epoch++; mmiss_note(); hit_apply(q, e); rec_lights(q); nd_sr_forget(); /* MCOPY1: the hit state, the lights; the tile blocks come from the model snap */
     if (!(f & 256u) && !mdone) nd_xf_load(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     else if (f & 256u) nd_mtx_static = 1; /* SEAM2: IGNORE_MATRIX, no model matrix */
     if (q[11].words.w0) rec_range((const uint32_t*)(uintptr_t)q[11].words.w0, 1u); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) NATRS */
