@@ -2,12 +2,12 @@
 count wsnap|cpsnap: 2
 195:#193 drec frame 102 seq 0
 235:#232 drec frame 103 seq 180
-250:#246 drec f103 draws 360 bytes 598042
+249:#246 drec f103 draws 360 bytes 598042
 197:#195 wsnap f102
 237:#234 wsnap f103
 seeded f999999:
 == spot_mac01_drec
 count wsnap|cpsnap: 0
-65:#61 drec f201 draws 170 bytes 277942
+49:#61 drec f201 draws 170 bytes 277942
 seeded f999999:
-base hudfb napihud grep: 16 (log of the row run; base log count 16 above)
+base hudfb napihud count 16 (nws4b_base1 log); row: 16

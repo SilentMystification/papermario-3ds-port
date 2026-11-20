@@ -1,16 +1,4 @@
 == base
-c0gate file 3ds/src/nd_snap.c 2
-c0gate file 3ds/src/nd_direct.c 1
-c0gate file 3ds/src/nd_recs.c 1
-c0gate file 3ds/src/nd_set.c 1
-c0gate interp_syms nd_comb_set
-c0gate state_syms blendc box_folded conv_k4 dual_on fog_fm fog_fo fogc keyc keys nd_ws sci_x0 sci_x1 sci_y0 sci_y1
 c0gate calls 5 interp 1 state 14
 == tip
-c0gate file 3ds/src/nd_snap.c 2
-c0gate file 3ds/src/nd_direct.c 1
-c0gate file 3ds/src/nd_recs.c 1
-c0gate file 3ds/src/nd_set.c 1
-c0gate interp_syms nd_comb_set
-c0gate state_syms blendc box_folded conv_k4 dual_on fog_fm fog_fo fogc keyc keys nd_ws sci_x0 sci_x1 sci_y0 sci_y1
 c0gate calls 5 interp 1 state 14
