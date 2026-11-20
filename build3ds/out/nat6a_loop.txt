@@ -1,0 +1,12 @@
+LOOP NAT6A host rc 0, build rc 0, 107 s
+STAGE key-inputs 2 s STAGE slot-wait 0 s STAGE gen 24 s STAGE key 0 s STAGE asset-check 0 s STAGE romfs 1 s STAGE sync 0 s STAGE configure 0 s STAGE compile-link 73 s STAGE copy-out 1 s STAGE tail 2 s 
+
+cmp spot_mac01_drec: 1/1 byte-equal 
+LOOP TIME host+build 107 s, run+cmp 27 s, total 134 s
+LOOP PASS
+LOOP NAT6A host rc 0, build rc 0, 3 s
+STAGE key-inputs 2 s STAGE gen 1 s --- build up to date (key 80f867ae376d), skipping --- STAGE key 0 s 
+
+cmp wscmb_pause_drec: 1/1 byte-equal 
+LOOP TIME host+build 3 s, run+cmp 24 s, total 27 s
+LOOP PASS
