@@ -20,3 +20,9 @@ Round 5: spot_mac01_drec models 15710 hits 14649, diff 0, cmp 1/1 byte-equal. wh
   entcape_kmr03_drec: models 7172 hits 6721, cmp 1/1 byte-equal (drec 172), but 119 census diffs: `diff ds 1160` = NdDs.lt[8] (offset 964 + 196), frames 83..201.
   Cause: lt[] not in S; the delta holds only words that changed against the before state of the store, a hit with other lights before keeps them.
 Round 6 (built, not run: budget 8 of 8): lt[] hash added to S. mem 282624 B (256 x 1104 B).
+Round 7 to 12 (compact entry: one 64 bit hash of all inputs, ring words in the delta, cap 24 words, 256 slots, ent 180 B, table 46080 B):
+  spot_mac01_drec: models 15710 hits 12561, diff 0, cmp byte-equal. why 0:5788 32:532 33:2364; store fail delta 2509; slots ok 163 of 256, delta words mean 7 max 22, block words mean 102.
+  entcape_kmr03_drec (final hash incl. tail words): models 7172 hits 5860, diff 0, cmp byte-equal. why 0:3386 32:130 33:945; store fail delta 1141; slots ok 75 of 256, delta mean 6 max 19, block words mean 112.
+  entcape diff at byte 1160 (before the fix) = NdDs tail word (zslot, sc_lost, sc_dirty), not lights; the offsets line printed it (m1v 1148, size 1164).
+Step 2 (the hit writes the copy; census in drec frames and 1 hit in 64) is committed and built, host PASS. Not run: Azahar budget 8 of 8 used (r10 4, r11 2, r12 2).
+Bases stored for fxparts_drec and hudfb_drec.
