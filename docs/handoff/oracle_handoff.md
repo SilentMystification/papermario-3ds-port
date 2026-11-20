@@ -43,7 +43,7 @@ State: main 8bcf0252ee (T1FIX, NC0S merged) plus the pages of oracle NATIVE17 (s
 - Oracles cannot start coders (permission denied): the orchestrator starts them.
 ## What to do first
 1. `git log --oneline -15`; `ls docs/handoff`. Answer coder questions (SendMessage, 10 lines).
-2. NC0V step 1: a `texfog f<n> s<site>` line names a reader whose recorded source differs from nd_c0: decide per site, then the coder goes on.
+2. NC0V: step 1 merges as expected-diff (marker texfog; base gv read a stale nd_c0.tex_on after unarmed list, particle and rect snaps). Step 2 runs after that merge, byte-exact.
 3. NC0M, NC0T1: byte-equal by construction; a DIFF is a missed site or a fault. NC0F step 1: a `segdiff` line s1 breaks the premise (stream units need the table):
    then core 1 must resolve the stream addresses (nd_rec_nr) before step 2.
 4. Write NC0T2 after a reader read of nd_tex_set.c setters (the walker texture model, the glyph bind, nd_rect.c, nd_ent.c, pm_gpu.c readers).
