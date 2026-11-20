@@ -27,7 +27,7 @@ float shift_mul(unsigned n);
 void nd_tile_bind(int n);
 void gp3_t0_surv(void);
 void nd_bfold_note(void); /* NCS2, nd_comb.c: the drec marker of the deleted core 0 box fold */
-void nd_rnd_sync(void);
+void nd_csync_note(void); void nd_rndw_note(void); /* NCS3, nd_comb.c: drec markers */
 unsigned rgba_from_5551(unsigned c);
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out);
 void dual_bind(void);

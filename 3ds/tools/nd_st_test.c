@@ -158,7 +158,7 @@ int main(void) {
     run_one(n_rm, &b); /* NAT4K: the mark only; a marked OML is not recorded */
     if (b.nw < 4u || b.w[1] != (uint32_t)(uintptr_t)nd_epm_run || b.w[2] != 0u || b.nu != 0u) { printf("stunit FAIL run\n"); return 1; } /* NAT6C: the mark is an nd_epm_run record (the header word is not tested: the nat seed changes it) */
     run_one(n_scis, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_sci_run || b.w[2] != (10u | 20u << 16) || b.w[3] != (300u | 200u << 16) || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4I */
-    run_one(n_cyc, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_omh_run || b.w[2] != (0x80000000u | G_MDSFT_CYCLETYPE | 2u << 8) || b.w[3] != G_CYC_1CYCLE || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4J */
+    run_one(n_cyc, &b); if (b.nw < 4u || b.w[0] != NDC_HDR(NDC_NAPI, 1, 1) || b.w[1] != (uint32_t)(uintptr_t)nd_omh_run || b.w[2] != (0xC0000000u | G_MDSFT_CYCLETYPE | 2u << 8) || b.w[3] != G_CYC_1CYCLE || b.nu != 0u) { printf("stunit FAIL nat\n"); return 1; } /* NAT4J */
     run_one(n6a, &b); /* NAT6A: the second pair is unmarked: one nd_prim_run record, no ENV or PRIM unit */
     { unsigned pr = 0, bad = 0; for (unsigned i = 0; i + 1 < b.nw; i++) if (b.w[i] == NDC_HDR(NDC_NAPI, 1, 1) && b.w[i + 1] == (uint32_t)(uintptr_t)nd_prim_run) pr++;
       for (unsigned j = 0; j < b.nu; j++) if (b.u[j] >> 24 == ND_FS_ENV || b.u[j] >> 24 == ND_FS_PRIM) bad++;

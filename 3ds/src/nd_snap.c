@@ -254,6 +254,5 @@ int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan, int mode5, int pat, 
     nd_cd_w = (unsigned)plan_on << 8 | ((unsigned)leg & 0xffu); nd_cd_s = (unsigned)s->plan_on << 8 | ((unsigned)s->leg & 0xffu); nd_cd_off = 0xffffu; nd_cd_x = (unsigned)(mode5 != 0) | (unsigned)(pat != 0) << 1 | (unsigned)(cc_on != 0) << 2 | (unsigned)(env_on != 0) << 3 | (unsigned)(s->mode5 != 0) << 8 | (unsigned)(s->pat != 0) << 9 | (unsigned)(s->cc_on != 0) << 10 | (unsigned)(s->env_on != 0) << 11;
     if (plan_on && s->plan_on) { const unsigned char* a = (const unsigned char*)plan; const unsigned char* b = (const unsigned char*)&s->plan; for (unsigned i = 0; i < sizeof *plan; i++) if (a[i] != b[i]) { nd_cd_off = i; break; } }
     return s->plan_on != plan_on || (plan_on ? nd_cd_off != 0xffffu : s->leg != leg) || s->mode5 != mode5 || s->pat != pat || s->cc_on != cc_on || (cc_on && s->cc != cc) || s->env_on != env_on; } /* NAT1F */
-int nd_snap_rdiff(const NdRender* rs, int mixk, unsigned mixc) { return memcmp(&sc_cur.rs, rs, sizeof *rs) != 0 || sc_cur.mixk != mixk || sc_cur.mixc != mixc; }
 unsigned nd_snap_primz(void) { return sc_cur.primz; } /* NAT4H: the sprite path */
 unsigned nd_snap_fill(void) { return sc_cur.fill; } /* NAT4H: the z-buffer clear */

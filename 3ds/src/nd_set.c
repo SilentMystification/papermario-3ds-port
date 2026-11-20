@@ -16,6 +16,7 @@
 #include "nd_ops.h"
 #include "nd_op.h"
 #include "nd_fs.h"
+#include "nd_sv.h" /* NSET1 */
 extern int pm_wide; /* WIDE4: set_scissor reads signed x edges with wide on */
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
@@ -201,25 +202,6 @@ void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, 
     if (oml == 0x00504B50u && PMDL("orbdbg")) sr_orb_log(oml, rs); /* FX1-2b: the render state the glow's draws get, once per frame. HCCUT3: cold */
     pm_gpu_render_src(omh, oml, rs->depth);
 }
-int nd_snap_rdiff(const NdRender* rs, int mixk, unsigned mixc); extern unsigned char nd_c0d; /* NAT1D */
-void nd_rnd_sync(void) {
-    const unsigned sg = nd_ws.omode_l ^ (nd_ws.omode_h * 2654435761u) ^ nd_ws.geom ^ (unsigned)nd_img_role(0);
-    if (nd_sr_same(sg)) return;
-    const unsigned m = nd_ws.omode_l, p = (m >> 30) & 3u, a = (m >> 26) & 3u, mm = (m >> 22) & 3u, b = (m >> 18) & 3u;
-    /* V06: the first blender cycle mixes the colour with the blend colour (m1a 2) or the fog colour (m1a 3) by the fog
-     * colour alpha: (P * A + M * (1 - A)), P = BL or FOG, A = A_FOG, M = IN, B = 1MA. The room shroud (PM_RM_SHROUD) fades the
-     * world to black this way. Other blenders are not touched. */
-    unsigned mixc = 0; int mixk = 0; NdRender rs;
-    if (nd_mix1(m, &mixc)) mixk = 1;
-    else if (!pm_nofog && p == 3u && a == 2u && mm == 0u && b == 0u) {
-        /* F08: G_RM_FOG_SHADE_A, the weight is the shade alpha (the vertex fog factor, see draw_tri) */
-        mixk = 2; mixc = (fogc & 0xffffff00u) | 0xffu;
-    }
-    nd_render_state(nd_ws.omode_h, m, nd_img_role(0) == ROLE_DEPTH, &rs);
-    nd_render_apply(&rs, mixk, mixc, nd_ws.omode_h, m, sg);
-    nd_c0d = (unsigned char)((nd_c0d & ~2u) | (nd_snap_rdiff(&rs, mixk, mixc) ? 2u : 0u)); /* NAT1D */
-    nd_c0w |= 2u; nd_c0_src(); /* NAT1B */
-}
 /* NAT4I: the native state records of nd_rec.c rec_nat (core 1 values after the unit; bit 31 = the core 1 mark) */
 void nd_sci_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_SCISSOR; gv_epoch++; sci_x0 = (int16_t)r[0]; sci_y0 = (int16_t)(r[0] >> 16); sci_x1 = (int16_t)r[1]; sci_y1 = (int16_t)(r[1] >> 16); pm_gpu_set_scissor(sci_x0, sci_y0, sci_x1, sci_y1); }
 void nd_geo_run(const uint32_t* r) { const unsigned g = r[0]; const int mk = (int)(r[1] >> 31);
@@ -238,4 +220,7 @@ void nd_tex_run(const uint32_t* r) { const unsigned on = r[0] & 0xffffffu, ss = 
 void nd_omh_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */
     const int same = (v & m) == (nd_ws.omode_h & m) && sc_ok; if (same) nd_ws.om_kh |= m;
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_OMH; if (mk) gv_epoch++;
-    if (!same) set_om(1, r[0] & 0xffu, (r[0] >> 8) & 0xffu, m, v); }
+    if (!same) { const uint32_t sv[2] = { m, v & m }; nd_sv_omh(sv); if (r[0] & 0x40000000u) nd_comb_sync(); } } /* NSET1: core 1 bit 30 is the cycle sync of set_om */
+void nd_sv_nop(const uint32_t* r) { (void)r; } /* NSET1: LOADBLOCK, LOADTILE: no core 0 state */
+void nd_sv_omh(const uint32_t* r) { const uint32_t m = r[0], tf = nd_ws.omode_h & (3u << 12); nd_ws.omode_h = (nd_ws.omode_h & ~m) | r[1]; nd_ws.om_kh |= m; /* NSET1: set_om H without the sync */
+    if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }

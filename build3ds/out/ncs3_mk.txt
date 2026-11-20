@@ -1,0 +1,15 @@
+== wscmb_pause_drec
+2
+284:#281 csync f140
+289:#286 csync f141
+seeded:
+seeded rc=1
+== fxparts_drec
+7
+293:#288 csync f412
+315:#310 csync f456
+338:#333 csync f500
+361:#355 csync f544
+377:#371 csync f588
+seeded:
+seeded rc=1

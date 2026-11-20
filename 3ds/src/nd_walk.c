@@ -324,7 +324,7 @@ void nd_ctl_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (re
     for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_NOP_A) continue; const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) break; q += 2u * r; }
     if (m != 2u) { ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); } }
 void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
-    nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; nd_unit_apply(r); }
+    nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; ((NdNapiRun)(uintptr_t)r[1])(r + 2); } /* NSET1: r[1] the applier, r[2], r[3] its values (core 1) */
 void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */
 void nd_prim_run(const uint32_t* r) { if (nd_ws.prim == r[1] && (uint8_t)nd_ws.prim_lod == (uint8_t)r[0] && sc_ok) { pm_gpu_set_prim(nd_ws.prim, r[0]); nd_ws.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */
 void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep_mw = r[1]; nd_epk_mk++; gv_epoch++; } /* NAT6C: nr_ctl MISC_EP */
@@ -387,7 +387,7 @@ static __attribute__((cold, noinline)) void pr_cen(void) {
 void nd_pbeg_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); pr_v++; if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen(); /* NAT5E: the start of the old parts runner */
     pm_walk_side++; gv_epoch++; dlc_on = 1; gp_prev_op = -1; extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; }
 void nd_pdraw_run(const uint32_t* r) { const NdNDev* t = (const NdNDev*)(uintptr_t)r[0]; if (!nd_part_draw(t)) { if (nd_ls_on) nd_lsr_geo(); nd_geo_units(t->u, t->nu); } } /* NAT5E: one instance list */ /* NATFB2: a refused particle list on the native geometry run */
-void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */
+void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; nd_csync_note(); nd_sr_forget(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */ /* NCS3 */
 /* ENTRYCAP: the device switch entcap (PMDL). A static list without a v2 table logs its walker entry description (nd_walker_desc) once per
  * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 4096 keys. */
 static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {
