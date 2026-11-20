@@ -116,7 +116,6 @@
 		*(.text.pm_gpu_gv_room)  /* 4.0 calls/frame, 68 B */
 		*(.text.gv_lit_ok)  /* 0.7 calls/frame, 64 B */
 		/* class G: texrect and fillrect */
-		*(.text.nd_img_role)  /* 146.3 calls/frame, 248 B */
 		*(.text.tile_bound)  /* 37.7 calls/frame, 436 B */
 		*(.text.pm_tex_off_idx)  /* 26.3 calls/frame, 48 B */
 		*(.text.nd_tile_bind)  /* 25.7 calls/frame, 356 B */
