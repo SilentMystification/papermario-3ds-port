@@ -14,6 +14,7 @@
 #include "nd_msnapw.h"
 #include "nd_snap.h" /* NWS4C: nd_ap */
 
+int pm_drec_now(void); /* MCOPY1 */
 void nd_mdl_alt(const uint32_t* ab); /* NAT5B: nd_walk.c */
 void nd_range_run(const uint32_t* a); /* nd_walk.c: DIRECT D10a, a custom gfx range of the frame stream */
 void pm_gpu_set_r13_t1(int bound);
