@@ -18,7 +18,7 @@
 #define nd_direct_end() (ap_sync(), nd_direct_end())
 /* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that ap_sync (run before each nd_direct call below) fills from nd_c0. */
 static NdSnapChk ap_stub;
-const NdSnapChk* const nd_ap = &ap_stub;
+const NdSnapChk* nd_ap = &ap_stub;
 int pm_drec_now(void) { return 1; }
 extern int dual_on; extern unsigned keyc, keys;
 static void ap_sync(void) {
