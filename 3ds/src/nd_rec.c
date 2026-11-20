@@ -246,7 +246,7 @@ static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits,
 static MmS mm_s; static NdDs mm_b;
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
-void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * 2u * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
+void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * 2u * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
 #define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
 #define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
 #define MM_L0 ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, ldrec)) / 4u))
@@ -292,6 +292,12 @@ static __attribute__((cold, noinline)) void mm_store(MmEnt* e, const uint32_t* r
     e->nd = n; e->cl = nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n; e->cb = nd_ds.tm.blk_n - mm_b.tm.blk_n; mm_ring_get(&nd_ds, e->al, e->ab); e->ok = 1;
 }
 static __attribute__((cold, noinline)) void mm_diff(const char* what, unsigned at) { if (mm_diffs++ < 16u) pm_log_evt("mmemo f%u diff %s %u", pm_frame_count(), what, at); }
+static unsigned mm_nn; static unsigned mm_nc[8]; /* near misses: the same key and record, only S differs; counted by the part of S (m, sv, rg, lr, br) */
+static __attribute__((cold, noinline)) void mm_near(const MmEnt* e, const MmS* s) {
+    const uint32_t* x = (const uint32_t*)&e->s; const uint32_t* y = (const uint32_t*)s; unsigned i = 0; while (x[i] == y[i]) i++;
+    const unsigned o = i * 4u; const unsigned c = o < offsetof(MmS, sv) ? 0u : o < offsetof(MmS, rg) ? 1u : o < offsetof(MmS, lr) ? 2u : o < offsetof(MmS, br) ? 3u : 4u;
+    mm_nc[c]++; if (mm_nn < 24u && pm_frame_count() >= 150u) { mm_nn++; pm_log_evt("mmemo near part %u off %u", c, o); }
+}
 static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned* hit) {
     *hit = 0;
     if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_SETS * 2u * sizeof *mm_t); }
@@ -301,6 +307,7 @@ static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned
     for (unsigned k = 0; k < 2u; k++) {
         MmEnt* const e = &w[k];
         if (mm_match(e, r, words, keep, &mm_s)) { *hit = 1; return e; }
+        if (e->ok && e->kg == r[24] && e->k0 == r[0] && e->cg == mm_cg[e->ctx] && (int)e->ctx != rec_ctx && e->keep == keep && mm_r13_eq(e, r, words) && mm_list_eq(e, r)) mm_near(e, &mm_s); /* DO1 census: S is the only difference */
         if (!v && (!e->ok || (int)e->ctx != rec_ctx || e->cg != mm_cg[e->ctx])) v = e; /* free, or an entry of the step before that did not hit: the entries of this step stay for the next */
     }
     return v ? v : &w[mm_tog++ & 1u];
