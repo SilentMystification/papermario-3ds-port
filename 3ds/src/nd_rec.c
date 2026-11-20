@@ -280,6 +280,7 @@ static void mm_hash(const uint32_t* r, unsigned words, unsigned keep) {
       mm_mixn(h, d + offsetof(NdDs, conv_k4) / 4u, (unsigned)((offsetof(NdDs, lt) - offsetof(NdDs, conv_k4)) / 4u));
       mm_mix(h, nd_ds.w.prim_z); mm_mix(h, (uint32_t)nd_ds.w.tex_on); mm_mix(h, nd_ds.w.fill); mm_mix(h, nd_ds.lt_n);
       mm_mixn(h, d + offsetof(NdDs, lt) / 4u, (unsigned)((offsetof(NdDs, lt_n) - offsetof(NdDs, lt)) / 4u)); }
+    mm_mixn(h, (const uint32_t*)&nd_ds + offsetof(NdDs, m1v) / 4u, (unsigned)((sizeof(NdDs) - offsetof(NdDs, m1v)) / 4u)); /* m1v, m1w, m1h and the flag bytes (zslot, sc_lost, sc_dirty): the delta writes whole words */
     { uint32_t sv[4]; nd_snap_sv(sv); mm_mixn(h, sv, 4u); }
     { uint32_t rw[MM_RW]; mm_ring_get(&nd_ds, nd_ds.tm.ldrec_n, nd_ds.tm.blk_n, rw); mm_mixn(h, rw, MM_RW); }
     if (mm_lights(r)) mm_mixn(h, (const void*)(uintptr_t)r[7], (unsigned)(sizeof(Lightsn) / 4u));
