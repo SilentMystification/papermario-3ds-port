@@ -134,7 +134,7 @@ int pm_drec_now(void);
 /* NDR0G2: the walker tile blocks when e is NULL, else e. */
 static const NdSnapBind* sc_wb(const NdSnapBind* e, NdSnapBind* w) {
     if (e) return e;
-    for (int n = 0; n < 2; n++) nd_snap_bind(&nd_c0.td[n], &nd_c0.tst1, n, &w[n]);
+    for (int n = 0; n < 2; n++) nd_snap_bind(&nd_txw.td[n], &nd_txw.tst1, n, &w[n]);
     return w;
 }
 

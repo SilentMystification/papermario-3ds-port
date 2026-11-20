@@ -69,7 +69,7 @@ static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, in
     float t0 = (float)(s16)(hs & 0xffff) / 32.f;
     float dsdx = (float)(s16)(hd >> 16) / 1024.f;
     float dtdy = (float)(s16)(hd & 0xffff) / 1024.f;
-    float sl = (float)nd_c0.tst1.tile_sz[tile][0] / 4.f, tl = (float)nd_c0.tst1.tile_sz[tile][1] / 4.f;
+    float sl = (float)nd_txw.tst1.tile_sz[tile][0] / 4.f, tl = (float)nd_txw.tst1.tile_sz[tile][1] / 4.f;
     for (int y = y0; y < y1; y++) {
         for (int x = x0; x < x1; x++) {
             float s = s0 + dsdx * (float)(x - (xl >> 2)) - sl;
@@ -78,7 +78,7 @@ static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, in
             (void)t;
             if (ts < 0) ts = 0;
             /* A TLUT in TMEM holds each entry four times in a row. One row only. */
-            unsigned word = nd_c0.tst1.tile_tmem[tile] + (unsigned)(ts >> 2);
+            unsigned word = nd_txw.tst1.tile_tmem[tile] + (unsigned)(ts >> 2);
             unsigned entry = word - 256u;
             if (entry > 255u) continue;
             float tx[4], none[4] = { 0, 0, 0, 0 }, o[4];
@@ -97,7 +97,7 @@ static __attribute__((cold, noinline)) int rect_to_image_draw(int xl, int yl, in
 }
 
 __attribute__((noinline)) int rect_to_image(int xl, int yl, int xh, int yh, unsigned tile, u32 hs, u32 hd) {
-    if (!nd_tgt.img || (nd_tgt.kind & NDK_CFB) || tile >= 8 || nd_c0.tst1.tile_tmem[tile] < 256) return 0;
+    if (!nd_tgt.img || (nd_tgt.kind & NDK_CFB) || tile >= 8 || nd_txw.tst1.tile_tmem[tile] < 256) return 0;
     return rect_to_image_draw(xl, yl, xh, yh, tile, hs, hd); /* HCCUT2: the drawing body is cold */ }
 
 /* D03: a draw_box window with the bg_tile pattern. The combiner is (PRIM - ENV) * (TEXEL0 * TEXEL1) + ENV, alpha
@@ -164,14 +164,14 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
  * old block with the same expressions in the same order (byte-equal by construction). */
 static int nd_texlog_on = -1; /* texlog debug switch: -1 until the first texrect that needs it */
 __attribute__((noinline, cold)) static void nd_texrect_depth(u32 hs) {
-    pm_depth_query(nd_c0.timg, (int)((s16)(hs >> 16) >> 5), pm_gpu_sci_raw()[0]);
+    pm_depth_query(nd_txw.timg, (int)((s16)(hs >> 16) >> 5), pm_gpu_sci_raw()[0]);
 }
 __attribute__((noinline, cold)) static void nd_texrect_log(int xl, int yl, int xh, int yh) { /* NWS4B */
     /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
     if (nd_texlog_on < 0) nd_texlog_on = pm_debug_has("texlog");
     if (nd_texlog_on) pm_log_d("texlog f%u rect %d,%d-%d,%d w%d h%d cyc %u rm %08x zsrc %d ac %u tile0 %d/%d tile1 %d/%d valid1 %d",
                                pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (xh - xl) / 4 + 1, (yh - yl) / 4 + 1, (nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3, /* NWS4B */
-                               (unsigned)nd_ap->oml, (nd_ap->oml >> G_MDSFT_ZSRCSEL) & 1, (nd_ap->oml >> 0) & 3, nd_c0.tst1.tile_fmt[0], nd_c0.tst1.tile_siz[0], nd_c0.tst1.tile_fmt[1], nd_c0.tst1.tile_siz[1], nd_c0.td[1].valid); /* NWS4B */
+                               (unsigned)nd_ap->oml, (nd_ap->oml >> G_MDSFT_ZSRCSEL) & 1, (nd_ap->oml >> 0) & 3, nd_txw.tst1.tile_fmt[0], nd_txw.tst1.tile_siz[0], nd_txw.tst1.tile_fmt[1], nd_txw.tst1.tile_siz[1], nd_txw.td[1].valid); /* NWS4B */
 }
 /* COPY cycle: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1). The lower right corner is inclusive, one more pixel
  * (as in libultraship). PT06: the lower edge is inclusive too. BG1/BG2 oracle plan 2, fix 1: the pixel span is the RDP one. */

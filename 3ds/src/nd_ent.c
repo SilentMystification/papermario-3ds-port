@@ -42,13 +42,13 @@ void pm_gbi_ent_texchk(const uint32_t* dl) {
         if (c == NDTX_WIN && n_tbad++ < 6) pm_log_prof_line("texwin f%u w %u h %u ldw %u ldh %u tsiz %u", pm_frame_count(), d.w, d.h, d.stride, d.pal_n, d.fmt);
         if (c == NDTX_TILE && n_tbad++ < 6) pm_log_prof_line("texbad f%u op %02x tile %u", pm_frame_count(), d.bad_op >> 8, d.bad_op & 7u);
         if (c == NDTX_OK || c == NDTX_MULTI) {
-            int same = nd_c0.td[0].valid && (const void*)nd_c0.td[0].src == d.img && nd_c0.td[0].fmt == d.fmt && nd_c0.td[0].siz == d.siz && nd_c0.td[0].w == (int)d.w && nd_c0.td[0].h == (int)d.h &&
-                       nd_c0.td[0].stride == (int)d.stride && nd_c0.td[0].x0 == 0 && nd_c0.td[0].y0 == 0 && (d.fmt != 2u || (nd_c0.td[0].pal == d.pal && nd_c0.td[0].pal_n == (int)d.pal_n));
+            int same = nd_txw.td[0].valid && (const void*)nd_txw.td[0].src == d.img && nd_txw.td[0].fmt == d.fmt && nd_txw.td[0].siz == d.siz && nd_txw.td[0].w == (int)d.w && nd_txw.td[0].h == (int)d.h &&
+                       nd_txw.td[0].stride == (int)d.stride && nd_txw.td[0].x0 == 0 && nd_txw.td[0].y0 == 0 && (d.fmt != 2u || (nd_txw.td[0].pal == d.pal && nd_txw.td[0].pal_n == (int)d.pal_n));
             if (same) n_eq++;
             else {
                 n_diff++;
                 if (n_dlog++ < 8) pm_log_prof_line("texdiff f%u td v%d src %p fmt %u siz %u w %d h %d str %d x0 %d y0 %d pal %p n %d / dec src %p fmt %u siz %u w %u h %u str %u pal %p n %u",
-                    pm_frame_count(), nd_c0.td[0].valid, (const void*)nd_c0.td[0].src, nd_c0.td[0].fmt, nd_c0.td[0].siz, nd_c0.td[0].w, nd_c0.td[0].h, nd_c0.td[0].stride, nd_c0.td[0].x0, nd_c0.td[0].y0, nd_c0.td[0].pal, nd_c0.td[0].pal_n,
+                    pm_frame_count(), nd_txw.td[0].valid, (const void*)nd_txw.td[0].src, nd_txw.td[0].fmt, nd_txw.td[0].siz, nd_txw.td[0].w, nd_txw.td[0].h, nd_txw.td[0].stride, nd_txw.td[0].x0, nd_txw.td[0].y0, nd_txw.td[0].pal, nd_txw.td[0].pal_n,
                     d.img, d.fmt, d.siz, d.w, d.h, d.stride, d.pal, d.pal_n);
             }
         }
