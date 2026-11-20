@@ -1,0 +1,3 @@
+cmp hudfb_drec: row NWS4B run at commit d66e9ff07 build 7505, base cb7e63092 (1 shots)
+  drec draw 4 DIFF line 412: base 'r 083 f 00002200', row 'r 083 f 00002206'
+0/1 byte-equal
