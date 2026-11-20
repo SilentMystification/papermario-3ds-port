@@ -486,8 +486,8 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
  * Arm rule (the commit names it): a state-only list (nd_rec.c rec_inline: fewer than 64 units, all state ops) never reached the walker's G_DL arms,
  * so it runs as G_PM_LST and its ops (the list start of that unit: gv_epoch, ent_skipgen, gp_prev_op); any other list takes the arms of nr_call
  * in its order (ent_skipgen, ent_gdl, nd_sg_try) and, when neither draws it, the list start of nd_nr_list (keep) and its table ops. A def whose value
- * units all precede the statics (nv == pre, the S6E rule of ent_gap) runs compiled, else as units. A debug walk (pm_walk_dbg) runs the G_DL unit on
- * the walker so its census hooks see the list. Vertex and triangle ops are the walker's typed units (nr_geo), so clip, cull, lit loads and the
+ * units all precede the statics (nv == pre, the S6E rule of ent_gap) runs compiled, else as units. NAT5T: a debug walk takes the same arms (its
+ * unit runs keep the census hooks). Vertex and triangle ops are the walker's typed units (nr_geo), so clip, cull, lit loads and the
  * ring stay the walker's. */
 unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
@@ -509,12 +509,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec, cons
         return;
     }
     if (__builtin_expect(PMDL("entcap") && (!nt || PMDL("entcapt")), 0)) entcap_rec(key, rec[2], rec[3]); /* ENTSRC: entcapt adds the lists with a v2 table */
-    if (__builtin_expect(pm_walk_dbg, 0)) {
-        const uint32_t u[2] = { ND_OP_CALL_W0, (uint32_t)(uintptr_t)key };
-        nd_nr_exec(u, 1u);
-        return;
-    }
-    const NdW2* next = (const NdW2*)key;
+    const NdW2* next = (const NdW2*)key; /* NAT5T: a debug walk (pm_walk_dbg) takes these arms too: the static table has no tile window */
     pm_gbi_cur_op = ND_FS_CALL;
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
