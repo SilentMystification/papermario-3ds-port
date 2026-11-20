@@ -24,9 +24,9 @@ unsigned shc[16]; /* BOMBLIT: shade path counters of the shadecen switch (0 m1 s
 /* BOMBLIT2: 7 native ok, 8 native fallback, 9 native why 5, 10 and 11 unused (memo hit and miss come from nd_sprm_take, nd_model.c), 12 shaded native draw, 13 shade_mean call */
 void nd_sprm_take(unsigned* h, unsigned* m); /* nd_model.c */
 int shd_min[3] = { 255, 255, 255 }, shd_max[3] = { 0, 0, 0 }; /* BOMBLIT2: dual_f range of the shaded native draws, x255 */
-int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
+int pm_gbi_bind_tile1(const uint32_t* q) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
     if (!plan_active || !cur_plan.uses_tex1) return 0;
-    nd_bsrc = nd_msnap_b(); nd_bsrc_chk(nd_bsrc, 5u); /* NC0C: the model snap tile blocks */
+    nd_bsrc = nd_msnap_bq(q); nd_bsrc_chk(nd_bsrc, 5u); /* NC0C: the model snap tile blocks */
     { const uint32_t* mw = nd_msnap_w(); nd_tile_bind(nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1])); } /* NWS4C */
     dual_bind();
     const int ok = ND_BTD(1)->valid && pm_tex_aux_off_idx() < 0;
