@@ -282,42 +282,9 @@ void nd_comb_sync(void) {
     sc_ok = 1; /* NAT3A: the combine of each draw comes from its snap (core 1, plan_native.md P1). Core 0 keeps the skip state of nd_unit_same only. */
 }
 
-/* All texels of tile 0 are 1.0 (I4 0xF or I8 0xFF)? Then TEXEL0 * TEXEL1 is TEXEL1. */
-int tile0_white(void) {
-    const u8* src = nd_ws.td[0].src;
-    if (!nd_ws.td[0].valid || !src || nd_ws.td[0].fmt != G_IM_FMT_I || nd_ws.td[0].siz > 1) return 0;
-    for (int y = 0; y < nd_ws.td[0].h; y++) {
-        for (int x = 0; x < nd_ws.td[0].w; x++) {
-            if (nd_ws.td[0].siz == 0) {
-                unsigned b = src[(y * nd_ws.td[0].stride + x) >> 1];
-                if (((x & 1) ? (b & 15u) : (b >> 4)) != 15u) return 0;
-            } else if (src[y * nd_ws.td[0].stride + x] != 255) {
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
-
-/* Called before each textured draw. Tiles 0 and 1 are known by then, the combine mode came
- * before them. */
-void box_fold_sync(void) {
-    int want = box_prod && nd_ws.td[1].valid && tile0_white();
-    if (want == box_folded) return;
-    box_folded = want;
-    comb_gen++;
-    if (want) {
-        box_save[0] = nd_ws.tst1.comb_a; box_save[1] = nd_ws.tst1.comb_b; box_save[2] = nd_ws.tst1.comb_c; box_save[3] = nd_ws.tst1.comb_d;
-        nd_ws.tst1.comb_a = G_CCMUX_PRIMITIVE; nd_ws.tst1.comb_b = G_CCMUX_ENVIRONMENT; nd_ws.tst1.comb_c = G_CCMUX_TEXEL0; nd_ws.tst1.comb_d = G_CCMUX_ENVIRONMENT;
-        nd_ws.tst1.comb_aa = 7; nd_ws.tst1.comb_ab = 7; nd_ws.tst1.comb_ac = 7; nd_ws.tst1.comb_ad = 1; /* TEXEL1 alpha, renamed TEXEL0 */
-        nd_ws.use_t1 = 1;
-    } else {
-        nd_ws.tst1.comb_a = box_save[0]; nd_ws.tst1.comb_b = box_save[1]; nd_ws.tst1.comb_c = box_save[2]; nd_ws.tst1.comb_d = box_save[3];
-        nd_ws.tst1.comb_aa = 7; nd_ws.tst1.comb_ab = 7; nd_ws.tst1.comb_ac = 7; nd_ws.tst1.comb_ad = 2;
-        nd_ws.use_t1 = 0;
-    }
-    nd_comb_sync();
-}
+int pm_drec_now(void); /* NCS2: pm_gpu.c */
+static __attribute__((cold, noinline)) void bfold_log(void) { static unsigned fr = ~0u; if (pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("bfold f%u", fr); } } /* NCS2 */
+void nd_bfold_note(void) { if (__builtin_expect(pm_drec_now(), 0) && (box_prod && nd_ws.td[1].valid && nd_td_white(&nd_ws.td[0])) != box_folded) bfold_log(); } /* NCS2: the drec marker of the deleted core 0 box fold (UD-N5); NWS1 deletes it */
 
 float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
 int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */

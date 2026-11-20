@@ -344,7 +344,7 @@ void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
-    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { nd_img_check(); box_fold_sync(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* PG4: the second triangle of a G_TRI2 sees the same state */
+    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { nd_img_check(); nd_bfold_note(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* NCS2 */ /* PG4: the second triangle of a G_TRI2 sees the same state */
     if (nd_ls_on) nd_lsr_tri(nd_ls_ord - 1u);
     if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */
     nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NCONV1D2: a list triangle binds from its range snap. NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
@@ -396,7 +396,7 @@ int nd_part_draw(const NdNDev* t) {
             gp_ntri++;
             n_cmd++;
             tri_since_vtx = 1;
-            if (ep_osc != gv_epoch) { nd_img_check(); box_fold_sync(); ep_osc = gv_epoch; }
+            if (ep_osc != gv_epoch) { nd_img_check(); nd_bfold_note(); ep_osc = gv_epoch; } /* NCS2 */
             if (nd_ls_on) { nd_ls_ord++; nd_lsr_tri(nd_ls_ord - 1u); } /* NREC4: the instance snap */
             const unsigned char sn = nd_snap_arm; /* NAT5E: the stream instance snap */
             if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;

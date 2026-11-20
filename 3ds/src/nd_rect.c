@@ -240,7 +240,7 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) {
     if (zcol) { zslot_on = 1; rc_render(); }
     else if (nd_img_role(0) == ROLE_SLOT) rc_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
     nd_img_check();
-    box_fold_sync();
+    nd_bfold_note(); /* NCS2 */
     if (sn_armed) nd_snapchk_tri(); /* NDR1B: the compare, then the snap combine */
     else if (rc_sn) nd_snap_comb(); /* NDR1C */
     if (rc_sn) nd_snap_rlog(); /* NDR1C */
