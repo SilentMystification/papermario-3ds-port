@@ -39,13 +39,28 @@ static __attribute__((noinline)) void rec_matrix(const NdW2* q) {
     else nd_mtx_static = 1;
     if (q[8].words.w0) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1);
 }
-static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone) {
+static void hit_apply(const NdW2* q, const NdMEnt* e);
+/* MCOPY1: the lights of a record (R2, R3), the movemem words of nd_ds_model in its order, run as nd_mvm_run runs them. */
+static __attribute__((noinline)) void rec_lights(const NdW2* q) {
+    if (!q[3].words.w1 || q[2].words.w0 > 7u) return;
+    const unsigned n = q[2].words.w0 ? q[2].words.w0 : 1u;
+    const Lightsn* L = (const Lightsn*)(uintptr_t)q[3].words.w1;
+    nd_light_count(NUML(n));
+    for (unsigned i = 1; i <= n + 1u; i++) {
+        const u32 w0 = (((u32)sizeof(Light) - 1u) / 8u) << 19 | (3u * i + 3u) << 8 | G_MV_LIGHT;
+        const u32 w1 = (u32)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a);
+        if (lt_mem_same(w0, w1)) continue;
+        gv_epoch++; nd_mv_mem(w0, w1);
+    }
+}
+static unsigned mm_fr = ~0u;
+static __attribute__((cold, noinline)) void mmiss_note(void) { const unsigned f = pm_frame_count(); if (f != mm_fr) { mm_fr = f; pm_log_evt("mmiss f%u", f); } } /* the miss path takes the hit state: marker of the expected-diff gate */
+static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone, const NdMEnt* e) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
-    gv_epoch++; nd_mdl_alt(nd_msnap_ab((const uint32_t*)q)); /* NAT5B: the units before the matrix: core 1 wrote them as an alt range */
+    gv_epoch++; mmiss_note(); hit_apply(q, e); rec_lights(q); nd_sr_forget(); /* MCOPY1: the hit state, the lights; the tile blocks come from the model snap */
     if (!(f & 256u) && !mdone) nd_xf_load(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     else if (f & 256u) nd_mtx_static = 1; /* SEAM2: IGNORE_MATRIX, no model matrix */
     if (q[11].words.w0) rec_range((const uint32_t*)(uintptr_t)q[11].words.w0, 1u); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) NATRS */
-    nd_mdl_alt(nd_msnap_ab((const uint32_t*)q) + 2); /* NAT5B: the panner units (R9, R10) */
     if (q[8].words.w0 && !mdone) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
@@ -184,7 +199,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         nd_sr_forget(); /* NWS1 */
     } else {
     if (!full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; } /* HC6 step 2: a cached key whose hit failed: the store reads the full key */
-    rec_apply(q, mdone);
+    rec_apply(q, mdone, mce);
     { /* MDL-1b v2: once per record after rec_aux, before the ndm and model branches. SBKW: every record, not only R13 texture-only ones: the walker's
        * tile 1 step (nd_tile_bind(1) of a plan that reads TEXEL1) runs for all records, so the native combine decision sees td[1].valid (sbk_56 water) */
         nd_msnap_dec((const uint32_t*)q); /* NAT2K: the decision words of this record (the walker set them in rec_apply) */
@@ -193,6 +208,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         pm_gpu_set_r13_t1(t1);
     }
     nd_msnap_use((const uint32_t*)q); /* NREC1B: model_draw reads this snap */
+    if (q[13].words.w0 || q->words.w1 || q[9].words.w0 || q[10].words.w0) { nd_bsrc = nd_msnap_bq((const uint32_t*)q); nd_tile_bind(0); nd_bsrc = NULL; } /* MCOPY1: the uv origin of tile 0 (census b8) */
     /* MDL-5f: the walker order is record combine, render mode list, pre list (rec_apply), so a state-only pre list's SETCOMBINE and SETOTHERMODE
      * ops win over the record's words. The native draw gets them in the same order: its combine replaces cwp, the render mode list is copied
      * without its SETCOMBINE (when the pre list has one) and its SETOTHERMODE ops are followed by the pre list's ops, then ENDDL. */

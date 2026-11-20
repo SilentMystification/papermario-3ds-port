@@ -2416,6 +2416,38 @@ def row_shots_run(bench, row):
     return best
 
 
+def expect_check(log_text, seq, word):
+    """MCOPY1: the expected-diff rule. seq: the first DIFF draw seq of drec.txt. Its frame F is that of the last log line `drec frame <F> seq <S>`
+    with S <= seq. (ok, F, m): ok when the log has a marker `<word> f<m>` with m <= F (m the first such marker), else m None."""
+    import re
+    frame = None
+    for m in re.finditer(r"drec frame (\d+) seq (\d+)", log_text):
+        if int(m.group(2)) <= int(seq): frame = int(m.group(1))
+    if frame is None: return False, None, None
+    ms = [int(m.group(1)) for m in re.finditer(r"\b%s f(\d+)" % re.escape(word), log_text)]
+    if not ms: return False, frame, None
+    mm = min(ms)
+    return mm <= frame, frame, mm
+
+
+def cmd_selftest_expect(a):
+    import tempfile
+    log = "#1 drec frame 200 seq 0\n#2 drec frame 201 seq 2\n"
+    ok = True
+    for name, extra, want in (("marker f201", "#3 mmiss f201\n", True), ("marker f202", "#3 mmiss f202\n", False), ("no marker", "", False)):
+        with tempfile.TemporaryDirectory() as td:
+            da, db = Path(td) / "a.txt", Path(td) / "b.txt"
+            da.write_text("draw 0\nx 1\ndraw 1\nx 2\ndraw 2\nx 3\n", encoding="utf-8"); db.write_text("draw 0\nx 1\ndraw 1\nx 2\ndraw 2\nx 4\n", encoding="utf-8")
+            fb, lines = drec_cmp(da, db)
+            seq = lines[0].split("draw ")[1].split(" ")[0]
+            got, f, m = expect_check(log + extra, seq, "mmiss")
+        good = fb == 1 and seq == "2" and got == want
+        print("%s: first DIFF draw %s frame %s marker %s -> %s (want %s) %s" % (name, seq, f, m, "PASS" if got else "FAIL", "PASS" if want else "FAIL", "ok" if good else "SELFTEST FAULT"))
+        ok = ok and good
+    print("selftest-expect %s" % ("PASS" if ok else "FAIL"))
+    return 0 if ok else 1
+
+
 def cmd_cmp(a):
     bd = bench_def(a.bench)
     if not bd or not bd["kind"].startswith("azahar"):
@@ -2444,6 +2476,7 @@ def cmd_cmp(a):
         a.bench, a.row, (rr.get("commit") or "?")[:9], rr.get("build_no"), commit[:9], len(base_names)))
     if rr.get("warm") == 0: print("cmp %s: the row run was a cold start (warm 0); the base is two warm runs. Run the bench once more (the slot keeps its Azahar: warm), then cmp." % a.bench); return 1  # TOOLB9
     equal, bad = 0, 0
+    exp_pass, bad_drec = False, 0
     for n in base_names:
         if n not in row_names:
             print("  %s missing in the row run" % n)
@@ -2452,6 +2485,15 @@ def cmd_cmp(a):
         if n == "drec.txt":
             fb, lines = drec_cmp(base_dir / n, row_dir / n)
             print("\n".join(lines))
+            if fb and getattr(a, "expect", None) and "DIFF line" in lines[0]:  # MCOPY1: expected-diff rule
+                seq = lines[0].split("draw ")[1].split(" ")[0]
+                lg = REPO / "build3ds" / "azt" / "logs" / (a.bench + ".txt")
+                okx, fr, mm = expect_check(lg.read_text(encoding="utf-8", errors="replace") if lg.exists() else "", seq, a.expect)
+                if okx:
+                    exp_pass = True
+                    print("expected-diff PASS %s draw %s frame %s marker f%s" % (a.bench, seq, fr, mm))
+                    continue
+                print("expected-diff FAIL %s draw %s frame %s marker %s" % (a.bench, seq, fr, "none" if mm is None else "f%d" % mm))
             bad += fb
             if fb == 0:
                 equal += 1
@@ -2479,6 +2521,8 @@ def cmd_cmp(a):
             print("  %s extra (not in base)" % n)
             bad += 1
     print("%d/%d byte-equal" % (equal, len(base_names)))
+    if exp_pass:  # other shot diffs pass only with the drec expected-diff PASS
+        return 2  # MCOPY1: expected-diff PASS, no cmppass record (not a byte-equal pass)
     if bad:
         for c in stored_matches(a.bench, row_dir):
             print("row shots equal stored base %s" % c[:9])
@@ -3054,8 +3098,9 @@ def main(argv):
     x.add_argument("--shots", action="store_true", help="base --check: run one random stored bench again, compare the shots")
     x.add_argument("--adopt", metavar="ROW"); x.add_argument("--parent")  # BASEREUSE
     x.add_argument("--commit"); x.add_argument("--row", default=BASE_ROW); x.set_defaults(f=cmd_base)
-    x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit")
+    x = sub.add_parser("cmp"); x.add_argument("bench"); x.add_argument("--row", required=True); x.add_argument("--commit"); x.add_argument("--expect", help="MCOPY1: a DIFF of drec.txt passes when the log has `WORD f<m>` with m at or before its frame")
     x.set_defaults(f=cmd_cmp)
+    x = sub.add_parser("selftest-expect"); x.set_defaults(f=cmd_selftest_expect)
     x = sub.add_parser("import-csv"); x.set_defaults(f=cmd_import_csv)
     x = sub.add_parser("where"); add_area(x); x.set_defaults(f=cmd_where)
     x = sub.add_parser("spots"); add_area(x); x.add_argument("--top", type=int, default=20); x.set_defaults(f=cmd_spots)
