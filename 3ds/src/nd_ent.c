@@ -358,7 +358,7 @@ EntKey* ent_find(const NdW2* l, u32 vb) {
     return NULL;
 }
 
-u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h = (h ^ nd_c0.segbase[i]) * 16777619u; return h | 1u; }
+u32 ent_segkey(void) { u32 h = 2166136261u, h0 = h; const uint32_t* const sb = nd_gs ? nd_gs->seg : NULL; for (unsigned i = 1; i < 16; i++) { h = (h ^ (sb ? sb[i] : 0u)) * 16777619u; h0 = (h0 ^ nd_c0.segbase[i]) * 16777619u; } if (h != h0) nd_seg_chk(3u); return h | 1u; } /* NC0F: step 1 census */
 
 /* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts are dynamic by address: walker (DIRECT D10a:
  * the frame stream holds no list). 1: drawn, 0 not drawn, -1 ring path wanted (the caller skips nd_sg_try). */

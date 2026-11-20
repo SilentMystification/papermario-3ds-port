@@ -194,7 +194,7 @@ void nd_snap_comb(void) { nd_comb_apply(&nd_ap->o, nd_ap->in.w0, nd_ap->in.w1, n
 const NdSnapBind* nd_snap_cur_b(void) { return nd_ap->b; } /* NDR1C */
 const NdSnapBind* nd_apw_b(void) { return nd_ap->b; } /* NC0C: pm_gpu.c does not include nd_snap.h */
 const NdSnapChk* nd_snap_cur(void) { return nd_ap; } /* NCS1: the snap core 0 applied last (debug readers) */
-static NdSnapBind sc_ewb[2]; void nd_snap_hold(void) { if (nd_ap != &sc_cur) { sc_cur = *nd_ap; nd_ap = &sc_cur; } if (nd_ew.b) { memcpy(sc_ewb, nd_ew.b, sizeof sc_ewb); nd_ew.b = sc_ewb; } } /* PERF1, core 0: the walked chain may be rebuilt next */
+static uint32_t sc_ews[16]; static NdSnapBind sc_ewb[2]; void nd_snap_hold(void) { if (nd_ap != &sc_cur) { sc_cur = *nd_ap; nd_ap = &sc_cur; } if (nd_ew.b) { memcpy(sc_ewb, nd_ew.b, sizeof sc_ewb); nd_ew.b = sc_ewb; } if (nd_ew.seg && nd_ew.seg != sc_ews) { memcpy(sc_ews, nd_ew.seg, sizeof sc_ews); nd_ew.seg = sc_ews; } } /* NC0F; PERF1, core 0: the walked chain may be rebuilt next */
 /* NDR1C: the render state log of a rectangle (drec runs): one line per frame that differs from the walker. */
 void nd_snap_rlog(void) { /* NWS4B */
     static unsigned sc_rfr = ~0u;

@@ -167,6 +167,7 @@ __attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
 
 /* The context of the build: a new one resets its chain. */
 void nd_snap_ctx(void); /* PERF1 */
+static uint32_t ew_sv[16]; static const uint32_t* ew_sb; /* NC0F: the segment block memo, as ew_lb */
 static NdSnapBind ew_lv[2]; static const NdSnapBind* ew_lb; /* NC0C: the last entry block (core 1 memo), reset with the context */
 static void rec_ctx_check(void) {
     int x = (int)(gCurrentDisplayContextIndex & 1);
@@ -176,7 +177,7 @@ static void rec_ctx_check(void) {
     task_head = NULL;
     st_hdr = NULL;
     sh_all();
-    nd_ds_lg_reset(); nd_snap_ctx(); ew_lb = NULL; /* PERF1; NC0C */
+    nd_ds_lg_reset(); nd_snap_ctx(); ew_lb = NULL; ew_sb = NULL; /* PERF1; NC0C; NC0F */
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
 static int st_take; /* HC4b: rec_take of a state op (the shadow stays) */
@@ -461,7 +462,8 @@ static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window 
 static void rec_nat2(NdNapiRun run, uint32_t a, uint32_t b, uint32_t c, uint32_t d) { st_take = 1; uint32_t* p = rec_take(6); st_take = 0; ndc_n[NDC_NRUN]++; p[0] = NDC_HDR(NDC_NAPI, 2, 1); p[1] = (uint32_t)(uintptr_t)run; p[2] = a; p[3] = b; p[4] = c; p[5] = d; } /* NSET1: 2 units, flag 1 keeps the snap arm */
 static void rec_ew(const NdDs* s) { NdSnapBind t[2]; nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &t[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &t[1]);
     if (!ew_lb || memcmp(t, ew_lv, sizeof t)) { NdSnapBind* const d = (NdSnapBind*)nd_rec_data_st(sizeof t); memcpy(d, t, sizeof t); memcpy(ew_lv, t, sizeof t); ew_lb = d; }
-    st_take = 1; uint32_t* p = rec_take(10); st_take = 0; ndc_n[NDC_NRUN]++; p[0] = NDC_HDR(NDC_NAPI, 4, 1); p[1] = (uint32_t)(uintptr_t)nd_ew_run; p[2] = s->w.geom; p[3] = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); p[4] = s->w.omode_l; p[5] = s->w.omode_h; p[6] = (uint32_t)(uintptr_t)ew_lb; p[7] = ND_FOGPK(s->fog_fm, s->fog_fo); p[8] = (uint32_t)s->w.tex_on; p[9] = 0u; } /* NC0B: the entry record of a static call, as rec_nat2 (4 units, flag 1); NC0C: word 4 = the tile block pointer; NC0V: words 5 and 6 = fog and tex_on */
+    if (!ew_sb || memcmp(s->w.segbase, ew_sv, 64u)) { uint32_t* const d = (uint32_t*)nd_rec_data_st(64u); memcpy(d, s->w.segbase, 64u); memcpy(ew_sv, s->w.segbase, 64u); ew_sb = d; } /* NC0F */
+    st_take = 1; uint32_t* p = rec_take(10); st_take = 0; ndc_n[NDC_NRUN]++; p[0] = NDC_HDR(NDC_NAPI, 4, 1); p[1] = (uint32_t)(uintptr_t)nd_ew_run; p[2] = s->w.geom; p[3] = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); p[4] = s->w.omode_l; p[5] = s->w.omode_h; p[6] = (uint32_t)(uintptr_t)ew_lb; p[7] = ND_FOGPK(s->fog_fm, s->fog_fo); p[8] = (uint32_t)s->w.tex_on; p[9] = (uint32_t)(uintptr_t)ew_sb; } /* NC0F: word 7 = the segment block; NC0B: the entry record of a static call, as rec_nat2 (4 units, flag 1); NC0C: word 4 = the tile block pointer; NC0V: words 5 and 6 = fog and tex_on */
 void nd_rec_ew(const NdDs* s) { rec_open(); rec_ew(s); }
 NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
 void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
