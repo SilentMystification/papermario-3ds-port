@@ -23,15 +23,11 @@ void pm_gpu_set_r13_t1(int bound);
  * R8: billboard matrix op (0 when none). R9, R10: panner tile size ops (0 when none; typed by nd_rec_model). R13: the typed ops after the record.
  * rec_apply sets the walker state from them in the old word order: lights, bind list (nd_bind_run), combine (rec_op), render mode list
  * (the list runs as G_DL), fog (rec_fog), matrix (nd_xf_load), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
-/* S3G-1: a model list of a record (the render mode list, the geometry): run as G_DL does (nd_sg_try first), else on the list executor
- * (nd_list_run, D10c) to its G_ENDDL. */
-static __attribute__((noinline)) void rec_dl(const NdW2* l) {
-    if (!l) return;
-    if (!is_host((u32)(uintptr_t)l)) { nd_bad_next((u32)(uintptr_t)l, ND_FS_W0(ND_FS_CALL, 0u), 0); return; }
-    if (dlc_on && nd_sg_try(l)) { /* DLC1: a compiled list, as G_DL */
-        return;
-    }
-    nd_list_run(l);
+static unsigned rng_seen; /* NATRS: bit 0 pre, bit 1 post: the first run of each kind logs rngrun once (coverage proof) */
+static void rec_range(const uint32_t* a, unsigned k) { /* NATRS: an R11 custom gfx range; the skip state reset of the old nd_range_run list start */
+    sc_ok = 0; nd_sr_forget();
+    if (__builtin_expect(!(rng_seen & k), 0)) { rng_seen |= k; pm_log_evt("rngrun f%u %s", pm_frame_count(), k == 1u ? "pre" : "post"); }
+    nd_range_run(a);
 }
 /* S3N-6: the matrix ops of a record (R1, R2 load, R8 billboard), the first part of rec_apply. A cache hit runs them before it decides; a
  * miss after that skips them (mdone) and runs the rest of rec_apply in the old order. */
@@ -47,7 +43,7 @@ static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone) {
     gv_epoch++; nd_mdl_alt(nd_msnap_ab((const uint32_t*)q)); /* NAT5B: the units before the matrix: core 1 wrote them as an alt range */
     if (!(f & 256u) && !mdone) nd_xf_load(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     else if (f & 256u) nd_mtx_static = 1; /* SEAM2: IGNORE_MATRIX, no model matrix */
-    if (q[11].words.w0) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w0); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) */
+    if (q[11].words.w0) rec_range((const uint32_t*)(uintptr_t)q[11].words.w0, 1u); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) NATRS */
     nd_mdl_alt(nd_msnap_ab((const uint32_t*)q) + 2); /* NAT5B: the panner units (R9, R10) */
     if (q[8].words.w0 && !mdone) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
@@ -60,7 +56,6 @@ extern int pm_gpu_model_native(const uint32_t* rec, const uint32_t* modew, const
 extern int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e);
 extern int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo); /* MDL-5f; POND: nr */
 int rec_nat_last; /* WCEN2: 1 when the last rec_run drew natively */
-static int nmn_sw(void) { static int v = -1; if (v < 0) v = pm_debug_has("nomodelnat") ? 1 : 0; return v; } /* MDL-5: switch nomodelnat, the walker geometry of every model record (the byte reference) */
 extern int mfr_on; extern unsigned mfr_idx; void pm_gpu_mfr_rec(uint32_t geo, int hit, int nat, unsigned idx, const NdMKey* mk); /* TIK19 debug (switch mfr) */
 /* HC6 step 1 (plan_hotcode 5.4 premise 1): a hit leaves the scalar walker state a miss leaves (rec_apply, in its op order). Before, a hit kept the
  * walker state of before the record (omode, combine, prim, env, fog, blend, texture scale, fog factors), a miss the record's: the state after NDC_MODEL
@@ -234,7 +229,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
     }
     if (ndm) pm_gpu_ndm_begin((const uint32_t*)qs, mwp,
         qs[4].words.w1 ? (const uint32_t*)(uintptr_t)qs[4].words.w1 : NULL, (const void*)(uintptr_t)qs->words.w1, (qs->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, mkp);
-    else if (!nmn_sw() && pm_gpu_model_native((const uint32_t*)qs, mwp,
+    else if (pm_gpu_model_native((const uint32_t*)qs, mwp, /* NATRS */
         cwp, (const void*)(uintptr_t)qs->words.w1, (qs->words.w0 >> 8) & 0x7fu, (const void*)(uintptr_t)q[12].words.w0, mkp) >= 0) {
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker
          * sends its combine and render mode again at its next op (the shadows of those ops are cleared). */
@@ -246,8 +241,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         unsigned tss_, geo_, cw0_, cw1_; pm_gbi_sticky(&tss_, &geo_, &cw0_, &cw1_);
         pm_log("wrec f%u copy hit %d nat %d cw %08x %08x", pm_frame_count(), hit, nat, cw0_, cw1_);
     }
-    if (!nat && (ndm || nmn_sw())) rec_dl((const NdW2*)(uintptr_t)q[12].words.w0); /* S3G-1: geometry (0 when none) */
-    if (q[11].words.w1) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w1); /* S3G-1: custom gfx post (D10a: a stream range) */
+    if (q[11].words.w1) rec_range((const uint32_t*)(uintptr_t)q[11].words.w1, 2u); /* S3G-1: custom gfx post (D10a: a stream range) NATRS */
     if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     if (ndm) pm_gpu_ndm_end();
     rec_nat_last = nat;
@@ -276,7 +270,7 @@ unsigned rec_run(const NdW2* q) {
     gv_epoch++;
     hit_apply(q, mce);
     sc_ok = 0; nd_sr_forget();
-    if (q[11].words.w1) nd_range_run((const uint32_t*)(uintptr_t)q[11].words.w1); /* S3G-1: custom gfx post (D10a: a stream range) */
+    if (q[11].words.w1) rec_range((const uint32_t*)(uintptr_t)q[11].words.w1, 2u); /* S3G-1: custom gfx post (D10a: a stream range) NATRS */
     if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     rec_nat_last = 1;
     return G_PM_REC_WORDS - 1 + q[13].words.w0;
