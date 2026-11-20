@@ -489,6 +489,7 @@ static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
     { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } /* PERF1: the class timers start with the window (a tour window, a scene change) */
+    { uint64_t g_[9]; unsigned u_[9]; pm_gpu_ndt_take_g(g_, u_); } /* GD0 */
     pf_nd_t = 0; pf_leg = 0; pf_eye2_t = 0;
     pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; /* the next window starts in the scene now */
     pf_pe[0] = pf_pe[1] = pf_pe[2] = 0;
@@ -636,6 +637,12 @@ static void pf_report(void) {
             pm_log_prof_line("prof f%u w%u c1g ent %u.%02u mdl %u.%02u ply %u.%02u npc %u.%02u wrk %u.%02u fx %u.%02u task %u.%02u thud %u.%02u ui %u.%02u", pf_total, pf_w,
                 CS(cm[NDT_GENT]), CS(cm[NDT_GMDL]), CS(cm[NDT_GPLY]), CS(cm[NDT_GNPC]), CS(cm[NDT_GWRK]), CS(cm[NDT_GFX]), CS(cm[NDT_GTASK]),
                 CS(cm[NDT_GTHUD]), CS(cm[NDT_GUI])); /* PROF3 */
+            { uint64_t gi[9]; unsigned gu[9], gm[9]; pm_gpu_ndt_take_g(gi, gu); /* GD0 */
+                for (int k = 0; k < 9; k++) { gm[k] = pf_cs(gi[k], pf_s); gu[k] = pf_s ? gu[k] / pf_s : 0u; }
+                pm_log_prof_line("prof f%u w%u c1G ent %u.%02u mdl %u.%02u ply %u.%02u npc %u.%02u wrk %u.%02u fx %u.%02u task %u.%02u thud %u.%02u ui %u.%02u", pf_total, pf_w,
+                    CS(gm[0]), CS(gm[1]), CS(gm[2]), CS(gm[3]), CS(gm[4]), CS(gm[5]), CS(gm[6]), CS(gm[7]), CS(gm[8]));
+                pm_log_prof_line("prof f%u w%u c1u ent %u mdl %u ply %u npc %u wrk %u fx %u task %u thud %u ui %u", pf_total, pf_w,
+                    gu[0], gu[1], gu[2], gu[3], gu[4], gu[5], gu[6], gu[7], gu[8]); }
         }
         { /* DIRECT: frame stream commands per drawn frame x 10 (nd_rec.c): model, sprite and entity records, ranges, compound texture loads, texture rectangles; kb = the stream high-water mark */
             unsigned nc[NDC_N], kb, n10[NDC_N], sw;

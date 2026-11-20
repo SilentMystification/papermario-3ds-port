@@ -1175,11 +1175,12 @@ static void ndunit_after(void);
 static uint64_t ndt_sum[NDT_N];
 static uint32_t ndt_t0[4], ndt_in[4];
 static unsigned ndt_sp;
+static uint64_t ndt_gi[NDT_GUI - NDT_GENT + 1]; static unsigned ndt_gu[NDT_GUI - NDT_GENT + 1], ndt_u[4]; extern unsigned nd_rnr_n; /* GD0 */
 static uint32_t ndt_top; /* PERF2: the ticks of the outer regions so far (the op class spans subtract them) */
 static int cls_cur = -1; static uint32_t cls_t, cls_top0; /* PERF2: the open op class span: its class, start tick, ndt_top at its start */
 static int ndt_mdl;
 __attribute__((cold, noinline)) void pm_gpu_ndt_push(void) { /* sampled frames only: out of the hot callers */
-    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; }
+    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; ndt_u[ndt_sp] = nd_rnr_n; }
     ndt_sp++;
 }
 __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
@@ -1188,6 +1189,7 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
     if (i >= 4u) return;
     uint32_t tot = (uint32_t)svcGetSystemTick() - ndt_t0[i], in = ndt_in[i];
     ndt_sum[k] += tot > in ? tot - in : 0u;
+    if (k >= NDT_GENT && k <= NDT_GUI) { ndt_gi[k - NDT_GENT] += tot; ndt_gu[k - NDT_GENT] += nd_rnr_n - ndt_u[i]; } /* GD0 */
     if (i) ndt_in[i - 1] += tot; else ndt_top += tot;
 }
 /* PERF2 step 6: the op class timer of the walk (sampled frames, walk_dbg_op with WD_PH). Outside the regions only (a region times its own ops); a span ends at
@@ -1199,6 +1201,9 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_cls(int k) {
     cls_cur = k; cls_t = now; cls_top0 = ndt_top;
 }
 void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
+void pm_gpu_ndt_take_g(uint64_t o[9], unsigned u[9]) { /* GD0: the core 1 class ticks (with their recorder regions) and nd_rec_nr calls, then reset */
+    for (int k = 0; k < 9; k++) { o[k] = ndt_gi[k]; u[k] = ndt_gu[k]; ndt_gi[k] = 0; ndt_gu[k] = 0; }
+}
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
 static unsigned ndn_tgen;
