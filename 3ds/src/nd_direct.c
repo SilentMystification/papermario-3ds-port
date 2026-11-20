@@ -61,7 +61,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
             pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
         }
     }
-    if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1 || !comb_set) nd_comb_set(p->cw0, p->cw1);
+    if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1) nd_comb_set(p->cw0, p->cw1); /* NWS2 */
     dual_on = 0; /* nd_tsz_set of tile 0 ends the shaded sprite mode */
     pm_gpu_set_prim(prim, 0u);
     nd_ws.prim = prim; nd_ws.prim_lod = 0u;
@@ -155,7 +155,7 @@ int nd_glyph_can(int texW) {
     if (nd_direct_ready() != 1) return 0;
     if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0;
     if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0;
-    if (nd_ws.use_t1 || dual_on || box_prod || box_pat) return 0;
+    if (nd_ws.use_t1 || dual_on || nd_cw_box_prod(nd_ws.comb_w0, nd_ws.comb_w1) || box_pat) return 0; /* NWS2 */
     return 1;
 }
 
@@ -169,8 +169,7 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
     pm_gbi_cur_op = ND_FS_RECT;
     gv_epoch++;
     nd_img_check();
-    nd_bfold_note(); /* NCS2 */
-    if (sn) { nd_snapchk_tri(); nd_snap_render(); } else nd_rndw_note(); /* NDR3: the compare and combine, then the render state of the snap */ /* NCS3 */
+    if (sn) { nd_snapchk_tri(); nd_snap_render(); } /* NDR3: the compare and combine, then the render state of the snap */ /* NCS3 */
     gp3_t0_surv();
     nd_tile_bind(0);
     dual_bind();
