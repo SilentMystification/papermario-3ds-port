@@ -20,7 +20,7 @@ void nd_msnap_rec(uint32_t* p, unsigned units) {
     NdMSnap* m = (NdMSnap*)(p + 2u + 2u * units + 2u);
     nd_msnap_take(&nd_ds, m);
     { const NdCombOut* o = nd_snap_now(); m->d_plan = (uint32_t)o->plan_on; m->d_mode5 = (uint32_t)o->mode5; m->d_vtx = o->plan.vtx; m->d_vtxname = o->plan.vtxname; m->d_t1 = o->plan.uses_tex1; } /* NAT2K */
-    m->d_primz = nd_ds.w.prim_z; /* NAT4H */
+    m->d_primz = nd_ds.w.prim_z; /* NAT4H */ m->d_fogf = ND_FOGPK(nd_ds.fog_fm, nd_ds.fog_fo); m->d_texon = (uint32_t)nd_ds.w.tex_on; /* NC0V */
     m->k_omh = ms_pre[0]; m->k_oml = ms_pre[1]; m->k_kh = ms_pre[2]; m->k_kl = ms_pre[3]; m->k_geom = ms_pre[4]; /* NAT2C */
     p[0] |= 1u; /* NREC1B: nd_rec_model reserved the room */
 }
@@ -34,7 +34,7 @@ void nd_msnap_dec(const uint32_t* q) { const NdMSnap* s = ms_of(q); if (!s) retu
 void nd_msnap_use(const uint32_t* q) { const NdMSnap* s = ms_of(q); if (!s) { ms_none(); return; } ms_cur = s; } /* DUPMS: nd_rec_model writes every snap */
 const uint32_t* nd_msnap_w(void) { return &ms_cur->magic; }
 _Static_assert(offsetof(NdMSnap, d_primz) == MSW_PRIMZ * 4u, "MSW_PRIMZ"); /* NWS4C */
-void nd_msnap_gvc(NdGvC* c) { c->w0 = ms_cur->cw0; c->w1 = ms_cur->cw1; c->env = ms_cur->envc; c->oml = ms_cur->oml; c->primz = ms_cur->d_primz; c->use_t1 = nd_cw_t1only(ms_cur->cw0, ms_cur->cw1); c->dual_on = nd_ap->in.dual_on; } /* NWS4C: the record's snap; dual_on has no model snap word: the applied snap */
+void nd_msnap_gvc(NdGvC* c) { c->w0 = ms_cur->cw0; c->w1 = ms_cur->cw1; c->env = ms_cur->envc; c->oml = ms_cur->oml; c->primz = ms_cur->d_primz; c->use_t1 = nd_cw_t1only(ms_cur->cw0, ms_cur->cw1); c->dual_on = nd_ap->in.dual_on; c->fogf = ms_cur->d_fogf; c->tex_on = (int)ms_cur->d_texon; nd_tf_chk(c->fogf, c->tex_on, 2u); } /* NC0V; NWS4C: the record's snap; dual_on has no model snap word: the applied snap */
 const NdTd* nd_msnap_td0(void) { return &ms_cur->b[0].td; }
 const NdSnapBind* nd_msnap_bq(const uint32_t* q) { const NdMSnap* s = ms_of(q); return s ? s->b : ms_cur->b; } /* NC0C: the tile blocks of the record q that runs (nd_msnap_use comes later) */
 
