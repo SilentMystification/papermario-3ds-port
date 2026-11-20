@@ -166,7 +166,6 @@ typedef struct NdC0 {
     const void* timg;
     const void* tlut;
     int tlut_n;
-    uint32_t segbase[16];
     NdTst tst1;
     NdTd td[2];
 } NdC0;

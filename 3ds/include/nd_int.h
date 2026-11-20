@@ -316,7 +316,7 @@ EntKey* ent_find(const NdW2* l, u32 vb);
 int ent_seg_native(const EntKey* k, const EntSeg* s);
 void ent_log(void);
 int nd_eg_run(const NdW2* l, EntKey* k, u32 segid, const uint32_t* et);
-u32 ent_segkey(void); void nd_seg_chk(unsigned site); /* NC0F */
+u32 ent_segkey(void); uint32_t nd_seg_of(unsigned i); /* NC0F */
 int entchk_on(void);
 int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* idx);
 /* LS-2 (nd_ent.c): the entity record case of G_PM_ENT (the walk calls it). */
