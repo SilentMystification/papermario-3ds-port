@@ -12,6 +12,7 @@
 #include "variables.h"
 #include "nd_fs.h"
 #include "nd_msnapw.h"
+#include "nd_snap.h" /* NWS4C: nd_ap */
 
 void nd_mdl_alt(const uint32_t* ab); /* NAT5B: nd_walk.c */
 void nd_range_run(const uint32_t* a); /* nd_walk.c: DIRECT D10a, a custom gfx range of the frame stream */
