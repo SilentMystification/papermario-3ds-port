@@ -1,0 +1,14 @@
+# ws_NWS4C (Sonnet: 5 files, core 0, expected-diff UD-N5): the model path reads the model snap, not the walker copy
+DRAFT until `Merge NWS4B`; then the oracle checks the anchors on main and sets READY. Designer: oracle NATIVE14 (id in the launch prompt). Worktree build3ds/wt/NWS4C, branch NWS4C. PM_ROW=NWS4C PM_LANE=NWS4C.
+WAIT: `Merge NWS4B` (data: nd_ap, nd_wsnap_chk and ND_WCHK come from it; the same nd_snap.h lines).
+Objective: the reads that NWS4B left on the walker copy are the model path. They take the model snap of the record (core 1, NREC1A; accessor nd_msnap_w(), nd_msnap.c:41) or the applied snap nd_ap. Then no core 0 read of the fields that sc_adopt and ds_take write is left, and NWS4D can delete the shadow. Counter C13: no change.
+## Facts (main 6fcc4c8762)
+- FACT NdMSnap (nd_msnap.h:10-12) holds after the record: prim, prim_lod, omh, oml, kh, kl, tss, geom, cw0, cw1, fogc, blendc, envc; before the record: k_omh, k_oml, k_kh, k_kl, k_geom. ms_cur is the snap of the record that runs (nd_msnap_use, nd_recs.c:197).
+- FACT the full model key reads the walker before the record (pm_gpu.c:3833-3835: omode_h, omode_l, om_kh, om_kl, geom, prim, prim_lod). Key B already takes the k_ words when the msnap exists (:3869).
+## Edits (each changed line ends with `/* NWS4C */`; Edit tool only)
+1. pm_gpu.c:3833-3835 (pm_gpu_model_key). omode_h, omode_l, om_kh, om_kl, geom come from the record's msnap k_ words when `nd_msnap_key(rec)` is not NULL (as :3869), else from nd_ap (in.omode_h, oml) and nd_ws (om_kh, om_kl, geom: record state). prim and prim_lod come from nd_ap (in.prim, plod): the stream value before the record. Add `ND_WCHK();` first in the function.
+2. pm_gpu.c:4226 (shroud colour): `blendc` becomes the blendc word of the record's msnap (`((const NdMSnap*)(const void*)nd_msnap_w())->blendc`).
+3. nd_tex_set.c:28 (pm_gbi_bind_tile1, model path after rec_aux): `nd_ws.use_t1` becomes `nd_cw_t1only(ms->cw0, ms->cw1)` with ms the record's msnap. New pure helper in nd_comb.c next to nd_cw_ashade: the TEXEL1 rename test of nd_comb_set (nd_comb.c, `t1 && !t0 && !c2` on the decoded words of nd_comb_tst(w0, w1, 0, 0, t)).
+4. nd_msnap.c:38 (no-snap fallback, counted in nos): `ms_d.fogc = fogc; ms_d.blendc = blendc;` become `nd_ap->fogc`, `nd_ap->blendc`. nd_recs.c hitst_note (:109-118, debug switch hitst): the reads take nd_ap as in the NWS4B table.
+5. The new marker `mwsnap f<n>` (cold, drec frames only, once per frame): in pm_gpu_model_key and at the 3 sites of edits 2-3, log when the old walker value differs from the new one.
+## Gate (planned): host PASS; spot_mac01_drec and entcape_kmr03_drec (models, shroud, the model hit path) byte-equal, or the first DIFF frame F has `mwsnap fF`. c0gate head equals base. Fix rights, stop rule and hand-back as in ws_NWS4B (files nws4c_*).
