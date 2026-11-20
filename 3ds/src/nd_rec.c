@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stddef.h>
+#include <stdio.h>
 #include "ultra64.h"
 #include "variables.h"
 #include "pm_port.h"
@@ -240,7 +241,7 @@ typedef struct MmEnt {
     MmS s; Lightsn lt; uint32_t c9[2]; uint32_t l1[2u * MM_L1]; uint16_t di[MM_D]; uint32_t dv[MM_D];
 } MmEnt;
 static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits, mm_skip, mm_diffs;
-static MmS mm_s; static NdDs mm_b;
+static MmS mm_s; static NdDs mm_b; static NdDs mm_dbg[256]; static uint32_t mm_dk[256][2]; static unsigned mm_dn;
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
 void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * 2u * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
@@ -288,6 +289,7 @@ static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned
     if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_SETS * 2u * sizeof *mm_t); }
     if (!mm_t) { if (mm_tried) return NULL; mm_tried = 1; mm_t = (MmEnt*)calloc(MM_SETS * 2u, sizeof *mm_t); if (!mm_t) return NULL; }
     mm_s_take(&mm_s);
+    { const unsigned di = ((r[24] * 2654435761u) ^ (r[0] * 2246822519u)) >> 24; if (mm_dk[di][0] == r[24] && mm_dk[di][1] == r[0] && mm_dn < 40u) { const uint32_t* x = (const uint32_t*)&nd_ds; const uint32_t* y = (const uint32_t*)&mm_dbg[di]; char o[120]; int n = 0; unsigned nb = 0; for (unsigned i = 0; i < sizeof(NdDs) / 4u && nb < 8u; i++) if (((x[i] ^ y[i]) & mm_mask(i)) && (i < offsetof(NdDs, lt) / 4u || i >= offsetof(NdDs, lt_n) / 4u)) { n += snprintf(o + n, sizeof o - (unsigned)n, " %u", i * 4u); nb++; } if (nb) { mm_dn++; pm_log_evt("mmnear%s", o); } } mm_dk[di][0] = r[24]; mm_dk[di][1] = r[0]; mm_dbg[di] = nd_ds; }
     MmEnt* const w = &mm_t[(((r[24] * 2654435761u) ^ (r[0] * 2246822519u) ^ (mm_s.h0 * 3266489917u)) >> 25) * 2u]; MmEnt* v = NULL; /* the before state is in the index: two instances of one geometry in a step keep their own entries */
     for (unsigned k = 0; k < 2u; k++) {
         MmEnt* const e = &w[k];
