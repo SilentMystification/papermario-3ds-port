@@ -26,9 +26,12 @@ void nd_sprm_take(unsigned* h, unsigned* m); /* nd_model.c */
 int shd_min[3] = { 255, 255, 255 }, shd_max[3] = { 0, 0, 0 }; /* BOMBLIT2: dual_f range of the shaded native draws, x255 */
 int pm_gbi_bind_tile1(void) { /* MDL-1b v2: the walker's pre-draw tile step (gv_epoch_enter); rec_aux already ran the record's combine and tile words */
     if (!plan_active || !cur_plan.uses_tex1) return 0;
+    nd_bsrc = nd_msnap_b(); nd_bsrc_chk(nd_bsrc, 5u); /* NC0C: the model snap tile blocks */
     { const uint32_t* mw = nd_msnap_w(); nd_tile_bind(nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1])); } /* NWS4C */
     dual_bind();
-    return nd_c0.td[1].valid && pm_tex_aux_off_idx() < 0;
+    const int ok = ND_BTD(1)->valid && pm_tex_aux_off_idx() < 0;
+    nd_bsrc = NULL;
+    return ok;
 }
 
 /* the counters of PG0 (the former pm_gbi.c gp_note) and the pipeline flush by its line (the former pm_gbi.c macros) */
@@ -178,7 +181,7 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             }
             return;
 }
-void nd_tx_tszr(const NdTxR* r) { nd_tsz_set(r->tile, r->uls, r->ult, r->lrs, r->lrt, r); } /* NAT5T */
+void nd_tx_tszr(const NdTxR* r) { if (nd_gs) nd_gs->b = NULL; /* NC0C: the walker tiles of a static call */ nd_tsz_set(r->tile, r->uls, r->ult, r->lrs, r->lrt, r); } /* NAT5T */
 
 /* DIRECT D4b-1, D5: NDC_TEXRECT (nd_cmd.h), recorded by the nd_gbi.h redirect: the walker's op prologue of G_TEXRECT (gv_epoch,
  * pm_gbi_cur_op), then the rectangle. */
@@ -592,8 +595,8 @@ void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h) {
         gr.pal = nd_tm.tlut_pal[nd_c0.tst1.tile_pal[0] & 15] ? nd_tm.tlut_pal[nd_c0.tst1.tile_pal[0] & 15] : nd_c0.tlut; gr.pal_n = nd_c0.tlut_n; gr.timg = nd_c0.timg;
         nd_tsz_set(0, 0, 0, (w - 1) << 2, (h - 1) << 2, &gr); }
 }
-void nd_sv_timg(const uint32_t* r) { const uint32_t a = r[0]; nd_c0.timg = (const void*)(uintptr_t)r[1]; if (nd_c0.timg && pm_is_cfb(nd_c0.timg) && !pm_is_cur_cfb(nd_c0.timg)) pm_cfb_capture_prev(); nd_c0.tst1.timg_fmt = (a >> 21) & 7; nd_c0.tst1.timg_siz = (a >> 19) & 3; nd_c0.tst1.timg_stride = (int)(a & 0xfff) + 1; nd_tm.ld_valid = 0; } /* NSET1: set_timg, the image core 1 resolved */
-void nd_sv_tile(const uint32_t* r) { const uint32_t a = r[0], b = r[1]; const unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 }; set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15); } /* NSET1: nd_tx_tile */
-void nd_sv_tsz(const uint32_t* r) { const unsigned t = r[0] >> 28; const int uls = (int32_t)(r[0] << 4) >> 18, ult = (int32_t)(r[0] << 18) >> 18, lrs = (int16_t)r[1], lrt = (int16_t)(r[1] >> 16); int* const z = nd_c0.tst1.tile_sz[t]; GP_SET(4, z[0] == uls && z[1] == ult && z[2] == lrs && z[3] == lrt); z[0] = uls; z[1] = ult; z[2] = lrs; z[3] = lrt; } /* NSET1: nd_tsz_set, tile 2-7 */
-void nd_sv_tlut(const uint32_t* r) { const unsigned slot = r[0] & 0xffu; nd_c0.tlut = (const void*)(uintptr_t)r[1]; nd_c0.tlut_n = (int)(r[0] >> 8); nd_tm.tlut_pal[slot] = nd_c0.tlut; tlut_v20(slot); } /* NSET1: set_loadtlut */
-void nd_sv_tlutn(const uint32_t* r) { nd_c0.tlut = (const void*)(uintptr_t)r[1]; nd_c0.tlut_n = (int)(r[0] >> 8); } /* NSET1: set_loadtlut, no palette slot */
+void nd_sv_timg(const uint32_t* r) { if (nd_gs) nd_gs->b = NULL; /* NC0C: the walker tiles of a static call */ const uint32_t a = r[0]; nd_c0.timg = (const void*)(uintptr_t)r[1]; if (nd_c0.timg && pm_is_cfb(nd_c0.timg) && !pm_is_cur_cfb(nd_c0.timg)) pm_cfb_capture_prev(); nd_c0.tst1.timg_fmt = (a >> 21) & 7; nd_c0.tst1.timg_siz = (a >> 19) & 3; nd_c0.tst1.timg_stride = (int)(a & 0xfff) + 1; nd_tm.ld_valid = 0; } /* NSET1: set_timg, the image core 1 resolved */
+void nd_sv_tile(const uint32_t* r) { if (nd_gs) nd_gs->b = NULL; /* NC0C: the walker tiles of a static call */ const uint32_t a = r[0], b = r[1]; const unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 }; set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15); } /* NSET1: nd_tx_tile */
+void nd_sv_tsz(const uint32_t* r) { if (nd_gs) nd_gs->b = NULL; /* NC0C: the walker tiles of a static call */ const unsigned t = r[0] >> 28; const int uls = (int32_t)(r[0] << 4) >> 18, ult = (int32_t)(r[0] << 18) >> 18, lrs = (int16_t)r[1], lrt = (int16_t)(r[1] >> 16); int* const z = nd_c0.tst1.tile_sz[t]; GP_SET(4, z[0] == uls && z[1] == ult && z[2] == lrs && z[3] == lrt); z[0] = uls; z[1] = ult; z[2] = lrs; z[3] = lrt; } /* NSET1: nd_tsz_set, tile 2-7 */
+void nd_sv_tlut(const uint32_t* r) { if (nd_gs) nd_gs->b = NULL; /* NC0C: the walker tiles of a static call */ const unsigned slot = r[0] & 0xffu; nd_c0.tlut = (const void*)(uintptr_t)r[1]; nd_c0.tlut_n = (int)(r[0] >> 8); nd_tm.tlut_pal[slot] = nd_c0.tlut; tlut_v20(slot); } /* NSET1: set_loadtlut */
+void nd_sv_tlutn(const uint32_t* r) { if (nd_gs) nd_gs->b = NULL; /* NC0C: the walker tiles of a static call */ nd_c0.tlut = (const void*)(uintptr_t)r[1]; nd_c0.tlut_n = (int)(r[0] >> 8); } /* NSET1: set_loadtlut, no palette slot */

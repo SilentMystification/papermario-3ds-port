@@ -152,6 +152,12 @@ const NdSnapBind* nd_snap_eb(void) {
     return sc_eb;
 }
 
+/* NC0C: the epoch blocks of the entry block b of a static call (NULL gives NULL). */
+const NdSnapBind* nd_snap_eb_of(const NdSnapBind* b) { if (!b) return NULL; memcpy(sc_eb, b, sizeof sc_eb); return sc_eb; }
+/* NC0C, drec census: the recorded block b differs from the walker tiles: one cold line per site and frame. */
+static __attribute__((cold, noinline)) void bs_log(unsigned site) { static unsigned fr[6] = { ~0u, ~0u, ~0u, ~0u, ~0u, ~0u }; if (pm_frame_count() != fr[site]) { fr[site] = pm_frame_count(); pm_log_d("bindsrc f%u s%u", fr[site], site); } }
+void nd_bsrc_chk(const NdSnapBind* b, unsigned site) { NdSnapBind w[2]; if (__builtin_expect(b != NULL && pm_drec_now(), 0) && nd_snap_bdiff(b, sc_wb(NULL, w)) != 0u) bs_log(site); }
+
 void nd_snapchk_run(const uint32_t* rec) {
     nd_ap = (const NdSnapChk*)(uintptr_t)rec[0]; /* PERF1 */
     nd_snap_arm = 1;
@@ -186,8 +192,9 @@ void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch sn
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
 void nd_snap_comb(void) { nd_comb_apply(&nd_ap->o, nd_ap->in.w0, nd_ap->in.w1, nd_ap->in.use_t1, nd_ap->in.env); nd_c0w &= ~1u; /* NAT1B */ }
 const NdSnapBind* nd_snap_cur_b(void) { return nd_ap->b; } /* NDR1C */
+const NdSnapBind* nd_apw_b(void) { return nd_ap->b; } /* NC0C: pm_gpu.c does not include nd_snap.h */
 const NdSnapChk* nd_snap_cur(void) { return nd_ap; } /* NCS1: the snap core 0 applied last (debug readers) */
-void nd_snap_hold(void) { if (nd_ap != &sc_cur) { sc_cur = *nd_ap; nd_ap = &sc_cur; } } /* PERF1, core 0: the walked chain may be rebuilt next */
+static NdSnapBind sc_ewb[2]; void nd_snap_hold(void) { if (nd_ap != &sc_cur) { sc_cur = *nd_ap; nd_ap = &sc_cur; } if (nd_ew.b) { memcpy(sc_ewb, nd_ew.b, sizeof sc_ewb); nd_ew.b = sc_ewb; } } /* PERF1, core 0: the walked chain may be rebuilt next */
 /* NDR1C: the render state log of a rectangle (drec runs): one line per frame that differs from the walker. */
 void nd_snap_rlog(void) { /* NWS4B */
     static unsigned sc_rfr = ~0u;

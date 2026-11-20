@@ -37,4 +37,5 @@ const uint32_t* nd_msnap_w(void) { return &ms_cur->magic; }
 _Static_assert(offsetof(NdMSnap, d_primz) == MSW_PRIMZ * 4u, "MSW_PRIMZ"); /* NWS4C */
 void nd_msnap_gvc(NdGvC* c) { c->w0 = ms_cur->cw0; c->w1 = ms_cur->cw1; c->env = ms_cur->envc; c->oml = ms_cur->oml; c->primz = ms_cur->d_primz; c->use_t1 = nd_cw_t1only(ms_cur->cw0, ms_cur->cw1); c->dual_on = nd_ap->in.dual_on; } /* NWS4C: the record's snap; dual_on has no model snap word: the applied snap */
 const NdTd* nd_msnap_td0(void) { return &ms_cur->b[0].td; }
+const NdSnapBind* nd_msnap_b(void) { return ms_cur->b; } /* NC0C */
 

@@ -4520,8 +4520,10 @@ extern unsigned shc[16]; /* BOMBLIT: nd_tex_set.c shade path counters */
 static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) { /* NWS4B */
     if (shaded) {
         if (!nd_apw(NDAPW_DUAL) || nd_apw(NDAPW_UT1)) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */ /* NWS4B */
+        nd_bsrc = nd_apw_b(); nd_bsrc_chk(nd_bsrc, 4u); /* NC0C */
         nd_tile_bind(0);
         dual_bind();
+        nd_bsrc = NULL;
         if (pm_tex_native_unit0(un) != 1) { *why = 2; return 0; }
         while (*tw < (int)r->w) *tw <<= 1;
         while (*th < (int)r->h) *th <<= 1;
