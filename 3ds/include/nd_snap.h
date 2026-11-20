@@ -41,6 +41,8 @@ unsigned nd_snap_fill(void); /* NAT4H */
 int nd_snap_bnew(const NdSnapBind* e);
 /* NDR0G2, nd_snap.c, core 0: the blocks of the armed snapshot for the open epoch (a copy kept until the next epoch). */
 const NdSnapBind* nd_snap_eb(void);
+const NdSnapBind* nd_snap_eb_of(const NdSnapBind* b); /* NC0C: b copied into the epoch blocks, NULL gives NULL */
+void nd_bsrc_chk(const NdSnapBind* b, unsigned site); /* NC0C: drec census, sites 1 stream, 2 static, 3 rect, 4 sprite, 5 model tile 1 */
 
 /* nd_snap_in.c: the combine inputs of an NdDs (leg and pat are the walker's leg and box_pat of the snapshot). */
 void nd_snap_in(const NdDs* s, int leg, int pat, NdCombIn* in);
@@ -97,7 +99,7 @@ unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 void nd_lsr_geo(void);
 extern const NdSnapChk* nd_ap; void nd_snap_hold(void); void nd_snap_ctx(void); /* NWS4B; PERF1 */
 /* NC0B: the geometry mode, the texture scale word and the other mode words of a static call (core 1 writes them in an entry record). Core 0 reads the snap outside a static call. */
-typedef struct NdGs { uint32_t geom, tss, oml, omh; } NdGs;
+typedef struct NdGs { uint32_t geom, tss, oml, omh; const NdSnapBind* b; } NdGs; /* NC0C: b = the tile blocks at the entry of a static call, NULL after a copy texture unit */
 extern NdGs* nd_gs; extern NdGs nd_ew;
 #define ND_GEOM() (nd_gs ? nd_gs->geom : nd_ap->geom)
 #define ND_TSS() (nd_gs ? nd_gs->tss : nd_ap->tss)

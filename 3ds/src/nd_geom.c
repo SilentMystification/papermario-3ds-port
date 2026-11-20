@@ -207,7 +207,8 @@ void gv_epoch_enter(void) { /* NWS4B */
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;
-    nd_ep_bs = nd_snap_rpend ? nd_snap_eb() : NULL; /* NDR0G2 */
+    nd_ep_bs = nd_snap_rpend ? nd_snap_eb() : nd_snap_eb_of(nd_gs ? nd_gs->b : nd_ap->b); /* NC0C */
+    nd_bsrc_chk(nd_ep_bs, nd_snap_rpend ? 1u : 2u);
     if (ep_why < 0 && !ep_cullboth) {
         ep_fl = tri_flags();
         nd_bsrc = nd_ep_bs; /* NDR0G2 */
@@ -439,7 +440,7 @@ int nd_part_draw(const NdNDev* t) {
 }
 
 void nd_geo_units(const uint32_t* u, unsigned n) { /* NATFB: flat geometry units with the arms of nr_geo and the GEOM arm of nr_set (nd_walk.c) */
-    NdGs loc, * const s0 = nd_gs, * g = s0; if (!g) { loc = (NdGs){ nd_ap->geom, nd_ap->tss, nd_ap->oml, nd_ap->in.omode_h }; g = nd_gs = &loc; } /* NC0B */
+    NdGs loc, * const s0 = nd_gs, * g = s0; if (!g) { loc = (NdGs){ nd_ap->geom, nd_ap->tss, nd_ap->oml, nd_ap->in.omode_h, nd_ap->b }; g = nd_gs = &loc; } /* NC0B */
     for (const uint32_t* q = u, *e = u + 2u * n; q < e; q += 2) {
         const unsigned id = q[0] >> 24; const u32 a = q[0] & 0xffffffu, b = q[1];
         if (q[0] == ND_NOP_A) continue;

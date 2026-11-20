@@ -3825,7 +3825,7 @@ void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k) {
 static int ndc_compare(const NdMKey* k, const NdTexDesc* ds, int id, int hs, unsigned hg); /* S3N-6 check: 1 when the entry is valid */
 unsigned nd_r13_nohit; /* MDL-1: R13 texture records without a desc, stored no-hit (mdlw r13nohit) */
 static int r13_last;
-static NdUnit r13u1; static int r13u1_ok, r13i8_1, r13u1_slot = -1; int pm_gbi_bind_tile1(void);
+static NdUnit r13u1; static int r13u1_ok, r13i8_1, r13u1_slot = -1; int pm_gbi_bind_tile1(const uint32_t* q);
 /* MDL-1b (oracle decision): pm_gbi_bind_tile1 runs once per R13 record after rec_aux, before the model draw; unit 1 from the live state. */
 static int r13t1b_ok;
 /* MDL-1b v2: called by rec_run after rec_apply with the result of pm_gbi_bind_tile1 (0 for every other record): unit 1 from the live state */
@@ -4520,8 +4520,10 @@ extern unsigned shc[16]; /* BOMBLIT: nd_tex_set.c shade path counters */
 static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) { /* NWS4B */
     if (shaded) {
         if (!nd_apw(NDAPW_DUAL) || nd_apw(NDAPW_UT1)) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */ /* NWS4B */
+        nd_bsrc = nd_apw_b(); nd_bsrc_chk(nd_bsrc, 4u); /* NC0C */
         nd_tile_bind(0);
         dual_bind();
+        nd_bsrc = NULL;
         if (pm_tex_native_unit0(un) != 1) { *why = 2; return 0; }
         while (*tw < (int)r->w) *tw <<= 1;
         while (*th < (int)r->h) *th <<= 1;

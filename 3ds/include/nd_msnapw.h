@@ -8,6 +8,7 @@ struct NdTd;
 void nd_msnap_use(const uint32_t* q);
 const uint32_t* nd_msnap_w(void);
 const struct NdTd* nd_msnap_td0(void);
+struct NdSnapBind; const struct NdSnapBind* nd_msnap_bq(const uint32_t* q); /* NC0C: the tile blocks of the snap of the record that runs */
 const uint32_t* nd_msnap_key(const uint32_t* q); /* NAT2C: k_omh .. k_geom of the record's snap, NULL when none */
 const uint32_t* nd_msnap_rw(const uint32_t* q); /* PERF3 */
 const uint32_t* nd_msnap_ab(const uint32_t* q); /* NAT5B: the first of 2 alt ranges (4 words) of the record payload q */

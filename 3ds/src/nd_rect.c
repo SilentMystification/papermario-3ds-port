@@ -245,7 +245,8 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { /
     rc_render(); /* V25: the rectangle carries the blender, depth and alpha test of its own mode */
     if (box_pat && nd_c0.td[0].valid && nd_c0.td[1].valid && box_pattern_rect(xl, yl, xh, yh, hs, hd)) { return; }
     /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
-    nd_bsrc = rc_sn ? nd_snap_cur_b() : NULL; /* NDR1C: the tile words of the snap */
+    nd_bsrc = rc_sn ? nd_snap_cur_b() : nd_ap->b; /* NDR1C: the tile words of the snap; NC0C */
+    nd_bsrc_chk(nd_bsrc, 3u);
     int rtile = (nd_ap->in.use_t1 || (((w1 >> 24) & 7) == 1 && ND_BTD(1)->valid)) ? 1 : 0; /* NWS4B */
     if (!rtile) gp3_t0_surv();
     nd_tile_bind(rtile);

@@ -65,7 +65,7 @@ int lt_mem_same(u32 w0, u32 w1);
 int pm_gpu_spr_native(const uint32_t* rec);
 unsigned gv_matrix_id(int need_nm);
 unsigned rec_run(const NdW2* q);
-int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
+int pm_gbi_bind_tile1(const uint32_t* q); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
 void draw_tri(unsigned w);
 void nd_modvtx(unsigned where, unsigned vi); /* HC4d2: ND_FS_MISC_MODVTX fields */
 void nd_mv_mem(u32 w0, u32 w1);
