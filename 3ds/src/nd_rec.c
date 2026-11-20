@@ -249,7 +249,9 @@ static unsigned mm_nc[8], mm_wc[40], mm_sf[4], mm_dh[8]; /* store fails: 0 list 
 static uint32_t mm_scr[MM_BLK];
 void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); { char o[400]; int n = 0; for (unsigned i = 0; i < 34u; i++) if (mm_wc[i]) n += snprintf(o + n, sizeof o - (unsigned)n, " %u:%u", i, mm_wc[i]); pm_log_evt("mmemo why%s", o); }
     pm_log_evt("mmemo store fail list %u delta %u; stored delta 0-3 %u 4-7 %u 8-11 %u 12+ %u", mm_sf[0], mm_sf[1], mm_dh[0], mm_dh[1], mm_dh[2], mm_dh[3]);
-    pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
+    pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); { unsigned used = 0, ok = 0, lts = 0, nds = 0, ndmax = 0, blkw = 0; if (mm_t) for (unsigned i = 0; i < MM_N; i++) { const MmEnt* e = &mm_t[i]; if (!e->blk) continue; used++; if (e->ok) { ok++; nds += e->nd; if (e->nd > ndmax) ndmax = e->nd; if (e->lh0 | e->nl1) lts++; blkw += 2u + 2u * (G_PM_REC_WORDS + e->keep) + 2u + 2u * ND_MSNAP_U; } }
+      pm_log_evt("mmemo slots used %u ok %u of %u, hits per ok slot %u, delta words mean %u max %u, block words mean %u, S %u B, A fixed %u B, ent %u B", used, ok, MM_N, ok ? mm_hits / ok : 0u, ok ? nds / ok : 0u, ndmax, ok ? blkw / ok : 0u, (unsigned)sizeof(MmS), (unsigned)(offsetof(MmEnt, al) + sizeof(((MmEnt*)0)->al) + sizeof(((MmEnt*)0)->ab) - offsetof(MmEnt, cl)), (unsigned)sizeof(MmEnt)); (void)lts; }
+    pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
 #define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
 #define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
 #define MM_L0 ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, ldrec)) / 4u))
