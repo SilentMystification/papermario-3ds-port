@@ -170,7 +170,7 @@ void nd_glyph_draw(uint32_t raster, uint32_t pal, int tlut, int w, int h, int ul
     pm_gbi_cur_op = ND_FS_RECT;
     gv_epoch++;
     nd_img_check();
-    box_fold_sync();
+    nd_bfold_note(); /* NCS2 */
     if (sn) { nd_snapchk_tri(); nd_snap_render(); } else nd_rnd_sync(); /* NDR3: the compare and combine, then the render state of the snap */
     gp3_t0_surv();
     nd_tile_bind(0);

@@ -103,7 +103,7 @@ void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
 void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }
 void nd_img_check(void) {}
-void box_fold_sync(void) {}
+void nd_bfold_note(void) {} /* NCS2 */
 void nd_tile_bind(int n) { (void)n; }
 void dual_bind(void) {}
 void pm_tex_size(int* w, int* h) { *w = 32; *h = 16; }
