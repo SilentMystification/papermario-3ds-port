@@ -440,7 +440,7 @@ int nd_part_draw(const NdNDev* t) {
 }
 
 void nd_geo_units(const uint32_t* u, unsigned n) { /* NATFB: flat geometry units with the arms of nr_geo and the GEOM arm of nr_set (nd_walk.c) */
-    NdGs loc, * const s0 = nd_gs, * g = s0; if (!g) { loc = (NdGs){ nd_ap->geom, nd_ap->tss, nd_ap->oml, nd_ap->in.omode_h, nd_ap->b, nd_ap->fogf, nd_ap->in.tex_on }; g = nd_gs = &loc; } /* NC0B */
+    NdGs loc, * const s0 = nd_gs, * g = s0; if (!g) { loc = (NdGs){ nd_ap->geom, nd_ap->tss, nd_ap->oml, nd_ap->in.omode_h, nd_ap->b, nd_ap->fogf, nd_ap->in.tex_on, NULL }; g = nd_gs = &loc; } /* NC0B */
     for (const uint32_t* q = u, *e = u + 2u * n; q < e; q += 2) {
         const unsigned id = q[0] >> 24; const u32 a = q[0] & 0xffffffu, b = q[1];
         if (q[0] == ND_NOP_A) continue;

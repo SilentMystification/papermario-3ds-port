@@ -243,8 +243,9 @@ static inline int r_pro(unsigned dbg, unsigned op, const uint32_t* u) { pm_gbi_c
 void nd_vtx_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu; const uint32_t* const e = rec + 2u * n; /* NC0B: a vertex load and its geom and tss, 4 words */
     for (const uint32_t* q = rec; q < e; q += 4) { const int fp = r_pro(dbg, ND_FS_VTX, q); nd_geom_vtx(q[0] & 0xffffffu, q[1], (const NdW2*)q, q[2], q[3]); if (fp) pm_ph_pop(); }
     r_end(dbg); }
-NdGs nd_ew = { G_SHADE | G_SHADING_SMOOTH, 0xffffffffu, 0x30u, 0u, NULL, 0u, 0 }; NdGs* nd_gs; /* NC0B */
-void nd_ew_run(const uint32_t* r) { nd_ew.geom = r[0]; nd_ew.tss = r[1]; nd_ew.oml = r[2]; nd_ew.omh = r[3]; nd_ew.b = (const NdSnapBind*)(uintptr_t)r[4]; /* NC0C */ nd_ew.fogf = r[5]; nd_ew.tex_on = (int)r[6]; /* NC0V */ } /* NC0B: the entry record of a static call */
+NdGs nd_ew = { G_SHADE | G_SHADING_SMOOTH, 0xffffffffu, 0x30u, 0u, NULL, 0u, 0, NULL }; NdGs* nd_gs; /* NC0B */
+uint32_t nd_seg_of(unsigned i) { return nd_ew.seg ? nd_ew.seg[i] : 0u; } /* NC0F */
+void nd_ew_run(const uint32_t* r) { nd_ew.geom = r[0]; nd_ew.tss = r[1]; nd_ew.oml = r[2]; nd_ew.omh = r[3]; nd_ew.b = (const NdSnapBind*)(uintptr_t)r[4]; /* NC0C */ nd_ew.fogf = r[5]; nd_ew.tex_on = (int)r[6]; /* NC0V */ nd_ew.seg = (const uint32_t*)(uintptr_t)r[7]; /* NC0F */ } /* NC0B: the entry record of a static call */
 R_EACH(nd_tri1_run, { const int fp = r_pro(dbg, ND_FS_TRI1, u); tri_prep_ok = 0; draw_tri(a); if (fp) pm_ph_pop(); }) R_EACH(nd_tri2_run, { const int fp = r_pro(dbg, ND_FS_TRI2, u); tri_prep_ok = 0; draw_tri(a); draw_tri(b); if (fp) pm_ph_pop(); })
 R_EACH(nd_mtx_run, { const int fp = r_pro(dbg, ND_FS_MTX, u); if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)u, (NdW2*)u + 1); nd_xf_load(a, b, 0); if (fp) pm_ph_pop(); }) R_EACH(nd_pop_run, { const int fp = r_pro(dbg, ND_FS_POPMTX, u); nd_xf_popb(b); if (fp) pm_ph_pop(); })
 R_EACH(nd_mvm_run, { if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) continue; gv_epoch++; const int fp = r_pro(dbg, ND_FS_MOVEMEM, u); if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); nd_mv_mem(a, b); if (fp) pm_ph_pop(); })
@@ -436,7 +437,8 @@ static inline void* ptr_res(u32 w) {
     if (!w) return NULL;
     if (is_host(w)) return (void*)w;
     unsigned seg = (w >> 24) & 0xff;
-    if (seg < 16 && nd_c0.segbase[seg]) return (void*)(nd_c0.segbase[seg] + (w & 0x00ffffffu));
+    const uint32_t* const sb = nd_gs ? nd_gs->seg : NULL; const uint32_t b = seg < 16 && sb ? sb[seg] : 0u; /* NC0F: the table of the static call */
+    if (b) return (void*)(b + (w & 0x00ffffffu));
     /* SW1: an N64 K0 or K1 address (OS_PHYSICAL_TO_K0 of a static buffer: the camera projection matrix of the credits parade) names host memory with the top bits set */
     if ((w & 0xc0000000u) == 0x80000000u && is_host(w & 0x1fffffffu)) return (void*)(w & 0x1fffffffu);
     return (void*)w;

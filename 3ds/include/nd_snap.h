@@ -100,7 +100,7 @@ unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 void nd_lsr_geo(void);
 extern const NdSnapChk* nd_ap; void nd_snap_hold(void); void nd_snap_ctx(void); /* NWS4B; PERF1 */
 /* NC0B: the geometry mode, the texture scale word and the other mode words of a static call (core 1 writes them in an entry record). Core 0 reads the snap outside a static call. */
-typedef struct NdGs { uint32_t geom, tss, oml, omh; const NdSnapBind* b; uint32_t fogf; int tex_on; } NdGs; /* NC0C: b = the tile blocks at the entry of a static call, NULL after a copy texture unit */
+typedef struct NdGs { uint32_t geom, tss, oml, omh; const NdSnapBind* b; uint32_t fogf; int tex_on; const uint32_t* seg; } NdGs; /* NC0C: b = the tile blocks at the entry of a static call, NULL after a copy texture unit */
 extern NdGs* nd_gs; extern NdGs nd_ew;
 #define ND_ROLE(ff) nd_img_role_m((ff), nd_gs ? nd_gs->oml : nd_ap->oml, nd_gs ? nd_gs->omh : nd_ap->in.omode_h) /* NC0R */
 #define ND_GEOM() (nd_gs ? nd_gs->geom : nd_ap->geom)

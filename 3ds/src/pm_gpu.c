@@ -25,6 +25,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_flipfps.h"
 #include "nd_msnapw.h"
 #include "nd_apw.h" /* NWS4B */
+uint32_t nd_seg_of(unsigned i); /* NC0F: nd_walk.c */
 
 static int drew;
 /* 3D writes the depth buffer. A later texrect has to win even if the test stays on. */
@@ -1232,7 +1233,7 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
     { /* SBLK2 A1/A2/B1 debug: the segment 9 base, tile 0 format, combine words, unit 1 I8 alpha, splits and grabs of this frame */
         extern unsigned n_splits;
         pm_log("orbdbg2 f%u tag %u seg9 %08x cyc %u td0 v%d fmt %u siz %u w %d h %d comb %08x %08x i8_1 %d spl %u grab %d",
-               pm_frame_count(), ot_, nd_c0.segbase[9], (nd_apw(NDAPW_OH) >> 20) & 3u, nd_c0.td[0].valid, nd_c0.td[0].fmt, nd_c0.td[0].siz, /* NWS4B */
+               pm_frame_count(), ot_, nd_seg_of(9), (nd_apw(NDAPW_OH) >> 20) & 3u, nd_c0.td[0].valid, nd_c0.td[0].fmt, nd_c0.td[0].siz, /* NWS4B */
                nd_c0.td[0].w, nd_c0.td[0].h, nd_apw(NDAPW_W0), nd_apw(NDAPW_W1), i8_1, n_splits, grab_n); /* NWS4B */
     }
     if (ot_ == 6u && gs.combine == 8) { /* SBLK2 blend check (shimmer, tag 6): the TEV stages as sent, the blend the port sets, the N64 blender */
