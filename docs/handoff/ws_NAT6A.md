@@ -1,0 +1,39 @@
+# ws_NAT6A (Haiku: 7 files, stream only, byte-equal): the stream state units leave nr_set
+Objective: in the stream, nd_rec_nr records no combine class unit that core 0 does not use. It writes the unmarked OML and PRIM units as 2 small native records, and each texture unit with its mark as 1 native record nd_txs_run. A custom gfx range keeps its units (nd_r11_walk reads them). Core 0 does the same work as before: exact by construction. Counter C13 (c0gate calls): base 82 (FACT orchestrator, main 09abf0a661), expected 83 (FACT c0gate.py: 1 new call site, nd_unit_apply in nd_txs_run). interp 32 and state 23 stay.
+READY. Start commit: main. Worktree build3ds/wt/NAT6A, branch NAT6A. PM_ROW=NAT6A PM_LANE=NAT6A. Designer: oracle NATIVE9 (id in the launch prompt). Files and regions: 3ds/src/nd_rec.c (:419-423, :452-454), 3ds/src/nd_walk.c (new lines after :383 only; NATFB2 edits :457 and :655 regions: no overlap), 3ds/include/nd_api.h (after :18), 3ds/include/nd_cmd.h (after :53), src/model.c (nd_cgfx_one :3525-3528), 3ds/tools/nd_st_test.c (:58 region, before :161).
+## Facts (main 09abf0a661)
+- FACT a stream unit (nd_rec_nr) runs on core 0 only with ep_stream 1 and ex_depth 0: the stream, NDC_CALL ranges, nd_range_run (ex_depth 0, nd_walk.c), and the nd_rec_alt ranges of nd_direct.c:225, :320, hud_element.c:557, screen_overlays.c:129 (no alt_mode change). Every alt_mode 1 or 2 range is a raw copy (nd_alt_put, no nd_rec_nr).
+- FACT nr_set (nd_walk.c:253-269) at ep_stream and ex_depth 0 for a combine class unit (OML, PRIM, ENV, FOG, BLEND, FILL, PRIMZ, RARE, COMB) calls nd_unit_same, sets ep_mark 0, returns. nd_unit_same (nd_set.c:123-147) changes state only for OML (om_kl |= m) and PRIM (pm_gpu_set_prim, prim_lod). ep_mark only feeds the epk counters and logs.
+- FACT nd_ds_ep_rule gives every TIMG..LOADTLUT unit a mark (nd_ds.c:407, :410). Core 0 then runs the mark (nr_ctl MISC_EP: nd_epk_mk++, gv_epoch++, nd_walk.c:338) and the unit (nr_set: nd_unit_same 0, nd_epk_n++, ep_mark 0, pm_gbi_cur_op = id, nd_unit_apply). The TILESIZE of tile 0 or 1 is the TXR unit (nd_rec.c:458): it stays.
+- FACT nd_r11_walk (nd_model.c:277-305) reads OML, COMB, PRIMZ, FILL, RARE units of a custom gfx range (src/model.c:3525-3528). The host units link nd_rec.c, not nd_walk.c.
+## Edits (each new line ends with `/* NAT6A */`)
+1. nd_rec.c after :420: `static unsigned char cg_keep; void nd_rec_cgfx(int on) { cg_keep = (unsigned char)(on != 0); } /* NAT6A: a custom gfx range keeps its combine class units (nd_r11_walk) */`. After :421: `__attribute__((weak)) void nd_txs_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_oml_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_prim_run(const uint32_t* r) { (void)r; } /* NAT6A: strong in nd_walk.c */`.
+2. nd_rec.c:452-454. Before:
+```c
+    if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
+        if (rc) { st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason */
+            if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
+```
+   After (the first and the third line stay as they are, the second line changes, 2 lines are new):
+```c
+    if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
+        if (id >= ND_FS_TIMG && !(id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u)) { rec_nat(nd_txs_run, w0, w1); return; } /* NAT6A: a texture unit and its mark (rc is never 0 here) */
+        if (!rc && !cg_keep && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) { if (id == ND_FS_OML) rec_nat(nd_oml_run, w0 & 0xffffffu, w1); else if (id == ND_FS_PRIM) rec_nat(nd_prim_run, w0 & 0xffffffu, w1); return; } /* NAT6A */
+        if (rc) { st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason */
+            if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
+```
+3. nd_cmd.h after :53: `void nd_rec_cgfx(int on); /* NAT6A, nd_rec.c, core 1: 1 while a custom gfx range records */`. src/model.c nd_cgfx_one: after `nd_cgfx_rng[k] = nd_rec_mark();` add `nd_rec_cgfx(1); /* NAT6A */`. Before `nd_rec_end();` add `nd_rec_cgfx(0); /* NAT6A */`.
+4. nd_api.h after :18: `void nd_txs_run(const uint32_t* r); void nd_oml_run(const uint32_t* r); void nd_prim_run(const uint32_t* r); /* NAT6A, nd_walk.c, core 0: stream state records */`.
+5. nd_walk.c after :383 (after nd_ctl_rec):
+```c
+void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
+    nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; nd_unit_apply(r); }
+void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */
+void nd_prim_run(const uint32_t* r) { if (nd_ws.prim == r[1] && (uint8_t)nd_ws.prim_lod == (uint8_t)r[0] && sc_ok) { pm_gpu_set_prim(nd_ws.prim, r[0]); nd_ws.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */
+```
+6. nd_st_test.c. After :58 add `static void n6a(void) { nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; gDPSetEnvColor(gMainGfxPos++, 11, 22, 33, 44); gDPSetPrimColor(gMainGfxPos++, 0, 0, 55, 66, 77, 88); (void)nd_rec_mark(); gDPSetEnvColor(gMainGfxPos++, 11, 22, 33, 44); gDPSetPrimColor(gMainGfxPos++, 0, 0, 55, 66, 77, 88); } /* NAT6A: nd_rec_mark resets the shadow, so the second pair is unmarked */`. Before :161 add: `run_one(n6a, &b);` then count i < b.nw - 1 with `b.w[i] == NDC_HDR(NDC_NAPI, 1, 1) && b.w[i + 1] == (uint32_t)(uintptr_t)nd_prim_run` (want 1) and the units of b.u with id ND_FS_ENV or ND_FS_PRIM (want 0); else `printf("stunit FAIL nat6a\n"); return 1;`. On the start commit this check fails: the 2 units are NRUN units.
+## Steps (output to build3ds/out/, read the last 20 lines, Bash `timeout: 600000`, foreground only, 1 build, 8 Azahar starts)
+1. Edits 1-6. `sh 3ds/tools/nd_host_test.sh > build3ds/out/nat6a_host.txt 2>&1`: PASS (stunit ok). Commit `NAT6A 1: stream state units leave nr_set`.
+2. `python 3ds/tools/bench.py base spot_mac01_drec > build3ds/out/nat6a_base1.txt 2>&1`, the same for wscmb_pause_drec (nat6a_base2.txt). spot_mac01: map stream, R11 models, texture units. wscmb_pause: combine and prim units of the pause and text stream. 3. `sh 3ds/tools/rowloop.sh --row NAT6A --bench spot_mac01_drec,wscmb_pause_drec --no-host --why "NAT6A: stream state units leave nr_set" > build3ds/out/nat6a_loop.txt 2>&1`. 4. `python 3ds/tools/c0gate.py build3ds/lane-NAT6A/pm_3ds.elf > build3ds/out/nat6a_c0.txt 2>&1`.
+## Gate (exact): host PASS; LOOP PASS (2 benches byte-equal); last line of nat6a_c0.txt `c0gate calls 83 interp 32 state 23`. The epk counters and the epbad and epcut lines may change: not judged. Fix rights: compile errors, prototypes, weak stubs, the stunit check text. A DIFF, a crash, other c0gate values or a tool fault: stop. Send the cmp file path and its first DIFF line to oracle NATIVE9 with SendMessage. Wait.
+## Hand-back: last commit `NAT6A 2: gate. <lines>` with `git add -f build3ds/out/nat6a_loop.txt build3ds/out/nat6a_c0.txt`. It deletes this page. One SubagentHandback: hashes, cmp line per bench, c0gate line.
