@@ -238,7 +238,7 @@ void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim
 #define MM_LW ((unsigned)(sizeof(((NdTst*)0)->ldrec[0]) / 4u))
 #define MM_BW ((unsigned)(sizeof(((NdTst*)0)->blk[0]) / 4u))
 #define MM_RG ((unsigned)((offsetof(NdDs, lt) - offsetof(NdDs, conv_k4)) / 4u) + 4u)
-typedef struct MmS { NdMSnap m; uint32_t sv[4]; uint32_t rg[MM_RG]; uint32_t lr[4u * MM_LW], br[4u * MM_BW]; } MmS; /* the before state: the model snap, the decision inputs, the scalar region of nd_ds and the 2 load rings in logical order (oldest first, the phase left out) */
+typedef struct MmS { NdMSnap m; uint32_t sv[4]; uint32_t rg[MM_RG]; uint32_t lr[4u * MM_LW], br[4u * MM_BW]; uint32_t lth[2]; } MmS; /* the before state: the model snap, the decision inputs, the scalar region of nd_ds and the 2 load rings in logical order (oldest first, the phase left out) */
 typedef struct MmEnt {
     uint32_t kg, k0, cg, nl1; const uint32_t* blk; uint32_t keep, nd, ctx, ok, hasl;
     MmS s; Lightsn lt; uint32_t c9[2]; uint32_t lh0, lh1; /* the unit list of R0 w1: count and 64 bit hash */ uint16_t di[MM_D]; uint32_t dv[MM_D]; uint32_t cl, cb, al[4u * MM_LW], ab[4u * MM_BW]; /* A: the ring counter steps and the rings after, logical order */
@@ -264,6 +264,7 @@ static void mm_s_take(MmS* s) {
     for (unsigned i = (unsigned)(offsetof(NdDs, conv_k4) / 4u); i < (unsigned)(offsetof(NdDs, lt) / 4u); i++) s->rg[n++] = d[i];
     s->rg[n++] = nd_ds.w.prim_z; s->rg[n++] = (uint32_t)nd_ds.w.tex_on; s->rg[n++] = nd_ds.w.fill; s->rg[n++] = nd_ds.lt_n;
     mm_ring_get(&nd_ds, s->lr, s->br);
+    { uint32_t h0 = 2166136261u, h1 = 0x9e3779b9u; for (unsigned i = (unsigned)(offsetof(NdDs, lt) / 4u); i < (unsigned)(offsetof(NdDs, lt_n) / 4u); i++) { h0 = (h0 ^ d[i]) * 16777619u; h1 = (h1 + d[i]) * 2246822519u; h1 ^= h1 >> 15; } s->lth[0] = h0; s->lth[1] = h1; } /* the lights before: the model writes some slots, the delta keeps the others */
 }
 static void mm_lh(const uint32_t* r, uint32_t o[3]) { /* count and 2 lane hash of the unit list r[1] (to its END unit) */
     const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; uint32_t h0 = 2166136261u, h1 = 0x9e3779b9u, n = 0;
