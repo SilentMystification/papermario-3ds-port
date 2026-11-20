@@ -375,40 +375,16 @@ void nd_parts_end(NdParts* b) {
     b->n = 0;
 }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */
-/* D4b-3: a state op (HC4a: typed by the recorder) extends the open native record run when nothing was recorded after it (no span, no other command) and the chunk has room;
- * else it opens a new run. HC4b: a typed op the shadow drops is not written. */
-static void st_put(uint32_t w0, uint32_t w1) {
-    uint32_t* h = st_hdr;
-    st_take = 1;
-    if (h && h[1] == (uint32_t)(uintptr_t)nd_nr_run && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) { /* NAT5G */
-        h[0] += 1u << 16;
-        uint32_t* p = rec_take(2);
-        st_take = 0;
-        p[0] = w0;
-        p[1] = w1;
-        st_hdr = h;
-        st_end = wp;
-        return;
-    }
-    uint32_t* p = rec_take(4);
-    st_take = 0;
-    ndc_n[NDC_NRUN]++;
-    p[0] = NDC_HDR(NDC_NAPI, 1, 0);
-    p[1] = (uint32_t)(uintptr_t)nd_nr_run;
-    p[2] = w0;
-    p[3] = w1;
-    st_hdr = p;
-    st_end = wp;
-}
 static void xr_put(NdNapiRun run, uint32_t w0, uint32_t w1, unsigned need) { /* NAT5G: into the open record of run, else a new one (flag 1 keeps the snap arm) */
     uint32_t* h = st_hdr; st_take = 1; if (h && h[1] == (uint32_t)(uintptr_t)run && wp == st_end && ((h[0] >> 16) & 0xffu) + need <= 255u && wp + 2u * need <= wend) {
         h[0] += 1u << 16; uint32_t* p = rec_take(2); st_take = 0; p[0] = w0; p[1] = w1; st_hdr = h; st_end = wp; return; }
     uint32_t* p = rec_take(2u + 2u * need); wp = p + 4; st_take = 0; ndc_n[NDC_NRUN]++; /* room for need units in this chunk */
     p[0] = NDC_HDR(NDC_NAPI, 1u, 1u); p[1] = (uint32_t)(uintptr_t)run; p[2] = w0; p[3] = w1; st_hdr = p; st_end = wp; }
+unsigned nd_left_units; static __attribute__((cold, noinline)) void left_unit(uint32_t w0) { static unsigned n; nd_left_units++; if (n++ < 4u) pm_log_e("ndc: unit %08x has no record (not run)", (unsigned)w0); } /* NAT6F */
 static void cp_put(uint32_t w0, uint32_t w1) { const unsigned id = w0 >> 24; /* NAT5G: a unit into the record of its family */
     if (nd_op_geo(id)) xr_put(nd_geo_rec, w0, w1, 1u);
     else if (nd_op_ctl(id)) xr_put(nd_ctl_rec, w0, w1, (id == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) ? 3u : 1u); /* a texture rectangle and its 2 half units */
-    else st_put(w0, w1); }
+    else left_unit(w0); } /* NAT6F: END, DROP or untyped: no record (PSOFB) */
 /* HC4d2: a typed op into the open state run (the shadow decides a drop). */
 static void rec_op_t(const uint32_t t[2]) {
     rec_open();
@@ -711,7 +687,7 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
         if (p == stop) return;
         const uint32_t h = p[0];
         nd_stream_cur = p;
-        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && op != NDC_SPR && (op != NDC_NAPI || (p[1] != (uint32_t)(uintptr_t)nd_nr_run && !(h & 1u)))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */
+        { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && op != NDC_SPR && (op != NDC_NAPI || !(h & 1u))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */ /* NAT6F: no NRUN record */
         switch (h >> 24) {
         case NDC_END: return;
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;

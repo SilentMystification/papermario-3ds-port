@@ -1,19 +1,13 @@
 # c0gate names (plan_native.md section 1)
-interp nd_nr_exec
-interp nd_nr_run
 interp nd_nr_list
 interp nd_list_run
 interp nd_ent_units
 interp nd_ntab_run
 interp nd_scomp_run
 interp gt_run
-interp nr_set
 interp nr_geo
 interp nr_ctl
-interp nr_unknown
-interp ls_run
 interp part_units
-interp nd_unit_same
 interp nd_unit_apply
 interp set_om
 interp set_rare
