@@ -53,7 +53,8 @@ Tags: FACT (console capture or code read), GUESS (estimate), OPEN (not measured)
 - Honest summary: rows 2 to 8 can reach 60 fps in mac_01 with a small margin (GUESS). A stable 60 fps in all scenes needs DRAWOBJ (GUESS).
 
 ## 5. Measurement plan
-- Capture 1, after PROF3 and MSNAP2 merge: mac_01 0 0 200, profmode prof, 17 steady windows (plan_perf.md section 9 recipe; capture_check first).
+- Capture 1, after PROF3 and MSNAP2 merge: words `--profile prof phase=on warp=mac_01:0 pos=0:0:200 profdisk=1` (phase=on is needed for c1t, c1d, c1g),
+  17 steady windows; capture_check first with the same words.
   Read: ft, fps, lgms, bw, c1s, c1g (new), c1t, c1d, c1n, ic1, dc1, cls, c0r, gpu d and w, the GPU time line if the build has one (OPEN).
 - Capture 2, after C3, K1 and C1: the same line set. Check the expected numbers of section 3 and change the order if a guess was wrong.
 - Capture 3, a heavy scene (a battle with many actors, user's choice of spot) once mac_01 reaches 30 steps per second.
