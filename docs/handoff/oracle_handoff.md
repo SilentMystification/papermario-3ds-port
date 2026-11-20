@@ -33,6 +33,7 @@ State: main 8bcf0252ee (T1FIX, NC0S merged) plus the pages of oracle NATIVE17 (s
 - The stream lives as long as its display context (2 chains, nd_rec.c:32-35). A core 0 pointer into the stream must not outlive the walk (nd_snap_hold).
 - The c1t timers run in sampled steps only. The alt timer is per unit: subtract altu x cal ticks (cal 303 ticks per pair) for real ms.
 - Model cache hit path (nd_recs.c:265-293) runs no rec_apply, no nd_msnap_use: core 0 state on a hit comes from hit_apply only.
+- State leaks out of a called list on core 0 (nd_c0) but not on core 1 (scratch copy nd_rec.c:466, CALL :491-492). A field that moves from nd_c0 to a snap needs a carry back after the scratch run (NC0V: tex_on, fog).
 - ms_cur getters (nd_msnap_w, _gvc, _td0) return the last nd_msnap_use: read each call order at the call site (T1FIX fault).
 - nd_set.c holds several setters per line: rows that touch nd_set.c:84-111 or adjacent NdC0 lines in nd.h conflict; give them WAIT lines.
 - PERF0 altw and PERF1 snapi lines are cumulative from boot: compare a tip run with its base log, never with a steady-state rate.
