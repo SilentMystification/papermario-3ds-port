@@ -343,6 +343,7 @@ void ent_log(void) { /* PROF2-3: census lines, from pm_gpu.c cen_lines_frame (fr
     pm_log_w("entnat segwhy lit %u fog %u room %u mtx %u | dlc_seg code (0 none, 1 + gv why, 9 grange) 0:%u 1:%u 2:%u 3:%u 4:%u 5:%u 6:%u 7:%u 8:%u 9:%u", ent_sw[1], ent_sw[2], ent_sw[3], ent_sw[4], ent_sw[5], ent_sw[6], ent_sw[7], ent_sw[8], ent_sw[9], ent_sw[10], ent_sw[11], ent_sw[12], ent_sw[13], ent_sw[14]);
     { extern void pm_gpu_nraw_why(unsigned* o); unsigned nw[10]; pm_gpu_nraw_why(nw); extern unsigned pm_gpu_cmd_split_n(void); extern void pm_gpu_fb2_stat(unsigned* o); unsigned fb[3]; pm_gpu_fb2_stat(fb); pm_log_w("nrawwhy f%u zmark %u tex1 %u unit0 %u tmpl %u cmdsplit %u tmplhi %u evict %u", f, nw[4], nw[6], nw[8], nw[9], pm_gpu_cmd_split_n(), fb[0], fb[1]); }
     pm_log_w("gdl f%u lists %u native %u dyn %u refuse %u skip %u draws native %u walker %u", f, gdl_c.lists, gdl_c.nat, gdl_c.dyn, gdl_c.ref, gdl_c.skip, ent_c.segn, ent_c.segi);
+    pm_log_w("entcopy f%u copy %u fw %u", f, ent_cf[0], ent_cf[1]); /* NAT5A */
     if (entchk_on()) pm_log_w("entsegcmp f%u segs %u eq %u diff %u", f, ent_c.cseg, ent_c.ceq, ent_c.cdiff);
 }
 
@@ -360,7 +361,7 @@ u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h 
 
 /* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts are dynamic by address: walker (DIRECT D10a:
  * the frame stream holds no list). 1: drawn, 0 not drawn, -1 ring path wanted (the caller skips nd_sg_try). */
-int ent_gdl(const NdW2* l) {
+int ent_gdl(const NdW2* l, const uint32_t* et) {
     if (!dlc_on || ((u32)l & 7u) || (u32)l - (u32)D_80164000 < 2u * sizeof(DisplayContext)) { gdl_c.skip++; return 0; }
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
@@ -388,12 +389,12 @@ int ent_gdl(const NdW2* l) {
       if (k->pcalls >= 4u) return -1; } /* PBATCH1: a particle list (4+ calls last frame): the ring path batches 8 matrices per draw */
     if (k->st == ENT_DYN) { gdl_c.dyn++; return 0; }
     if (k->st == ENT_REF && k->why != 6) { gdl_c.ref++; return 0; }
-    int r = nd_eg_run(l, k, 0);
+    int r = nd_eg_run(l, k, 0, et);
     if (r) gdl_c.nat++; else if (k->st == ENT_DYN) gdl_c.dyn++; else gdl_c.ref++;
     return r;
 }
 
-int ent_draw(const NdW2* rec) {
+int ent_draw(const NdW2* rec, const uint32_t* et) {
     const NdW2* l = (const NdW2*)ptr_of(rec[0].words.w1);
     const NdW2* nx = rec + G_PM_ENT_WORDS;
     if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || nx->words.w0 != ND_OP_CALL_W0 || nx->words.w1 != rec[0].words.w1) return 0;
@@ -401,15 +402,22 @@ int ent_draw(const NdW2* rec) {
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
     ent_c.draws++;
     EntKey* k = ent_lookup(l, rec[1].words.w1);
-    return nd_eg_run(l, k, rec[1].words.w0 | (rec[2].words.w0 << 8));
+    return nd_eg_run(l, k, rec[1].words.w0 | (rec[2].words.w0 << 8), et);
 }
 
 unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi;
 unsigned nd_ent_cfull_all(void) { return nd_ent_cfull; }
 unsigned nd_gdl_lists(void) { return gdl_c.lists; }
-static void ent_gap(NdSDef* d, const NdW2* l, u32 n) { /* S6E: a gap as a compiled range, with the list start and end of nd_ent_units; only when every value unit precedes the statics (the op order) */
+static unsigned ent_cf[3]; /* NAT5A: copy runs, fw runs */
+static __attribute__((cold, noinline)) void ent_fb_note(const EntKey* k, unsigned why) { static unsigned c[3]; if (why > 2u || c[why] >= 3u) return; c[why]++; pm_log_evt("entfb f%u l %08x why %u nops %u", pm_frame_count(), (unsigned)k->list, why, (unsigned)k->nops); }
+static void ent_run(const EntKey* k, const uint32_t* et, u32 a, u32 b) { /* NAT5A */
+    nd_ent_gbi++;
+    if (et && et[1u + a] && et[1u + b]) { const uint32_t ab[2] = { et[1u + a], et[1u + b] }; ent_cf[0]++; nd_ent_slice(ab); return; }
+    if (et) ent_fb_note(k, 2u); else ent_fb_note(k, 0u);
+    ent_cf[1]++; nd_ent_units((const uint32_t*)(const void*)(k->fw + a), b - a); }
+static void ent_gap(NdSDef* d, const EntKey* k, const uint32_t* et, u32 a, u32 b) { /* S6E: a gap as a compiled range, with the list start and end of nd_ent_units; only when every value unit precedes the statics (the op order) */
     if (d && !d->st) d->st = nd_scomp_analyse(d) ? 1u : 2u;
-    nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)l, n); /* DEL1B */
+    ent_run(k, et, a, b); /* DEL1B; NAT5A */
     if (d && d->st == 1u && d->nv == d->pre) sr_ok = 0; /* NREC5: the render resync of the old compiled run */
 }
 /* HC8 step 7: the recompile of a changed entity (content hash), the interpreter run of one segment (the fallback loop) are cold: out of line. */
@@ -417,13 +425,13 @@ static void __attribute__((noinline, cold)) ent_run_recompile(EntKey* k, const N
     if (++k->nrec > 3) { k->st = ENT_DYN; ent_c.dyn++; }
     else { u8 nr = k->nrec; nd_eg_build(k, l); k->nrec = nr; }
 }
-static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const EntSeg* e) {
+static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, const uint32_t* et, const EntSeg* e) {
     const NdW2* fw = k->fw;
     ent_c.segi++; /* the old words: the vertex loads before the segment, then its own ops */
-    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + i), 1u); } /* DEL1B */
-    if (e->op1 > e->op0) { nd_ent_gbi++; nd_ent_units((const uint32_t*)(const void*)(fw + e->op0), e->op1 - e->op0); } /* DEL1B */
+    for (u32 i = 0; i < e->op0; i++) if (ent_uid(fw[i].words.w0, fw[i].words.w1) == ND_FS_VTX) ent_run(k, et, i, i + 1u); /* DEL1B; NAT5A */
+    if (e->op1 > e->op0) ent_run(k, et, e->op0, e->op1); /* DEL1B; NAT5A */
 }
-int nd_eg_run(const NdW2* l, EntKey* k, u32 segid) {
+int nd_eg_run(const NdW2* l, EntKey* k, u32 segid, const uint32_t* et) {
     const unsigned f = pm_frame_count();
     if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
     if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
@@ -433,19 +441,20 @@ int nd_eg_run(const NdW2* l, EntKey* k, u32 segid) {
     k->ndraw++; k->segid = segid;
     if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
     if (entchk_on()) { ent_c.nat++; return 0; }
+    if (et && et[0] != k->nops) { ent_fb_note(k, 1u); et = NULL; } /* NAT5A */
     nd_ent_in = 1;
     const unsigned lb = nd_ls_ord;
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
         const NdW2* fw = k->fw;
-        if (e->op0 > e->a0) ent_gap(e->sd, fw + e->a0, e->op0 - e->a0);
+        if (e->op0 > e->a0) ent_gap(e->sd, k, et, e->a0, e->op0);
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         nd_ls_ord = lb + e->tri0;
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; nd_ls_ord = lb + e->tri0 + e->ntri; continue; }
-        ent_run_seg_interp(k, e);
+        ent_run_seg_interp(k, et, e);
         nd_ls_ord = lb + e->tri0 + e->ntri;
     }
-    { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { ent_gap(k->tail, k->fw + e->op1, k->nops - e->op1); } }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { ent_gap(k->tail, k, et, e->op1, k->nops); } }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of nd_sg_try */
     nd_ent_in = 0;
     ent_c.nat++;
@@ -453,7 +462,7 @@ int nd_eg_run(const NdW2* l, EntKey* k, u32 segid) {
 }
 
 /* G_PM_ENT in the walk (nd_walk.c): returns 1 when the entity draw ran from the pools (the walk skips the record's G_DL), else 0. */
-int nd_ent_case(const NdW2* rec, u32 w0, u32 w1) {
+int nd_ent_case(const NdW2* rec, u32 w0, u32 w1, const uint32_t* et) {
     if (w0 & G_PM_ENT_END) { /* LKEY: a moved list key (NDN) gives its device units and an end unit */
         static uint32_t eb[2u * 256u];
         const void* el = (const void*)(uintptr_t)w1;
@@ -462,7 +471,7 @@ int nd_ent_case(const NdW2* rec, u32 w0, u32 w1) {
     }
     if (w0 & G_PM_ENT_DRAW) {
         pm_tex_tagi = 4;
-        if (ent_draw(rec)) return 1;
+        if (ent_draw(rec, et)) return 1;
         ent_skipgen = 1;
     }
     return 0;

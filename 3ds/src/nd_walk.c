@@ -180,7 +180,8 @@ void nd_walk_ent(const NdW2* q, unsigned words) {
     int fp = 0;
     if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_ENT, q->words.w0, q->words.w1); }
     NDT_BD(te, dbg);
-    int drawn = nd_ent_case(q, q->words.w0, q->words.w1);
+    const uint32_t* const et = words > G_PM_ENT_WORDS + 1u ? (const uint32_t*)(uintptr_t)((const uint32_t*)q)[2u * G_PM_ENT_WORDS + 3u] : NULL; /* NAT5A */
+    int drawn = nd_ent_case(q, q->words.w0, q->words.w1, et);
     NDT_E(te, NDT_ENT);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
@@ -215,7 +216,7 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
     int ring = 0; /* PBATCH1: a particle list (ent_gdl -1) runs on the op executor, not nd_sg_try */
     if (ent_skipgen) ent_skipgen = 0;
     else if (!ow && dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
-        NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next); NDT_E(te, NDT_ENT);
+        NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[3] : NULL); NDT_E(te, NDT_ENT);
         if (eh > 0) return;
         if (eh < 0) ring = 1;
     }
@@ -429,6 +430,17 @@ void nd_ent_units(const uint32_t* u, unsigned n) {
     gv_streak_flush(); tex_streak_flush();
     if (cen) ops_cen_end();
 }
+/* NAT5A: as nd_ent_units, the units of a cut raw alt range ab (nd_alt_eput). */
+void nd_ent_slice(const uint32_t* ab) {
+    PM_WALK_OWN();
+    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
+    gv_epoch++; dlc_on = 1; gp_prev_op = -1;
+    pm_walk_side++; ex_depth = d + 1;
+    const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m;
+    ex_depth = d; pm_walk_side--;
+    gv_streak_flush(); tex_streak_flush();
+    if (cen) ops_cen_end();
+}
 /* NAT5E: a particle run is records in the stream (nd_parts_end, nd_rec.c): the begin record, per instance its units (the list drawn
  * natively by nd_part_draw), the end record. The units are the stream units of core 0 (nd_rec_nr). */
 static unsigned pr_v, pr_next = 300u;
@@ -504,7 +516,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
     else if (dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
-        const int eh = ent_gdl(next);
+        const int eh = ent_gdl(next, (rec[1] & 4u) ? (const uint32_t*)(uintptr_t)rec[5] : NULL); /* NAT5A */
         if (eh > 0) { nd_gtr_ent++; return; }
         if (eh < 0) ring = 1;
     }

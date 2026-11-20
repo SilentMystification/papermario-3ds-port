@@ -245,12 +245,15 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     r[G_PM_ENT_WORDS].words.w0 = ND_OP_CALL_W0; /* HC4d2: the list call as a typed op (W6) */
     r[G_PM_ENT_WORDS].words.w1 = (uint32_t)(uintptr_t)list;
     rec_open();
-    uint32_t* p = rec_take(2u + 2u * (G_PM_ENT_WORDS + 1u));
+    uint32_t* p = rec_take(2u + 2u * (G_PM_ENT_WORDS + 2u));
     ndc_n[NDC_ENT]++;
-    p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 1u, 0);
+    p[0] = NDC_HDR(NDC_ENT, G_PM_ENT_WORDS + 2u, 0);
     p[1] = 0;
     memcpy(p + 2, r, sizeof r);
-    nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0); nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at nd_eg_run or walk_call) NREC2: the list snap table in header word 1 */
+    uint32_t* const x = p + 2u + 2u * (G_PM_ENT_WORDS + 1u); uint32_t ab[2]; x[0] = x[1] = 0u; uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 2; nd_alt_et_begin(); /* NAT5A */
+    nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0);
+    nd_alt_raw_on = 0; nd_alt_close(br, ab); x[1] = (uint32_t)(uintptr_t)nd_alt_et_end(ab[1]); /* NAT5A */
+    nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at nd_eg_run or walk_call) NREC2: the list snap table in header word 1 */
 }
 void nd_rec_ent(const void* rec) {
     rec_open();
@@ -450,9 +453,24 @@ void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_al
 /* NAT5N, core 1: a call unit inside a raw alt range. A block {list word, a, b} in stream data, the unit CALL | 2 with w1 = the block,
  * then a jump over the nested range that ds_pairs fills with the called list; nd_alt_call_end closes it (blk[3] keeps the jump). */
 uint32_t* nd_alt_call(uint32_t w0, uint32_t w1) {
-    uint32_t* const blk = (uint32_t*)nd_rec_data_st(16u); blk[0] = w1; blk[1] = blk[2] = 0u;
+    uint32_t* const blk = (uint32_t*)nd_rec_data_st(24u); blk[0] = w1; blk[1] = blk[2] = 0u; blk[4] = 0u; /* NAT5A */
     nd_alt_put(w0 | 2u, (uint32_t)(uintptr_t)blk); blk[3] = (uint32_t)(uintptr_t)nd_alt_open(); return blk; }
-void nd_alt_call_end(uint32_t* blk) { nd_alt_close((uint32_t*)(uintptr_t)blk[3], blk + 1); }
+void nd_alt_call_end(uint32_t* blk) { nd_alt_close((uint32_t*)(uintptr_t)blk[3], blk + 1); blk[4] = (uint32_t)(uintptr_t)nd_alt_et_end(blk[2]); } /* NAT5A */
+/* NAT5A, core 1: the cut table of a flat copy. A unit opens a new run when its class (1 VTX, 2 TRI1 or TRI2, 3 ND_NOP_A, 0 other) differs from the last one, and at every VTX. */
+static uint32_t et_ua[ND_DLC_MAXOPS]; static unsigned et_n, et_c; static unsigned char et_on;
+void nd_alt_et_begin(void) { if (et_on) return; et_on = 1; et_n = 0; et_c = 4u; }
+void nd_alt_eput(uint32_t w0, uint32_t w1) {
+    if (!et_on) { nd_alt_put(w0, w1); return; }
+    const unsigned id = w0 >> 24, c = w0 == ND_NOP_A ? 3u : id == ND_FS_VTX ? 1u : (id == ND_FS_TRI1 || id == ND_FS_TRI2) ? 2u : 0u, cut = c != et_c || c == 1u;
+    if (cut) st_hdr = NULL;
+    nd_alt_put(w0, w1);
+    if (et_n < ND_DLC_MAXOPS) et_ua[et_n] = cut ? (uint32_t)(uintptr_t)st_hdr : 0u;
+    et_n++; et_c = c; }
+uint32_t* nd_alt_et_end(uint32_t end) { /* stream data: t[0] n, t[1 + i] the run header of cut unit i (else 0), t[1 + n] end. NULL: no copy */
+    if (!et_on) return NULL;
+    et_on = 0;
+    if (et_n >= ND_DLC_MAXOPS) return NULL;
+    uint32_t* const t = (uint32_t*)nd_rec_data_st(4u * (et_n + 2u)); t[0] = et_n; memcpy(t + 1, et_ua, 4u * et_n); t[1u + et_n] = end; return t; }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
  * NDC_TEXRECT. Any other packet (a local list) and the branch form of G_DL keep the word; G_ENDDL at the top level is dropped (NDC_END ends a
