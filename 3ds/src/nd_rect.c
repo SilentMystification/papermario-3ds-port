@@ -120,7 +120,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
     int cx0 = X0 < xlo ? xlo : X0, cy0 = Y0 < 0 ? 0 : Y0, cx1 = X1 > xhi ? xhi : X1, cy1 = Y1 > 240 ? 240 : Y1;
     pm_gpu_flush();
     pm_gpu_set_combine(5);
-    sc_ok = 0; nd_sr_forget(); /* DIP2: pm_gpu holds a combine mode nd_comb_sync did not set */
+    nd_sr_forget(); /* DIP2; NCS3: sc_ok stays, the end note compares */
     for (int ys = cy0; ys < cy1; ys += 128) {
         for (int xs = cx0; xs < cx1; xs += 128) {
             int cw = cx1 - xs < 128 ? cx1 - xs : 128, ch = cy1 - ys < 128 ? cy1 - ys : 128;
@@ -147,7 +147,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
                         d[3] = b[3];
                     }
                 }
-                if (!pm_tex_load_rgba8(box_buf, key, cw, ch, box_buf)) { nd_comb_sync(); return 0; }
+                if (!pm_tex_load_rgba8(box_buf, key, cw, ch, box_buf)) { nd_csync_note(); return 0; } /* NCS3 */
             }
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
@@ -156,7 +156,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
     }
     nd_ws.cur_tile = -1; /* the bound texture is the composite */
     ens_clear();
-    nd_comb_sync();
+    nd_csync_note(); /* NCS3 */
     return 1;
 }
 
@@ -195,7 +195,7 @@ __attribute__((noinline)) static void nd_texrect_copy_clamp(int xl, int yl, int 
     }
 }
 static unsigned char rc_sn; /* NDR1C: the rectangle in progress has a live snap */
-static void rc_render(void) { if (rc_sn) nd_snap_render(); else nd_rnd_sync(); } /* NDR1C */
+static void rc_render(void) { if (rc_sn) nd_snap_render(); else nd_rndw_note(); } /* NDR1C; NCS3: no snap, the render state of the last snap stays */
 /* MERLON: the ball rectangle (G_ZS_PRIM, depth compare) reads the texel S - SL through the tile mask, then tests the primitive depth. */
 __attribute__((noinline, cold)) static void nd_texrect_zprim(int rx0, int ry0, int ex, int ey, float* s0, float* t0, float* s1, float* t1, u32 hs,
                                                               float ms, float mt, int tw, int th, int rtile) {
@@ -309,7 +309,7 @@ __attribute__((noinline, cold)) static void nd_fillrect_cpu(int ulx, int uly, in
 }
 __attribute__((noinline, cold)) static void nd_fillrect_zs(int ulx, int uly, int lrx, int lry, unsigned color) {
     /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
-    nd_rnd_sync();
+    if (nd_snap_live) nd_snap_render(); else nd_rndw_note(); /* NCS3 */
     pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)nd_ws.prim_z / 32767.f);
 }
 
@@ -337,7 +337,7 @@ __attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) {
     unsigned color = (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
         ? rgba_from_5551(nd_ws.fill & 0xffff) : nd_ws.prim;
     nd_img_check();
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) { if (fsn) nd_snap_render(); else nd_rnd_sync(); } /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */
+    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) { if (fsn) nd_snap_render(); else nd_rndw_note(); } /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */ /* NCS3 */
     pm_gpu_set_replace(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
     if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER))
         nd_fillrect_zs(ulx, uly, lrx, lry, color);

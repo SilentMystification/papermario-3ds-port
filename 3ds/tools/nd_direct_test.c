@@ -52,7 +52,7 @@ void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     out->leg = 2;
 }
 void nd_comb_set(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
-void nd_rnd_sync(void) { n_render++; }
+void nd_rndw_note(void) { n_render++; } void nd_csync_note(void) {} /* NCS3 */
 extern unsigned nd_snap_render_n; /* NAT2A */
 void nd_sr_forget(void) { n_forget++; }
 void ens_clear(void) { n_end_clear++; }

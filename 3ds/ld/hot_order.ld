@@ -132,7 +132,6 @@
 		*(.text.pm_tex_size)  /* 19.7 calls/frame, 208 B */
 		*(.text.dual_bind)  /* 18.7 calls/frame, 716 B */
 		*(.text.nd_img_check)  /* 18.7 calls/frame, 68 B */
-		*(.text.nd_rnd_sync)  /* 18.7 calls/frame, 600 B */
 		*(.text.shift_mul)  /* 12.7 calls/frame, 4 B */
 		*(.text.rect_raw_ok)  /* 4.7 calls/frame, 112 B */
 		*(.text.box_fold_sync)  /* 4.3 calls/frame, 240 B */
