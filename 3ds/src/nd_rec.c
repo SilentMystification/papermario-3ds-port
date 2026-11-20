@@ -234,15 +234,14 @@ unsigned pm_frame_count(void);
 void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim */
 #define MM_N 256u /* slots: open addressing, linear probe of MM_PROBE */
 #define MM_PROBE 8u
-#define MM_D 24u
-#define MM_L1 8u
+#define MM_D 48u
 #define MM_LW ((unsigned)(sizeof(((NdTst*)0)->ldrec[0]) / 4u))
 #define MM_BW ((unsigned)(sizeof(((NdTst*)0)->blk[0]) / 4u))
 #define MM_RG ((unsigned)((offsetof(NdDs, lt) - offsetof(NdDs, conv_k4)) / 4u) + 4u)
 typedef struct MmS { NdMSnap m; uint32_t sv[4]; uint32_t rg[MM_RG]; uint32_t lr[4u * MM_LW], br[4u * MM_BW]; } MmS; /* the before state: the model snap, the decision inputs, the scalar region of nd_ds and the 2 load rings in logical order (oldest first, the phase left out) */
 typedef struct MmEnt {
     uint32_t kg, k0, cg, nl1; const uint32_t* blk; uint32_t keep, nd, ctx, ok, hasl;
-    MmS s; Lightsn lt; uint32_t c9[2]; uint32_t l1[2u * MM_L1]; uint16_t di[MM_D]; uint32_t dv[MM_D]; uint32_t cl, cb, al[4u * MM_LW], ab[4u * MM_BW]; /* A: the ring counter steps and the rings after, logical order */
+    MmS s; Lightsn lt; uint32_t c9[2]; uint32_t lh0, lh1; /* the unit list of R0 w1: count and 64 bit hash */ uint16_t di[MM_D]; uint32_t dv[MM_D]; uint32_t cl, cb, al[4u * MM_LW], ab[4u * MM_BW]; /* A: the ring counter steps and the rings after, logical order */
 } MmEnt;
 static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits, mm_skip, mm_diffs;
 static unsigned mm_nc[8], mm_wc[40], mm_sf[4], mm_dh[8]; /* store fails: 0 list too long, 1 delta too long; dh: delta size histogram */ static MmS mm_s; static NdDs mm_b;
@@ -266,11 +265,16 @@ static void mm_s_take(MmS* s) {
     s->rg[n++] = nd_ds.w.prim_z; s->rg[n++] = (uint32_t)nd_ds.w.tex_on; s->rg[n++] = nd_ds.w.fill; s->rg[n++] = nd_ds.lt_n;
     mm_ring_get(&nd_ds, s->lr, s->br);
 }
+static void mm_lh(const uint32_t* r, uint32_t o[3]) { /* count and 2 lane hash of the unit list r[1] (to its END unit) */
+    const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; uint32_t h0 = 2166136261u, h1 = 0x9e3779b9u, n = 0;
+    for (; (u[0] >> 24) != ND_FS_END; u += 2, n++) { h0 = (h0 ^ u[0]) * 16777619u; h0 = (h0 ^ u[1]) * 16777619u; h1 = (h1 + u[0]) * 2246822519u; h1 ^= h1 >> 15; h1 = (h1 + u[1]) * 2246822519u; h1 ^= h1 >> 15; }
+    o[0] = n; o[1] = h0; o[2] = h1;
+}
 static int mm_lights(const uint32_t* r) { return r[7] && r[4] <= 7u; }
 static int mm_list_eq(const MmEnt* e, const uint32_t* r) { /* the pointed words of the record that nd_ds_model reads */
     if (mm_lights(r) && memcmp(&e->lt, (const void*)(uintptr_t)r[7], sizeof e->lt)) return 0;
     if (r[9] && memcmp(e->c9, (const void*)(uintptr_t)r[9], 8u)) return 0;
-    if (!e->keep && r[1]) { const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; unsigned n = 0; for (; (u[0] >> 24) != ND_FS_END; u += 2, n++) if (n >= e->nl1 || u[0] != e->l1[2u * n] || u[1] != e->l1[2u * n + 1u]) return 0; if (n != e->nl1) return 0; }
+    if (!e->keep && r[1]) { uint32_t h[3]; mm_lh(r, h); if (h[0] != e->nl1 || h[1] != e->lh0 || h[2] != e->lh1) return 0; }
     return 1;
 }
 static int mm_r13_eq(const MmEnt* e, const uint32_t* r, unsigned words);
@@ -289,8 +293,7 @@ static __attribute__((cold, noinline)) void mm_store(MmEnt* e, const uint32_t* r
     e->ok = 0; e->kg = r[24]; e->k0 = r[0]; e->keep = keep; e->blk = p; e->ctx = (uint32_t)rec_ctx; e->cg = mm_cg[rec_ctx]; e->s = mm_s;
     if (mm_lights(r)) memcpy(&e->lt, (const void*)(uintptr_t)r[7], sizeof e->lt);
     if (r[9]) memcpy(e->c9, (const void*)(uintptr_t)r[9], 8u);
-    e->nl1 = 0;
-    if (!keep && r[1]) { const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; for (; (u[0] >> 24) != ND_FS_END; u += 2) { if (e->nl1 >= MM_L1) { mm_sf[0]++; return; } e->l1[2u * e->nl1] = u[0]; e->l1[2u * e->nl1 + 1u] = u[1]; e->nl1++; } }
+    e->nl1 = 0; e->lh0 = e->lh1 = 0; if (!keep && r[1]) { uint32_t h[3]; mm_lh(r, h); e->nl1 = h[0]; e->lh0 = h[1]; e->lh1 = h[2]; }
     const uint32_t* b = (const uint32_t*)&mm_b; const uint32_t* a = (const uint32_t*)&nd_ds; unsigned n = 0;
     for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u); i++) if (!mm_ringw(i) && a[i] != b[i]) { if (n >= MM_D) { mm_sf[1]++; return; } e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
     mm_dh[n < 4u ? 0u : n < 8u ? 1u : n < 12u ? 2u : 3u]++; e->nd = n; e->cl = nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n; e->cb = nd_ds.tm.blk_n - mm_b.tm.blk_n; mm_ring_get(&nd_ds, e->al, e->ab); e->ok = 1;
