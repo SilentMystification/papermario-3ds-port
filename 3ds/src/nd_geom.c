@@ -13,7 +13,6 @@
 #include "nd_snap.h"
 __attribute__((weak)) void nd_snapchk_tri(void) {} /* NDR0A: strong in nd_snap.c; weak for the host units that link nd_geom.c */
 __attribute__((weak)) unsigned char nd_snap_rpend; /* NDR0F1: strong in nd_snap.c */
-__attribute__((weak)) void nd_snap_render(void) { nd_rnd_sync(); } /* NDR0F2: strong in nd_snap.c */
 const NdSnapBind* nd_ep_bs; /* NDR0G2: the blocks of the open epoch (nd_snap_eb), NULL = walker */
 #include "pm_tex.h"
 #include "pm_port.h"
