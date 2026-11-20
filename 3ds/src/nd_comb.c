@@ -75,26 +75,6 @@ int comb_mode5; /* (PRIM - ENV) * TEXEL + ENV */
 int sl_const, sl_env; /* OPT-SC: the gpu calls of the last sync work, kept in the memo */
 unsigned sl_cc;
 
-void cc_text(const unsigned s[2][8], int cyc, char* o, int n) {
-    snprintf(o, n, "(%s-%s)*%s+%s / (%s-%s)*%s+%s",
-             s[cyc][0] < 8 ? cc_nm_a[s[cyc][0]] : "0", s[cyc][1] < 8 ? cc_nm_b[s[cyc][1]] : "0",
-             s[cyc][2] < 16 ? cc_nm_c[s[cyc][2]] : "0", cc_nm_d[s[cyc][3]],
-             cc_nm_aa[s[cyc][4]], cc_nm_aa[s[cyc][5]], cc_nm_ac[s[cyc][6]], cc_nm_aa[s[cyc][7]]);
-}
-
-/* 1 if the combiner reads texel tile t (0 or 1). */
-int cc_uses(const unsigned s[2][8], int two, int t) {
-    int u = 0;
-    for (int cyc = 0; cyc < (two ? 2 : 1); cyc++) {
-        for (int i = 0; i < 4; i++) {
-            unsigned v = s[cyc][i];
-            if (v == (unsigned)t + 1 || (i == 2 && v == (unsigned)t + 8)) u = 1;
-        }
-        for (int i = 4; i < 8; i++)
-            if (s[cyc][i] == (unsigned)t + 1) u = 1;
-    }
-    return u;
-}
 
 float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, const float* pr,
                        const float* en, int a_ok) {

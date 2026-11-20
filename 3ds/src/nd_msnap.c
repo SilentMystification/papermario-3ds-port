@@ -31,6 +31,7 @@ static NdDs ms_d;
 static NdMSnap ms_wk; static const NdMSnap* ms_cur = &ms_wk; /* NREC1B: the snap of the record that runs now */
 static const NdMSnap* ms_of(const uint32_t* q) { const uint32_t h = q[-2]; const NdMSnap* s = (const NdMSnap*)(q + 2u * ((h >> 16) & 0xffu) + 2u); return ((h & 1u) && s->magic == ND_MSNAP_MAGIC) ? s : NULL; }
 const uint32_t* nd_msnap_key(const uint32_t* q) { const NdMSnap* s = ms_of(q); return s ? &s->k_omh : NULL; } /* NAT2C */
+const uint32_t* nd_msnap_rw(const uint32_t* q) { const NdMSnap* s = ms_of(q); return s ? &s->magic : NULL; } /* PERF3: the snap words of record q, NULL when none */
 const uint32_t* nd_msnap_ab(const uint32_t* q) { return q + 2u * ((q[-2] >> 16) & 0xffu) + 2u + 2u * ND_MSNAP_U; } /* NAT5B: the 2 alt ranges after the snap */
 void nd_msnap_dec(const uint32_t* q) { const NdMSnap* s = ms_of(q); if (!s) return; plan_active = (int)s->d_plan; comb_mode5 = (int)s->d_mode5; cur_plan.vtx = s->d_vtx; cur_plan.vtxname = (unsigned char)s->d_vtxname; cur_plan.uses_tex1 = (unsigned char)s->d_t1; nd_c0.prim_z = s->d_primz; /* NAT2K; NAT4H */ }
 void nd_msnap_use(const uint32_t* q) { /* NREC1B: no snap: the walker inputs (fixed fallback, counted in nos) */

@@ -144,7 +144,6 @@ void tri_stats_add(unsigned f, unsigned n) {
     if (f & 16) st_blc += n;
 }
 
-void tri_stats(void) { tri_stats_add(tri_flags(), 1); }
 
 /* GV1: make what the CPU path reads from the ring copy of a vertex: the clip position with its exact reject bits, S and T, the colour. */
 void gv_xf(int sl) {

@@ -141,7 +141,6 @@ int ent_gdl(const NdW2* l, const uint32_t* et);
 extern u8 gMapShapeData[];
 extern int gp_prev_op; /* NWS1 */
 extern unsigned char nd_c0w; /* NAT1: bit 0 combine, bit 1 render, bit 2 bind set by the walker (pm_gpu.c) */
-void nd_c0_src(void); /* NAT1B: pm_gpu.c, the producer of a walker decision */
 extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside nd_eg_run; full combine and render syncs and walks run there (entsync line) */
 
 
@@ -243,7 +242,6 @@ int gv_lit_ok(void);
 int clip_bits4(const float* p);
 unsigned tri_flags(void);
 void tri_stats_add(unsigned f, unsigned n);
-void tri_stats(void);
 void gv_xf(int sl);
 int gv_fog_gpu_ok(void);
 int gv_state_why(int* ct, int* both);
