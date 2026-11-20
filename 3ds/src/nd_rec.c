@@ -370,7 +370,7 @@ void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_
 static void st_put(uint32_t w0, uint32_t w1) {
     uint32_t* h = st_hdr;
     st_take = 1;
-    if (h && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) {
+    if (h && h[1] == (uint32_t)(uintptr_t)nd_nr_run && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) { /* NAT5G */
         h[0] += 1u << 16;
         uint32_t* p = rec_take(2);
         st_take = 0;
@@ -390,17 +390,27 @@ static void st_put(uint32_t w0, uint32_t w1) {
     st_hdr = p;
     st_end = wp;
 }
+static void xr_put(NdNapiRun run, uint32_t w0, uint32_t w1, unsigned need) { /* NAT5G: into the open record of run, else a new one (flag 1 keeps the snap arm) */
+    uint32_t* h = st_hdr; st_take = 1; if (h && h[1] == (uint32_t)(uintptr_t)run && wp == st_end && ((h[0] >> 16) & 0xffu) + need <= 255u && wp + 2u * need <= wend) {
+        h[0] += 1u << 16; uint32_t* p = rec_take(2); st_take = 0; p[0] = w0; p[1] = w1; st_hdr = h; st_end = wp; return; }
+    uint32_t* p = rec_take(2u + 2u * need); wp = p + 4; st_take = 0; ndc_n[NDC_NRUN]++; /* room for need units in this chunk */
+    p[0] = NDC_HDR(NDC_NAPI, 1u, 1u); p[1] = (uint32_t)(uintptr_t)run; p[2] = w0; p[3] = w1; st_hdr = p; st_end = wp; }
+static void cp_put(uint32_t w0, uint32_t w1) { const unsigned id = w0 >> 24; /* NAT5G: a unit into the record of its family */
+    if (nd_op_geo(id)) xr_put(nd_geo_rec, w0, w1, 1u);
+    else if (nd_op_ctl(id)) xr_put(nd_ctl_rec, w0, w1, (id == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) ? 3u : 1u); /* a texture rectangle and its 2 half units */
+    else st_put(w0, w1); }
 /* HC4d2: a typed op into the open state run (the shadow decides a drop). */
 static void rec_op_t(const uint32_t t[2]) {
     rec_open();
     ndc_sw++;
     if (sh_drop(t)) return; /* HC4b: a typed op the shadow drops is not written */
-    st_put(t[0], t[1]);
+    cp_put(t[0], t[1]);
 }
 static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
     static int k;
     if (k++ < 4) pm_log_e("ndc: untyped word %08x not recorded", (unsigned)w0);
 }
+__attribute__((weak)) void nd_geo_rec(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_ctl_rec(const uint32_t* r) { (void)r; } /* NAT5G: strong in nd_walk.c */
 /* HC4a: typed on the recorder (nd_op.h). HC4e4: an untyped word is not recorded. */
 __attribute__((weak)) void nd_sci_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_geo_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_mw_run(const uint32_t* r) { (void)r; } /* NAT4I: strong in nd_set.c */
 __attribute__((weak)) void nd_tex_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_omh_run(const uint32_t* r) { (void)r; } /* NAT4J: strong in nd_set.c */
@@ -445,8 +455,8 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
     if (id == ND_FS_CALL) { /* NAT5T: the called static list as a raw alt range, its tile sizes carry the core 1 window; core 1 state keeps no nested state */
         NdDs* const sc = nd_alt_scr_on(); const unsigned char om = nd_alt_raw_on; nd_alt_raw_on = 1; uint32_t* const blk = nd_alt_call(w0, w1);
         nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_alt_raw_on = om; nd_alt_scr_off(); return; }
-    if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { st_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); return; } /* NAT5T */
-    st_put(t[0], t[1]); /* NAT4A */
+    if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { cp_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); return; } /* NAT5T */
+    cp_put(t[0], t[1]); /* NAT4A */
 }
 /* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
  * The spare unit holds the range bounds (nd_alt_run). The units feed nd_ds (nd_rec_nr); the snap memo restarts at both ends. */
@@ -479,11 +489,10 @@ void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const
     st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp;
 }
 /* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
- * A texture rectangle and its 2 RDPHALF units stay in one NRUN run (nr_ctl reads at[3], at[5]). */
+ * A texture rectangle and its 2 RDPHALF units stay in one nd_ctl_rec record (nr_ctl reads at[3], at[5]). */
 void nd_alt_put(uint32_t w0, uint32_t w1) { nd_altu_n++; NDT_B(nt8); /* NAT8A */
     if ((w0 >> 24) == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { w1 = txr_take(w0, w1); w0 = ND_FS_W0(ND_FS_TXR, 0); } /* NAT5T */
-    if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && st_hdr && (((st_hdr[0] >> 16) & 0xffu) > 252u || wp + 6u > wend)) st_hdr = NULL;
-    st_put(w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ }
+    cp_put(w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ } /* NAT5G: xr_put need 3 holds the NAT5F rectangle rule */
 uint32_t* nd_alt_open(void) { rec_open(); uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
 void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }
 /* NAT5N, core 1: a call unit inside a raw alt range. A block {list word, a, b} in stream data, the unit CALL | 2 with w1 = the block,
