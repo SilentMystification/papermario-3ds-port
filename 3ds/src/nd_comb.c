@@ -1,5 +1,5 @@
 /* nd_comb.c: the combine group (plan_s10_path group C, ST-2, cut from the former pm_gbi.c, pure cut). 3DS only: the decision and the
- * nd_comb_sync work call pm_gpu_*. The typedef ScMemo is a copy of the former pm_gbi.c one (ST-2). The decision itself is nd_decide.c (NPSO2). */
+ * nd_comb_sync work call pm_gpu_*. The decision itself is nd_decide.c (NPSO2). */
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -42,7 +42,6 @@ const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA
 const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
 int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
 unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last nd_comb_sync and whether its result is still what pm_gpu holds */
-typedef struct { unsigned sg; int ok, leg, mode5, pat, use, why, cyc, dual, plan_on, cc_on, env_on; unsigned cc; PmPlan plan; } ScMemo;
 unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
     &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
 unsigned aux_key;
@@ -58,15 +57,12 @@ extern unsigned* const tst_f[16];
 extern float vp_sx, vp_sy, vp_tx, vp_ty;
 int ph_pick(void); void grab_cur(const void* src, int w, int h); void ens_clear(void);
 void unpack8(unsigned c, float o[4]);
-static void sync_combine_work(void);
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */
 
 int combchk_on(void);
 void combchk_run(const NdCombIn* in, int worked);
-ScMemo scm[16];
-unsigned scm_next;
 extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 
 
@@ -156,40 +152,6 @@ void cc_cycle1(const float* t0, const float* t1, float out[4]) {
         float r = (v[0] - v[1]) * v[2] + v[3];
         out[3] = r < 0.f ? 0.f : r > 1.f ? 1.f : r;
     }
-}
-
-unsigned scm_sig(void) {
-    unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.omode_l, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, nd_ws.tst1.tile_fmt[0] * 4 + nd_ws.tst1.tile_siz[0],
-        (unsigned)(nd_ws.tex_on | nd_ws.use_t1 << 1 | dual_on << 2 | box_prod << 3 | box_pat << 4 | comb_set << 5), nd_ws.geom, (unsigned)pm_comb_vprim };
-    unsigned sg = 2166136261u;
-    for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
-    return sg;
-}
-
-ScMemo* scm_find(unsigned sg) {
-    for (unsigned i = 0; i < 16; i++) if (scm[i].ok && scm[i].sg == sg) return &scm[i];
-    return NULL;
-}
-
-void scm_store(unsigned sg) {
-    ScMemo* m = &scm[scm_next++ & 15];
-    m->sg = sg; m->ok = 1; m->leg = leg_mode; m->mode5 = comb_mode5; m->pat = box_pat; m->use = ls_use; m->why = ls_why; m->cyc = ls_cyc; m->dual = ls_dual;
-    m->plan_on = plan_active; m->cc_on = sl_const; m->cc = sl_cc; m->env_on = sl_env;
-    if (plan_active) m->plan = cur_plan;
-}
-
-int nd_snap_cdiff(int plan_on, int leg, const PmPlan* plan, int mode5, int pat, int cc_on, unsigned cc, int env_on) /* NAT1F */; extern unsigned char nd_c0d; /* NAT1D */
-void scm_replay(const ScMemo* m) {
-    sl_const = m->cc_on; sl_env = m->env_on; if (m->cc_on) sl_cc = m->cc; /* NREC2B: a memo hit leaves sl_* as nd_comb_apply does (snapchk sl) */
-    if (m->cc_on) pm_gpu_set_const(m->cc);
-    if (m->env_on) pm_gpu_set_env(nd_ws.envc);
-    leg_mode = m->leg; comb_mode5 = m->mode5; box_pat = m->pat;
-    ls_use = m->use; ls_why = m->why; ls_cyc = m->cyc; ls_dual = m->dual; ls_frame = rm_frame;
-    plan_active = m->plan_on;
-    if (m->plan_on) { cur_plan = m->plan; pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1, nd_ws.use_t1); pm_gpu_set_plan(&cur_plan); }
-    else pm_gpu_set_combine(leg_mode);
-    nd_c0d = (unsigned char)((nd_c0d & ~1u) | (unsigned)nd_snap_cdiff(m->plan_on, m->leg, &m->plan, m->mode5, m->pat, m->cc_on, m->cc, m->env_on)); /* NAT1D */
-    nd_c0w |= 1u; nd_c0_src(); /* NAT1B: after the GPU calls */
 }
 
 /* R2B: the nd_comb_sync input hash (the fields the skip test reads); nd_comb_sync and the g2_same skip use the same value */
@@ -298,21 +260,7 @@ void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     if (!out->cc_on) out->cc = sl_cc;
 }
 
-void sync_combine_work_timed(void) {
-    if (!pm_ph_cen || !ph_pick()) { sync_combine_work(); return; } /* PROF2-2: phase mode only */
-    unsigned t0 = pm_ticks();
-    sync_combine_work();
-    pm_gbi_sync_ticks += (pm_ticks() - t0) * 8u; /* W2: one call in 8 timed */
-}
-
-static __attribute__((cold, noinline)) void scw_census(void) { /* PG0 census, prof mode only */
-    static unsigned last_sig;
-    unsigned sg = scm_sig();
-    GP_SET(5, sg == last_sig);
-    last_sig = sg;
-}
-
-/* NDR0E1: the GPU part of sync_combine_work. o is the decision (plan coloured by the caller). The snapshot (nd_snap.c) does not call it. */
+/* NDR0E1: the GPU part of a combine decision. o is the decision (plan coloured by the caller). The snapshot (nd_snap.c) does not call it. */
 void nd_comb_apply(const NdCombOut* o, uint32_t w0, uint32_t w1, int use_t1, uint32_t env) {
     sl_const = o->cc_on; sl_env = o->env_on;
     if (o->cc_on) { sl_cc = o->cc; pm_gpu_set_const(o->cc); }
@@ -328,18 +276,6 @@ void nd_comb_apply(const NdCombOut* o, uint32_t w0, uint32_t w1, int use_t1, uin
         return;
     }
     pm_gpu_set_combine(leg_mode);
-}
-
-void sync_combine_work(void) {
-    NdCombIn in;
-    NdCombOut o;
-    if (gp_on()) scw_census(); /* PG0: an estimate of how many calls repeat the inputs of the call before (hash of the combiner, render and tile state the function reads) */
-    comb_in_walker(&in);
-    nd_comb_pick(&in, &o);
-    if (o.plan_on) pm_comb_colours(&o.plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
-    nd_comb_apply(&o, nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.use_t1, nd_ws.envc);
-    nd_c0d = (unsigned char)((nd_c0d & ~1u) | (unsigned)nd_snap_cdiff(o.plan_on, o.leg, &o.plan, o.mode5, o.pat, o.cc_on, o.cc, o.env_on)); /* NAT1D */
-    nd_c0w |= 1u; nd_c0_src(); /* NAT1B: after the GPU calls */
 }
 
 void nd_comb_sync(void) {
