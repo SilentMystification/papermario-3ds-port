@@ -79,7 +79,7 @@ static __attribute__((cold, noinline)) void mc_post2(const NdW2* q, const McPre*
 }
 void nd_mcopy_end(void) { pm_log_evt("mcopyc f%u miss %u b1 %u b2 %u b4 %u b8 %u b16 %u", pm_frame_count(), mc_miss, mc_b[0], mc_b[1], mc_b[2], mc_b[3], mc_b[4]); }
 static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone) {
-    McPre mp; unsigned mm = 0u; const int mcn = pm_drec_now();
+    McPre mp; unsigned mm = 0u; const int mcn = 1; /* census: every miss of the run */
     if (__builtin_expect(mcn, 0)) mc_pre(&mp);
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     gv_epoch++; nd_mdl_alt(nd_msnap_ab((const uint32_t*)q)); /* NAT5B: the units before the matrix: core 1 wrote them as an alt range */
