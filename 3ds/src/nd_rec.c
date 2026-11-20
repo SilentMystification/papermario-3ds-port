@@ -505,12 +505,14 @@ void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const
 static uint32_t* c6_slot; static uint32_t c6_w0, c6_w1; void nd_alt_mark(unsigned rc) { if (c6_slot) { uint32_t v[2]; const NdNapiRun f = nd_sv_enc(alt_s, c6_w0, c6_w1, v); c6_slot[0] = (rc ? ND_C6_MARK : ND_NOP_A) | (c6_w0 >> 24) | (nd_sv_sync(c6_w0) ? ND_SV_SYNC : 0u); c6_slot[1] = (uint32_t)(uintptr_t)f; c6_slot[2] = v[0]; c6_slot[3] = v[1]; } c6_slot = NULL; } /* NAT6B: after the apply of the unit nd_alt_put wrote last */ /* NSET2: the slot gets the mark, the applier and the 2 values of the applied state */
 /* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
  * A texture rectangle and its 2 RDPHALF units stay in one nd_ctl_rec record (nr_ctl reads at[3], at[5]). */
+static unsigned char alt_sd; /* NWS4A: a state unit came since the last copy snap */
 void nd_alt_put(uint32_t w0, uint32_t w1) { nd_altu_n++; NDT_B(nt8); /* NAT8A */
-    const unsigned id = w0 >> 24; c6_slot = NULL; /* NAT6B */
+    const unsigned id = w0 >> 24; c6_slot = NULL; /* NAT6B */ const int dr = id == ND_FS_TRI1 || id == ND_FS_TRI2 || id == ND_FS_RECT; if (!dr && id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_NOP_A) alt_sd = 1; /* NWS4A */
     if ((w0 >> 24) == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { w1 = txr_take(w0, w1); w0 = ND_FS_W0(ND_FS_TXR, 0); } /* NAT5T */
     else if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { xr_put(nd_cpy_run, ND_NOP_A | id, (uint32_t)(uintptr_t)nd_sv_nop, 2u); c6_slot = wp - 2; c6_w0 = w0; c6_w1 = w1; /* NSET2 */ xr_put(nd_cpy_run, w0, w1, 1u); NDT_E(nt8, NDT_ALT); return; } /* NAT6B: slot and unit in one record */
+    if (dr && alt_sd && nd_alt_raw_on != 2u && !nd_lsc_on) { alt_sd = 0; nd_snap_alt(alt_s, id == ND_FS_RECT); } /* NWS4A */
     cp_put(w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ } /* NAT5G: xr_put need 3 holds the NAT5F rectangle rule */
-uint32_t* nd_alt_open(void) { rec_open(); uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
+uint32_t* nd_alt_open(void) { rec_open(); alt_sd = 1; /* NWS4A */ uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
 void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }
 /* NAT5N, core 1: a call unit inside a raw alt range. A block {list word, a, b} in stream data, the unit CALL | 2 with w1 = the block,
  * then a jump over the nested range that ds_pairs fills with the called list; nd_alt_call_end closes it (blk[3] keeps the jump). */
@@ -680,6 +682,7 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
 __attribute__((weak)) void nd_snap_mesh(void) {} /* NDR0E2: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 __attribute__((weak)) void nd_snap_task(void) {} /* NAT2J: host units link nd_rec.c without nd_snap.c */
 __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
+__attribute__((weak)) void nd_snap_alt(const NdDs* s, int rect) { (void)s; (void)rect; } /* NWS4A: strong in nd_snap.c; the host units record no snap */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
 __attribute__((weak)) void nd_msnap_pre(const NdDs* s) { (void)s; } /* NAT2C */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */

@@ -67,6 +67,7 @@ void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env);
 const NdCombOut* nd_snap_dir_o(void);
 /* NDR1C, nd_snap.c, core 1: the snap of a texture rectangle (nd_rec_texrect); zcol of nd_rect.c:236 from the target. */
 void nd_snap_rect(void);
+void nd_snap_alt(const NdDs* s, int rect); void nd_snapcp_run(const uint32_t* rec); /* NWS4A, nd_snap.c: the snap of a copy draw (core 1), its runner (core 0) */
 /* NDR1C, nd_snap.c, core 0: 1 while the rectangle run has a live snap (a command clears it). */
 extern unsigned char nd_snap_live;
 /* NDR1C, nd_snap.c, core 0: the tile words of the armed snap, for the rectangle binds (nd_rect.c nd_bsrc). */
