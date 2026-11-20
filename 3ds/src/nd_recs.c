@@ -150,12 +150,12 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
 }
 /* the combine of a hit, as rec_top runs it (nd_unit_same COMB, nd_comb_set) */
 static __attribute__((noinline)) void hd_comb(const NdHitD* d) {
-    if (d->cw0 != nd_c0.comb_w0 || d->cw1 != nd_c0.comb_w1) { pm_gpu_flush(); nd_c0.comb_w0 = d->cw0; nd_c0.comb_w1 = d->cw1; } /* NWS4D: POND 3a flush and the memo */
+    if (d->cw0 != nd_gm.cw0 || d->cw1 != nd_gm.cw1) { pm_gpu_flush(); nd_gm.cw0 = d->cw0; nd_gm.cw1 = d->cw1; } /* NWS4D: POND 3a flush and the memo */
 }
 static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
-    if (fl & HD_PRIM) { nd_c0.prim = d->prim; nd_c0.prim_lod = d->plod; }
-    if (fl & HD_ENV) nd_c0.envc = d->env;
+    if (fl & HD_PRIM) { nd_gm.prim = d->prim; nd_gm.plod = d->plod; }
+    if (fl & HD_ENV) nd_gm.env = d->env;
 }
 static void hit_apply(const NdW2* q, const NdMEnt* e) {
     NdHitD dl, * d = &dl;
@@ -163,7 +163,7 @@ static void hit_apply(const NdW2* q, const NdMEnt* e) {
     else hit_delta(q, d);
     if (__builtin_expect(PMDL("hitst"), 0)) hitst_note(d);
     if (d->fl & HD_COMB) hd_comb(d);
-    nd_c0.omode_h = (nd_c0.omode_h & ~d->omh_m) | d->omh_v;
+    nd_gm.omh = (nd_gm.omh & ~d->omh_m) | d->omh_v;
     if (d->fl & (HD_PRIM | HD_ENV | HD_FOG | HD_BLEND | HD_TEX | HD_FOGF)) hd_rare(d);
 }
 /* HC6 step 2 debug switch mkchk: per record, the entry key A + key B found against the entry the old compare (full key words) finds. */

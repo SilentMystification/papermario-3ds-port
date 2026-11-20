@@ -260,10 +260,10 @@ void nd_rtex_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (r
 void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
     nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; ((NdNapiRun)(uintptr_t)r[1])(r + 2); } /* NSET1: r[1] the applier, r[2], r[3] its values (core 1) */
 void nd_oml_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */ /* NWS4B */
-void nd_prim_run(const uint32_t* r) { if (nd_ap->in.prim == r[1] && (uint8_t)nd_ap->plod == (uint8_t)r[0]) { pm_gpu_set_prim(nd_ap->in.prim, r[0]); nd_c0.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */ /* NWS4B */
+void nd_prim_run(const uint32_t* r) { if (nd_ap->in.prim == r[1] && (uint8_t)nd_ap->plod == (uint8_t)r[0]) { pm_gpu_set_prim(nd_ap->in.prim, r[0]); nd_gm.plod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */ /* NWS4B */
 void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep_mw = r[1]; nd_epk_mk++; gv_epoch++; } /* NAT6C: nr_ctl MISC_EP */
 void nd_cbd_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6C: nr_set of a pure combine unit at ep_stream, ex_depth 0 */
-static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_PRIM && nd_ap->in.prim == b && (uint8_t)nd_ap->plod == (uint8_t)a) { pm_gpu_set_prim(nd_ap->in.prim, a); nd_c0.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */ /* NWS4B */
+static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_PRIM && nd_ap->in.prim == b && (uint8_t)nd_ap->plod == (uint8_t)a) { pm_gpu_set_prim(nd_ap->in.prim, a); nd_gm.plod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */ /* NWS4B */
 static void cp_unit(unsigned dbg, const uint32_t* u, unsigned m, int mk) { const unsigned id = u[0] & 0xffu; const NdNapiRun f = (NdNapiRun)(uintptr_t)u[1]; int cut = 1; /* NSET2: u the slot, u + 2 the values */ /* NAT6D2: one copy state unit, nr_set and ls_run under NAT6D1 */
     if (m == 2u) { if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) return;
         if (id == ND_FS_OMH || id == ND_FS_TEXTURE) { f(u + 2); return; } if (id == ND_FS_GEOM) cut = 0; else cp_vside(u); } /* NSET2 */

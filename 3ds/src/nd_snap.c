@@ -178,15 +178,15 @@ void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed sna
 static unsigned char lr_geo; void nd_lsr_geo(void) { lr_geo = 1; } /* NCONV2D: the open list runs ls_run (nd_walk.c) */
 void pm_comb_set_k4(unsigned k4); void pm_gpu_set_prim(unsigned rgba, unsigned lod); void pm_gpu_set_env(unsigned rgba); void pm_gpu_flush(void); /* pm_gpu.h */
 static void ls_gpu(uint32_t w0, uint32_t w1, int cset, uint32_t prim, uint32_t plod, uint32_t env, uint32_t k4) { /* NCONV2D: the GPU calls of the skipped units */
-    if (nd_c0.comb_w0 != w0 || nd_c0.comb_w1 != w1 || (cset && !nd_c0.comb_w0)) pm_gpu_flush(); /* NWS2 */ if (nd_c0.prim != prim || nd_c0.prim_lod != plod) pm_gpu_set_prim(prim, plod);
-    if (nd_c0.envc != env) pm_gpu_set_env(env); if (nd_c0.conv_k4 != k4) pm_comb_set_k4(k4); nd_c0.prim_lod = plod; }
+    if (nd_gm.cw0 != w0 || nd_gm.cw1 != w1 || (cset && !nd_gm.cw0)) pm_gpu_flush(); /* NWS2 */ if (nd_gm.prim != prim || nd_gm.plod != plod) pm_gpu_set_prim(prim, plod);
+    if (nd_gm.env != env) pm_gpu_set_env(env); if (nd_gm.k4 != k4) pm_comb_set_k4(k4); nd_gm.plod = plod; }
 void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
     nd_snap_arm = 0;
     nd_snap_comb();
     { /* NWS4D: the GPU memo of the applied words (the walker shadow is gone) */
         const NdCombIn* i = &nd_ap->in;
         ls_gpu(i->w0, i->w1, i->comb_set, i->prim, nd_ap->plod, i->env, i->conv_k4); /* NCONV2D; NAT4D: also for stream snaps */
-        nd_c0.comb_w0 = i->w0; nd_c0.comb_w1 = i->w1; nd_c0.omode_h = i->omode_h; nd_c0.prim = i->prim; nd_c0.envc = i->env; nd_c0.conv_k4 = i->conv_k4;
+        nd_gm.cw0 = i->w0; nd_gm.cw1 = i->w1; nd_gm.omh = i->omode_h; nd_gm.prim = i->prim; nd_gm.env = i->env; nd_gm.k4 = i->conv_k4;
     }
 }
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
@@ -214,7 +214,7 @@ void nd_lsr_end(void) { /* NCONV2D: list end: the GPU memo of the skipped units 
     if (nd_ls_on && lr_geo) {
         const uint32_t* const c = (const uint32_t*)(const void*)((const char*)lr_b + ND_LS_HDR(lr_b[0] + lr_b[1]));
         ls_gpu(c[0], c[1], (int)c[2], c[3], c[4], c[5], c[6]);
-        nd_c0.prim = c[3]; nd_c0.envc = c[5]; nd_c0.comb_w0 = c[0]; nd_c0.comb_w1 = c[1]; nd_c0.conv_k4 = c[6];
+        nd_gm.prim = c[3]; nd_gm.env = c[5]; nd_gm.cw0 = c[0]; nd_gm.cw1 = c[1]; nd_gm.k4 = c[6];
     }
     lr_geo = 0; nd_ls_on = 0; } /* NWS4D */
 void nd_lsr_seg(unsigned ord) { nd_lsr_tri(ord); }

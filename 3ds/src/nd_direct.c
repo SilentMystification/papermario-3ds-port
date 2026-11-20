@@ -54,16 +54,16 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
     if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_ap->geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
     {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
         const unsigned old_tf = nd_ap->in.omode_h & (3u << 12); /* NWS4B */
-        nd_c0.omode_h = mh;
-        if ((nd_c0.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
+        nd_gm.omh = mh;
+        if ((nd_gm.omh & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
             pm_gpu_flush();
-            pm_tex_set_filter((nd_c0.omode_h & (3u << 12)) != 0);
+            pm_tex_set_filter((nd_gm.omh & (3u << 12)) != 0);
         }
     }
-    if (nd_ap->in.w0 != p->cw0 || nd_ap->in.w1 != p->cw1) { if (nd_c0.comb_w0 != p->cw0 || nd_c0.comb_w1 != p->cw1) pm_gpu_flush(); nd_c0.comb_w0 = p->cw0; nd_c0.comb_w1 = p->cw1; } /* NWS4D: POND 3a flush and the memo */
+    if (nd_ap->in.w0 != p->cw0 || nd_ap->in.w1 != p->cw1) { if (nd_gm.cw0 != p->cw0 || nd_gm.cw1 != p->cw1) pm_gpu_flush(); nd_gm.cw0 = p->cw0; nd_gm.cw1 = p->cw1; } /* NWS4D: POND 3a flush and the memo */
     pm_gpu_set_prim(prim, 0u);
-    nd_c0.prim = prim; nd_c0.prim_lod = 0u;
-    nd_c0.envc = env;
+    nd_gm.prim = prim; nd_gm.plod = 0u;
+    nd_gm.env = env;
     const NdCombOut* o = nd_snap_dir_o(); /* NDR2D: the core 1 decision (nd_snap_pso) */
     if (!o || (o->plan_on && (o->plan.uses_tex1 || o->plan.uses_noise)) || o->pat) return 0; /* the ok test of the former pso decision: nothing it reads is changed */
     {   /* what nd_comb_sync does with the decision (scm_replay) */
