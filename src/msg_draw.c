@@ -1709,6 +1709,7 @@ _Static_assert(sizeof(NdGlyphRec) == 48, "NdGlyphRec: 6 stream units");
 
 unsigned pm_frame_count(void);
 void pm_log_evt(const char* fmt, ...);
+int pm_drec_now(void); /* NAT5Y: pm_gpu.c */
 /* NST2E: the fallback units of one glyph record, written at *o. */
 static void msg_glyph_emit(const NdGlyphRec* r, uint32_t** o) {
     uint32_t* nrp = *o;
@@ -1730,8 +1731,6 @@ static void msg_glyph_emit(const NdGlyphRec* r, uint32_t** o) {
 
 static void msg_glyph_run(const uint32_t* u) {
     const NdGlyphRec* r = (const NdGlyphRec*)u;
-    uint32_t buf[48];
-    uint32_t* nrp = buf;
     static unsigned g_dir, g_fb, g_next;
 
     if (pm_frame_count() >= g_next) { /* census every 300 frames: glyphs drawn direct (gdir) and handed to the old list (gfb) */
@@ -1745,16 +1744,8 @@ static void msg_glyph_run(const uint32_t* u) {
     }
     g_fb++;
     nd_c0fb_note(3u, (unsigned)(30 - nd_direct_ready())); /* NAT5D */
-    msg_glyph_emit(r, &nrp);
-    nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
-}
-
-/* NST2E: the units of one glyph record feed core 1's nd_ds (record site msg_draw_char). */
-static void msg_glyph_feed(const uint32_t* u) {
-    uint32_t buf[48];
-    uint32_t* p = buf;
-    msg_glyph_emit((const NdGlyphRec*)u, &p);
-    nd_ds_feed(buf, (unsigned)(p - buf) / 2u);
+    { static unsigned gfr = ~0u; if (pm_drec_now() && pm_frame_count() != gfr) { gfr = pm_frame_count(); pm_log_evt("glyphalt f%u", gfr); } } /* NAT5Y: the UD-N6 marker */
+    nd_alt_run(u + 2u * (unsigned)(sizeof(NdGlyphRec) / 8u)); /* NAT5Y */
 }
 
 void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 charIndex, s32 palette, s32 posX, s32 posY) {
@@ -1861,8 +1852,7 @@ void msg_draw_char(MessagePrintState* printer, MessageDrawState* drawState, s32 
         rec.dsdx = dsdx;
         rec.dtdy = dtdy;
         nd_snap_mesh(); /* NDR3 */
-        nd_rec_napi_s(msg_glyph_run, &rec, sizeof rec / 8u);
-        msg_glyph_feed((const uint32_t*)&rec);
+        { uint32_t au[48]; uint32_t* q = au; msg_glyph_emit(&rec, &q); nd_rec_alt(msg_glyph_run, &rec, sizeof rec / 8u, 1, au, (unsigned)(q - au) / 2u, 0); } /* NAT5Y: the units as the alt range (no sc_lost: the old nd_ds_feed) */
     }
 
 #if VERSION_IQUE
