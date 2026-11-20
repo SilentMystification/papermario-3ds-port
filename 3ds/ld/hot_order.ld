@@ -147,7 +147,6 @@
 		*(.text.tex_raw_piece)  /* 3.7 calls/frame, 968 B */
 		*(.text.ens_clear)  /* 1.0 calls/frame, 48 B */
 		/* class H: sprite */
-		*(.text.sync_combine_work)  /* 40.0 calls/frame, 460 B */
 		*(.text.pm_gbi_gv_at)  /* 22.0 calls/frame, 608 B */
 		*(.text.nd_mix1)  /* 19.0 calls/frame, 124 B */
 		*(.text.nd_render_state)  /* 14.0 calls/frame, 320 B */
@@ -210,15 +209,11 @@
 		*(.text.nd_mtx_replace)  /* 49.3 calls/frame, 120 B */
 		*(.text.pm_gbi_ndref_frame)  /* 49.3 calls/frame, 52 B */
 		*(.text.combchk_on)  /* 48.7 calls/frame, 44 B */
-		*(.text.scm_find)  /* 48.7 calls/frame, 76 B */
-		*(.text.scm_sig)  /* 48.7 calls/frame, 232 B */
 		*(.text.pm_tex_slot_clean)  /* 48.0 calls/frame, 100 B */
 		*(.text.pm_tex_slot_unit)  /* 47.3 calls/frame, 184 B */
 		*(.text.pm_tex_stale_chk)  /* 47.3 calls/frame, 480 B */
 		*(.text.nd_mtx_pop)  /* 43.0 calls/frame, 72 B */
 		*(.text.pm_gpu_rect_sync)  /* 42.3 calls/frame, 64 B */
-		*(.text.scm_store)  /* 40.0 calls/frame, 268 B */
-		*(.text.sync_combine_work_timed)  /* 40.0 calls/frame, 92 B */
 		*(.text.nd_comb_core)  /* 40.0 calls/frame, 684 B */
 		*(.text.pm_tex_wrap_gen)  /* 35.0 calls/frame, 16 B */
 		*(.text.nd_tx_ldtlut)  /* 32.7 calls/frame, 88 B */
@@ -266,7 +261,6 @@
 		*(.text.pm_tex_origin)  /* 10.3 calls/frame, 108 B */
 		*(.text.nd_tx_texon)  /* 9.7 calls/frame, 32 B */
 		*(.text.pm_gpu_set_prim)  /* 9.0 calls/frame, 136 B */
-		*(.text.scm_replay)  /* 8.7 calls/frame, 292 B */
 		*(.text.pm_wq_pump_one)  /* 8.0 calls/frame, 212 B */
 		*(.text.pm_gpu_set_scissor)  /* 7.0 calls/frame, 204 B */
 		*(.text.set_scissor)  /* 7.0 calls/frame, 160 B */
