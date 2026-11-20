@@ -3778,7 +3778,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { /* NWS4C */
     unsigned i = 0;
     uint32_t gk = 0xFFFFFFFFu; /* MAPX-2: the walker geometry reaches the draw only through the bits the list's groups keep (gg = (entry & am) | om) */
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
-    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_apw(NDAPW_OH), nd_apw(NDAPW_OL), nd_c0.om_kh, nd_c0.om_kl, nd_c0.geom }; if (!kw) kw = w5; /* NWS4C: the record's core 1 words, nd_ap and the record state with no snap */
+    { const uint32_t* kw = nd_msnap_key(rec); static const uint32_t w5[5]; if (!kw) kw = w5; /* DUPMS: never on the target */
       s[i++] = kw[0] & kh; s[i++] = kw[1] & kl; s[i++] = kw[2] & kh; s[i++] = kw[3] & kl; s[i++] = kw[4] & gk & rm_ga[rmi]; } /* NWS4C */
     s[i++] = sw_tss; s[i++] = sw_cw0; s[i++] = sw_cw1;
     s[i++] = nd_apw(NDAPW_PRIM); s[i++] = nd_apw(NDAPW_PLOD); s[i++] = aux_hash(rec); /* NWS4C */ /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
@@ -3815,7 +3815,7 @@ void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k) {
     if (rec[24] && pm_dlc_geom_keep((const void*)(uintptr_t)rec[24], &gk) != 0) gk = 0xFFFFFFFFu;
     uint32_t* c = k->kc;
     c[0] = rec[-1];
-    { const uint32_t* kw = nd_msnap_key(rec); const uint32_t w5[5] = { nd_c0.omode_h, nd_c0.omode_l, nd_c0.om_kh, nd_c0.om_kl, nd_c0.geom }; if (!kw) kw = w5; /* NAT2C: core 1 words, nd_c0 only with no snap */
+    { const uint32_t* kw = nd_msnap_key(rec); static const uint32_t w5[5]; if (!kw) kw = w5; /* DUPMS: never on the target */
       c[1] = kw[0] & kh; c[2] = kw[1] & kl; c[3] = kw[2] & kh; c[4] = kw[3] & kl; c[5] = kw[4] & gk & rm_ga[rmi]; }
     c[6] = nd_handle_gen(); c[7] = pm_dlc_gen;
     k->w[0] = rec[0]; k->w[1] = rec[1]; k->w[24] = rec[24]; /* the record words the hit reads (pm_gpu_model_hit, model_vis_same) */
