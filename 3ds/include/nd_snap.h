@@ -93,4 +93,6 @@ unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #define ND_LS_SNAP(f) (((f) >> 16) & 0x3fffu) /* NAT2D: the snap index of a range */
 #define ND_LS_DSB ((((unsigned)sizeof(NdDs)) + 7u) & ~7u) /* NCONV2D: the core 1 end state after the snaps of a list table */
 void nd_lsr_geo(void);
+extern const NdSnapChk* const nd_ap; void nd_wsnap_chk(void); int pm_drec_now(void); /* NWS4B */
+#define ND_WCHK() do { if (__builtin_expect(pm_drec_now(), 0)) nd_wsnap_chk(); } while (0) /* NWS4B: drec frames only */
 #endif

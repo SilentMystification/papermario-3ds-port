@@ -94,22 +94,22 @@ float cull_cross(const float* p1, const float* p2, const float* p3) {
 }
 
 int nd_spr_walk; /* WALLSHADE: 1 while nd_walk_spr runs the walker words of a sprite (the shaded sprite fallback) */
-void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); nd_bsrc = NULL; if (dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */
+void gv_params_calc(unsigned tss, GvP* o) { ND_WCHK(); int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; pm_gbi_gv_at(tss, nd_ws.geom, tw, th, o); nd_bsrc = NULL; if (nd_ap->in.dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */ /* NWS4B */
 
 /* S3N-3c: the draw parameters at geometry geo (the lighting, texgen and fog bits of the batch), the rest as the walker state */
-void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) { ND_WCHK(); /* NWS4B */
     NdGvIn in;
-    unsigned st = nd_ws.use_t1 ? 1 : 0;
-    unpack8(nd_ws.envc, in.en);
+    unsigned st = nd_ap->in.use_t1 ? 1 : 0; /* NWS4B */
+    unpack8(nd_ap->in.env, in.en); /* NWS4B */
     unpack8(cur_plan.vtx, in.vc);
     in.tss = tss;
     in.lighting = (geo & G_LIGHTING) != 0; in.texgen = (geo & G_TEXTURE_GEN) != 0; in.fog = (geo & G_FOG) != 0;
     in.comb5 = comb_mode5; in.plan_active = plan_active;
     in.plan_vtx_ok = cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
-    in.alpha_shade = nd_cw_ashade(nd_ws.comb_w0, nd_ws.comb_w1); /* NWS2 */
-    in.boost = dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED;
-    in.primz = (nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) != 0; in.prim_z = nd_ws.prim_z;
-    in.envc = nd_ws.envc; in.plan_vtx = cur_plan.vtx;
+    in.alpha_shade = nd_cw_ashade(nd_ap->in.w0, nd_ap->in.w1); /* NWS2 */ /* NWS4B */
+    in.boost = nd_ap->in.dual_on && nd_ap->in.tst[8] == G_CCMUX_SHADE && nd_ap->in.tst[9] == G_CCMUX_ENVIRONMENT && nd_ap->in.tst[10] == G_CCMUX_COMBINED && nd_ap->in.tst[11] == G_CCMUX_COMBINED; /* NWS4B */
+    in.primz = (nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) != 0; in.prim_z = nd_ap->primz; /* NWS4B */
+    in.envc = nd_ap->in.env; in.plan_vtx = cur_plan.vtx; /* NWS4B */
     in.tw = tw; in.th = th;
     in.shs = ND_BSH(st)[0]; in.sht = ND_BSH(st)[1];
     in.tex_on = nd_ws.tex_on;
@@ -123,9 +123,9 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
     nd_gv_params(&in, o);
 }
 
-unsigned tri_flags(void) {
-    unsigned f = 0, bl = nd_ws.omode_l;
-    int two = ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1;
+unsigned tri_flags(void) { ND_WCHK(); /* NWS4B */
+    unsigned f = 0, bl = nd_ap->oml; /* NWS4B */
+    int two = ((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1; /* NWS4B */
     unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
     if (nd_ws.geom & G_LIGHTING) f |= 1;
     if (nd_ws.geom & G_FOG) f |= 2;
@@ -192,19 +192,19 @@ GvP ep_p;
 void ep_flush_stats(void) { if (ep_n) { tri_stats_add(ep_fl, ep_n); ep_n = 0; } }
 
 /* what the state alone says: a reason to leave the GPU path (or -1), the cull type, CULL_BOTH */
-int gv_state_why(int* ct, int* both) {
+int gv_state_why(int* ct, int* both) { ND_WCHK(); /* NWS4B */
     unsigned cg = nd_ws.geom & G_CULL_BOTH;
     *ct = cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
     *both = cg == G_CULL_BOTH;
     if ((nd_ws.geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (nd_ws.geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
-    if (nd_img_role(0) == ROLE_DEPTH && (nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL))) return GVR_ZMARK; /* MERLON: a depth-image draw with the primitive depth source stays refused; the pixel depth source is the zmark draw of gv_epoch_enter */
+    if (nd_img_role(0) == ROLE_DEPTH && (nd_ap->oml & (1u << G_MDSFT_ZSRCSEL))) return GVR_ZMARK; /* MERLON: a depth-image draw with the primitive depth source stays refused; the pixel depth source is the zmark draw of gv_epoch_enter */ /* NWS4B */
     return -1;
 }
 
 /* the first triangle (or DLC2 range) after a state change */
 extern int nd_dq_on; /* nd_direct.c */
-void gv_epoch_enter(void) {
+void gv_epoch_enter(void) { ND_WCHK(); /* NWS4B */
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;
@@ -213,7 +213,7 @@ void gv_epoch_enter(void) {
         ep_fl = tri_flags();
         nd_bsrc = nd_ep_bs; /* NDR0G2 */
         if (!nd_dq_on) { /* S5CHUDA: a direct quad has bound tile 0 itself (nd_direct_quad) */
-            nd_tile_bind(nd_ws.use_t1 ? 1 : 0);
+            nd_tile_bind(nd_ap->in.use_t1 ? 1 : 0); /* NWS4B */
             dual_bind();
         }
         if (nd_snap_rpend) nd_snap_render(); /* NDR0F2: the snap of this triangle; NAT3D: no snap, the render state of the last snap stays */
@@ -222,7 +222,7 @@ void gv_epoch_enter(void) {
          * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
          * custom pre list under the model matrix without the billboard turn (nd_recs.c rec_apply order) and reaches the GPU back-facing (cull 2), so
          * all 10 triangles were culled and no pixel was marked. */
-        if (nd_img_role(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ws.prim)) - 1.f); }
+        if (nd_img_role(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ap->in.prim)) - 1.f); } /* NWS4B */
         /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: nd_gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
         if (plan_active && cur_plan.uses_tex1) {
             if (!ND_BTD(0)->valid || !ND_BTD(1)->valid) ep_why = GVR_TEX1;

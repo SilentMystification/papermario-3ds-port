@@ -60,10 +60,10 @@ extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 
 
 /* The constant colour mode of the walker state (nd_decide.c nd_const_rgb on the walker's inputs). */
-int const_rgb_tex_alpha(unsigned* out) {
+int const_rgb_tex_alpha(unsigned* out) { ND_WCHK(); /* NWS4B */
     NdCombIn c;
-    c.omode_h = nd_ws.omode_h; c.comb_set = nd_ws.comb_w0 != 0; /* NWS2 */ c.tex_on = nd_ws.tex_on; c.prim = nd_ws.prim; c.env = nd_ws.envc; c.t1_valid = nd_ws.td[1].valid; c.conv_k4 = conv_k4;
-    { const NdTst* s = &nd_ws.tst1; const uint32_t t[16] = { s->comb_a, s->comb_b, s->comb_c, s->comb_d, s->comb_aa, s->comb_ab, s->comb_ac, s->comb_ad, s->comb2_a, s->comb2_b, s->comb2_c, s->comb2_d, s->comb2_aa, s->comb2_ab, s->comb2_ac, s->comb2_ad }; memcpy(c.tst, t, sizeof t); } /* NWS2 */
+    c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = nd_ws.tex_on; c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_ws.td[1].valid; c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
+    memcpy(c.tst, nd_ap->in.tst, sizeof c.tst); /* NWS4B */
     return nd_const_rgb(&c, out);
 }
 
@@ -108,28 +108,28 @@ float cc_rgb_in(unsigned sel, int ch, const float* t0, const float* t1, const fl
 }
 
 /* (A - B) * C + D, cycle 1 only. COMBINED reads as 0 there. */
-void cc_cycle1(const float* t0, const float* t1, float out[4]) {
+void cc_cycle1(const float* t0, const float* t1, float out[4]) { ND_WCHK(); /* NWS4B */
     float pr[4], en[4];
-    unpack8(nd_ws.prim, pr);
-    unpack8(nd_ws.envc, en);
+    unpack8(nd_ap->in.prim, pr); /* NWS4B */
+    unpack8(nd_ap->in.env, en); /* NWS4B */
     for (int ch = 0; ch < 3; ch++) {
-        float a = cc_rgb_in(nd_ws.tst1.comb_a, ch, t0, t1, pr, en, 1);
-        float b = cc_rgb_in(nd_ws.tst1.comb_b, ch, t0, t1, pr, en, 0);
+        float a = cc_rgb_in(nd_ap->in.tst[0], ch, t0, t1, pr, en, 1); /* NWS4B */
+        float b = cc_rgb_in(nd_ap->in.tst[1], ch, t0, t1, pr, en, 0); /* NWS4B */
         float c;
-        switch (nd_ws.tst1.comb_c) {
+        switch (nd_ap->in.tst[2]) { /* NWS4B */
         case 8: c = t0[3]; break;
         case 9: c = t1[3]; break;
         case 10: c = pr[3]; break;
         case 11: c = 1.f; break;
         case 12: c = en[3]; break;
-        default: c = cc_rgb_in(nd_ws.tst1.comb_c, ch, t0, t1, pr, en, 0); break;
+        default: c = cc_rgb_in(nd_ap->in.tst[2], ch, t0, t1, pr, en, 0); break; /* NWS4B */
         }
-        float d = cc_rgb_in(nd_ws.tst1.comb_d, ch, t0, t1, pr, en, 1);
+        float d = cc_rgb_in(nd_ap->in.tst[3], ch, t0, t1, pr, en, 1); /* NWS4B */
         float v = (a - b) * c + d;
         out[ch] = v < 0.f ? 0.f : v > 1.f ? 1.f : v;
     }
     {
-        unsigned sel[4] = { nd_ws.tst1.comb_aa, nd_ws.tst1.comb_ab, nd_ws.tst1.comb_ac, nd_ws.tst1.comb_ad };
+        unsigned sel[4] = { nd_ap->in.tst[4], nd_ap->in.tst[5], nd_ap->in.tst[6], nd_ap->in.tst[7] }; /* NWS4B */
         float v[4];
         for (int i = 0; i < 4; i++) {
             switch (sel[i]) {
@@ -206,15 +206,15 @@ static void nd_comb_pick(const NdCombIn* in, NdCombOut* o) {
 
 uint32_t gvk_bits(float f) { uint32_t u; memcpy(&u, &f, 4); return u; }
 
-unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) {
+unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { ND_WCHK(); /* NWS4B */
     uint32_t v[48]; unsigned n = 0;
-    v[n++] = nd_ws.envc; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx;
-    v[n++] = (uint32_t)dual_on; v[n++] = nd_ws.tst1.comb2_a; v[n++] = nd_ws.tst1.comb2_b; v[n++] = nd_ws.tst1.comb2_c; v[n++] = nd_ws.tst1.comb2_d;
-    v[n++] = (uint32_t)nd_cw_ashade(nd_ws.comb_w0, nd_ws.comb_w1); /* NWS2 */ v[n++] = (uint32_t)nd_ws.use_t1; v[n++] = (uint32_t)nd_ws.tex_on; v[n++] = (uint32_t)nd_ws.tile_x0; v[n++] = (uint32_t)nd_ws.tile_y0;
+    v[n++] = nd_ap->in.env; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx; /* NWS4B */
+    v[n++] = (uint32_t)nd_ap->in.dual_on; v[n++] = nd_ap->in.tst[8]; v[n++] = nd_ap->in.tst[9]; v[n++] = nd_ap->in.tst[10]; v[n++] = nd_ap->in.tst[11]; /* NWS4B */
+    v[n++] = (uint32_t)nd_cw_ashade(nd_ap->in.w0, nd_ap->in.w1); /* NWS2 */ v[n++] = (uint32_t)nd_ap->in.use_t1; v[n++] = (uint32_t)nd_ws.tex_on; v[n++] = (uint32_t)nd_ws.tile_x0; v[n++] = (uint32_t)nd_ws.tile_y0; /* NWS4B */
     v[n++] = gvk_bits(nd_ws.tile_fx); v[n++] = gvk_bits(nd_ws.tile_fy);
     v[n++] = nd_ws.tst1.tile_shift[0][0]; v[n++] = nd_ws.tst1.tile_shift[0][1]; v[n++] = nd_ws.tst1.tile_shift[1][0]; v[n++] = nd_ws.tst1.tile_shift[1][1];
     v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
-    v[n++] = nd_ws.omode_l; v[n++] = nd_ws.prim_z; v[n++] = (uint32_t)fog_fm; v[n++] = (uint32_t)fog_fo; v[n++] = (uint32_t)fogmix_on;
+    v[n++] = nd_ap->oml; v[n++] = nd_ap->primz; v[n++] = (uint32_t)fog_fm; v[n++] = (uint32_t)fog_fo; v[n++] = (uint32_t)fogmix_on; /* NWS4B */
     v[n++] = (uint32_t)nd_img_role(0);
     if (n > max) n = max;
     memcpy(o, v, n * sizeof(uint32_t));
@@ -222,8 +222,8 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) {
 }
 
 /* S3N-3d: the walker's sticky state at a draw (ndmcheck compare only: the native draw takes these as inputs): the TEXTURE scale word, the geometry mode and the combine words. */
-void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) {
-    *tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu); *geo = nd_ws.geom; *cw0 = nd_ws.comb_w0; *cw1 = nd_ws.comb_w1;
+void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) { ND_WCHK(); /* NWS4B */
+    *tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu); *geo = nd_ws.geom; *cw0 = nd_ap->in.w0; *cw1 = nd_ap->in.w1; /* NWS4B */
 }
 
 /* S3N-3d: nd_comb_dec. The combine work on the inputs in (nd_comb_core, nd_decide.c, no walker global), then the plan colours of in->prim and in->env.
@@ -328,14 +328,14 @@ void t1_fold(float u0, float u1, float v0, float v1) {
 }
 
 /* T1F: the CPU path fold for a ring triangle. dual_bind map reset, then the window fold over the tile 0 uv range of the triangle (same floats as gv_xf and vert_uv of the old draw_tri_cpu). */
-void t1_fold_tri(const unsigned ri[3], unsigned tss) {
+void t1_fold_tri(const unsigned ri[3], unsigned tss) { ND_WCHK(); /* NWS4B */
     nd_bsrc = nd_ep_bs; /* NDR0G2: the tile words of the open epoch */
     float u[3], v[3];
     int tw = 1, th = 1;
     pm_tex_size(&tw, &th);
     if (tw < 1) tw = 1;
     if (th < 1) th = 1;
-    unsigned st = nd_ws.use_t1 ? 1 : 0;
+    unsigned st = nd_ap->in.use_t1 ? 1 : 0; /* NWS4B */
     float ms = shift_mul(ND_BSH(st)[0]);
     float mt = shift_mul(ND_BSH(st)[1]);
     for (int k = 0; k < 3; k++) {
@@ -423,4 +423,4 @@ __attribute__((cold, noinline)) void combchk_run(const NdCombIn* in, int worked)
 
 
 /* SPR4-3: the dual boost of the walker (draw_tri path): 1 when cycle 2 is (SHADE - ENV) * COMBINED + COMBINED with the shaded bake live. nd_model/sprite native share it. */
-int dual_boost_on(void) { return dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED; }
+int dual_boost_on(void) { ND_WCHK(); return nd_ap->in.dual_on && nd_ap->in.tst[8] == G_CCMUX_SHADE && nd_ap->in.tst[9] == G_CCMUX_ENVIRONMENT && nd_ap->in.tst[10] == G_CCMUX_COMBINED && nd_ap->in.tst[11] == G_CCMUX_COMBINED; } /* NWS4B */

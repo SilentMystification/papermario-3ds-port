@@ -11,6 +11,16 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "../src/nd_direct.c"
+/* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that nd_wsnap_chk (run by every ND_WCHK, pm_drec_now is 1) fills from nd_ws. */
+static NdSnapChk ap_stub;
+const NdSnapChk* const nd_ap = &ap_stub;
+int pm_drec_now(void) { return 1; }
+void nd_wsnap_chk(void) {
+    memset(&ap_stub, 0, sizeof ap_stub);
+    ap_stub.in.w0 = nd_ws.comb_w0; ap_stub.in.w1 = nd_ws.comb_w1; ap_stub.in.omode_h = nd_ws.omode_h; ap_stub.oml = nd_ws.omode_l;
+    ap_stub.in.prim = nd_ws.prim; ap_stub.plod = nd_ws.prim_lod; ap_stub.in.env = nd_ws.envc; ap_stub.in.use_t1 = nd_ws.use_t1;
+    ap_stub.in.dual_on = dual_on; ap_stub.in.key_c = keyc; ap_stub.in.key_s = keys;
+}
 
 static int fails;
 #define CHECK(c) do { if (!(c)) { printf("FAIL nd_direct line %d\n", __LINE__); fails++; } } while (0)

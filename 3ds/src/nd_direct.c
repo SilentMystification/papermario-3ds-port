@@ -42,18 +42,18 @@ int nd_direct_ready(void) {
     return 1;
 }
 
-uint32_t nd_direct_prim(void) { return nd_ws.prim; }
-uint32_t nd_direct_env(void) { return nd_ws.envc; }
+uint32_t nd_direct_prim(void) { ND_WCHK(); return nd_ap->in.prim; } /* NWS4B */
+uint32_t nd_direct_env(void) { ND_WCHK(); return nd_ap->in.env; } /* NWS4B */
 
-int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
+int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { ND_WCHK(); /* NWS4B */
     nd_snap_arm = 0; /* NDR2A: the arm of this record */
     const NdPsoN64* p = nd_pso_get(id);
-    const uint32_t mh = (nd_ws.omode_h & ~p->omh_m) | (p->omh & p->omh_m);
-    const uint32_t ml = (nd_ws.omode_l & 7u) | (p->oml & ~7u);
+    const uint32_t mh = (nd_ap->in.omode_h & ~p->omh_m) | (p->omh & p->omh_m); /* NWS4B */
+    const uint32_t ml = (nd_ap->oml & 7u) | (p->oml & ~7u); /* NWS4B */
     if (((mh >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* COPY and FILL rectangles have their own span rules */
     if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
     {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
-        const unsigned old_tf = nd_ws.omode_h & (3u << 12);
+        const unsigned old_tf = nd_ap->in.omode_h & (3u << 12); /* NWS4B */
         nd_ws.omode_h = mh; nd_ws.om_kh |= p->omh_m;
         nd_ws.omode_l = ml; nd_ws.om_kl |= ~7u;
         if ((nd_ws.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
@@ -61,7 +61,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
             pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0);
         }
     }
-    if (nd_ws.comb_w0 != p->cw0 || nd_ws.comb_w1 != p->cw1) nd_comb_set(p->cw0, p->cw1); /* NWS2 */
+    if (nd_ap->in.w0 != p->cw0 || nd_ap->in.w1 != p->cw1) nd_comb_set(p->cw0, p->cw1); /* NWS2 */ /* NWS4B */
     dual_on = 0; /* nd_tsz_set of tile 0 ends the shaded sprite mode */
     pm_gpu_set_prim(prim, 0u);
     nd_ws.prim = prim; nd_ws.prim_lod = 0u;
@@ -77,11 +77,11 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) {
             if (!const_rgb_tex_alpha(&cc)) cc = o->cc;
             pm_gpu_set_const(cc);
         }
-        if (o->env_on) pm_gpu_set_env(nd_ws.envc);
+        if (o->env_on) pm_gpu_set_env(nd_ap->in.env); /* NWS4B */
         if (o->plan_on) {
             cur_plan = o->plan;
-            pm_comb_colours(&cur_plan, nd_ws.prim, nd_ws.envc, (u8)nd_ws.prim_lod, keyc, keys);
-            pm_gpu_plan_key(nd_ws.comb_w0, nd_ws.comb_w1, o->cyc, nd_ws.use_t1);
+            pm_comb_colours(&cur_plan, nd_ap->in.prim, nd_ap->in.env, (u8)nd_ap->plod, nd_ap->in.key_c, nd_ap->in.key_s); /* NWS4B */
+            pm_gpu_plan_key(nd_ap->in.w0, nd_ap->in.w1, o->cyc, nd_ap->in.use_t1); /* NWS4B */
             pm_gpu_set_plan(&cur_plan);
         } else {
             pm_gpu_set_combine(leg_mode);
@@ -150,12 +150,12 @@ __attribute__((cold, noinline)) void nd_direct_fallback(unsigned why) {
  * the printer setup recorded; the glyph states its texture (nd_tex_bind_glyph) and its rectangle. nd_glyph_can: 1 when the direct draw takes the
  * walker's own path (nd_trect_draw for a 1 cycle rectangle on the main colour image, tile 0, no shift, no tile 1 product); checked before any state is
  * touched, 0 runs the old list. No nd_direct_end: the walker leaves the bind (ens_*, tsz_last) as the glyph arms keep it, and so does this. */
-int nd_glyph_can(int texW) {
+int nd_glyph_can(int texW) { ND_WCHK(); /* NWS4B */
     if (texW < 16 || (texW & 15)) return 0;
     if (nd_direct_ready() != 1) return 0;
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0;
-    if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0;
-    if (nd_ws.use_t1 || dual_on || nd_cw_box_prod(nd_ws.comb_w0, nd_ws.comb_w1) || box_pat) return 0; /* NWS2 */
+    if (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* NWS4B */
+    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) return 0; /* NWS4B */
+    if (nd_ap->in.use_t1 || nd_ap->in.dual_on || nd_cw_box_prod(nd_ap->in.w0, nd_ap->in.w1) || box_pat) return 0; /* NWS2 */ /* NWS4B */
     return 1;
 }
 
