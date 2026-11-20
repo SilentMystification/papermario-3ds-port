@@ -7,6 +7,7 @@
 #include "overlay.h"
 #include "game_modes.h"
 #include "nd_xf.h"
+#include "nd.h"
 
 s32 gOverrideFlags;
 s32 gTimeFreezeMode;
@@ -209,6 +210,7 @@ void gfx_draw_frame(void) {
     }
     FI_CLOSE();
 
+    { NDT_B(tu_a);
     FI_OPEN("gfx_interact_prompts");
     player_render_interact_prompts();
     FI_CLOSE();
@@ -226,6 +228,7 @@ void gfx_draw_frame(void) {
         render_window_root();
     }
     FI_CLOSE();
+    NDT_E(tu_a, NDT_GUI); }
 
     FI_OPEN("gfx_world_hud");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_RENDER_WORLD) && gGameStatusPtr->debugScripts == DEBUG_SCRIPTS_NONE) {
@@ -233,6 +236,7 @@ void gfx_draw_frame(void) {
     }
     FI_CLOSE();
 
+    { NDT_B(tu_b);
     FI_OPEN("gfx_messages_mid");
     if (!(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_CURTAINS)
         && !(gOverrideFlags & GLOBAL_OVERRIDES_MESSAGES_OVER_FRONTUI)
@@ -287,6 +291,7 @@ void gfx_draw_frame(void) {
     nuGfxTaskStart(NU_GFX_UCODE_F3DEX2, NU_SC_TASK_LODABLE | NU_SC_SWAPBUFFER); /* DIRECT D9: the task is a frame stream */
     gCurrentDisplayContextIndex = gCurrentDisplayContextIndex ^ 1;
     crash_screen_set_draw_info(nuGfxCfb_ptr, SCREEN_WIDTH, SCREEN_HEIGHT);
+    NDT_E(tu_b, NDT_GUI); }
 }
 
 void load_engine_data(void) {

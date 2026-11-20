@@ -633,6 +633,9 @@ static void pf_report(void) {
                 CS(cm[NDT_RMDL]), CS(cm[NDT_RENT]), CS(cm[NDT_RSPR]), CS(cm[NDT_RNR]), nd_rnr_n - rnr_m); /* PROF2 */
             pm_log_prof_line("prof f%u w%u c0r key %u.%02u mtx %u.%02u hit %u.%02u", pf_total, pf_w,
                 CS(cm[NDT_MKEY]), CS(cm[NDT_MMTX]), CS(cm[NDT_MHIT])); /* PROF2 */
+            pm_log_prof_line("prof f%u w%u c1g ent %u.%02u mdl %u.%02u ply %u.%02u npc %u.%02u wrk %u.%02u fx %u.%02u task %u.%02u thud %u.%02u ui %u.%02u", pf_total, pf_w,
+                CS(cm[NDT_GENT]), CS(cm[NDT_GMDL]), CS(cm[NDT_GPLY]), CS(cm[NDT_GNPC]), CS(cm[NDT_GWRK]), CS(cm[NDT_GFX]), CS(cm[NDT_GTASK]),
+                CS(cm[NDT_GTHUD]), CS(cm[NDT_GUI])); /* PROF3 */
         }
         { /* DIRECT: frame stream commands per drawn frame x 10 (nd_rec.c): model, sprite and entity records, ranges, compound texture loads, texture rectangles; kb = the stream high-water mark */
             unsigned nc[NDC_N], kb, n10[NDC_N], sw;
