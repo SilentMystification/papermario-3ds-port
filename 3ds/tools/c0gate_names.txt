@@ -36,9 +36,6 @@ interp nd_tx_ldtile
 interp nd_tx_ldtlut
 interp nd_tx_texon
 interp nd_comb_sync
-interp sync_combine_work
-interp sync_combine_work_timed
-interp scm_replay
 interp comb_in_walker
 interp nd_rnd_sync
 interp box_fold_sync
