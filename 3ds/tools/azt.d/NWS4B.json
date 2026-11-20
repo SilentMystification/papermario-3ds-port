@@ -7,7 +7,7 @@
       "proves": "NWS4B: HUD fallback copy frames are recorded; base and row compare with the wsnap marker.",
       "debug": "preset=toad padscript=wait80,START*3,wait100 loglevel=debug det drec=102:2",
       "extra": [],
-      "until": "drec f103 draws [1-9]\d* bytes \d+",
+      "until": "drec f103 draws [1-9]\\d* bytes \\d+",
       "cap": 25,
       "deadline": 20,
       "expected_events": [
@@ -17,7 +17,7 @@
         },
         {
           "name": "drec",
-          "regex": "drec f103 draws [1-9]\d* bytes \d+"
+          "regex": "drec f103 draws [1-9]\\d* bytes \\d+"
         }
       ],
       "needs_picture": false,
