@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "hudfb_drec",
+      "status": "unverified",
+      "subject": "Toad Town pause menu, cold det start with drec: records of frames 102 and 103, where the HUD fallback copies run.",
+      "proves": "NWS4B: HUD fallback copy frames are recorded; base and row compare with the wsnap marker.",
+      "debug": "preset=toad padscript=wait80,START*3,wait100 loglevel=debug det drec=102:2",
+      "extra": [],
+      "until": "drec f103 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f103 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "NWS4B gate: drec of the HUD fallback frames. Cold start, cap 25 s.",
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp"
+    }
+  ]
+}

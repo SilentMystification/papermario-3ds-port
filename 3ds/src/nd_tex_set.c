@@ -446,9 +446,9 @@ __attribute__((noinline)) void tlut_v20(unsigned slot) {
                         }
 }
 
-__attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) {
+__attribute__((cold, noinline)) int tex_shaded0(int uls, int ult) { ND_WCHK(); /* NWS4B */
             if (m1.valid && nd_ws.tst1.tile_fmt[0] == 2 && nd_ws.tst1.tile_siz[0] == 0 && nd_ws.tst1.tile_pal[0] != nd_ws.tst1.tile_pal[1] &&
-                nd_ws.tst1.comb_a == G_CCMUX_TEXEL0 && nd_ws.tst1.comb_c == G_CCMUX_TEXEL1 &&
+                nd_ap->in.tst[0] == G_CCMUX_TEXEL0 && nd_ap->in.tst[2] == G_CCMUX_TEXEL1 && /* NWS4B */
                 m1.w > 0 && m1.h > 0) {
                 /* Tile 0 starts 256 texels in (the vertices carry that); the light offset moves only the shade index, which is one colour now (KZN04). */
                 (void)uls; (void)ult;

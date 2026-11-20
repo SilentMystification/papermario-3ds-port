@@ -24,6 +24,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_gpu_int.h"
 #include "pm_flipfps.h"
 #include "nd_msnapw.h"
+#include "nd_apw.h" /* NWS4B */
 
 static int drew;
 /* 3D writes the depth buffer. A later texrect has to win even if the test stays on. */
@@ -1224,7 +1225,7 @@ static int t1l_on = -1; /* switch t1log: -1 until t1log_draw reads it */
 static __attribute__((cold, noinline)) void submit_dbg(const NdDraw* d, int tex);
 static __attribute__((cold, noinline)) void pm5tex1_log(const NdDraw* d);
 /* FX1-3 orbdbg (debug tool): one line per draw inside an effect list (the tag from pm_gbi_dbg_orb_tag, nd_walk.c). path: walk (flush_draw) or native (nd_raw_native). */
-static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) {
+static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int memb, int i8_0, int i8_1, unsigned tris, int graw) { ND_WCHK(); /* NWS4B */
     extern unsigned pm_gbi_dbg_orb_tag(void);
     unsigned ot_ = pm_gbi_dbg_orb_tag();
     if (!ot_ || !PMDL("orbdbg")) return;
@@ -1236,14 +1237,14 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
     { /* SBLK2 A1/A2/B1 debug: the segment 9 base, tile 0 format, combine words, unit 1 I8 alpha, splits and grabs of this frame */
         extern unsigned n_splits;
         pm_log("orbdbg2 f%u tag %u seg9 %08x cyc %u td0 v%d fmt %u siz %u w %d h %d comb %08x %08x i8_1 %d spl %u grab %d",
-               pm_frame_count(), ot_, nd_ws.segbase[9], (nd_ws.omode_h >> 20) & 3u, nd_ws.td[0].valid, nd_ws.td[0].fmt, nd_ws.td[0].siz,
-               nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.comb_w0, nd_ws.comb_w1, i8_1, n_splits, grab_n);
+               pm_frame_count(), ot_, nd_ws.segbase[9], (nd_apw(NDAPW_OH) >> 20) & 3u, nd_ws.td[0].valid, nd_ws.td[0].fmt, nd_ws.td[0].siz, /* NWS4B */
+               nd_ws.td[0].w, nd_ws.td[0].h, nd_apw(NDAPW_W0), nd_apw(NDAPW_W1), i8_1, n_splits, grab_n); /* NWS4B */
     }
     if (ot_ == 6u && gs.combine == 8) { /* SBLK2 blend check (shimmer, tag 6): the TEV stages as sent, the blend the port sets, the N64 blender */
-        const unsigned m = nd_ws.omode_l;
+        const unsigned m = nd_apw(NDAPW_OL); /* NWS4B */
         pm_log("shimblend f%u r_blend %d off %d one_zero %d N64 cyc %u omode_l %08x c2 m1a %u m1b %u m2a %u m2b %u env %08x prim %08x",
-               pm_frame_count(), gs.r_blend, gs.off_active, !gs.r_blend, (nd_ws.omode_h >> 20) & 3u, m, (m >> 28) & 3u, (m >> 24) & 3u,
-               (m >> 20) & 3u, (m >> 16) & 3u, nd_ws.envc, nd_ws.prim);
+               pm_frame_count(), gs.r_blend, gs.off_active, !gs.r_blend, (nd_apw(NDAPW_OH) >> 20) & 3u, m, (m >> 28) & 3u, (m >> 24) & 3u, /* NWS4B */
+               (m >> 20) & 3u, (m >> 16) & 3u, nd_apw(NDAPW_ENV), nd_apw(NDAPW_PRIM)); /* NWS4B */
         for (int k = 0; k < gs.plan.n && k < 3; k++) {
             const PmTevCh* c = &gs.plan.st[k].g[0];
             const PmTevCh* a = &gs.plan.st[k].g[1];
@@ -4568,9 +4569,9 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
 /* HC8 step 3: the shaded bake and the CI4 texture of a sprite (cold: the spr5 census and the sprtex refusal log are here). Returns 1 with tw, th and un
  * set, or 0 with *why. */
 extern unsigned shc[16]; /* BOMBLIT: nd_tex_set.c shade path counters */
-static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) {
+static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int shaded, int tex, NdTexDesc* ds, NdUnit* un, int* tw, int* th, int* why) { ND_WCHK(); /* NWS4B */
     if (shaded) {
-        if (!dual_on || nd_ws.use_t1) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */
+        if (!nd_apw(NDAPW_DUAL) || nd_apw(NDAPW_UT1)) { if (PMDL("shadecen")) shc[6]++; *why = 3; return 0; } /* no bake live, or the plan reads TEXEL1 (no unit 1 form yet) */ /* NWS4B */
         nd_tile_bind(0);
         dual_bind();
         if (pm_tex_native_unit0(un) != 1) { *why = 2; return 0; }
@@ -4591,7 +4592,7 @@ static int __attribute__((noinline, cold)) spr_build_rare(const NdSprRec* r, int
     return 1;
 }
 int nd_snap_spr(uint32_t o[9]); /* nd_snap.c, NDR4 */
-int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) {
+int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16], int* why) { ND_WCHK(); /* NWS4B */
     NdSprRec r;
     nd_sprite_decode(rec, &r);
     /* SPR4: the record's render mode list and final list ran on the walker before this vertex word, so the draw state is nd_ws live and the mode adds nothing */
@@ -4628,21 +4629,21 @@ int pm_gpu_spr_build(const uint32_t* rec, NdDraw* n, NdMState* st, float pal0[16
     c.tex_w = tw; c.tex_h = th; c.tss = mode.has_tx ? mode.tw1 : sw_tss;
     c.geom_base = sw_geo; c.wind = gv_wind; c.geom_at_set = 0;
     c.draw_3d = 1; c.dview = dv_mode(); c.r_mix = gs.r_mix; c.r_memblend = r_memblend; c.r_replace = r_replace;
-    c.env = sn ? sv[0] : nd_ws.envc; c.prim = sn ? sv[1] : nd_ws.prim; c.prim_lod = nd_ws.prim_lod; c.cconst = cconst; c.mixcol = r_mixcol;
+    c.env = sn ? sv[0] : nd_apw(NDAPW_ENV); c.prim = sn ? sv[1] : nd_apw(NDAPW_PRIM); c.prim_lod = nd_apw(NDAPW_PLOD); c.cconst = cconst; c.mixcol = r_mixcol; /* NWS4B */
     { float db = decal_bias(); memcpy(&c.dbias, &db, 4); }
-    c.base_oh = sn ? sv[2] : nd_ws.omode_h; c.base_ol = sn ? sv[3] : nd_ws.omode_l; c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl;
+    c.base_oh = sn ? sv[2] : nd_apw(NDAPW_OH); c.base_ol = sn ? sv[3] : nd_apw(NDAPW_OL); c.known_h = nd_ws.om_kh; c.known_l = nd_ws.om_kl; /* NWS4B */
     if (sn) { c.r_mix = (int)sv[7]; c.mixcol = sv[7] ? sv[8] : r_mixcol; } else /* NDR4: the mix of the snap */
     { /* SHROUD: the mix is the sprite's own othermode (nd_mix1, the F08 fog-shade-alpha case as nd_rnd_sync), not gs.r_mix of the last model's nd_rnd_sync:
        * a sprite drawn after a shrouded model took its shroud (star power). */
-        unsigned mixc; const unsigned ol_ = nd_ws.omode_l, p_ = (ol_ >> 30) & 3u, a_ = (ol_ >> 26) & 3u, mm_ = (ol_ >> 22) & 3u, b_ = (ol_ >> 18) & 3u;
+        unsigned mixc; const unsigned ol_ = nd_apw(NDAPW_OL), p_ = (ol_ >> 30) & 3u, a_ = (ol_ >> 26) & 3u, mm_ = (ol_ >> 22) & 3u, b_ = (ol_ >> 18) & 3u; /* NWS4B */
         if (nd_mix1(ol_, &mixc)) { c.r_mix = 1; c.mixcol = mixc; }
-        else if (!pm_nofog && p_ == 3u && a_ == 2u && mm_ == 0u && b_ == 0u) { c.r_mix = 2; c.mixcol = (fogc & 0xffffff00u) | 0xffu; }
+        else if (!pm_nofog && p_ == 3u && a_ == 2u && mm_ == 0u && b_ == 0u) { c.r_mix = 2; c.mixcol = (nd_apw(NDAPW_FOGC) & 0xffffff00u) | 0xffu; } /* NWS4B */
         else { c.r_mix = 0; c.mixcol = r_mixcol; }
     }
     uint32_t zr[27];
     memset(zr, 0, sizeof zr); /* the record words the model state reads (R3 flags, R11, R13) are zero: a sprite has none */
     if (__builtin_expect(PMDL("sprmix"), 0)) { /* SHROUD: gs_r_mix (the last nd_rnd_sync) and own_r_mix (this sprite's othermode, c.r_mix above) */
-        static unsigned sprmix_n; unsigned f_ = pm_frame_count(); if (f_ >= 415u && f_ <= 565u && sprmix_n++ < 300u) pm_log("sprmix f%u gs_r_mix %d own_r_mix %d mixcol %08x om30 %u ol %08x", f_, gs.r_mix, c.r_mix, c.mixcol, nd_ws.omode_l >> 30, nd_ws.omode_l);
+        static unsigned sprmix_n; unsigned f_ = pm_frame_count(); if (f_ >= 415u && f_ <= 565u && sprmix_n++ < 300u) pm_log("sprmix f%u gs_r_mix %d own_r_mix %d mixcol %08x om30 %u ol %08x", f_, gs.r_mix, c.r_mix, c.mixcol, nd_apw(NDAPW_OL) >> 30, nd_apw(NDAPW_OL)); /* NWS4B */
     }
     if (nd_model_state_spr(zr, &c, n, st) != 1) { *why = 10 + st->why; return 0; } /* PERF1-5: through the sprite state memo */
     n->nidx = 6; /* pm_gpu_spr_submit: two triangles of the quad */

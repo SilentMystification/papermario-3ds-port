@@ -165,12 +165,12 @@ static int nd_texlog_on = -1; /* texlog debug switch: -1 until the first texrect
 __attribute__((noinline, cold)) static void nd_texrect_depth(u32 hs) {
     pm_depth_query(nd_ws.timg, (int)((s16)(hs >> 16) >> 5), sci_x0);
 }
-__attribute__((noinline, cold)) static void nd_texrect_log(int xl, int yl, int xh, int yh) {
+__attribute__((noinline, cold)) static void nd_texrect_log(int xl, int yl, int xh, int yh) { ND_WCHK(); /* NWS4B */
     /* FB3 debug switch texlog: one line per texrect: size, combine, render and tile formats, z source, alpha compare (ball debug) */
     if (nd_texlog_on < 0) nd_texlog_on = pm_debug_has("texlog");
     if (nd_texlog_on) pm_log_d("texlog f%u rect %d,%d-%d,%d w%d h%d cyc %u rm %08x zsrc %d ac %u tile0 %d/%d tile1 %d/%d valid1 %d",
-                               pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (xh - xl) / 4 + 1, (yh - yl) / 4 + 1, (nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3,
-                               (unsigned)nd_ws.omode_l, (nd_ws.omode_l >> G_MDSFT_ZSRCSEL) & 1, (nd_ws.omode_l >> 0) & 3, nd_ws.tst1.tile_fmt[0], nd_ws.tst1.tile_siz[0], nd_ws.tst1.tile_fmt[1], nd_ws.tst1.tile_siz[1], nd_ws.td[1].valid);
+                               pm_frame_count(), xl / 4, yl / 4, xh / 4, yh / 4, (xh - xl) / 4 + 1, (yh - yl) / 4 + 1, (nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3, /* NWS4B */
+                               (unsigned)nd_ap->oml, (nd_ap->oml >> G_MDSFT_ZSRCSEL) & 1, (nd_ap->oml >> 0) & 3, nd_ws.tst1.tile_fmt[0], nd_ws.tst1.tile_siz[0], nd_ws.tst1.tile_fmt[1], nd_ws.tst1.tile_siz[1], nd_ws.td[1].valid); /* NWS4B */
 }
 /* COPY cycle: the RDP writes 4 pixels per cycle, so dsdx counts 4 texels per pixel (4.0 = 1:1). The lower right corner is inclusive, one more pixel
  * (as in libultraship). PT06: the lower edge is inclusive too. BG1/BG2 oracle plan 2, fix 1: the pixel span is the RDP one. */
@@ -197,14 +197,14 @@ static unsigned char rc_sn; /* NDR1C: the rectangle in progress has a live snap 
 static void rc_render(void) { if (rc_sn) nd_snap_render(); } /* NDR1C; NCS3; NWS2 */
 /* MERLON: the ball rectangle (G_ZS_PRIM, depth compare) reads the texel S - SL through the tile mask, then tests the primitive depth. */
 __attribute__((noinline, cold)) static void nd_texrect_zprim(int rx0, int ry0, int ex, int ey, float* s0, float* t0, float* s1, float* t1, u32 hs,
-                                                              float ms, float mt, int tw, int th, int rtile) {
+                                                              float ms, float mt, int tw, int th, int rtile) { ND_WCHK(); /* NWS4B */
     if (pm_tex_off_idx() >= 0) {
         const float ps = wrap_period_shift((float)(s16)(hs >> 16) / 32.f * ms, ND_BSZ(rtile)[0], ND_BWR(rtile)[0], ND_BWR(rtile)[2], (*s1 - *s0) * (float)tw);
         const float pt = wrap_period_shift((float)(s16)(hs & 0xffff) / 32.f * mt, ND_BSZ(rtile)[1], ND_BWR(rtile)[1], ND_BWR(rtile)[3], (*t1 - *t0) * (float)th);
         *s0 -= ps / (float)tw; *s1 -= ps / (float)tw; *t0 -= pt / (float)th; *t1 -= pt / (float)th;
     }
     rc_render();
-    pm_gpu_tex_rect_z(rx0, ry0, ex, ey, *s0, *t0, *s1, *t1, (float)nd_ws.prim_z / 32767.f);
+    pm_gpu_tex_rect_z(rx0, ry0, ex, ey, *s0, *t0, *s1, *t1, (float)nd_ap->primz / 32767.f); /* NWS4B */
 }
 /* The texture folded over a mirrored or wrapped off-screen tile: one quad per fold segment. 1 when drawn. */
 __attribute__((noinline, cold)) static int nd_texrect_fold(int rx0, int ry0, int ex, int ey, float s0, float t0, float s1, float t1, int tw, int th) {
@@ -218,7 +218,7 @@ __attribute__((noinline, cold)) static int nd_texrect_fold(int rx0, int ry0, int
     return 1;
 }
 
-__attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) {
+__attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { ND_WCHK(); /* NWS4B */
     const unsigned char sn_armed = nd_snap_arm; nd_snap_arm = 0; /* NDR1B: compared after the fold */
     rc_sn = nd_snap_live; /* NDR1C */
     nd_rect_tex_n++;
@@ -235,7 +235,7 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) {
     if (rect_to_image(xl, yl, xh, yh, (w1 >> 24) & 7, hs, hd)) { return; }
     if (nd_texlog_on != 0) nd_texrect_log(xl, yl, xh, yh);
     /* B5: a texrect into the z-buffer image without G_ZS_PRIM copies colour (underwater strips of the frame): a slot keyed by the z-buffer address */
-    zcol = nd_tgt.siz == 2 && (nd_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL));
+    zcol = nd_tgt.siz == 2 && (nd_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)); /* NWS4B */
     if (zcol) { zslot_on = 1; rc_render(); }
     else if (nd_img_role(0) == ROLE_SLOT) rc_render(); /* FX2a: a texrect into an off-screen slot takes its own blender (flame passes: CLD_SURF2 is an alpha blend, OPA_SURF2 a write). The render state came from the last triangle before. */
     nd_img_check();
@@ -246,7 +246,7 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) {
     if (box_pat && nd_ws.td[0].valid && nd_ws.td[1].valid && box_pattern_rect(xl, yl, xh, yh, hs, hd)) { return; }
     /* V23: the texrect names its tile. The pause map draws its path dots with tile 1 (the small marker). Tile 0 holds the big location circle. */
     nd_bsrc = rc_sn ? nd_snap_cur_b() : NULL; /* NDR1C: the tile words of the snap */
-    int rtile = (nd_ws.use_t1 || (((w1 >> 24) & 7) == 1 && ND_BTD(1)->valid)) ? 1 : 0;
+    int rtile = (nd_ap->in.use_t1 || (((w1 >> 24) & 7) == 1 && ND_BTD(1)->valid)) ? 1 : 0; /* NWS4B */
     if (!rtile) gp3_t0_surv();
     nd_tile_bind(rtile);
     dual_bind();
@@ -263,7 +263,7 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) {
     float height = (float)(yh - yl) / 4.f;
     /* BG1/BG2 oracle plan 2, fix 1: the pixel span is the RDP one (first pixel whose left edge is at or after xl, last whose left edge is at or before xh; arithmetic shifts). Multiples of 4 give the old values. COPY only (the sky). */
     int rx0 = xl / 4, ry0 = yl / 4, rx1 = xh / 4, ry1 = yh / 4;
-    const int copy = ((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2;
+    const int copy = ((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 2; /* NWS4B */
     if (copy) nd_texrect_copy_span(xl, yl, xh, yh, tw, th, &dsdx, &dtdy, &s0, &t0, &rx0, &ry0, &rx1, &ry1, &width, &height);
     float s1 = s0 + dsdx * width / (float)tw;
     float t1 = t0 + dtdy * height / (float)th;
@@ -277,7 +277,7 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) {
         if (!copy) { ex -= 1; ey -= 1; }
         if (ex >= rx0 && ey >= ry0) {
             /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
-            if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER)) {
+            if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) { /* NWS4B */
                 nd_texrect_zprim(rx0, ry0, ex, ey, &s0, &t0, &s1, &t1, hs, ms, mt, tw, th, rtile);
                 goto rect_done; /* MERLON: the rectangle is drawn once, with its depth test. The fall-through drew it again with no depth (the crystal ball square through the walls) */
             }
@@ -305,13 +305,13 @@ __attribute__((noinline, cold)) static void nd_fillrect_cpu(int ulx, int uly, in
     for (int y = uly < 0 ? 0 : uly; y <= lry && y < 240; y++)
         for (int x = ulx < 0 ? 0 : ulx; x <= lrx && x < nd_tgt.stride; x++) d[y * nd_tgt.stride + x] = 0x8421;
 }
-__attribute__((noinline, cold)) static void nd_fillrect_zs(int ulx, int uly, int lrx, int lry, unsigned color) {
+__attribute__((noinline, cold)) static void nd_fillrect_zs(int ulx, int uly, int lrx, int lry, unsigned color) { ND_WCHK(); /* NWS4B */
     /* X01: a fill rect with depth compare and G_ZS_PRIM tests the primitive depth against the depth buffer */
     if (nd_snap_live) nd_snap_render(); /* NCS3 */
-    pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)nd_ws.prim_z / 32767.f);
+    pm_gpu_fill_rect_z(ulx, uly, lrx, lry, color, (float)nd_ap->primz / 32767.f); /* NWS4B */
 }
 
-__attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) {
+__attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) { ND_WCHK(); /* NWS4B */
     nd_rect_fill_n++;
 #define FILL_SX10(v) ((int)(((v) & 0x3ffu) << 22) >> 22) /* signed 10-bit field: a left edge at x < 0 stays negative (HUDB1: unsigned wrap made ul > lr and swapped a full-width band) */
     int lrx = FILL_SX10(w0 >> 14);
@@ -321,23 +321,23 @@ __attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) {
     if (nd_img_role(1) == ROLE_CPUFILL) { nd_fillrect_cpu(ulx, uly, lrx, lry); return; }
     if (nd_img_role(1) == ROLE_DEPTH) { /* B3: case 5, the z-buffer clear is a depth write */
         if (nd_snap_live) nd_ws.fill = nd_snap_fill(); /* NAT4H: the fill of the rectangle snap */
-        pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ws.fill));
+        pm_gpu_fill_depth(ulx, uly, lrx, lry, depth_of_word(nd_ap->fill)); /* NWS4B */
         return;
     }
     /* HUDB1: the lower right corner of a fill is inclusive only in G_CYC_FILL and G_CYC_COPY. 1-cycle and 2-cycle fills cover [ul, lr). */
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) {
+    if (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) < 2) { /* NWS4B */
         lrx--;
         lry--;
         if (lrx < ulx || lry < uly) return; /* empty rectangle */
     }
     /* FILL cycle uses the fill register. 1-cycle fills (screen fades) use primitive color. */
     const unsigned char fsn = nd_snap_live; if (fsn) nd_snapchk_tri(); /* NAT2H: the combine of the fill snap; NAT4D: moved above color, the adopt sets prim and fill */
-    unsigned color = (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3)
-        ? rgba_from_5551(nd_ws.fill & 0xffff) : nd_ws.prim;
+    unsigned color = (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3) /* NWS4B */
+        ? rgba_from_5551(nd_ap->fill & 0xffff) : nd_ap->in.prim; /* NWS4B */
     nd_img_check();
-    if (((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) { if (fsn) nd_snap_render(); } /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */ /* NCS3 */
-    pm_gpu_set_replace(((nd_ws.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3);
-    if ((nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) && (nd_ws.omode_l & 0x10u) && (nd_ws.geom & G_ZBUFFER))
+    if (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) { if (fsn) nd_snap_render(); } /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */ /* NCS3 */ /* NWS4B */
+    pm_gpu_set_replace(((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3); /* NWS4B */
+    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_ws.geom & G_ZBUFFER)) /* NWS4B */
         nd_fillrect_zs(ulx, uly, lrx, lry, color);
     else
         pm_gpu_fill_rect(ulx, uly, lrx, lry, color);

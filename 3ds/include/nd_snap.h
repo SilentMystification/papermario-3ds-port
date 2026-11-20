@@ -7,6 +7,7 @@
 #include "nd.h"
 #include "nd_ds.h"
 #include "nd_api.h"
+#include "nd_apw.h" /* NWS4B */
 
 typedef struct NdSnapBind {
     NdTd td; unsigned wrap[4]; int sz[4]; unsigned shift[2]; /* NDR0G1: tile n as nd_tile_bind and dual_bind read it */
@@ -93,4 +94,5 @@ unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #define ND_LS_SNAP(f) (((f) >> 16) & 0x3fffu) /* NAT2D: the snap index of a range */
 #define ND_LS_DSB ((((unsigned)sizeof(NdDs)) + 7u) & ~7u) /* NCONV2D: the core 1 end state after the snaps of a list table */
 void nd_lsr_geo(void);
+extern const NdSnapChk* const nd_ap; /* NWS4B */
 #endif
