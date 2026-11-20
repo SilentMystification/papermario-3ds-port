@@ -16,10 +16,10 @@ Tags: FACT (console capture or code read), GUESS, OPEN. Numbers: console build 7
 ## 2. How the game draw code stays compatible
 - The game code does not change in rows DO0 to DO4. appendGfx_model still computes the matrix and fills its G_PM_REC record; entities still call their lists.
 - The retention sits below the record: core 1 reuses the stream block of an unchanged model (DO1); core 0 finds the object of a record by an id, not a key
-  hash (DO2), and emits pre-built state words (DO3). Entities stop writing copy ranges that core 0 never runs (DO4).
+  hash (DO2), and cuts the per-draw submit cost (DO3). Entities stop writing copy ranges that core 0 never runs (DO4).
 - What it cannot remove: the game draw code itself (render queues, model tree walk, matrix math, sprite animation, effects, HUD). That is part of the
   9.7 ms (GUESS) game draw time on core 1. DRAWOBJ removes the recording cost (rmdl, rent, alt, part of the snap and unit costs) and the core 0 per-draw cost.
-  Removing game draw code needs changes in src/ (model.c, entity.c): a later, separate decision (DO5).
+  The game draw code is the subject of plan_gamedraw.md (oracle NATIVE18, rows GD0 to GD6). DO5 is dropped (user, 20 Nov).
 
 ## 3. Work per step and per frame after DRAWOBJ (GUESS)
 - Core 1 per model and step: a before-state snapshot (about 300 B), one memcmp with the object's last one, a copy of the last stream block, matrix word patches,
@@ -48,12 +48,14 @@ Tags: FACT (console capture or code read), GUESS, OPEN. Numbers: console build 7
 |---|---|---|---|---|---|
 | DO0 | Haiku | GPU state hash at each draw (`gst f<F> n<draws> h<hash>` per drec frame) and bench.py cmp --gst, seeded self-test | drec byte-equal; selftest-gst PASS | 0 | 0 |
 | DO1 | Sonnet | core 1 model record memo: an unchanged model copies its last stream block; census mmemo first | spot_mac01, entcape_kmr03 drec byte-equal, mmemo 0 | -2.5 to -3.5 | 0 |
-| DO2 | Sonnet | core 0 object id in the record (core 1 assigns it); the hit takes the entry by id, the key check stays as a guard | drec and gst equal | 0 | -0.8 to -1.5 |
-| DO3 | Sonnet | pre-built state words per cached draw, dynamic patches | gst equal (words may differ), drec equal | 0 | -3 to -5 |
-| DO4 | Sonnet | entities: no copy range for keys core 0 draws natively; gap units only (ALT2C data) | drec byte-equal, entw | -1 to -1.5 | -0.3 |
-| DO5 | user | game side: appendGfx_model skips its record fill for an unchanged model (src/model.c) | drec byte-equal | -1 to -2 | 0 |
+| DO2 | Sonnet | core 0 object id in the record (core 1 assigns it from the DO1 memo); the key check stays as a guard. Page after DO1 merges | drec and gst equal | 0 | -0.3 to -0.9 |
+| DO3 | Sonnet | step 1 split of the submit (C3Di_UpdateContext runs at every draw: cnt upd 113 per frame, FACT); step 2 cuts the named cause | gst equal, drec equal | 0 | -3 to -4 |
+| DO4 | Sonnet | entities: no copy range for keys core 0 draws natively; gap units only (ALT2C data). Needs a core 0 to core 1 table of segment op ranges: page after DO1 and capture 1 | drec byte-equal, entw | -1 to -1.5 | -0.3 |
 Total rows DO1 to DO4 (GUESS): core 1 -3.5 to -5, core 0 -4 to -7. With MSNAP2 and the section 11 rows this reaches the plan_60fps.md budget in
-mac_01 (GUESS). The earlier estimate of core 1 12 to 15 ms needs DO5 and more game-side work: not promised.
+mac_01 (GUESS). Game draw code rows: plan_gamedraw.md (GD0 to GD6, -2.4 to -7.3 ms core 1 GUESS).
+- Recorder side of GD6 (= plan_perf.md D2, owner NATIVE17, agreed): a replayed setter block must give the same stream bytes and the same nd_ds after as the
+  unit path (census `gdblk diff 0`, as the DO1 census); blocks hold state setters only (no TRI or RECT unit: those take snaps); the entry state compare
+  includes sc_lost, sc_dirty and the shadow sh (the ep rule and sh_drop read them); a block never spans a CALL or a model record.
 
 ## 7. Risks
 - A memo or id that survives a change (map load, model hidden, texture swap, panner move): each row keeps the full key check as a guard and a census step.

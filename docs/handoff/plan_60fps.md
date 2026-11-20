@@ -39,7 +39,6 @@ Tags: FACT (console capture or code read), GUESS (estimate), OPEN (not measured)
 | 7 | C4 entity copy gaps only | 28.0 | 24.7 | 60 fps (30 steps plus key frames) in mac_01 at the edge of the budget (GUESS) |
 | 8 | rows from the PROF3 split (D2 batching) | 24 to 25 | 24.7 | 60 fps with a margin in mac_01 (GUESS) |
 | 9 | DRAWOBJ rows DO1 to DO4 (user yes 20 Nov, plan_drawobj.md) | 23 to 25 | 20 to 22 | 60 fps with margin in mac_01; heavy scenes OPEN (GUESS) |
-| 10 | DO5 and more game-side draw work (user decision) | 15 to 20 | 20 | margin for heavy scenes (GUESS) |
 
 ## 4. What rows cannot solve
 - Game logic floor: 2.4 ms (FACT). The game draw code (about 9.7 ms, GUESS) stays unless DRAWOBJ replaces the per-frame draw calls of static objects.
@@ -52,7 +51,7 @@ Tags: FACT (console capture or code read), GUESS (estimate), OPEN (not measured)
 - Heavy scenes (battles, many NPCs, particle storms) cost more than mac_01 (GUESS). The plan reaches 60 fps in mac_01 first; other scenes need their own capture.
 - User decisions: Q2 (captures), Q6 (DRAWOBJ design pass), content cuts if the GPU is the limit, and that 60 fps means 30 game steps plus key frames.
 - Honest summary: rows 2 to 8 can reach 60 fps in mac_01 with a small margin (GUESS). DRAWOBJ rows add margin (core 1 -3.5 to -5, core 0 -4 to -7 ms, GUESS).
-  Heavy scenes may also need game-side draw changes (DO5) or content cuts: the captures decide.
+  Heavy scenes may also need the game draw rows (plan_gamedraw.md) or content cuts (user decision): the captures decide.
 
 ## 5. Measurement plan
 - Capture 1, after PROF3 and MSNAP2 merge: words `--profile prof warp=mac_01:0 pos=0:0:200 profdisk=1`, 17 steady windows; capture_check first with
