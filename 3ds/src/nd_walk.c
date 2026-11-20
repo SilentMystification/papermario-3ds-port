@@ -240,7 +240,6 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; /* NAT4B */ /* NAT6F */
 int pm_drec_now(void); extern int sc_ok; extern unsigned sc_sig, comb_gen, cmb_gen_seen; unsigned sc_sig_now(void); extern int box_folded;
-static unsigned char c6_mark; /* NAT6B: the slot of the copy unit that runs; NAT6D2 */
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
  * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
 static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, const void* at) {
@@ -330,12 +329,6 @@ void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if 
 void nd_prim_run(const uint32_t* r) { if (nd_ws.prim == r[1] && (uint8_t)nd_ws.prim_lod == (uint8_t)r[0] && sc_ok) { pm_gpu_set_prim(nd_ws.prim, r[0]); nd_ws.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */
 void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep_mw = r[1]; nd_epk_mk++; gv_epoch++; } /* NAT6C: nr_ctl MISC_EP */
 void nd_cbd_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6C: nr_set of a pure combine unit at ep_stream, ex_depth 0 */
-void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
-    nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
-static void cp_side(const uint32_t* u) { const uint32_t a = u[0] & 0xffffffu, b = u[1]; const unsigned id = u[0] >> 24; /* NAT6D2: the state notes of nd_unit_same (nd_set.c:126-134) */
-    if (id == ND_FS_OMH) { const uint32_t m = nd_op_om_mask(a); if ((b & m) == (nd_ws.omode_h & m) && sc_ok) nd_ws.om_kh |= m; }
-    else if (id == ND_FS_OML) { const uint32_t m = nd_op_om_mask(a); if ((b & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; }
-    else if (id == ND_FS_PRIM && nd_ws.prim == b && (uint8_t)nd_ws.prim_lod == (uint8_t)a && sc_ok) { pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; } } /* NAT6D2 */
 static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ws.omode_h & a) && sc_ok) nd_ws.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ws.omode_l & a)) nd_ws.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ws.prim == b && (uint8_t)nd_ws.prim_lod == (uint8_t)a && sc_ok) { pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */
 static void cp_unit(unsigned dbg, const uint32_t* u, unsigned m, int mk) { const unsigned id = u[0] & 0xffu; const NdNapiRun f = (NdNapiRun)(uintptr_t)u[1]; int cut = 1; /* NSET2: u the slot, u + 2 the values */ /* NAT6D2: one copy state unit, nr_set and ls_run under NAT6D1 */
     if (m == 2u) { if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) return;

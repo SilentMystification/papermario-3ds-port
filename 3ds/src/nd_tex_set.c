@@ -46,8 +46,7 @@ unsigned ens_wrap[4];
 int ens_sz[4];
 static int ens_slot = -1; static unsigned ens_gen; /* KMR10M: cache slot and generation the last walker bind of tile 0 left in pm_tex cur */
 
-/* The bodies of the texture ops, one function each (decoded fields). HC4c: the typed setters nd_set_* (nd_op.h fields) call them; nd_unit_apply
- * (nd_set.c) runs the typed ops by id. */
+/* NSET3: the texture units run as native value appliers (nd_sv_timg, nd_sv_tile, nd_sv_tsz, nd_sv_tlut at the end of this file); set_timg, set_tile, set_loadtlut and nd_tsz_set are their helpers (set_timg and set_loadtlut also run in nd_tex_bind_glyph). */
 /* CORE-2b batch D: texture image setter (decoded fields). */
 static void set_timg(u32 addr, unsigned fmt, unsigned siz, int stride) {
     nd_ws.timg = ptr_of(addr);
@@ -59,7 +58,6 @@ static void set_timg(u32 addr, unsigned fmt, unsigned siz, int stride) {
     nd_ws.tst1.timg_stride = stride;
     nd_tm.ld_valid = 0;
 }
-void nd_tx_timg(u32 a, u32 b) { set_timg(b, (a >> 21) & 7, (a >> 19) & 3, (int)(a & 0xfff) + 1); }
 /* CORE-2b batch D: tile setter (decoded fields; wr = the four wrap words, sh0 and sh1 the shifts). */
 static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, unsigned pal, const unsigned* wr, unsigned sh0, unsigned sh1) {
     int same_tile = tile == 0 && st0_ok && pm_tex_wrap_gen() == st0_ep && nd_ws.tst1.tile_fmt[0] == fmt && nd_ws.tst1.tile_siz[0] == siz && nd_ws.tst1.tile_tmem[0] == tmem && nd_ws.tst1.tile_pal[0] == pal
@@ -84,10 +82,6 @@ static void set_tile(unsigned tile, unsigned fmt, unsigned siz, unsigned tmem, u
         st0_ep = pm_tex_wrap_gen(); st0_ok = 1; /* the wrap state pm_tex has now is the one of tile 0: an identical G_SETTILE may skip while nothing else touched pm_tex */
     }
 }
-void nd_tx_tile(u32 a, u32 b) {
-    unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 };
-    set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15);
-}
 /* CORE-2b batch D2: palette load setter (decoded fields: tile and entry count). */
 static void set_loadtlut(unsigned tile, unsigned count) {
             nd_ws.tlut = nd_ws.timg;
@@ -104,7 +98,6 @@ static void set_loadtlut(unsigned tile, unsigned count) {
                 }
             }
 }
-void nd_tx_ldtlut(u32 b) { set_loadtlut((b >> 24) & 7, (b >> 14) & 0x3ff); }
 /* CORE-2b batch D: tile size setter (decoded fields). */
 static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult, int lrs, int lrt, const NdTxR* r) {
     if (tile == 0 && PMDL("negpanf") && pm_frame_count() >= 200u && (nd_ws.tst1.tile_wrap[0][2] || nd_ws.tst1.tile_wrap[0][3])) { /* NEGPAN step 1 debug: force the mushroom panner offset (-0x8000 = -128 in 10.2) on 8 tile-0 sizes */
@@ -185,19 +178,7 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             }
             return;
 }
-static __attribute__((cold, noinline)) void txraw_note(unsigned tile) { static unsigned lf = ~0u; const unsigned fr = pm_frame_count(); if (fr == lf) return; lf = fr; pm_log_evt("txraw f%u tile %u", fr, tile); } /* NAT5T */
-__attribute__((noinline)) void nd_tx_tsz(u32 a, u32 b) {
-    if (__builtin_expect(((b >> 24) & 7u) < 2u, 0)) { txraw_note((b >> 24) & 7u); return; } /* NAT5T: a raw tile size of tile 0 or 1 has no path left */
-    nd_tsz_set((b >> 24) & 7, (int)((a >> 12) & 0xfff), (int)(a & 0xfff), (int)((b >> 12) & 0xfff), (int)(b & 0xfff), NULL);
-}
 void nd_tx_tszr(const NdTxR* r) { nd_tsz_set(r->tile, r->uls, r->ult, r->lrs, r->lrt, r); } /* NAT5T */
-/* CORE-2b batch D2: texture enable and scale setter (decoded fields). */
-static void set_texture(unsigned on, unsigned ss, unsigned ts) {
-    nd_ws.tex_on = on;
-    nd_ws.tex_ss = ss;
-    nd_ws.tex_ts = ts;
-}
-void nd_tx_texon(u32 a, u32 b) { set_texture(a, b >> 16, b & 0xffffu); }
 
 /* DIRECT D4b-1, D5: NDC_TEXRECT (nd_cmd.h), recorded by the nd_gbi.h redirect: the walker's op prologue of G_TEXRECT (gv_epoch,
  * pm_gbi_cur_op), then the rectangle. */
