@@ -1,0 +1,32 @@
+# ws_NCS3 (Haiku: 9 files, core 0 only, expected-diff UD-N5): walker render syncs and the combine syncs outside nd_set.c go
+WAIT: `Merge NCS2` (text overlap: NCS2 edits nd_direct.c:173, nd_int.h:29, nd_direct_test.c:106, nd_comb.c after :292; this row edits the next lines). Worktree build3ds/wt/NCS3, branch NCS3. PM_ROW=NCS3 PM_LANE=NCS3. Designer: oracle NATIVE14 (id in the launch prompt).
+Objective: (a) A rectangle, fill or glyph with no live snap keeps the GPU render state of the last snap, as a triangle does (NAT3D, nd_geom.c:219). The 4 nd_rnd_sync calls and nd_rnd_sync go. (b) The 6 nd_comb_sync calls outside nd_set.c go. Two cold drec markers log the frames where the old code acted: `rndw f<n>` and `csync f<n>`. Counter C13: calls -10, interp -1 (FUNC nd_rnd_sync). state 0.
+Regions (main 812c72df26, find by text): nd_rect.c :123, :150, :159, :198, :312, :340; nd_tex_set.c :120, :124, :480; nd_walk.c nd_pend_run; nd_direct.c :174; nd_set.c :231-249 (nd_rnd_sync; NATIVE13 rows keep :250); nd_snap.c :256; nd_comb.c after the NCS2 lines; nd_int.h:30; 3ds/tools/nd_direct_test.c:55.
+## Facts
+- FACT c0src of the 4 gate benches (postmerge logs on main): wrnd 0 and wcomb 0 in every line (spot_mac01 f201, entcape_kmr03 f201, fxparts f676, wscmb_pause f141). No recorded draw takes the walker render or combine. GUESS: byte-equal.
+- FACT after NAT3A nd_comb_sync (nd_comb.c:281-291) only does this: when `!sc_ok || sc_sig_now() != sc_sig`, it sets sc_sig, sr_ok 0, sc_ok 1. Else it returns. So the csync marker condition below is the exact condition of an effect.
+- FACT box_pattern_rect sets sc_ok 0 at :123 and calls nd_comb_sync at :150 and :159, nothing between reads sc_ok. nd_pend_run sets sc_ok 0 and calls nd_comb_sync, so its sr_ok becomes 0 always.
+## Edits (Edit tool only: CRLF files. Each new or changed line ends with `/* NCS3 */`)
+1. nd_comb.c after the NCS2 line `void nd_bfold_note(void) ...`:
+```c
+static __attribute__((cold, noinline)) void ncs3_log(const char* k) { static unsigned fr[2] = { ~0u, ~0u }; const unsigned i = k[0] == 'c'; if (pm_frame_count() != fr[i]) { fr[i] = pm_frame_count(); pm_log_evt("%s f%u", k, fr[i]); } } /* NCS3 */
+void nd_csync_note(void) { if (__builtin_expect(pm_drec_now(), 0) && (!sc_ok || sc_sig_now() != sc_sig)) ncs3_log("csync"); } /* NCS3: the old nd_comb_sync would act here (UD-N5); NWS1 deletes it */
+void nd_rndw_note(void) { if (__builtin_expect(pm_drec_now(), 0)) ncs3_log("rndw"); } /* NCS3: a draw with no live snap; the old nd_rnd_sync ran here (UD-N5); NWS1 deletes it */
+```
+2. nd_int.h:30. Before: `void nd_rnd_sync(void);`. After: `void nd_csync_note(void); void nd_rndw_note(void); /* NCS3, nd_comb.c: drec markers */`.
+3. nd_rect.c:198. Before: `static void rc_render(void) { if (rc_sn) nd_snap_render(); else nd_rnd_sync(); } /* NDR1C */`. After: `static void rc_render(void) { if (rc_sn) nd_snap_render(); else nd_rndw_note(); } /* NDR1C; NCS3: no snap, the render state of the last snap stays */`.
+4. nd_rect.c:312 (nd_fillrect_zs). Before: `    nd_rnd_sync();`. After: `    if (nd_snap_live) nd_snap_render(); else nd_rndw_note(); /* NCS3 */`. nd_rect.c:340: replace `else nd_rnd_sync();` with `else nd_rndw_note();` and add ` /* NCS3 */` at the line end. nd_direct.c:174 (glyph): the same replacement.
+5. nd_rect.c:123. Before: `    sc_ok = 0; nd_sr_forget(); /* DIP2: ... */`. After: `    nd_sr_forget(); /* DIP2; NCS3: sc_ok stays, the end note compares */`. nd_rect.c:150 and :159: replace `nd_comb_sync();` with `nd_csync_note();`, add ` /* NCS3 */` at the line end.
+6. nd_tex_set.c:120, :124, :480: replace `nd_comb_sync();` with `nd_csync_note();`, add ` /* NCS3 */` at the line end (at :480 the line holds only the call: `                    nd_csync_note(); /* NCS3 */`).
+7. nd_walk.c nd_pend_run. Before: `pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync(); pm_walk_side--;`. After: `pm_comb_vprim = 0; nd_csync_note(); nd_sr_forget(); pm_walk_side--;` and add ` /* NCS3 */` at the line end.
+8. nd_set.c: delete :231 (`int nd_snap_rdiff(...); extern unsigned char nd_c0d; /* NAT1D */`) and the function nd_rnd_sync (:232 `void nd_rnd_sync(void) {` to its `}` at :249). Keep :250. nd_snap.c:256: delete the line `int nd_snap_rdiff(...) { ... }` (its only caller was nd_rnd_sync).
+9. nd_direct_test.c:55. Before: `void nd_rnd_sync(void) { n_render++; }`. After: `void nd_rndw_note(void) { n_render++; } void nd_csync_note(void) {} /* NCS3 */`.
+## Steps (output to build3ds/out/, read the last 20 lines, Bash `timeout: 600000`, foreground only, 1 build, 8 Azahar starts)
+1. Edits 1-9. `sh 3ds/tools/nd_host_test.sh > build3ds/out/ncs3_host.txt 2>&1`: PASS. Commit `NCS3 1: walker render syncs and outside combine syncs go; rndw and csync markers`.
+2. `python 3ds/tools/bench.py base wscmb_pause_drec > build3ds/out/ncs3_base1.txt 2>&1`, the same for fxparts_drec (ncs3_base2.txt). wscmb_pause: rectangles, glyphs, box pattern. fxparts: fills, particle end, tile 1.
+3. `sh 3ds/tools/rowloop.sh --row NCS3 --bench wscmb_pause_drec,fxparts_drec --no-host --why "NCS3: render and combine syncs go" > build3ds/out/ncs3_loop.txt 2>&1`.
+4. For each bench B: `grep -c "rndw f\|csync f" build3ds/azt/logs/B.txt`; with F the drec frame of the first DIFF in build3ds/out/loop_NCS3_cmp_B.txt, `grep -n "rndw fF$\|csync fF$" build3ds/azt/logs/B.txt`. Seeded check: `grep -n "csync f999999$" build3ds/azt/logs/B.txt` prints nothing. All lines into build3ds/out/ncs3_mk.txt.
+5. `mkdir -p build3ds/out/c0base && git archive $(git merge-base HEAD main) | tar -x -C build3ds/out/c0base`, then `python build3ds/out/c0base/3ds/tools/c0gate.py <basebin ELF named in ncs3_base1.txt>` and `python 3ds/tools/c0gate.py build3ds/lane-NCS3/pm_3ds.elf`, both into build3ds/out/ncs3_c0.txt.
+## Gate (exact, UD-N5): host PASS. Each bench is byte-equal, or its first DIFF frame F has a `rndw fF` or `csync fF` line. The seeded check prints nothing. c0gate head minus base: calls -10, interp -1, state 0; head interp_syms has no nd_rnd_sync. Report the marker counts (not judged).
+Fix rights: compile errors, prototypes, unused warnings (nd_c0d stays: pm_gpu.c:603 defines it). A DIFF with no marker at F, a crash, other c0gate values or a tool fault: stop. Send the cmp path and ncs3_mk.txt to oracle NATIVE14 with SendMessage. Wait.
+## Hand-back: last commit `NCS3 2: gate. <lines>` with `git add -f build3ds/out/ncs3_loop.txt build3ds/out/ncs3_mk.txt build3ds/out/ncs3_c0.txt`. It deletes this page. One SubagentHandback: hashes, cmp line and marker lines per bench, c0gate lines.
