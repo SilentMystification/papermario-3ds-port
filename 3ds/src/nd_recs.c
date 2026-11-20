@@ -12,6 +12,7 @@
 #include "variables.h"
 #include "nd_fs.h"
 #include "nd_msnapw.h"
+#include "nd_snap.h" /* NWS4C: nd_ap */
 
 void nd_mdl_alt(const uint32_t* ab); /* NAT5B: nd_walk.c */
 void nd_range_run(const uint32_t* a); /* nd_walk.c: DIRECT D10a, a custom gfx range of the frame stream */
@@ -106,15 +107,15 @@ enum { HS_OMH, HS_OML, HS_GEOM, HS_PRIM, HS_ENV, HS_FOG, HS_BLEND, HS_TEX, HS_CO
 static unsigned hs_hits, hs_n[HS_N], hs_f0, hs_fl;
 static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
     hs_hits++;
-    hs_n[HS_OMH] += ((nd_ws.omode_h & ~d->omh_m) | d->omh_v) != nd_ws.omode_h;
-    hs_n[HS_OML] += ((nd_ws.omode_l & ~d->oml_m) | d->oml_v) != nd_ws.omode_l;
+    hs_n[HS_OMH] += ((nd_ap->in.omode_h & ~d->omh_m) | d->omh_v) != nd_ap->in.omode_h; /* NWS4C */
+    hs_n[HS_OML] += ((nd_ap->oml & ~d->oml_m) | d->oml_v) != nd_ap->oml; /* NWS4C */
     hs_n[HS_GEOM] += ((nd_ws.geom & d->g_and) | d->g_or) != nd_ws.geom;
-    hs_n[HS_PRIM] += (d->fl & HD_PRIM) && (d->prim != nd_ws.prim || d->plod != nd_ws.prim_lod);
-    hs_n[HS_ENV] += (d->fl & HD_ENV) && d->env != nd_ws.envc;
-    hs_n[HS_FOG] += (d->fl & HD_FOG) && d->fog != fogc;
-    hs_n[HS_BLEND] += (d->fl & HD_BLEND) && d->blend != blendc;
+    hs_n[HS_PRIM] += (d->fl & HD_PRIM) && (d->prim != nd_ap->in.prim || d->plod != nd_ap->plod); /* NWS4C */
+    hs_n[HS_ENV] += (d->fl & HD_ENV) && d->env != nd_ap->in.env; /* NWS4C */
+    hs_n[HS_FOG] += (d->fl & HD_FOG) && d->fog != nd_ap->fogc; /* NWS4C */
+    hs_n[HS_BLEND] += (d->fl & HD_BLEND) && d->blend != nd_ap->blendc; /* NWS4C */
     hs_n[HS_TEX] += (d->fl & HD_TEX) && (d->tex != (uint8_t)nd_ws.tex_on || d->tss != ((uint32_t)nd_ws.tex_ss << 16 | (nd_ws.tex_ts & 0xffffu)));
-    hs_n[HS_COMB] += (d->fl & HD_COMB) && (d->cw0 != nd_ws.comb_w0 || d->cw1 != nd_ws.comb_w1);
+    hs_n[HS_COMB] += (d->fl & HD_COMB) && (d->cw0 != nd_ap->in.w0 || d->cw1 != nd_ap->in.w1); /* NWS4C */
     hs_n[HS_FOGF] += (d->fl & HD_FOGF) && (d->fm != fog_fm || d->fo != fog_fo);
     const unsigned fr = pm_frame_count();
     if (fr != hs_fl) {
@@ -129,14 +130,12 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
 }
 /* the combine of a hit, as rec_top runs it (nd_unit_same COMB, nd_comb_set) */
 static __attribute__((noinline)) void hd_comb(const NdHitD* d) {
-    if (!(d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0)) nd_comb_set(d->cw0, d->cw1);
+    if (d->cw0 != nd_ws.comb_w0 || d->cw1 != nd_ws.comb_w1) { pm_gpu_flush(); nd_ws.comb_w0 = d->cw0; nd_ws.comb_w1 = d->cw1; } /* NWS4D: POND 3a flush and the memo */
 }
 static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
     if (fl & HD_PRIM) { nd_ws.prim = d->prim; nd_ws.prim_lod = d->plod; }
     if (fl & HD_ENV) nd_ws.envc = d->env;
-    if (fl & HD_FOG) fogc = d->fog;
-    if (fl & HD_BLEND) blendc = d->blend;
     if (fl & HD_TEX) { nd_ws.tex_on = d->tex; nd_ws.tex_ss = d->tss >> 16; nd_ws.tex_ts = d->tss & 0xffffu; }
     if (fl & HD_FOGF) { fog_fm = d->fm; fog_fo = d->fo; }
 }

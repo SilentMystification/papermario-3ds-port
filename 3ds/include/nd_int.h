@@ -9,6 +9,7 @@
 #include "ultra64.h"
 #include "nd.h"
 #include "nd_cmd.h"
+#include "nd_apw.h" /* NWS4C: NdGvC */
 
 typedef struct { int p0, p1; float u0, u1; } FoldSeg;
 
@@ -81,7 +82,6 @@ void tex_streak_op(unsigned op);
 void* ptr_of(u32 w);
 extern const u8* src;
 extern float vert_p[][4];
-extern int box_folded;
 extern int h;
 extern int splash_on;
 extern unsigned conv_k4;
@@ -103,11 +103,9 @@ extern u8 vert_gvf[64];
 extern u8 vert_litf[64];
 extern u8 vert_live[64];
 extern u8 vert_scr[64];
-extern unsigned blendc;
 extern unsigned char vert_cb[64];
 extern unsigned conv_k4;
 extern unsigned ent_skipgen;
-extern unsigned fogc;
 extern unsigned gp1_ld_cross;
 extern unsigned gp1_ld_in;
 extern unsigned gp1_ld_out;
@@ -121,8 +119,6 @@ extern unsigned gp_opt_last;
 extern unsigned gv_epoch;
 extern unsigned gv_fb[];
 extern unsigned gv_load_n;
-extern unsigned keyc;
-extern unsigned keys;
 extern unsigned n_ops;
 extern unsigned pm_gbi_cur_op;
 extern unsigned short vert_gmi[64];
@@ -143,11 +139,10 @@ void lit_freeze(void);                       /* GV5, the former pm_gbi.c */
 extern int sci_x0, sci_y0, sci_x1, sci_y1;   /* ST-1: nd_state.c, scissor of the walker */
 void nd_light_count(u32 w1);                 /* ST-1: the former pm_gbi.c, G_MW_NUMLIGHT (lit_freeze, clamp 7) */
 extern unsigned lt_n;                        /* the former pm_gbi.c, lights count (GM-1) */
-extern unsigned fogc, blendc;                /* ST-1: nd_state.c */
 extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
 int ent_gdl(const NdW2* l, const uint32_t* et);
 extern u8 gMapShapeData[];
-extern int gp_prev_op, box_folded; /* NWS1 */
+extern int gp_prev_op; /* NWS1 */
 extern unsigned char nd_c0w; /* NAT1: bit 0 combine, bit 1 render, bit 2 bind set by the walker (pm_gpu.c) */
 void nd_c0_src(void); /* NAT1B: pm_gpu.c, the producer of a walker decision */
 extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside nd_eg_run; full combine and render syncs and walks run there (entsync line) */
@@ -168,7 +163,6 @@ extern NdTexM nd_tm;
 typedef struct NdWin { const u8* src; int w, h, stride, x0; } NdWin;
 void nd_texw0(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o);
 void nd_texw1(const NdTst* t, const NdTexM* m, const void* timg, int uls, int ult, int lrs, int lrt, NdWin* o); /* D4a-1: the tile 1 window, in nd_texwin.c */
-extern int dual_on;              /* the former pm_gbi.c */
 extern void* const zb_fake;      /* the former pm_gbi.c */
 int pm_is_cfb(const void* p);
 int pm_is_cur_cfb(const void* p);
@@ -217,17 +211,15 @@ void grab_cur(const void* src, int w, int h);       /* the former pm_gbi.c, targ
 void nd_native_rec(unsigned kind, unsigned on);      /* nd_target.c, LS-4: G_PM_ND records (HC4d2: ND_FS_MISC_ND fields) */
 int load_shaded_sprite(void);           /* the former pm_gbi.c, TX-3 */
 int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3 */
-void nd_comb_set(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 /* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
 extern int comb_mode5, plan_active, fog_fm, fog_fo, box_pat, leg_mode;
-int nd_cw_ashade(uint32_t w0, uint32_t w1); int nd_cw_box_prod(uint32_t w0, uint32_t w1); /* NWS2, nd_comb.c */
+int nd_cw_t1only(uint32_t w0, uint32_t w1); /* NWS4C, nd_comb.c */ int nd_cw_ashade(uint32_t w0, uint32_t w1); int nd_cw_box_prod(uint32_t w0, uint32_t w1); /* NWS2, nd_comb.c */
 extern PmPlan cur_plan; extern float dual_f[4];
 void cc_cycle1(const float* t0, const float* t1, float out[4]);
 /* ---- C (ST-2): the combine group in nd_comb.c ---- */
 int const_rgb_tex_alpha(unsigned* out);
 float cc_clamp(float v);
-void nd_comb_set(u32 w0, u32 w1);
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1);
 
 
@@ -248,7 +240,7 @@ void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list);
 void draw_tri(unsigned w);
 void nd_geo_units(const uint32_t* u, unsigned n); /* NATFB, nd_geom.c */
 void gv_params_calc(unsigned tss, NdGvP* o);
-void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o);
+void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o, const NdGvC* gc); /* NWS4C */
 void lit_freeze(void);
 int gv_lit_ok(void);
 int clip_bits4(const float* p);

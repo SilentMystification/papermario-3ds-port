@@ -11,11 +11,17 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "../src/nd_direct.c"
-/* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that nd_wsnap_chk (run by every ND_WCHK, pm_drec_now is 1) fills from nd_ws. */
+#define nd_direct_bind(...) (ap_sync(), nd_direct_bind(__VA_ARGS__)) /* NWS4D */
+#define nd_direct_ready() (ap_sync(), nd_direct_ready())
+#define nd_direct_rect(...) (ap_sync(), nd_direct_rect(__VA_ARGS__))
+#define nd_direct_quad(...) (ap_sync(), nd_direct_quad(__VA_ARGS__))
+#define nd_direct_end() (ap_sync(), nd_direct_end())
+/* NWS4B: nd_direct.c reads the applied snap (nd_ap). The host has no nd_snap.c: nd_ap is a stub snap that ap_sync (run before each nd_direct call below) fills from nd_ws. */
 static NdSnapChk ap_stub;
 const NdSnapChk* const nd_ap = &ap_stub;
 int pm_drec_now(void) { return 1; }
-void nd_wsnap_chk(void) {
+extern int dual_on; extern unsigned keyc, keys;
+static void ap_sync(void) {
     memset(&ap_stub, 0, sizeof ap_stub);
     ap_stub.in.w0 = nd_ws.comb_w0; ap_stub.in.w1 = nd_ws.comb_w1; ap_stub.in.omode_h = nd_ws.omode_h; ap_stub.oml = nd_ws.omode_l;
     ap_stub.in.prim = nd_ws.prim; ap_stub.plod = nd_ws.prim_lod; ap_stub.in.env = nd_ws.envc; ap_stub.in.use_t1 = nd_ws.use_t1;
@@ -43,7 +49,7 @@ PmPlan cur_plan;
 M1Rec m1;
 struct TszLast tsz_last;
 
-static int n_decide, n_setcomb, n_prim, n_plan, n_leg, n_const, n_rect, n_forget, n_flush, n_filter, n_end_clear;
+static int n_decide, n_prim, n_plan, n_leg, n_const, n_rect, n_forget, n_flush, n_filter, n_end_clear;
 static unsigned last_prim, last_const, last_leg;
 static int last_rect[4];
 static float last_st[4];
@@ -61,7 +67,6 @@ void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     if (in->w0 == 0xfc000003u) { out->cc_on = 1; out->cc = 0x11223344u; out->leg = 4; return; }
     out->leg = 2;
 }
-void nd_comb_set(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
 int nd_cw_box_prod(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; return box_prod; } /* NWS2 */
 extern unsigned nd_snap_render_n; /* NAT2A */
 void nd_sr_forget(void) { n_forget++; }
@@ -144,7 +149,7 @@ int main(void) {
     ia = nd_pso_n64(&a); ib = nd_pso_n64(&b);
     CHECK(ia != ib);
     it1 = nd_pso_n64(&t1);
-    n_prim = n_setcomb = 0;
+    n_prim = 0;
     CHECK(nd_direct_bind(it1, 0x01020304u, 0u) == 0);
     snap_none = 1; CHECK(nd_direct_bind(ia, 1u, 2u) == 0); snap_none = 0; /* NDR2D: no live snap: the record walks */
     /* a bind: the other mode as the stream sets it (the render mode replaces bits 3 to 31, bits 0 to 2 stay), the combine words, the primitive colour */
@@ -155,9 +160,9 @@ int main(void) {
     CHECK(nd_ws.prim == 0xff804020u && last_prim == 0xff804020u && nd_ws.prim_lod == 0u && nd_ws.envc == 0x55u);
     CHECK(n_leg == 1 && last_leg == 2u && leg_mode == 2 && n_plan == 0 && nd_snap_render_n >= 1);
     CHECK(dual_on == 0);
-    n_setcomb = 0;
+    n_flush = 0;
     CHECK(nd_direct_bind(ia, 0xff804020u, 0x55u) == 1);
-    CHECK(n_setcomb == 0); /* the same words: no second nd_comb_set */
+    CHECK(n_flush == 0); /* the same words: no second combine flush (NWS4D) */
     ipl = nd_pso_n64(&pl);
     CHECK(nd_direct_bind(ipl, 1u, 2u) == 1 && n_plan == 1 && plan_active == 1);
     icc = nd_pso_n64(&cc);

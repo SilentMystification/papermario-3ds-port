@@ -3,7 +3,6 @@
 		/* class A: stream and op loop */
 		*(.text.pm_gpu_flush_at)  /* 73.3 calls/frame, 416 B */
 		*(.text.nr_geo)  /* 40.7 calls/frame, 380 B */
-		*(.text.nd_comb_set)  /* 37.0 calls/frame, 1172 B */
 		*(.text.nd_tsz_set)  /* 30.0 calls/frame, 2360 B */
 		*(.text.nr_ctl)  /* 29.7 calls/frame, 1084 B */
 		*(.text.gp3_t0_set)  /* 24.7 calls/frame, 68 B */
