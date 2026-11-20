@@ -43,7 +43,7 @@ static __attribute__((noinline)) void rec_matrix(const NdW2* q) {
 /* MCOPY1 step 1 (census, drec frames only): would hit_apply and the record lights give the state the 2 alt ranges give? */
 static __attribute__((cold, noinline)) void hit_delta(const NdW2* q, NdHitD* d);
 typedef struct McPre { unsigned omh, oml, prim, plod, env, w0, w1, tex, fm, fo, ltn; NdLight lt[9]; int tx0, ty0; float fx, fy; int cur; } McPre;
-static unsigned mc_miss, mc_b[5], mc_logn;
+static unsigned mc_miss, mc_b[5], mc_logn, mc_f;
 static __attribute__((cold, noinline)) void mc_pre(McPre* p) {
     p->omh = nd_c0.omode_h & ~(3u << G_MDSFT_TEXTFILT); p->oml = nd_c0.omode_l; p->prim = nd_c0.prim; p->plod = nd_c0.prim_lod; p->env = nd_c0.envc;
     p->w0 = nd_c0.comb_w0; p->w1 = nd_c0.comb_w1; p->tex = (unsigned)nd_c0.tex_on; p->fm = (unsigned)nd_c0.fog_fm; p->fo = (unsigned)nd_c0.fog_fo;
@@ -52,15 +52,18 @@ static __attribute__((cold, noinline)) void mc_pre(McPre* p) {
 }
 static int mc_slot(const NdLight* s, const uint8_t* l) { return s->col[0] == l[0] && s->col[1] == l[1] && s->col[2] == l[2] && s->dir[0] == (int8_t)l[8] && s->dir[1] == (int8_t)l[9] && s->dir[2] == (int8_t)l[10]; }
 static __attribute__((cold, noinline)) unsigned mc_post1(const NdW2* q, const McPre* p) { /* after the first alt range: bit 1 scalar, bit 2 lights */
-    NdHitD d; unsigned m = 0u;
+    NdHitD d; unsigned m = 0u; mc_f = 0u;
     hit_delta(q, &d);
     const unsigned kf = ~(3u << G_MDSFT_TEXTFILT);
-    if ((nd_c0.omode_h & kf) != (((p->omh & ~d.omh_m) | d.omh_v) & kf) || nd_c0.omode_l != ((p->oml & ~d.oml_m) | d.oml_v)) m |= 1u;
-    if (nd_c0.prim != ((d.fl & HD_PRIM) ? d.prim : p->prim) || nd_c0.prim_lod != ((d.fl & HD_PRIM) ? d.plod : p->plod)) m |= 1u;
-    if (nd_c0.envc != ((d.fl & HD_ENV) ? d.env : p->env)) m |= 1u;
-    if (nd_c0.comb_w0 != ((d.fl & HD_COMB) ? d.cw0 : p->w0) || nd_c0.comb_w1 != ((d.fl & HD_COMB) ? d.cw1 : p->w1)) m |= 1u;
-    if ((unsigned)nd_c0.tex_on != ((d.fl & HD_TEX) ? (unsigned)d.tex : p->tex)) m |= 1u;
-    if ((unsigned)nd_c0.fog_fm != ((d.fl & HD_FOGF) ? (unsigned)(int)d.fm : p->fm) || (unsigned)nd_c0.fog_fo != ((d.fl & HD_FOGF) ? (unsigned)(int)d.fo : p->fo)) m |= 1u;
+    if ((nd_c0.omode_h & kf) != (((p->omh & ~d.omh_m) | d.omh_v) & kf)) mc_f |= 1u;
+    if (nd_c0.omode_l != ((p->oml & ~d.oml_m) | d.oml_v)) mc_f |= 2u;
+    if (nd_c0.prim != ((d.fl & HD_PRIM) ? d.prim : p->prim)) mc_f |= 4u;
+    if (nd_c0.prim_lod != ((d.fl & HD_PRIM) ? d.plod : p->plod)) mc_f |= 8u;
+    if (nd_c0.envc != ((d.fl & HD_ENV) ? d.env : p->env)) mc_f |= 16u;
+    if (nd_c0.comb_w0 != ((d.fl & HD_COMB) ? d.cw0 : p->w0) || nd_c0.comb_w1 != ((d.fl & HD_COMB) ? d.cw1 : p->w1)) mc_f |= 32u;
+    if ((unsigned)nd_c0.tex_on != ((d.fl & HD_TEX) ? (unsigned)d.tex : p->tex)) mc_f |= 64u;
+    if ((unsigned)nd_c0.fog_fm != ((d.fl & HD_FOGF) ? (unsigned)(int)d.fm : p->fm) || (unsigned)nd_c0.fog_fo != ((d.fl & HD_FOGF) ? (unsigned)(int)d.fo : p->fo)) mc_f |= 128u;
+    if (mc_f & ~2u) m |= 1u; /* b1 without the omode_l bit (oml census only) */
     if (q[3].words.w1 != 0u && q[2].words.w0 <= 7u) {
         const unsigned n = q[2].words.w0 ? q[2].words.w0 : 1u;
         const Lightsn* L = (const Lightsn*)(uintptr_t)q[3].words.w1;
@@ -75,7 +78,7 @@ static __attribute__((cold, noinline)) void mc_post2(const NdW2* q, const McPre*
     if (pm_tex_cur_idx() != p->cur) m |= 16u;
     mc_miss++;
     for (unsigned k = 0; k < 5u; k++) mc_b[k] += (m >> k) & 1u;
-    if (m && mc_logn < 32u) { mc_logn++; pm_log_evt("mcopy f%u rec %08x d %u", pm_frame_count(), (unsigned)(uintptr_t)q, m); }
+    if (m && mc_logn < 32u) { mc_logn++; pm_log_evt("mcopy f%u rec %08x d %u fld %u", pm_frame_count(), (unsigned)(uintptr_t)q, m, mc_f); }
 }
 void nd_mcopy_end(void) { pm_log_evt("mcopyc f%u miss %u b1 %u b2 %u b4 %u b8 %u b16 %u", pm_frame_count(), mc_miss, mc_b[0], mc_b[1], mc_b[2], mc_b[3], mc_b[4]); }
 static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone) {
