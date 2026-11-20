@@ -450,9 +450,11 @@ unsigned nd_mc_clears(void);
  * geometry mode), mtx (matrix ops, move word and memory), rect (rectangles, fill, scissor, colour and depth images), list (list ops, syncs, records, other). */
 enum { NDT_REC, NDT_ENT, NDT_SPR, NDT_DLC, NDT_SUB, NDT_KICK, NDT_RAW, NDT_TEX, NDT_COMB, NDT_GEO, NDT_MTX, NDT_RECT, NDT_LIST, NDT_SNAP, NDT_LSC, NDT_ALT, NDT_RMDL, NDT_RENT, NDT_RSPR, NDT_RNR, NDT_MKEY, NDT_MMTX, NDT_MHIT,
     NDT_GENT, NDT_GMDL, NDT_GPLY, NDT_GNPC, NDT_GWRK, NDT_GFX, NDT_GTASK, NDT_GTHUD, NDT_GUI, /* PROF3: core 1 draw classes (cam_main.c, main_loop.c) */
+    NDT_SUPD, NDT_SEMIT, /* DO3: C3Di_UpdateContext and nd_emit_draw inside the native submit */
     NDT_N }; /* NAT8A */
 void pm_gpu_ndt_cls(int k); /* PERF2: an op of class k (NDT_TEX..NDT_LIST) in a timed walk; -1 ends the class span (the end of an outer list) */
 unsigned nd_ent_cfull_all(void); unsigned nd_gdl_lists(void); /* PERF2: nd_ent.c totals */
+void pm_gpu_updr_take(unsigned o[8]); /* DO3: since the last take: the reasons c3d_upd_needed returned 1 (flag word, light env, fixed attr, gas 7, unaligned, float uniform, int or bool uniform) */
 void pm_gpu_cnt_take(unsigned o[8]); /* PERF2: since the last take: program switches, shadow resets, UpdateContext calls, splits, sprite memo hits, misses, full combine syncs in ent, ent_gdl lists */
 void pm_gpu_ndt_push(void);
 void pm_gpu_ndt_pop(int k);

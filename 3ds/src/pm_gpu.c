@@ -1316,21 +1316,24 @@ static __attribute__((cold, noinline)) void orb_log(const char* path, int z, int
  * C3Di_GasUpdate then), and no uniform is dirty (C3D_UpdateUniforms of both shaders sends only dirty ones; a program bind sets the program flag). Then the call
  * is skipped: the command stream is the same. Uniform arrays not word aligned: always update. */
 #define C3D_UPD_FLAGS (0x4u | 0x8u | 0x10u | 0x20u | 0x40u | 0x80u | 0x100u | 0x200u | 0x400u | 0x4000u | 0x718000u | 0x20000u | 0x3800000u | 0xfc000000u)
+static unsigned updr[8]; /* DO3: why c3d_upd_needed said yes: 0 flag word, 1 light env, 2 fixed attr, 3 gas 7, 4 unaligned, 5 float uniform, 6 int or bool uniform */
 static int c3d_upd_needed(void) {
     const unsigned char* c = __C3D_Context;
     const unsigned gm = *(const unsigned*)(c + 412) & 7u;
     /* PERF2: the fog LUT flag (0x20000) is cleared by C3Di_UpdateContext only when the fog mode (+412 bits 0 to 2) is not 0; with fog off it writes nothing
      * and the flag stays set (nd_leave_native sets it). It counted as dirty at every native draw (subcnt: upd equal to nat), so the call ran per draw. */
-    if (*(const volatile unsigned*)(c + 32) & (gm ? C3D_UPD_FLAGS : C3D_UPD_FLAGS & ~0x20000u)) return 1;
-    if (*(void* const*)(c + 268)) return 1;
-    if (*(const uint16_t*)(c + 0x208)) return 1;
-    if (gm == 7u) return 1;
-    if (((uintptr_t)C3D_FVUnifDirty | (uintptr_t)C3D_IVUnifDirty) & 3u) return 1;
+    if (*(const volatile unsigned*)(c + 32) & (gm ? C3D_UPD_FLAGS : C3D_UPD_FLAGS & ~0x20000u)) { updr[0]++; return 1; }
+    if (*(void* const*)(c + 268)) { updr[1]++; return 1; }
+    if (*(const uint16_t*)(c + 0x208)) { updr[2]++; return 1; }
+    if (gm == 7u) { updr[3]++; return 1; }
+    if (((uintptr_t)C3D_FVUnifDirty | (uintptr_t)C3D_IVUnifDirty) & 3u) { updr[4]++; return 1; }
     const uint32_t* f = (const uint32_t*)(const void*)C3D_FVUnifDirty;
     const uint32_t* iv = (const uint32_t*)(const void*)C3D_IVUnifDirty;
-    uint32_t a = iv[0] | iv[1] | C3D_BoolUnifsDirty[0] | C3D_BoolUnifsDirty[1];
-    for (unsigned i = 0; i < 2u * C3D_FVUNIF_COUNT / 4u; i++) a |= f[i];
-    return a != 0;
+    uint32_t a = iv[0] | iv[1] | C3D_BoolUnifsDirty[0] | C3D_BoolUnifsDirty[1], b = 0;
+    for (unsigned i = 0; i < 2u * C3D_FVUNIF_COUNT / 4u; i++) b |= f[i];
+    if (b) { updr[5]++; return 1; }
+    if (a) { updr[6]++; return 1; }
+    return 0;
 }
 static __attribute__((cold, noinline)) void cmd_split_forced(void);
 /* FB-3: a program 5 draw (model, sprite) writes its pm5 block here, once; the copy keeps the caller's NdDraw; uvx goes to the pm5 uniform (PERF2: cold, out of line) */
@@ -1361,12 +1364,12 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     if (!ndn_mode) { nd_shadow_reset(&ndn_sh); ndn_mode = 1; sc_shr++; }
     if (*(volatile unsigned*)(__C3D_Context + 32) & 0x3800000u) { ndn_sh.cfg_valid = 0; ndn_sh.u_on[0] = ndn_sh.u_on[1] = 0; } /* a dirty texture bind: C3Di_UpdateContext rebuilds the unit enable word from the units citro3d holds (a null unit 0 after a slot drop writes it off) and sends their blocks: the native shadow of both is stale, the native words write them again */
     eyd_sync(); /* STEREO: before the update test (a change marks the uniform dirty) */
-    if (c3d_upd_needed()) { if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false;
+    if (c3d_upd_needed()) { NDT_B(tu); if (u_eye >= 0) C3D_FVUnifDirty[GPU_VERTEX_SHADER][u_eye] = false;
         if (__builtin_expect(nd_kp_on, 0)) { u32 *cb0, sz0, o0, *cb1, sz1, o1; GPUCMD_GetBuffer(&cb0, &sz0, &o0); C3Di_UpdateContext(); GPUCMD_GetBuffer(&cb1, &sz1, &o1); kp_scan(cb0, o0, o1); } /* INTERPB2: the uniform words citro3d wrote get their K patch */
         else C3Di_UpdateContext();
-        sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
+        NDT_E(tu, NDT_SUPD); sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
-      const unsigned nw_ = nd_emit_draw(cb + coff, &ndn_sh, d);
+      NDT_B(te); const unsigned nw_ = nd_emit_draw(cb + coff, &ndn_sh, d); NDT_E(te, NDT_SEMIT);
       GPUCMD_SetBufferOffset(coff + nw_); sc_gd[0]++; sc_gw[0] += nw_;
       if (__builtin_expect(drec_on, 0)) gst_draw(cb, coff + nw_); } /* MDLBLK: one emit path; DO0: the state hash of this draw (drec_seq is its seq) */
     if (tex) ndunit_after();
@@ -4566,6 +4569,7 @@ static __attribute__((cold, noinline)) void cen_lines_frame(void) {
     ent_log();
     nd_model_log(f);
 }
+void pm_gpu_updr_take(unsigned o[8]) { static unsigned last[8]; for (int i = 0; i < 8; i++) { o[i] = updr[i] - last[i]; last[i] = updr[i]; } } /* DO3 */
 void pm_gpu_cnt_take(unsigned o[8]) { /* PERF2 step 6: the counters of the prof cls line, since the last take */
     static unsigned last[8];
     const unsigned now[8] = { sc_prg, sc_shr, sc_upd, sc_spl, spr_nat_n - spc_miss, spc_miss, nd_ent_cfull_all(), nd_gdl_lists() };
