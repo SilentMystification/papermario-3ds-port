@@ -1,0 +1,9 @@
+LOOP NAT5F host rc 0, build rc 0, 53 s
+STAGE key-inputs 1 s STAGE slot-wait 0 s STAGE gen 25 s STAGE key 0 s STAGE asset-check 1 s STAGE romfs 0 s STAGE sync 0 s STAGE configure 0 s STAGE compile-link 21 s STAGE copy-out 1 s STAGE tail 2 s 
+
+cmp spot_mac01_drec: 1/1 byte-equal 
+cmp entcape_kmr03_drec: 1/1 byte-equal 
+cmp fxparts_drec: 1/1 byte-equal 
+cmp wscmb_pause_drec: 1/1 byte-equal 
+LOOP TIME host+build 53 s, run+cmp 75 s, total 128 s
+LOOP PASS

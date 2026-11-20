@@ -440,6 +440,13 @@ void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uin
     st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp; /* NAT5R */
     if (lost) nd_ds.sc_lost = 1; /* the old nd_ds_feed_dir */
 }
+/* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
+ * A texture rectangle and its 2 RDPHALF units stay in one NRUN run (nr_ctl reads at[3], at[5]). */
+void nd_alt_put(uint32_t w0, uint32_t w1) {
+    if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && st_hdr && (((st_hdr[0] >> 16) & 0xffu) > 252u || wp + 6u > wend)) st_hdr = NULL;
+    st_put(w0, w1); }
+uint32_t* nd_alt_open(void) { rec_open(); uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
+void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }
 /* D4b-3, D5: the nd_gbi.h redirect. The packet gMainGfxPos++ is taken back and the op recorded; the RDP syncs are dropped (the walker skips
  * them). A texture rectangle (its op word and the two RDPHALF words, written by one macro) is held until its last word and recorded as
  * NDC_TEXRECT. Any other packet (a local list) and the branch form of G_DL keep the word; G_ENDDL at the top level is dropped (NDC_END ends a
