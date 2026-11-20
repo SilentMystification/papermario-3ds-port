@@ -1,0 +1,3 @@
+c0gate base 70/27/23 tip 69/26/23 (interp -1: static set_om inlined, accepted by NATIVE13)
+base: c0gate calls 70 interp 27 state 23
+tip: c0gate calls 69 interp 26 state 23
