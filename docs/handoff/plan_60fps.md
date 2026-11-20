@@ -55,8 +55,10 @@ Tags: FACT (console capture or code read), GUESS (estimate), OPEN (not measured)
   Heavy scenes may also need game-side draw changes (DO5) or content cuts: the captures decide.
 
 ## 5. Measurement plan
-- Capture 1, after PROF3 and MSNAP2 merge: words `--profile prof phase=on warp=mac_01:0 pos=0:0:200 profdisk=1` (phase=on is needed for c1t, c1d, c1g),
-  17 steady windows; capture_check first with the same words.
+- Capture 1, after PROF3 and MSNAP2 merge: words `--profile prof warp=mac_01:0 pos=0:0:200 profdisk=1`, 17 steady windows; capture_check first with
+  the same words. Never add phase=on: phase mode starts no sampled step (pm_phase.c:839 pm_pf_arm = pm_pf_on && !ph_want), so pf_s is 0 and c1t, c1d,
+  c1g, c0r print 0.00, and every step runs the timers serially (FACT live_cap1_170.txt: s0, ser 300, ft 70.1). Prof mode sets pm_ph_on in each sampled
+  step (pf_arm, pm_phase.c:727), which the NDT_B timers read. The capture_check proof for c1g is the line (Azahar timers read 0.00).
   Read: ft, fps, lgms, bw, c1s, c1g (new), c1t, c1d, c1n, ic1, dc1, cls, c0r, gpu d and w, the GPU time line if the build has one (OPEN).
 - Capture 2, after C3, K1 and C1: the same line set. Check the expected numbers of section 3 and change the order if a guess was wrong.
 - Capture 3, a heavy scene (a battle with many actors, user's choice of spot) once mac_01 reaches 30 steps per second.
