@@ -10,6 +10,7 @@
 #include "pm_gpu.h"
 #include "nd.h"
 #include "nd_fs.h"
+#include "nd_snap.h"
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "variables.h"
@@ -75,7 +76,7 @@ void grab_cur(const void* src, int w, int h) {
 }
 void nd_img_check(void) {
     int r;
-    r = nd_img_role(0);
+    r = ND_ROLE(0);
     /* X02: an image that is not 16 bit (the darkness stencil: 32 bit, then 8 bit, in the z-buffer memory) always renders off-screen */
     if ((r == ROLE_SLOT || r == ROLE_DEPTHQ)) {
         /* FSELLAG2: a window image (draw_box: scissor 0, 0, width, height, then the fill of that rectangle) needs a clear only in the row blocks of its height.

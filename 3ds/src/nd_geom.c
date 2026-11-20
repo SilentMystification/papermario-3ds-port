@@ -197,7 +197,7 @@ int gv_state_why(int* ct, int* both) { /* NWS4B */
     *both = cg == G_CULL_BOTH;
     if ((ND_GEOM() & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
     if (fogmix_on && (ND_GEOM() & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
-    if (nd_img_role(0) == ROLE_DEPTH && (nd_ap->oml & (1u << G_MDSFT_ZSRCSEL))) return GVR_ZMARK; /* MERLON: a depth-image draw with the primitive depth source stays refused; the pixel depth source is the zmark draw of gv_epoch_enter */ /* NWS4B */
+    if (ND_ROLE(0) == ROLE_DEPTH && (nd_ap->oml & (1u << G_MDSFT_ZSRCSEL))) return GVR_ZMARK; /* MERLON: a depth-image draw with the primitive depth source stays refused; the pixel depth source is the zmark draw of gv_epoch_enter */ /* NWS4B */
     return -1;
 }
 
@@ -222,7 +222,7 @@ void gv_epoch_enter(void) { /* NWS4B */
          * The mask is the model's silhouette, drawn with no face culling: the ball disc (tama list word D9FFFFFF 00200400, G_CULL_BACK) runs in the
          * custom pre list under the model matrix without the billboard turn (nd_recs.c rec_apply order) and reaches the GPU back-facing (cull 2), so
          * all 10 triangles were culled and no pixel was marked. */
-        if (nd_img_role(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ap->in.prim)) - 1.f); } /* NWS4B */
+        if (ND_ROLE(0) == ROLE_DEPTH) { ep_ct = 0; pm_gpu_set_zmark(1, 2.f * depth_of_word(word_5551(nd_ap->in.prim)) - 1.f); } /* NWS4B */
         /* TEXEL1: the GPU reads tile 1 through the second texture unit and the uv map of dual_bind (uvx). An off-screen TEXEL1 needs the window fold of t1_fold per draw: nd_gv_tri does it per triangle (t1_fold_tri, ep_t1f). */
         if (plan_active && cur_plan.uses_tex1) {
             if (!ND_BTD(0)->valid || !ND_BTD(1)->valid) ep_why = GVR_TEX1;

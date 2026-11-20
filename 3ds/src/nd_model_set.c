@@ -9,6 +9,7 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
+#include "nd_msnapw.h"
 #include "nd_ops.h"
 
 extern NdNat nat[ND_NAT_MAX]; extern int nat_n; extern uint64_t nat_vm; extern int nat_vm_ok; extern int nat_nr; extern uint32_t nat_geom;
@@ -28,7 +29,7 @@ int nd_model_draw(const uint32_t* rec, const NdMCtx* c0, const void* list, int e
     nd_mtx_combine(comb);
     pm_gpu_pcomp_native(pal0, comb);
     const uint32_t entry = (c0->geom_base & c0->mode->gand) | c0->mode->gor;
-    int nr = pm_dlc_native_ranges(list, entry, rng, 512u);
+    int nr = pm_dlc_native_ranges(list, entry, rng, 512u, nd_msnap_w()[MSW_OML], nd_msnap_w()[MSW_OMH]);
     if (nr < 0) return (nd_nat_why = nr == -2 ? 11 : 12, -1);
     nat_nr = nr <= ND_RAW_MAX ? nr : -1; nat_geom = entry;
     nat_vm = pm_dlc_vm; nat_vm_ok = pm_dlc_vm_ok;

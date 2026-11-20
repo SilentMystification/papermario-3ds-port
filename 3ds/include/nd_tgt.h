@@ -34,9 +34,9 @@ static inline int nd_tgt_role(unsigned kind, unsigned siz, int for_fill, uint32_
     if ((kind & NDK_NATIVE) && siz == 2) return ROLE_MAIN;
     return ROLE_SLOT;
 }
-/* the role of the current target; D03: the darkness stencil z-buffer is allocated at ROLE_CPUFILL (pm_main.c wraps it) */
-static inline int nd_img_role(int for_fill) {
-    int r = nd_tgt_role(nd_tgt.kind, nd_tgt.siz, for_fill, nd_c0.omode_l, nd_c0.omode_h, zcol);
+/* NC0R: the role from the draw's own other mode words (oml, omh); D03: the darkness stencil z-buffer is allocated at ROLE_CPUFILL (pm_main.c wraps it) */
+static inline int nd_img_role_m(int ff, uint32_t oml, uint32_t omh) {
+    int r = nd_tgt_role(nd_tgt.kind, nd_tgt.siz, ff, oml, omh, zcol);
     if (r == ROLE_CPUFILL) pm_zbuf_need();
     return r;
 }
