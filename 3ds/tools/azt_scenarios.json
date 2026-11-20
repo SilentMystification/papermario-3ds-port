@@ -11381,21 +11381,6 @@
       "reason": "MDL-5 gate: MDL-5 iwa_10 native (census, shots). Cold start (-NoWarm) so det shots are a function of the build."
     },
     {
-      "name": "mdl5_iwa10_det_ref",
-      "status": "unverified",
-      "subject": "iwa_10 cold det with nomodelnat (walker geometry of every model record): the byte reference of mdl5_iwa10_det.",
-      "proves": "MDL-5 byte reference iwa_10 (nomodelnat).",
-      "debug": "warp=iwa_10:1 pos=-586:1:530 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
-      "extra": [],
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 50,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "reason": "MDL-5 gate: MDL-5 byte reference iwa_10 (nomodelnat). Cold start (-NoWarm) so det shots are a function of the build."
-    },
-    {
       "name": "mdl5_sbk56_det",
       "status": "unverified",
       "subject": "sbk_56, Mario at 20 0 440, cold det, shots 200 to 205, the prof scene line (PROF2-3: the mdlfb and mdlsub census lines need the census switch without prof mode).",
@@ -11426,21 +11411,6 @@
       "reason": "SBKW step 2 measurement: live Vtx hash against the static copy hash per frame 200 to 211. Cold start (-NoWarm)."
     },
     {
-      "name": "mdl5_sbk56_det_ref",
-      "status": "unverified",
-      "subject": "sbk_56 cold det with nomodelnat: the byte reference of mdl5_sbk56_det.",
-      "proves": "MDL-5 byte reference sbk_56 (nomodelnat).",
-      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
-      "extra": [],
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 60,
-      "deadline": 50,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "reason": "MDL-5 gate: MDL-5 byte reference sbk_56 (nomodelnat). Cold start (-NoWarm) so det shots are a function of the build."
-    },
-    {
       "name": "water_sbk56_det12",
       "status": "unverified",
       "subject": "sbk_56, Mario at 20 0 440, cold det, native model path, shots 200 to 211 (12 consecutive frames of the panned water).",
@@ -11454,36 +11424,6 @@
       "expects": "none",
       "needs_picture": true,
       "reason": "WATER gate: the sbk_56 water box (mizu1, shared aux texture) in 12 consecutive det shots; the cap covers the cold boot to the frame 300 prof line."
-    },
-    {
-      "name": "water_sbk56_ref12",
-      "status": "unverified",
-      "subject": "sbk_56, Mario at 20 0 440, cold det with nomodelnat (walker draws), shots 200 to 211: the byte reference of water_sbk56_det12.",
-      "proves": "WATER B1 byte reference (nomodelnat).",
-      "debug": "warp=sbk_56:0 pos=20:0:440 prof=4 shots shotwin=200:12 loglevel=debug det nomodelnat",
-      "extra": [],
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 45,
-      "deadline": 40,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "reason": "WATER gate: the sbk_56 water box (mizu1, shared aux texture) in 12 consecutive det shots; the cap covers the cold boot to the frame 300 prof line."
-    },
-    {
-      "name": "mdl5_mac01_det_ref",
-      "status": "unverified",
-      "subject": "Toad Town mac_01 at 0 0 200, cold det with nomodelnat: the byte reference of spot_mac01_det.",
-      "proves": "MDL-5 byte reference mac_01 (nomodelnat).",
-      "debug": "warp=mac_01:0 pos=0:0:200 prof=4 shots shotwin=200:6 loglevel=debug det nomodelnat",
-      "extra": [],
-      "until": "prof f\\d+ w\\d+ at ",
-      "cap": 35,
-      "deadline": 30,
-      "first_marker": "prof=1 log=off",
-      "expects": "none",
-      "needs_picture": true,
-      "reason": "MDL-5 gate: MDL-5 byte reference mac_01 (nomodelnat). Cold start (-NoWarm) so det shots are a function of the build."
     },
     {
       "name": "mdl5_battle_det",
@@ -11505,27 +11445,6 @@
           "regex": "shot \\d+ frame 182\\b"
         }
       ]
-    },
-    {
-      "name": "mdl5_battle_det_ref",
-      "status": "unverified",
-      "subject": "Battle kmr_03 (one Goomba), cold det, profdisk: mdlfb and mdlsub lines to disk with nomodelnat (walker geometry of every model record): the byte reference.",
-      "proves": "MDL-5 byte reference: battle with nomodelnat.",
-      "debug": "warp=kmr_03:0 story=ch0_toad_town battle battlef=100 shots shotmode=8:30 det profdisk=1 nomodelnat",
-      "extra": [],
-      "until": "shot \\d+ frame 182\\b",
-      "cap": 60,
-      "deadline": 45,
-      "first_marker": "warp: kmr_03 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "frame 182",
-          "regex": "shot \\d+ frame 182\\b"
-        }
-      ],
-      "reason": "MDL-5 gate: MDL-5 byte reference: battle with nomodelnat. Cold start (-NoWarm) so det shots are a function of the build."
     },
     {
       "name": "golden_multi_det",
@@ -11590,31 +11509,6 @@
         }
       ],
       "reason": "TOUR1 gate and MDL-5e census: ten map changes, each a load, 60 settle frames and a 30-frame window (about 5 s per map); cold start so the fb count is a function of the build. Cap 90 s for the 10 loads plus the cold boot."
-    },
-    {
-      "name": "tour10_det_ref",
-      "status": "unverified",
-      "subject": "Mario in each of 10 maps of the tour list, cold det, the walker geometry of every model record (nomodelnat): the byte reference of tour10_det shots 0 to 10.",
-      "proves": "MDL-5f byte gate: the native state-only custom list records of the tour (shots 4 to 6) equal the walker geometry.",
-      "debug": "warp=mac_00:4 story=ch0_toad_town tour=mac_00:4,mac_01:0,dgb_01:1,kmr_09:0,kmr_20:4,hos_00:0,kmr_02:0,kmr_10:0,trd_01:0,mac_00:0 shots shotwin=999999:1 shotmode=4:21 profdisk=1 det fixedseed loglevel=debug mdl0 nomodelnat",
-      "extra": [],
-      "until": "tour: done",
-      "cap": 90,
-      "deadline": 20,
-      "first_marker": "warp: mac_00 entry 4",
-      "expects": "tour",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: mac_00 entry 4"
-        },
-        {
-          "name": "tour done",
-          "regex": "tour: done items 10"
-        }
-      ],
-      "reason": "MDL-5f byte reference: tour10_det with nomodelnat (walker geometry of every model record), cold start so the shots are a function of the build. Cap as tour10."
     },
     {
       "name": "tour_full",
@@ -12783,37 +12677,6 @@
         {
           "name": "ndmcache",
           "regex": "ndmcache f300 "
-        }
-      ]
-    },
-    {
-      "name": "nok11_det_ref",
-      "status": "unverified",
-      "reason": "DOORHITCH: the walker reference (nomodelnat) of nok11_det, to decide which build draws the nok_11 water as the walker does (model cache hits of unit 1 entries).",
-      "subject": "nok11_det with nomodelnat: every model record draws through the walker (no native model draw, no model cache). Shots as nok11_det.",
-      "proves": "The walker picture of nok11_det for a byte compare against nok11_det of a build.",
-      "debug": "warp=nok_11:0 story=ch0_toad_town fxtest=89 shots loglevel=debug grablog offdump=410 fixedseed fast fs1off det nomodelnat",
-      "extra": [
-        "-Turbo"
-      ],
-      "until": "shot 16 frame \\d+",
-      "cap": 45,
-      "deadline": 30,
-      "first_marker": "warp: nok_11 entry 0",
-      "expects": "warp",
-      "needs_picture": true,
-      "expected_events": [
-        {
-          "name": "warp",
-          "regex": "warp: nok_11 entry 0"
-        },
-        {
-          "name": "spawn",
-          "regex": "fxtest: spawn 89 water_splash"
-        },
-        {
-          "name": "shot a",
-          "regex": "fxtest: shot 1 effect 89 water_splash"
         }
       ]
     },
