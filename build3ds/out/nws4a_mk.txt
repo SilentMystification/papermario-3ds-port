@@ -1,0 +1,6 @@
+== entcape_kmr03_drec cpsnap count: 0
+seeded: 0
+stream over/full: 0
+== fxparts_drec cpsnap count: 0
+seeded: 0
+stream over/full: 0

@@ -67,7 +67,9 @@ static int snap_build0(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sn
     return 1;
 }
 static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { NDT_B(nt8); const int r = snap_build0(s, zc, rp); NDT_E(nt8, NDT_SNAP); return r; } /* NAT8A */
-static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, zc, &r)) return; nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */ sn_cmds = nd_rec_cmds(); }
+void nd_snapcp_run(const uint32_t* rec);
+static void snap_take_r(const NdDs* s, int zc, NdNapiRun run) { NdSnapChk r; if (!snap_build(s, zc, &r)) return; nd_rec_st(run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays); NWS4A: run */ sn_cmds = nd_rec_cmds(); }
+static void snap_take(const NdDs* s, int zc) { snap_take_r(s, zc, nd_snapchk_run); } /* NWS4A */
 const NdCombOut* nd_snap_now(void) { NdSnapChk t; (void)snap_build(&nd_ds, 0, &t); sn_cmds = ~0u; return &sn_last.o; } /* NAT2K: the decision of nd_ds now; the next snap_take records again */
 #define LS_SMAX 256u /* NAT2D: unique snaps, each in its own stream block */
 #define LS_RMAX 256u /* NAT2D: ranges */
@@ -105,6 +107,8 @@ void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { /* NDR2A: the
 }
 void nd_snap_mesh(void) { snap_take(&nd_ds, 0); }
 void nd_snap_rect(void) { const int zc = sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL)); nd_ds.zslot |= (unsigned char)(zc != 0); /* NAT5T */ snap_take(&nd_ds, zc); } /* NDR1C: zcol of nd_rect.c:236 */
+void nd_snap_alt(const NdDs* s, int rect) { const int zc = rect && sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(s->w.omode_l & (1u << G_MDSFT_ZSRCSEL)); /* NWS4A, core 1: the snap of a copy draw */
+    sn_cmds = ~0u; snap_take_r(s, zc, nd_snapcp_run); sn_cmds = ~0u; } /* the memo of the main stream never counts a copy snap */
 
 /* ---- core 0 ---- */
 unsigned char nd_snap_arm;
@@ -143,6 +147,9 @@ void nd_snapchk_run(const uint32_t* rec) {
     nd_snap_arm = 1;
     nd_snap_live = 1; /* NDR1C */
 }
+int pm_drec_now(void);
+static __attribute__((cold, noinline)) void cps_log(void) { static unsigned fr = ~0u; if (pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_d("cpsnap f%u", fr); } } /* NWS4A */
+void nd_snapcp_run(const uint32_t* rec) { if (__builtin_expect(pm_drec_now(), 0) && memcmp(&sc_cur, rec, sizeof sc_cur) != 0) cps_log(); nd_snapchk_run(rec); } /* NWS4A, core 0: a copy snap; the drec marker of UD-N5 when it differs from the snap applied before */
 
 
 void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed snapshot, at the triangle epoch (nd_geom.c gv_epoch_enter) */
