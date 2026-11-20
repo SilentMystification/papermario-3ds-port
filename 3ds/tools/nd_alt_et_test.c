@@ -58,9 +58,10 @@ static unsigned walk(const uint32_t* ab, uint32_t* out, unsigned max, const uint
     while (p != e) {
         if ((p[0] >> 24) == NDC_JUMP) { p = (const uint32_t*)(uintptr_t)p[1]; continue; }
         const unsigned k = (p[0] >> 16) & 0xffu;
+        if (p[0] >> 24 == NDC_NAPI && p[1] == (uint32_t)(uintptr_t)nd_ew_run) { p += 2u + 2u * k; continue; } /* NC0B: the entry record is no unit */
         if (p[0] >> 24 != NDC_NAPI || !is_gc(p[1]) && p[1] != (uint32_t)(uintptr_t)nd_cpy_run) /* NAT6G1 */ { bad++; printf("nat5a bad: header\n"); return n; }
         stop_hdr[(*nstop)++] = p;
-        for (unsigned i = 0; i < k && n < max; i++) { if (p[1] == (uint32_t)(uintptr_t)nd_cpy_run) { out[2u * n] = ND_FS_W0(p[2u + 2u * i] & 0xffu, 0u); out[2u * n + 1u] = 0u; n++; i++; continue; } /* NSET2: a slot and its values give the unit id */
+        for (unsigned i = 0; i < k && n < max; i++) { if (p[1] == (uint32_t)(uintptr_t)nd_vtx_run) { out[2u * n] = p[2u + 2u * i]; out[2u * n + 1u] = p[3u + 2u * i]; n++; i++; continue; } /* NC0B: a vertex load is 2 units (the load, geom and tss) */ if (p[1] == (uint32_t)(uintptr_t)nd_cpy_run) { out[2u * n] = ND_FS_W0(p[2u + 2u * i] & 0xffu, 0u); out[2u * n + 1u] = 0u; n++; i++; continue; } /* NSET2: a slot and its values give the unit id */
             out[2u * n] = p[2u + 2u * i]; out[2u * n + 1u] = p[3u + 2u * i]; n++; }
         p += 2u + 2u * k;
     }

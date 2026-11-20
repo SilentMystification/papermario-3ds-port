@@ -231,7 +231,7 @@ int nd_snap_spr(uint32_t o[9]) { /* NDR4: env prim omh oml geom cw0 cw1 mixk mix
     o[0] = nd_ap->in.env; o[1] = nd_ap->in.prim; o[2] = nd_ap->in.omode_h; o[3] = nd_ap->oml; o[4] = nd_ap->geom;
     o[5] = nd_ap->in.w0; o[6] = nd_ap->in.w1; o[7] = (uint32_t)nd_ap->mixk; o[8] = nd_ap->mixc;
     if (pm_drec_now() && pm_frame_count() != sc_sfr && (o[0] != nd_ap->in.env || o[1] != nd_ap->in.prim || o[2] != nd_ap->in.omode_h || o[3] != nd_ap->oml || /* NWS4B */
-        o[4] != nd_c0.geom || o[5] != nd_ap->in.w0 || o[6] != nd_ap->in.w1 || nd_ap->fogc != nd_ap->fogc || nd_ap->blendc != nd_ap->blendc)) { sc_sfr = pm_frame_count(); pm_log_d("sprsnap f%u", sc_sfr); } /* NWS4B */
+        o[5] != nd_ap->in.w0 || o[6] != nd_ap->in.w1 || nd_ap->fogc != nd_ap->fogc || nd_ap->blendc != nd_ap->blendc)) { sc_sfr = pm_frame_count(); pm_log_d("sprsnap f%u", sc_sfr); } /* NWS4B */
     return 1;
 }
 

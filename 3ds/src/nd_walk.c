@@ -183,7 +183,7 @@ void nd_walk_ent(const NdW2* q, unsigned words) {
     if (__builtin_expect(dbg, 0)) { fp = walk_dbg_op(dbg, q, 0, G_PM_ENT, q->words.w0, q->words.w1); }
     NDT_BD(te, dbg);
     const uint32_t* const et = words > G_PM_ENT_WORDS + 1u ? (const uint32_t*)(uintptr_t)((const uint32_t*)q)[2u * G_PM_ENT_WORDS + 3u] : NULL; /* NAT5A */
-    int drawn = nd_ent_case(q, q->words.w0, q->words.w1, et);
+    NdGs* const gs0 = nd_gs; nd_gs = &nd_ew; int drawn = nd_ent_case(q, q->words.w0, q->words.w1, et); nd_gs = gs0; /* NC0B */
     NDT_E(te, NDT_ENT);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
@@ -218,12 +218,12 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
     int ring = 0; /* PBATCH1: a particle list (ent_gdl -1) runs on the op executor, not nd_sg_try */
     if (ent_skipgen) ent_skipgen = 0;
     else if (!ow && dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
-        NDT_BD(te, dbg); pm_tex_tagi = 5; nd_ent_src = ab ? 2u : 1u; /* NATEF */ int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[3] : NULL); NDT_E(te, NDT_ENT);
+        NDT_BD(te, dbg); pm_tex_tagi = 5; nd_ent_src = ab ? 2u : 1u; /* NATEF */ NdGs* const gs0 = nd_gs; nd_gs = &nd_ew; int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[3] : NULL); nd_gs = gs0; NDT_E(te, NDT_ENT);
         if (eh > 0) return;
         if (eh < 0) ring = 1;
     }
     if (!ow && dlc_on && !ring) {
-        NDT_BD(td, dbg); int dh = nd_sg_try(next); NDT_E(td, NDT_DLC);
+        NDT_BD(td, dbg); NdGs* const gs1 = nd_gs; nd_gs = &nd_ew; int dh = nd_sg_try(next); nd_gs = gs1; NDT_E(td, NDT_DLC);
         if (dh) return;
     }
     if (ab) { const unsigned char m = alt_mode; /* NAT5N: the nested alt range, with the executor the static table took */
@@ -240,7 +240,11 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
 unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; /* NAT4B */ /* NAT6F */
 static inline int r_pro(unsigned dbg, unsigned op, const uint32_t* u) { pm_gbi_cur_op = op; return __builtin_expect(dbg, 0) ? walk_dbg_op(dbg, (const NdW2*)u, 0, op, u[0], u[1]) : 0; } /* NAT6G1: the op prologue of nr_geo, nr_ctl */ static inline void r_end(unsigned dbg) { if (__builtin_expect(dbg & WD_PH, 0) && alt_mode != 2u) pm_gpu_ndt_cls(-1); } /* NAT6G1: the class span end of a record */
 #define R_EACH(name, ...) void name(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu; for (unsigned k = 0; k < n; k++) { const uint32_t* const u = rec + 2u * k; const u32 a = u[0] & 0xffffffu, b = u[1]; (void)a; (void)b; (void)u; __VA_ARGS__ } r_end(dbg); } /* NAT6G1 */
-R_EACH(nd_vtx_run, { const int fp = r_pro(dbg, ND_FS_VTX, u); nd_geom_vtx(a, b, (const NdW2*)u); if (fp) pm_ph_pop(); })
+void nd_vtx_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu; const uint32_t* const e = rec + 2u * n; /* NC0B: a vertex load and its geom and tss, 4 words */
+    for (const uint32_t* q = rec; q < e; q += 4) { const int fp = r_pro(dbg, ND_FS_VTX, q); nd_geom_vtx(q[0] & 0xffffffu, q[1], (const NdW2*)q, q[2], q[3]); if (fp) pm_ph_pop(); }
+    r_end(dbg); }
+NdGs nd_ew = { G_SHADE | G_SHADING_SMOOTH, 0xffffffffu, 0x30u, 0u }; NdGs* nd_gs; /* NC0B */
+void nd_ew_run(const uint32_t* r) { nd_ew.geom = r[0]; nd_ew.tss = r[1]; nd_ew.oml = r[2]; nd_ew.omh = r[3]; } /* NC0B: the entry record of a static call */
 R_EACH(nd_tri1_run, { const int fp = r_pro(dbg, ND_FS_TRI1, u); tri_prep_ok = 0; draw_tri(a); if (fp) pm_ph_pop(); }) R_EACH(nd_tri2_run, { const int fp = r_pro(dbg, ND_FS_TRI2, u); tri_prep_ok = 0; draw_tri(a); draw_tri(b); if (fp) pm_ph_pop(); })
 R_EACH(nd_mtx_run, { const int fp = r_pro(dbg, ND_FS_MTX, u); if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)u, (NdW2*)u + 1); nd_xf_load(a, b, 0); if (fp) pm_ph_pop(); }) R_EACH(nd_pop_run, { const int fp = r_pro(dbg, ND_FS_POPMTX, u); nd_xf_popb(b); if (fp) pm_ph_pop(); })
 R_EACH(nd_mvm_run, { if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) continue; gv_epoch++; const int fp = r_pro(dbg, ND_FS_MOVEMEM, u); if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); nd_mv_mem(a, b); if (fp) pm_ph_pop(); })
@@ -281,7 +285,7 @@ static __attribute__((cold, noinline)) void ops_cen_end(void) {
 /* NAT5W: the sprite fallback words VTX(4, 0) and TRI2 (sprite.c:314-317): the list start and end of nd_nr_list (keep 1), the arms of nr_geo. */
 static void spr_geo_walk(const uint32_t* g) {
     PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
-    pm_gbi_cur_op = ND_FS_VTX; nd_geom_vtx(g[0] & 0xffffffu, g[1], (const NdW2*)g);
+    pm_gbi_cur_op = ND_FS_VTX; nd_geom_vtx(g[0] & 0xffffffu, g[1], (const NdW2*)g, nd_ap->geom, nd_ap->tss);
     pm_gbi_cur_op = ND_FS_TRI2; tri_prep_ok = 0; draw_tri(g[2] & 0xffffffu); draw_tri(g[3]);
     ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
 /* NAT5W: the G_DL unit of a refused entity record: the list start and end of nd_nr_list (keep 1), the CALL arm of nr_ctl. */
@@ -369,11 +373,11 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec, cons
     if (ent_skipgen) ent_skipgen = 0;
     else if (dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
         nd_ent_src = 3u; /* NATEF */
-        const int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[-1] : NULL); /* NAT5A; NAT5T: rec[5], rec[9] 0 for a device record */
+        NdGs* const gs0 = nd_gs; nd_gs = &nd_ew; const int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[-1] : NULL); nd_gs = gs0; /* NAT5A; NAT5T: rec[5], rec[9] 0 for a device record */
         if (eh > 0) { nd_gtr_ent++; return; }
         if (eh < 0) ring = 1;
     }
-    if (dlc_on && !ring && nd_sg_try(next)) { nd_gtr_dlc++; return; }
+    if (dlc_on && !ring) { NdGs* const gs1 = nd_gs; nd_gs = &nd_ew; const int dh = nd_sg_try(next); nd_gs = gs1; if (dh) { nd_gtr_dlc++; return; } }
     nd_gtr_ops++;
     const int d = ex_depth;
     gv_epoch++; /* GV1b */
@@ -444,7 +448,6 @@ void pm_gbi_init(void) {
     if (pm_c2own < 0) pm_c2own = pm_debug_has("c2own"); /* CORE2-3a: ownership check (nd_wq.c) */
     nd_mtx_reset();
     memset(vert_live, 0, sizeof vert_live);
-    nd_c0.geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
 }
 /* R5B: a G_MOVEMEM light that writes the values already in lt[slot] changes nothing. The same op also runs lit_freeze, which

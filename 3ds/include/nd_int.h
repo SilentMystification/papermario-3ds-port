@@ -232,7 +232,7 @@ void dlc_report(void);
 /* WK-3 (nd_target.c): the colour image role and the z helpers, read by the former pm_gbi.c and the rect and state modules. */
 unsigned word_5551(unsigned rgba);
 /* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
-void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list);
+void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list, uint32_t geom, uint32_t tss); /* NC0B: geom and tss from the VTX unit or the static call */
 void draw_tri(unsigned w);
 void nd_geo_units(const uint32_t* u, unsigned n); /* NATFB, nd_geom.c */
 void gv_params_calc(unsigned tss, NdGvP* o);

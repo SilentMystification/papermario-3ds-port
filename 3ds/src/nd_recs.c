@@ -109,12 +109,12 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
     hs_hits++;
     hs_n[HS_OMH] += ((nd_ap->in.omode_h & ~d->omh_m) | d->omh_v) != nd_ap->in.omode_h; /* NWS4C */
     hs_n[HS_OML] += ((nd_ap->oml & ~d->oml_m) | d->oml_v) != nd_ap->oml; /* NWS4C */
-    hs_n[HS_GEOM] += ((nd_c0.geom & d->g_and) | d->g_or) != nd_c0.geom;
+    hs_n[HS_GEOM] += ((nd_ap->geom & d->g_and) | d->g_or) != nd_ap->geom;
     hs_n[HS_PRIM] += (d->fl & HD_PRIM) && (d->prim != nd_ap->in.prim || d->plod != nd_ap->plod); /* NWS4C */
     hs_n[HS_ENV] += (d->fl & HD_ENV) && d->env != nd_ap->in.env; /* NWS4C */
     hs_n[HS_FOG] += (d->fl & HD_FOG) && d->fog != nd_ap->fogc; /* NWS4C */
     hs_n[HS_BLEND] += (d->fl & HD_BLEND) && d->blend != nd_ap->blendc; /* NWS4C */
-    hs_n[HS_TEX] += (d->fl & HD_TEX) && (d->tex != (uint8_t)nd_c0.tex_on || d->tss != ((uint32_t)nd_c0.tex_ss << 16 | (nd_c0.tex_ts & 0xffffu)));
+    hs_n[HS_TEX] += (d->fl & HD_TEX) && (d->tex != (uint8_t)nd_c0.tex_on || d->tss != nd_ap->tss);
     hs_n[HS_COMB] += (d->fl & HD_COMB) && (d->cw0 != nd_ap->in.w0 || d->cw1 != nd_ap->in.w1); /* NWS4C */
     hs_n[HS_FOGF] += (d->fl & HD_FOGF) && (d->fm != nd_c0.fog_fm || d->fo != nd_c0.fog_fo);
     const unsigned fr = pm_frame_count();
@@ -136,7 +136,7 @@ static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
     if (fl & HD_PRIM) { nd_c0.prim = d->prim; nd_c0.prim_lod = d->plod; }
     if (fl & HD_ENV) nd_c0.envc = d->env;
-    if (fl & HD_TEX) { nd_c0.tex_on = d->tex; nd_c0.tex_ss = d->tss >> 16; nd_c0.tex_ts = d->tss & 0xffffu; }
+    if (fl & HD_TEX) nd_c0.tex_on = d->tex;
     if (fl & HD_FOGF) { nd_c0.fog_fm = d->fm; nd_c0.fog_fo = d->fo; }
 }
 static void hit_apply(const NdW2* q, const NdMEnt* e) {
@@ -146,7 +146,6 @@ static void hit_apply(const NdW2* q, const NdMEnt* e) {
     if (__builtin_expect(PMDL("hitst"), 0)) hitst_note(d);
     if (d->fl & HD_COMB) hd_comb(d);
     nd_c0.omode_h = (nd_c0.omode_h & ~d->omh_m) | d->omh_v; nd_c0.omode_l = (nd_c0.omode_l & ~d->oml_m) | d->oml_v;
-    nd_c0.geom = (nd_c0.geom & d->g_and) | d->g_or;
     if (d->fl & (HD_PRIM | HD_ENV | HD_FOG | HD_BLEND | HD_TEX | HD_FOGF)) hd_rare(d);
 }
 /* HC6 step 2 debug switch mkchk: per record, the entry key A + key B found against the entry the old compare (full key words) finds. */
