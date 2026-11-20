@@ -121,10 +121,10 @@ void nd_rec_ndev(const NdNDev* e); /* MESHST: record a built NdNDev (nd_mesh.h):
  * changes the entry first: imgfx.c imgfx_cache_instance_data and imgfx_load_anim set gfxDev[i].list to NULL (then gt_run gave ent_gdl(NULL) and
  * nd_eg_flat read 0x0..0x7FFC), imgfx_init allocates ImgFXInstances again, animator.c frees a mesh later. rec[0] 0, rec[1] 0 (not state-only),
  * rec[2] the call site, rec[3] 0 (no entry), rec[4..8] the NdNDev, rec[9] 0. nd_ndev_rec (nd_walk.c, core 0) runs the copy as nd_ntab_rec. */
-#define ND_NDEV_REC_UNITS 5u
+#define ND_NDEV_REC_UNITS 6u /* NAT5T: rec[10], rec[11] the alt range bounds */
 _Static_assert(sizeof(NdNDev) == 20u, "NTABFIND: the record holds the 5 words of an NdNDev");
 static inline void nd_ndev_pack(uint32_t* rec, const NdNDev* e, uint32_t site) {
-    rec[0] = 0u; rec[1] = 0u; rec[2] = site; rec[3] = 0u; rec[9] = 0u;
+    rec[0] = 0u; rec[1] = 0u; rec[2] = site; rec[3] = 0u; rec[9] = 0u; rec[10] = 0u; rec[11] = 0u;
     __builtin_memcpy(rec + 4, e, sizeof *e); /* no <string.h>: include/gcc/memory.h (43F0.c) conflicts with it */
 }
 static inline void nd_ndev_unpack(NdNDev* d, const uint32_t* rec) { __builtin_memcpy(d, rec + 4, sizeof *d); }

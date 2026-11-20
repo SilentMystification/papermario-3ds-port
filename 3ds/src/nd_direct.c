@@ -255,6 +255,8 @@ void nd_fill_run(const uint32_t* u) {
 
 /* NDR2A, core 1: one direct record with its pso snap (nd_snap_pso), then the record (nd_rec_napi_s: the runner takes the snap). */
 void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_napi_s(run, rec, units); }
+/* NAT5T, core 1: as nd_dir_rec_alt, the units copied raw (nd_rec_alt_raw). */
+void nd_dir_rec_raw(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_alt_raw(run, rec, units, 1, au, an); }
 /* NAT5R, core 1: as nd_dir_rec, with the fallback units au as an alt range of the record (nd_rec_alt). */
 void nd_dir_rec_alt(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_alt(run, rec, units, 1, au, an, 1); } /* NAT5R */
 /* NDR2A, core 1: a fill record: its pso snap and record, then the feed of nd_ds. */

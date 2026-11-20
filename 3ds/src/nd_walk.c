@@ -492,19 +492,19 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
 unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
 /* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
 void nd_ntab_run(const NdNDev* e) { if (nd_ls_on) { nd_lsr_geo(); ls_run(e->u, e->nu); } else nd_nr_exec(e->u, e->nu); } /* NCONV2D: a list with a snap table runs without its combine units */
-static void gt_body(const NdNDev* nt, const uint32_t* rec) { nd_gtr_ntab++; if (!(rec[1] & 4u)) { nd_ntab_run(nt); return; } if (nd_ls_on) nd_lsr_geo(); const unsigned char m = alt_mode; alt_mode = nd_ls_on ? 2u : 1u; nd_alt_run(rec + 6); alt_mode = m; } /* NAT5F: as nd_ntab_run, from the stream copy; NAT5N */
+static void gt_body(const NdNDev* nt, const uint32_t* ab) { nd_gtr_ntab++; if (!ab) { nd_ntab_run(nt); return; } if (nd_ls_on) nd_lsr_geo(); const unsigned char m = alt_mode; alt_mode = nd_ls_on ? 2u : 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5T: ab the alt range bounds, NULL: the static table */ /* NAT5F: as nd_ntab_run, from the stream copy; NAT5N */
 static __attribute__((cold, noinline)) void entcap_so(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
     const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap so l %08x s %08x", a, site); }
-static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec);
-static void gt_run(const void* key, const NdNDev* nt, const uint32_t* rec) { nd_lsr_begin((rec[1] & 2u) ? (const uint32_t*)(uintptr_t)rec[4] : NULL); gt_run0(key, nt, rec); nd_lsr_end(); } /* NCONV1D1: the snap table of a drawing list (rec[1] bit 1) */
-static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
+static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec, const uint32_t* ab);
+static void gt_run(const void* key, const NdNDev* nt, const uint32_t* rec, const uint32_t* ab) { nd_lsr_begin((rec[1] & 2u) ? (const uint32_t*)(uintptr_t)rec[4] : NULL); gt_run0(key, nt, rec, ab); nd_lsr_end(); } /* NAT5T: ab */ /* NCONV1D1: the snap table of a drawing list (rec[1] bit 1) */
+static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec, const uint32_t* ab) {
     PM_WALK_OWN();
     if (rec[1] & 1u) { /* state-only */
         if (__builtin_expect(PMDL("entcap"), 0)) entcap_so(key, rec[2]);
         pm_walk_side++;
         pm_gbi_cur_op = G_PM_LST; gv_epoch++; ent_skipgen = 0; gp_prev_op = -1; /* NAT5W: the MISC_LST unit (nr_ctl) */
-        gt_body(nt, rec);
+        gt_body(nt, ab);
         pm_walk_side--;
         return;
     }
@@ -519,7 +519,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
     else if (dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
-        const int eh = ent_gdl(next, (rec[1] & 4u) ? (const uint32_t*)(uintptr_t)rec[5] : NULL); /* NAT5A */
+        const int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[-1] : NULL); /* NAT5A; NAT5T: rec[5], rec[9] 0 for a device record */
         if (eh > 0) { nd_gtr_ent++; return; }
         if (eh < 0) ring = 1;
     }
@@ -531,16 +531,16 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec) {
     gp_prev_op = -1;
     pm_walk_side++;
     ex_depth = d + 1;
-    gt_body(nt, rec);
+    gt_body(nt, ab);
     ex_depth = d;
     pm_walk_side--;
     gv_streak_flush();
     tex_streak_flush();
 }
 unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
-void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, nt, rec); }
+void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, nt, rec, (rec[1] & 4u) ? rec + 6 : NULL); }
 void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
-void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, &d, rec); } /* NTABFIND: the record-time copy (nd_gtab.h) */
+void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, &d, rec, rec + 10); } /* NTABFIND: the record-time copy (nd_gtab.h) */
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
  * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
 void nd_range_run(const uint32_t* a) {
@@ -563,6 +563,7 @@ void nd_range_run(const uint32_t* a) {
 }
 void nd_mls_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; sc_ok = 0; sr_ok = 0; pm_walk_side++; ex_depth++; } /* NAT5B: nd_nr_list keep 0 start */
 void nd_mle_run(const uint32_t* r) { (void)r; ex_depth--; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); if (__builtin_expect(pm_walk_dbg & WD_CEN, 0) && ex_depth == 0) ops_cen_end(); } /* NAT5B: its end */
+void nd_alt_run_x(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5T: the fallback range of a record, as the static table ran it */
 void nd_mdl_alt(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5B: a model alt range, as rec_top ran it */
 /* ---- MV-7: walk core, cut from the former pm_gbi.c (no change): host range, pointer resolve, init, cold modifyvtx, lt compare, run entry, fallback ---- */
 extern char __end__[]; /* linker: end of .bss */

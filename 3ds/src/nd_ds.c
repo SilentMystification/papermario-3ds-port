@@ -440,6 +440,7 @@ static void ds_list_at(NdDs* s, uint32_t w, unsigned depth) {
     if (nt) { ds_pairs(s, nt->u, nt->nu, depth, 0); return; }
     ds_pairs(s, (const uint32_t*)l, DS_LIST_MAX, depth, 1);
 }
+void nd_ds_units(NdDs* s, const uint32_t* u, unsigned n) { ds_pairs(s, u, n, 0, 0); } /* NAT5T: the units of a device entry (nd_rec_ndev) */
 /* nd_rec_ntab (nd_gtab.c) and nd_rec_nr (nd_rec.c, an ND_FS_CALL unit with depth 1). l: a host address or a segment address. */
 void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(uintptr_t)l, (unsigned)depth); }
 

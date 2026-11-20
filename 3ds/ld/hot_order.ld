@@ -235,7 +235,6 @@
 		*(.text.pm_gpu_mode_is)  /* 21.7 calls/frame, 48 B */
 		*(.text.pm_comb_colours)  /* 20.7 calls/frame, 172 B */
 		*(.text.pm_gpu_gidx_room)  /* 18.0 calls/frame, 68 B */
-		*(.text.nd_tx_ldtile)  /* 17.3 calls/frame, 220 B */
 		*(.text.ep_flush_stats)  /* 15.3 calls/frame, 52 B */
 		*(.text.filt_now)  /* 15.0 calls/frame, 44 B */
 		*(.text.nd_tex_param)  /* 15.0 calls/frame, 60 B */
@@ -266,7 +265,6 @@
 		*(.text.pm_tex_glyph_ofs)  /* 10.3 calls/frame, 44 B */
 		*(.text.pm_tex_origin)  /* 10.3 calls/frame, 108 B */
 		*(.text.nd_tx_texon)  /* 9.7 calls/frame, 32 B */
-		*(.text.nd_tx_ldblk)  /* 9.0 calls/frame, 216 B */
 		*(.text.pm_gpu_set_prim)  /* 9.0 calls/frame, 136 B */
 		*(.text.scm_replay)  /* 8.7 calls/frame, 292 B */
 		*(.text.pm_wq_pump_one)  /* 8.0 calls/frame, 212 B */

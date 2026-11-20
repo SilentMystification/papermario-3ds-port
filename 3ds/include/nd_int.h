@@ -203,8 +203,6 @@ void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, un
 /* HC4c: the typed texture setters (nd_op.h fields; nd_unit_apply runs them by id) */
 void nd_tx_timg(u32 a, u32 b);
 void nd_tx_tile(u32 a, u32 b);
-void nd_tx_ldblk(u32 b);
-void nd_tx_ldtile(u32 a, u32 b);
 void nd_tx_ldtlut(u32 b);
 void nd_tx_tsz(u32 a, u32 b);
 void nd_tx_texon(u32 a, u32 b);

@@ -422,6 +422,8 @@ static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window 
     if (tile == 1u && t->tile_fmt[1] == 2 && t->tile_siz[1] == 0 && s->tm.ld_valid && s->w.timg) { r->m1v = 1; r->m1src = (const uint8_t*)s->w.timg + (size_t)s->tm.ld_y * (size_t)t->timg_stride + (size_t)s->tm.ld_x;
         r->m1stride = t->timg_stride * 2; r->m1w = ((lrs - uls) >> 2) + 1; r->m1h = ((lrt - ult) >> 2) + 1; r->m1x0 = uls >> 2; r->m1y0 = ult >> 2; } /* tex_tile1 :457-466 */
     return (uint32_t)(uintptr_t)r; }
+NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
+void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
@@ -440,6 +442,9 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
     if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
         if (rc) { st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason */
             if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
+    if (id == ND_FS_CALL) { /* NAT5T: the called static list as a raw alt range, its tile sizes carry the core 1 window; core 1 state keeps no nested state */
+        NdDs* const sc = nd_alt_scr_on(); const unsigned char om = nd_alt_raw_on; nd_alt_raw_on = 1; uint32_t* const blk = nd_alt_call(w0, w1);
+        nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_alt_raw_on = om; nd_alt_scr_off(); return; }
     if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { st_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); return; } /* NAT5T */
     st_put(t[0], t[1]); /* NAT4A */
 }
@@ -457,6 +462,19 @@ void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uin
         nd_rec_nr(w0, w1); }
     st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp; /* NAT5R */
     if (lost) nd_ds.sc_lost = 1; /* the old nd_ds_feed_dir */
+}
+/* NAT5T, core 1: as nd_rec_alt, the fallback units au copied raw (tile sizes of tile 0 and 1 carry their window); the units apply to a scratch copy of core 1 state, which stays as it was. */
+void nd_alt_put(uint32_t w0, uint32_t w1);
+void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an) {
+    if (units + 1u > 255u) napi_bad(units + 1u);
+    rec_open(); uint32_t* p = rec_take(4u + 2u * units); ndc_n[NDC_NAPI]++; if (s) ndc_snapc++;
+    p[0] = NDC_HDR(NDC_NAPI, units + 1u, s ? 1u : 0u); p[1] = (uint32_t)(uintptr_t)run; memcpy(p + 2, rec, units * 8u); napi_last = p + 2u;
+    uint32_t* const ab = p + 2u + 2u * units; ab[0] = ab[1] = 0u;
+    uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; ab[0] = (uint32_t)(uintptr_t)wp; nd_snap_task();
+    NdDs* const sc = nd_alt_scr_on();
+    for (unsigned k = 0; k < an; k++) { const uint32_t w0 = au[2u * k], w1 = au[2u * k + 1u]; nd_alt_put(w0, w1); nd_ds_apply(sc, w0, w1); }
+    nd_alt_scr_off();
+    st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp;
 }
 /* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
  * A texture rectangle and its 2 RDPHALF units stay in one NRUN run (nr_ctl reads at[3], at[5]). */

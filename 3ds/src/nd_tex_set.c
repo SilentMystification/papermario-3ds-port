@@ -87,38 +87,6 @@ void nd_tx_tile(u32 a, u32 b) {
     unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 };
     set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15);
 }
-/* CORE-2b batch D2: block load setter (decoded fields: tile and texel count). */
-static void set_loadblock(unsigned tile, unsigned texels) {
-            unsigned tm = nd_ws.tst1.tile_tmem[tile];
-            {
-                /* V13: the block also covers the TMEM above it (a half-height aux tile reads there) */
-                unsigned words = ((texels + 1u) << nd_ws.tst1.tile_siz[tile]) >> 4;
-                for (unsigned k = 0; k < 4; k++) if (nd_ws.tst1.ldrec[k].tmem >= tm && (nd_ws.tst1.ldrec[k].tmem == tm || nd_ws.tst1.ldrec[k].tmem < tm + words)) nd_ws.tst1.ldrec[k].img = NULL;
-            }
-            {
-                unsigned k;
-                for (k = 0; k < 4 && !(nd_ws.tst1.blk[k].img && nd_ws.tst1.blk[k].tmem == tm); k++) {}
-                if (k == 4) k = nd_tm.blk_n++ & 3;
-                nd_ws.tst1.blk[k].tmem = tm; nd_ws.tst1.blk[k].img = nd_ws.timg;
-                nd_ws.tst1.blk[k].bytes = ((texels + 1u) << nd_ws.tst1.tile_siz[tile]) >> 1;
-            }
-}
-void nd_tx_ldblk(u32 b) { set_loadblock((b >> 24) & 7, (b >> 12) & 0xfff); }
-/* D4a-2: tile load setter (decoded fields: tile and the 12 bit window of G_LOADTILE): the LoadTile window and the load record of its TMEM address. */
-static void set_loadtile(unsigned tile, int uls, int ult, int lrs, int lrt) {
-    nd_tm.ld_valid = 1;
-    nd_tm.ld_x = uls >> 2;
-    {
-        unsigned tm = nd_ws.tst1.tile_tmem[tile], k;
-        for (k = 0; k < 4 && !(nd_ws.tst1.ldrec[k].img && nd_ws.tst1.ldrec[k].tmem == tm); k++) {}
-        if (k == 4) k = nd_tm.ldrec_n++ & 3;
-        nd_ws.tst1.ldrec[k].tmem = tm; nd_ws.tst1.ldrec[k].img = nd_ws.timg; nd_ws.tst1.ldrec[k].stride = nd_ws.tst1.timg_stride;
-        nd_ws.tst1.ldrec[k].x = uls >> 2; nd_ws.tst1.ldrec[k].y = ult >> 2;
-    }
-    nd_tm.ld_y = ult >> 2;
-    nd_tm.ld_h = ((lrt - ult) >> 2) + 1;
-    nd_tm.ld_w = ((lrs - uls) >> 2) + 1;
-}
 /* CORE-2b batch D2: palette load setter (decoded fields: tile and entry count). */
 static void set_loadtlut(unsigned tile, unsigned count) {
             nd_ws.tlut = nd_ws.timg;
@@ -136,14 +104,13 @@ static void set_loadtlut(unsigned tile, unsigned count) {
             }
 }
 void nd_tx_ldtlut(u32 b) { set_loadtlut((b >> 24) & 7, (b >> 14) & 0x3ff); }
-void nd_tx_ldtile(u32 a, u32 b) { set_loadtile((b >> 24) & 7, (int)((a >> 12) & 0xfff), (int)(a & 0xfff), (int)((b >> 12) & 0xfff), (int)(b & 0xfff)); }
 /* CORE-2b batch D: tile size setter (decoded fields). */
 static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult, int lrs, int lrt, const NdTxR* r) {
     if (tile == 0 && PMDL("negpanf") && pm_frame_count() >= 200u && (nd_ws.tst1.tile_wrap[0][2] || nd_ws.tst1.tile_wrap[0][3])) { /* NEGPAN step 1 debug: force the mushroom panner offset (-0x8000 = -128 in 10.2) on 8 tile-0 sizes */
         static unsigned nf_;
         if (nf_ < 8u) { nf_++; ult = (ult - 128) & 0xfff; lrt = (lrt - 128) & 0xfff; } /* raw 12 bit fields, as the record carries them */
     }
-            const int pn = r ? r->pal_n : nd_ws.tlut_n; const void* const ti = r ? r->timg : nd_ws.timg; /* NAT5T */
+            const int pn = r ? r->pal_n : 0; const void* const ti = r ? r->timg : NULL; /* NAT5T: r is set for tile 0 and 1 */
             if (!r && (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0)) tex_win_s25(&uls, &ult, &lrs, &lrt, nd_ws.tst1.tile_wrap[tile][0], nd_ws.tst1.tile_wrap[tile][2], nd_ws.tst1.tile_wrap[tile][1], nd_ws.tst1.tile_wrap[tile][3]);
             GP_SET(4, nd_ws.tst1.tile_sz[tile][0] == uls && nd_ws.tst1.tile_sz[tile][1] == ult && nd_ws.tst1.tile_sz[tile][2] == lrs && nd_ws.tst1.tile_sz[tile][3] == lrt);
             nd_ws.tst1.tile_sz[tile][0] = uls;
@@ -160,7 +127,7 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             int x0 = uls >> 2;
             int y0 = ult >> 2;
             NdWin wn;
-            if (r) { wn.src = r->src; wn.w = r->w; wn.h = r->h; wn.stride = r->stride; wn.x0 = r->x0; } else nd_texw0(&nd_ws.tst1, &nd_tm, nd_ws.timg, uls, ult, lrs, lrt, &wn); /* NAT5T */
+            wn.src = r->src; wn.w = r->w; wn.h = r->h; wn.stride = r->stride; wn.x0 = r->x0; /* NAT5T */
             const u8* src = wn.src;
             int w = wn.w, h = wn.h, stride = wn.stride;
             nd_ws.tile_x0 = x0;
@@ -172,7 +139,7 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
              * excluded (its content changes under the same pointer, grab_cur). */
             {
                 struct TszLast* lp = &tsz_last;
-                const void* palc = r ? r->pal : (nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] ? nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] : nd_ws.tlut);
+                const void* palc = r->pal;
                 int ggx = 0, ggy = 0;
                 if (src && w > 0 && h > 0 && nd_ws.tst1.tile_fmt[0] == 2 && nd_ws.tst1.tile_siz[0] == 0 &&
                     pm_tex_glyph_same(src, nd_ws.tst1.tile_fmt[0], nd_ws.tst1.tile_siz[0], w, h, palc, pn, &ggx, &ggy)) {
@@ -201,7 +168,7 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             /* GP3: pm_tex_load runs in nd_tile_bind(0) at the first surviving draw. */
             /* F03: a 1 row tile of the N64 z-buffer is a depth query source (pm_depth_query), not a texture (the pause background loads tall z-buffer tiles, those are textures) */
             if (src && w > 0 && h > 0 && (h > 1 || (unsigned)ti - (unsigned)nuGfxZBuffer >= 320u * 240u * 2u)) {
-                const void* pal0 = r ? r->pal : (nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] ? nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] : nd_ws.tlut);
+                const void* pal0 = r->pal;
                 nd_ws.td[0].valid = 1;
                 nd_ws.td[0].src = src;
                 nd_ws.td[0].fmt = nd_ws.tst1.tile_fmt[0];
@@ -217,7 +184,9 @@ static __attribute__((noinline)) void nd_tsz_set(unsigned tile, int uls, int ult
             }
             return;
 }
+static __attribute__((cold, noinline)) void txraw_note(unsigned tile) { static unsigned lf = ~0u; const unsigned fr = pm_frame_count(); if (fr == lf) return; lf = fr; pm_log_evt("txraw f%u tile %u", fr, tile); } /* NAT5T */
 __attribute__((noinline)) void nd_tx_tsz(u32 a, u32 b) {
+    if (__builtin_expect(((b >> 24) & 7u) < 2u, 0)) { txraw_note((b >> 24) & 7u); return; } /* NAT5T: a raw tile size of tile 0 or 1 has no path left */
     nd_tsz_set((b >> 24) & 7, (int)((a >> 12) & 0xfff), (int)(a & 0xfff), (int)((b >> 12) & 0xfff), (int)(b & 0xfff), NULL);
 }
 void nd_tx_tszr(const NdTxR* r) { nd_tsz_set(r->tile, r->uls, r->ult, r->lrs, r->lrt, r); } /* NAT5T */
@@ -457,21 +426,15 @@ void nd_tile_bind(int n) {
 
 __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt, const NdTxR* r) {
             if (__builtin_expect(PMDL("shadecen") && tile == 1 && nd_ws.tst1.tile_fmt[1] == 2 && nd_ws.tst1.tile_siz[1] == 0 && !nd_tm.ld_valid, 0)) shc[1]++;
-            if (r ? r->m1v : (tile == 1 && nd_ws.tst1.tile_fmt[1] == 2 && nd_ws.tst1.tile_siz[1] == 0 && nd_tm.ld_valid && nd_ws.timg)) { /* NAT5T */
+            if (r->m1v) { /* NAT5T */
                 /* Second tile on the same 4-bit image: remember the raster for the shaded sprite. */
                 m1.valid = 1;
                 if (PMDL("shadecen")) shc[0]++;
-                if (r) { m1.src = r->m1src; m1.stride = r->m1stride; m1.w = r->m1w; m1.h = r->m1h; m1.x0 = r->m1x0; m1.y0 = r->m1y0; } else { /* NAT5T */
-                m1.src = (const u8*)nd_ws.timg + (size_t)nd_tm.ld_y * (size_t)nd_ws.tst1.timg_stride + (size_t)nd_tm.ld_x;
-                m1.stride = nd_ws.tst1.timg_stride * 2;
-                m1.w = ((lrs - uls) >> 2) + 1;
-                m1.h = ((lrt - ult) >> 2) + 1;
-                m1.x0 = uls >> 2;
-                m1.y0 = ult >> 2; }
+                m1.src = r->m1src; m1.stride = r->m1stride; m1.w = r->m1w; m1.h = r->m1h; m1.x0 = r->m1x0; m1.y0 = r->m1y0; /* NAT5T */
             }
             if (tile == 1) {
                 NdWin wn;
-                if (r) { wn.src = r->src; wn.w = r->w; wn.h = r->h; wn.stride = r->stride; wn.x0 = r->x0; } else nd_texw1(&nd_ws.tst1, &nd_tm, nd_ws.timg, uls, ult, lrs, lrt, &wn); /* NAT5T */
+                wn.src = r->src; wn.w = r->w; wn.h = r->h; wn.stride = r->stride; wn.x0 = r->x0; /* NAT5T */
                 if (__builtin_expect(PMDL("t1win") && (uls >= 1024 || ult >= 1024), 0)) { static unsigned n_; if (n_ < 8u) { n_++; pm_log("t1win f%u uls %d ult %d w %d h %d ldw %d ldh %d off %d", pm_frame_count(), uls, ult, wn.w, wn.h, nd_tm.ld_w, nd_tm.ld_h, wn.src && nd_ws.timg ? (int)(wn.src - (const u8*)nd_ws.timg) : -1); } }
                 nd_ws.td[1].valid = 0;
                 if (nd_ws.cur_tile == 1) nd_ws.cur_tile = -1; /* a new tile 1 image: bind it again */
@@ -485,8 +448,8 @@ __attribute__((noinline)) void tex_tile1(unsigned tile, int uls, int ult, int lr
                     nd_ws.td[1].stride = wn.stride;
                     nd_ws.td[1].x0 = wn.x0;
                     nd_ws.td[1].y0 = ult >> 2;
-                    nd_ws.td[1].pal = r ? r->pal : nd_tm.tlut_pal[nd_ws.tst1.tile_pal[1] & 15] ? nd_tm.tlut_pal[nd_ws.tst1.tile_pal[1] & 15] : nd_ws.tlut; /* NAT5T */
-                    nd_ws.td[1].pal_n = r ? r->pal_n : nd_ws.tlut_n;
+                    nd_ws.td[1].pal = r->pal; /* NAT5T */
+                    nd_ws.td[1].pal_n = r->pal_n;
                 }
             }
 }
@@ -636,10 +599,16 @@ void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h) {
     set_timg(raster, 2, 2, 1);
     pm_gbi_cur_op = ND_FS_TILE;
     set_tile(7, 2, 2, 0, 0, wr, 0, 0);
-    pm_gbi_cur_op = ND_FS_LOADBLOCK;
-    set_loadblock(7, texels > G_TX_LDBLK_MAX_TXL ? G_TX_LDBLK_MAX_TXL : texels);
     pm_gbi_cur_op = ND_FS_TILE;
     set_tile(0, 2, 0, 0, 0, wr, 0, 0);
     pm_gbi_cur_op = ND_FS_TILESIZE;
-    nd_tsz_set(0, 0, 0, (w - 1) << 2, (h - 1) << 2, NULL);
+    { /* NAT5T: the window of tile 0 over a state that holds only this glyph (the block load of tile 7 at TMEM 0 cleared the load records there) */
+        if (texels > G_TX_LDBLK_MAX_TXL) texels = G_TX_LDBLK_MAX_TXL;
+        NdTst gt; NdTexM gm; NdWin wn; NdTxR gr; memset(&gt, 0, sizeof gt); memset(&gm, 0, sizeof gm); memset(&gr, 0, sizeof gr);
+        gt.tile_fmt[0] = 2; gt.tile_siz[0] = 0; gt.tile_tmem[0] = 0; gt.tile_siz[7] = 2; gt.tile_tmem[7] = 0;
+        gt.blk[0].tmem = 0; gt.blk[0].bytes = ((texels + 1u) << 2) >> 1; gt.blk[0].img = nd_ws.timg; gt.timg_stride = 1;
+        nd_texw0(&gt, &gm, nd_ws.timg, 0, 0, (w - 1) << 2, (h - 1) << 2, &wn);
+        gr.tile = 0; gr.uls = 0; gr.ult = 0; gr.lrs = (w - 1) << 2; gr.lrt = (h - 1) << 2; gr.src = wn.src; gr.w = wn.w; gr.h = wn.h; gr.stride = wn.stride; gr.x0 = wn.x0;
+        gr.pal = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] ? nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] : nd_ws.tlut; gr.pal_n = nd_ws.tlut_n; gr.timg = nd_ws.timg;
+        nd_tsz_set(0, 0, 0, (w - 1) << 2, (h - 1) << 2, &gr); }
 }
