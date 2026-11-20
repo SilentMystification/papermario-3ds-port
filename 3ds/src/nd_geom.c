@@ -204,7 +204,6 @@ int gv_state_why(int* ct, int* both) { /* NWS4B */
 /* the first triangle (or DLC2 range) after a state change */
 extern int nd_dq_on; /* nd_direct.c */
 void gv_epoch_enter(void) { /* NWS4B */
-    if (ND_GEOM() != nd_c0.geom) nd_geo_note(1, ND_GEOM(), nd_c0.geom); /* NC0B step 1: the census */
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;
@@ -447,16 +446,13 @@ void nd_geo_units(const uint32_t* u, unsigned n) { /* NATFB: flat geometry units
         if (id == ND_FS_END) break;
         if (id == ND_FS_GEOM) { const u32 gm = (g->geom & a) | b; const int z = (gm & G_ZBUFFER) != 0, l = (gm & G_LIGHTING) != 0;
             if (gm == g->geom && pm_gpu_mode_is(z, l)) continue; /* nd_unit_same */
-            pm_gbi_cur_op = id; gv_epoch++; g->geom = gm; nd_c0.geom = gm; pm_gpu_set_mode(z, l); continue; } /* nr_set cut, set_geom; NC0B step 1: nd_c0 for the census */
+            pm_gbi_cur_op = id; gv_epoch++; g->geom = gm; pm_gpu_set_mode(z, l); continue; } /* nr_set cut, set_geom */
         pm_gbi_cur_op = id;
         if (id == ND_FS_VTX) nd_geom_vtx(a, b, (const NdW2*)q, g->geom, g->tss);
         else { tri_prep_ok = 0; draw_tri(a); if (id == ND_FS_TRI2) draw_tri(b); } }
     nd_gs = s0; /* NC0B */
     if (__builtin_expect(pm_walk_dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); }
-__attribute__((cold, noinline)) void nd_geo_note(unsigned site, uint32_t nw, uint32_t old) { static unsigned cnt[4]; if (cnt[site & 3u]++ < 8u) pm_log_evt("geodiff f%u s%u new %08x old %08x", pm_frame_count(), site, (unsigned)nw, (unsigned)old); } /* NC0B step 1: the census */
 void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list, uint32_t geom, uint32_t tss) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2); NC0B: geom and tss of the unit */
-    { const uint32_t ot = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu);
-        if (geom != nd_c0.geom) nd_geo_note(2, geom, nd_c0.geom); if (tss != ot) nd_geo_note(2, tss, ot); } /* NC0B step 1: the census */
     unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
     ctr_live = 0; /* BTLUI3: a load ends the trace of the last one */
     unsigned n = (w0 >> 12) & 0xff;

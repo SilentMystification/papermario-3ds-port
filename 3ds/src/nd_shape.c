@@ -495,7 +495,7 @@ __attribute__((noinline)) DlcEnt* dlc_find(const void* l) {
 
 __attribute__((noinline)) void dlc_set_geom(u32 g) {
     if (g == nd_gs->geom) return;
-    nd_gs->geom = g; nd_c0.geom = g; /* NC0B step 1: nd_c0 for the census */
+    nd_gs->geom = g;
     pm_gpu_set_mode((g & G_ZBUFFER) != 0, (g & G_LIGHTING) != 0);
     gv_epoch++;
 }
@@ -624,7 +624,7 @@ __attribute__((noinline)) void dlc_run_group(const uint32_t* l, const DlcGrp* g,
             draw_tri(w1);
             break;
         case ND_FS_GEOM:
-            nd_gs->geom = (nd_gs->geom & (w0 & 0xffffffu)) | w1; nd_c0.geom = nd_gs->geom; pm_gpu_set_mode((nd_gs->geom & G_ZBUFFER) != 0, (nd_gs->geom & G_LIGHTING) != 0); /* NATFB: set_geom in place */
+            nd_gs->geom = (nd_gs->geom & (w0 & 0xffffffu)) | w1; pm_gpu_set_mode((nd_gs->geom & G_ZBUFFER) != 0, (nd_gs->geom & G_LIGHTING) != 0); /* NATFB: set_geom in place */
             gv_epoch++;
             break;
         default:

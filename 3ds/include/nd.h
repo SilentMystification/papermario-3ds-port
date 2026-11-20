@@ -163,7 +163,6 @@ typedef struct NdWs {
 } NdWs;
 /* NWS3: the core 0 draw state (the RSP and texture state the native records write). NdWs above stays the core 1 field model (NdDs.w). */
 typedef struct NdC0 {
-    unsigned geom;                     /* geometry mode */
     unsigned omode_h, omode_l;         /* other mode high and low */
     unsigned prim;                     /* primitive colour */
     unsigned envc;                     /* env colour */
@@ -176,7 +175,6 @@ typedef struct NdC0 {
     int tile_x0, tile_y0;
     float tile_fx, tile_fy;
     int cur_tile;
-    unsigned tex_ss, tex_ts;
     uint32_t segbase[16];
     unsigned comb_w0, comb_w1;
     NdTst tst1;

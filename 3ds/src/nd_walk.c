@@ -244,7 +244,7 @@ void nd_vtx_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (re
     for (const uint32_t* q = rec; q < e; q += 4) { const int fp = r_pro(dbg, ND_FS_VTX, q); nd_geom_vtx(q[0] & 0xffffffu, q[1], (const NdW2*)q, q[2], q[3]); if (fp) pm_ph_pop(); }
     r_end(dbg); }
 NdGs nd_ew = { G_SHADE | G_SHADING_SMOOTH, 0xffffffffu, 0x30u, 0u }; NdGs* nd_gs; /* NC0B */
-void nd_ew_run(const uint32_t* r) { const uint32_t ot = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu); if (r[0] != nd_c0.geom) nd_geo_note(3, r[0], nd_c0.geom); if (r[1] != ot) nd_geo_note(3, r[1], ot); nd_ew.geom = r[0]; nd_ew.tss = r[1]; nd_ew.oml = r[2]; nd_ew.omh = r[3]; } /* NC0B: census (step 1) */
+void nd_ew_run(const uint32_t* r) { nd_ew.geom = r[0]; nd_ew.tss = r[1]; nd_ew.oml = r[2]; nd_ew.omh = r[3]; } /* NC0B: the entry record of a static call */
 R_EACH(nd_tri1_run, { const int fp = r_pro(dbg, ND_FS_TRI1, u); tri_prep_ok = 0; draw_tri(a); if (fp) pm_ph_pop(); }) R_EACH(nd_tri2_run, { const int fp = r_pro(dbg, ND_FS_TRI2, u); tri_prep_ok = 0; draw_tri(a); draw_tri(b); if (fp) pm_ph_pop(); })
 R_EACH(nd_mtx_run, { const int fp = r_pro(dbg, ND_FS_MTX, u); if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)u, (NdW2*)u + 1); nd_xf_load(a, b, 0); if (fp) pm_ph_pop(); }) R_EACH(nd_pop_run, { const int fp = r_pro(dbg, ND_FS_POPMTX, u); nd_xf_popb(b); if (fp) pm_ph_pop(); })
 R_EACH(nd_mvm_run, { if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) continue; gv_epoch++; const int fp = r_pro(dbg, ND_FS_MOVEMEM, u); if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); nd_mv_mem(a, b); if (fp) pm_ph_pop(); })
@@ -448,7 +448,6 @@ void pm_gbi_init(void) {
     if (pm_c2own < 0) pm_c2own = pm_debug_has("c2own"); /* CORE2-3a: ownership check (nd_wq.c) */
     nd_mtx_reset();
     memset(vert_live, 0, sizeof vert_live);
-    nd_c0.geom = G_SHADE | G_SHADING_SMOOTH;
     upload_mvp();
 }
 /* R5B: a G_MOVEMEM light that writes the values already in lt[slot] changes nothing. The same op also runs lit_freeze, which

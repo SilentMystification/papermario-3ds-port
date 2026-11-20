@@ -233,7 +233,6 @@ void dlc_report(void);
 unsigned word_5551(unsigned rgba);
 /* G: the geometry group (nd_geom.c, GM-2): G_VTX (nd_geom_vtx) and G_TRI1/2 (draw_tri), the triangle clip and cull helpers and the epoch state. */
 void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list, uint32_t geom, uint32_t tss); /* NC0B: geom and tss from the VTX unit or the static call */
-void nd_geo_note(unsigned site, uint32_t nw, uint32_t old); /* NC0B step 1: the census */
 void draw_tri(unsigned w);
 void nd_geo_units(const uint32_t* u, unsigned n); /* NATFB, nd_geom.c */
 void gv_params_calc(unsigned tss, NdGvP* o);
