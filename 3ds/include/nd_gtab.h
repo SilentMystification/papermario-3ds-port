@@ -132,7 +132,6 @@ void nd_ndev_rec(const uint32_t* rec);
 extern const NdNDev* ndn_dev_idx[]; /* GKEY1: &ndd_<list> per entry, sorted by ->list at the first nd_ntab_find */
 extern const unsigned ndn_dev_n;
 const NdNDev* nd_ntab_find(const void* list);
-void nd_ntab_run(const NdNDev* e);
 unsigned nd_gt_state_only(const uint32_t* l); /* 1: the end within 64 units, every unit before it a state op or a sync */
 int nd_ntab_flat(const NdNDev* e, void* out, unsigned* n, unsigned max, int depth, int (*call)(uint32_t w1, unsigned* n, int depth)); /* EMIT4: the nd_eg_flat words of a v2 list from e->u (1 done, 0 refused) */
 #endif

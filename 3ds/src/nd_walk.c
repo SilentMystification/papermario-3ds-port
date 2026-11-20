@@ -204,6 +204,7 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
 /* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
  * static list goes to the entity path (ent_gdl) or a compiled map shape (nd_sg_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_nr_list), inside a list nested. */
+unsigned nd_stat_calls; static __attribute__((cold, noinline)) void stat_call(const void* l) { static unsigned n; nd_stat_calls++; if (n++ < 4u) pm_log_e("ndc: static call %p f%u", l, pm_frame_count()); } /* NAT6E3: a call with no copy is not run (PSOFB) */
 static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t* ab) { /* NAT5N: ab NULL: the static table */
     NdW2* next = (NdW2*)ptr_of(w1);
     if (!next) return;
@@ -228,8 +229,7 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
         if (!ex_depth) { PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = 1; alt_mode = 1u; nd_alt_run(ab); ex_depth = 0; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* nd_nr_list keep 1 */
         else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt && nd_ls_on) nd_lsr_geo(); alt_mode = (nt && nd_ls_on) ? 2u : 1u; nd_alt_run(ab); ex_depth--; }
         alt_mode = m; }
-    else if (!ex_depth) { if (nt) nd_nr_list(nt->u, nt->nu, 1); else nd_nr_list(next, ND_LIST_MAX, 1); } /* GKEY2: a list with an entry runs its unit copy */
-    else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt) nd_ntab_run(nt); else nd_nr_exec((const uint32_t*)next, ND_LIST_MAX); ex_depth--; }
+    else stat_call(next); /* NAT6E3 */
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
 /* DIRECT D4b-3, D5: native record run (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
@@ -413,23 +413,6 @@ void nd_cpy_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (re
 static __attribute__((cold, noinline)) void ops_cen_end(void) {
     if (pm_ph_cen) walk_dbg_end(pm_walk_dbg);
 }
-/* DEL1A: was nd_nr_list */
-void nd_nr_list(const void* l, unsigned n, int keep) {
-    PM_WALK_OWN(); /* CORE2-3a: a run is walker-side only */
-    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
-    gv_epoch++; /* GV1b */
-    dlc_on = 1;
-    gp_prev_op = -1; /* PG4: the time between two lists is not an op cost */
-    if (!keep) { sc_ok = 0; sr_ok = 0; } /* DIP2: a new list starts with a full sync (not a piece of one flattened list) */
-    pm_walk_side++;
-    ex_depth = d + 1;
-    nd_nr_exec((const uint32_t*)l, n);
-    ex_depth = d;
-    pm_walk_side--;
-    gv_streak_flush();
-    tex_streak_flush();
-    if (cen) ops_cen_end();
-}
 /* NAT5W: the sprite fallback words VTX(4, 0) and TRI2 (sprite.c:314-317): the list start and end of nd_nr_list (keep 1), the arms of nr_geo. */
 static void spr_geo_walk(const uint32_t* g) {
     PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
@@ -498,9 +481,7 @@ static __attribute__((cold, noinline)) void entcap_rec(const void* list, uint32_
  * unit runs keep the census hooks). Vertex and triangle ops are the walker's typed units (nr_geo), so clip, cull, lit loads and the
  * ring stay the walker's. */
 unsigned nd_gtr_ent, nd_gtr_dlc, nd_gtr_ops, nd_gtr_ntab;
-/* CONV2D2: the words of a v2 list (nd_gtab.h NdNDev) run with nd_walk_state: NOPs skipped there, the stop at n. */
-void nd_ntab_run(const NdNDev* e) { if (nd_ls_on) { nd_lsr_geo(); ls_run(e->u, e->nu); } else nd_nr_exec(e->u, e->nu); } /* NCONV2D: a list with a snap table runs without its combine units */
-static void gt_body(const NdNDev* nt, const uint32_t* ab) { nd_gtr_ntab++; if (!ab) { nd_ntab_run(nt); return; } if (nd_ls_on) nd_lsr_geo(); const unsigned char m = alt_mode; alt_mode = nd_ls_on ? 2u : 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5T: ab the alt range bounds, NULL: the static table */ /* NAT5F: as nd_ntab_run, from the stream copy; NAT5N */
+static void gt_body(const NdNDev* nt, const uint32_t* ab) { nd_gtr_ntab++; if (nd_ls_on) nd_lsr_geo(); const unsigned char m = alt_mode; alt_mode = nd_ls_on ? 2u : 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5T: ab the alt range bounds, NULL: the static table */ /* NAT5F: as nd_ntab_run, from the stream copy; NAT5N */ /* NAT6E3: ab is never NULL */
 static __attribute__((cold, noinline)) void entcap_so(const void* l, uint32_t site) { static uint32_t k[256]; static unsigned n;
     const uint32_t a = (uint32_t)(uintptr_t)l; for (unsigned i = 0; i < n; i++) if (k[i] == (a ^ site * 2654435761u)) return; if (n == 256u) return;
     k[n++] = a ^ site * 2654435761u; pm_log_evt("entcap so l %08x s %08x", a, site); }
@@ -542,7 +523,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec, cons
     tex_streak_flush();
 }
 unsigned nd_gtr_rec; /* GKEY2: the runs of nd_ntab_rec */
-void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, nt, rec, (rec[1] & 4u) ? rec + 6 : NULL); }
+void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintptr_t)rec[0]; nd_gtr_rec++; gt_run(nt->list, nt, rec, rec + 6); } /* NAT6E3: nd_gtab.c always sets bit 4 */
 void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
 void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, &d, rec, rec + 10); } /* NTABFIND: the record-time copy (nd_gtab.h) */
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
