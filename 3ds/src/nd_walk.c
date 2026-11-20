@@ -461,7 +461,7 @@ static __attribute__((cold, noinline)) void pr_cen(void) {
 }
 void nd_pbeg_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); pr_v++; if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen(); /* NAT5E: the start of the old parts runner */
     pm_walk_side++; gv_epoch++; dlc_on = 1; gp_prev_op = -1; extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; }
-void nd_pdraw_run(const uint32_t* r) { const NdNDev* t = (const NdNDev*)(uintptr_t)r[0]; if (!nd_part_draw(t)) nd_ntab_run(t); } /* NAT5E: one instance list */
+void nd_pdraw_run(const uint32_t* r) { const NdNDev* t = (const NdNDev*)(uintptr_t)r[0]; if (!nd_part_draw(t)) { if (nd_ls_on) nd_lsr_geo(); nd_geo_units(t->u, t->nu); } } /* NAT5E: one instance list */ /* NATFB2: a refused particle list on the native geometry run */
 void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; sc_ok = 0; nd_comb_sync(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */
 /* ENTRYCAP: the device switch entcap (PMDL). A static list without a v2 table logs its walker entry description (nd_walker_desc) once per
  * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 4096 keys. */
@@ -626,38 +626,8 @@ void pm_walk_drain(const char* why) {
     pm_wq_idle();
     if (pm_xf.on) { pm_xf.dr_n++; pm_xf.dr_t += pm_ticks() - xt0; }
 }
-void pm_gbi_fallback(void) {
-    static int ready;
-    static uint32_t dl[16];
-    static Vtx fv[3];
-    static Mtx fm;
-    if (!ready) {
-        memset(&fm, 0, sizeof(fm));
-        mtx_elem(&fm, 0, 0, 1.f / 160.f);
-        mtx_elem(&fm, 1, 1, 1.f / 120.f);
-        mtx_elem(&fm, 2, 2, 1.f);
-        mtx_elem(&fm, 3, 3, 1.f);
-        short xy[3][2] = { { -50, -40 }, { 50, -40 }, { 0, 50 } };
-        u8 rgb[3][3] = { { 255, 80, 80 }, { 80, 255, 80 }, { 80, 80, 255 } };
-        for (int i = 0; i < 3; i++) {
-            fv[i].v.ob[0] = xy[i][0];
-            fv[i].v.ob[1] = xy[i][1];
-            fv[i].v.ob[2] = 0;
-            fv[i].v.cn[0] = rgb[i][0];
-            fv[i].v.cn[1] = rgb[i][1];
-            fv[i].v.cn[2] = rgb[i][2];
-            fv[i].v.cn[3] = 255;
-        }
-        uint32_t* nrp = dl; /* DEL3C1: the units of the old gbi macros (ND_X0, ND_X1 of each word) */
-        ND_NR_AT(ND_NR_OM(1, G_MDSFT_CYCLETYPE, 2), G_CYC_FILL);
-        ND_NR_AT(ND_FS_W0(ND_FS_FILL, 0u), 0x22292229u);
-        ND_NR_AT(ND_FS_W0(ND_FS_RECT, ND_NR_XY10(319, 239)), ND_NR_XY10(0, 0));
-        ND_NR_AT(ND_NR_OM(1, G_MDSFT_CYCLETYPE, 2), G_CYC_1CYCLE);
-        ND_NR_AT(ND_FS_W0(ND_FS_MTX, ND_W0_D2(0, sizeof(Mtx), (G_MTX_PROJECTION | G_MTX_LOAD | G_MTX_NOPUSH) ^ G_MTX_PUSH, 0)), (uint32_t)(uintptr_t)&fm);
-        ND_NR_AT(ND_NR_VTX(3, 0), (uint32_t)(uintptr_t)fv);
-        ND_NR_AT(ND_FS_W0(ND_FS_TRI1, __gsSP1Triangle_w1f(0, 1, 2, 0)), 0u);
-        ND_NR_AT(ND_FS_W0(ND_FS_END, 0u), 0u);
-        ready = 1;
-    }
-    nd_nr_list(dl, ND_LIST_MAX, 0);
+void pm_gbi_fallback(void) { /* NATFB2 (user yes): the boot picture is one native fill, as the old FILL rectangle; no test triangle */
+    pm_gpu_set_replace(1);
+    pm_gpu_fill_rect(0, 0, 319, 239, rgba_from_5551(0x2229u));
+    pm_gpu_set_replace(0);
 }
