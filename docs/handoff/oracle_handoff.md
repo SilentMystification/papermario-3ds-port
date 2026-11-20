@@ -3,7 +3,7 @@
 State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs; ALT2C gated 0464762731) plus pages of oracle NATIVE17, 2026-11-20.
 ## Goal
 - User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
-- The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, section 6a MCOPY, section 7 nd_c0 fields left, section 10 questions).
+- The 60 fps overview: docs/handoff/plan_60fps.md (budget, hot areas, order of attack). The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, section 6a MCOPY, section 7 nd_c0 fields left, section 10 questions).
 - Numbers (FACT console capture build 7569): core 1 44.4 ms, core 0 24.0 ms, ratio 1.86, ft 46.5, fps 42.2; c1a m 10975 words per step (0 after MCOPY2). c0gate 0 / 0 / 1 (nd_c0 now timg, tlut, tlut_n, tst1, td; NC0T2 step 2 deletes it: 0 / 0 / 0).
 ## Tools on main
 - `python 3ds/tools/c0gate.py <elf>`: calls / interp / state. Run on the ELF of the same tree (a clean worktree or git archive).
