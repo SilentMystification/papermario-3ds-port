@@ -245,10 +245,11 @@ typedef struct MmEnt {
     MmS s; Lightsn lt; uint32_t c9[2]; uint32_t l1[2u * MM_L1]; uint16_t di[MM_D]; uint32_t dv[MM_D]; uint32_t cl, cb, al[4u * MM_LW], ab[4u * MM_BW]; /* A: the ring counter steps and the rings after, logical order */
 } MmEnt;
 static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits, mm_skip, mm_diffs;
-static unsigned mm_nc[8], mm_wc[40]; static MmS mm_s; static NdDs mm_b;
+static unsigned mm_nc[8], mm_wc[40], mm_sf[4], mm_dh[8]; /* store fails: 0 list too long, 1 delta too long; dh: delta size histogram */ static MmS mm_s; static NdDs mm_b;
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
 void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); { char o[400]; int n = 0; for (unsigned i = 0; i < 34u; i++) if (mm_wc[i]) n += snprintf(o + n, sizeof o - (unsigned)n, " %u:%u", i, mm_wc[i]); pm_log_evt("mmemo why%s", o); }
+    pm_log_evt("mmemo store fail list %u delta %u; stored delta 0-3 %u 4-7 %u 8-11 %u 12+ %u", mm_sf[0], mm_sf[1], mm_dh[0], mm_dh[1], mm_dh[2], mm_dh[3]);
     pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
 #define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
 #define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
@@ -289,10 +290,10 @@ static __attribute__((cold, noinline)) void mm_store(MmEnt* e, const uint32_t* r
     if (mm_lights(r)) memcpy(&e->lt, (const void*)(uintptr_t)r[7], sizeof e->lt);
     if (r[9]) memcpy(e->c9, (const void*)(uintptr_t)r[9], 8u);
     e->nl1 = 0;
-    if (!keep && r[1]) { const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; for (; (u[0] >> 24) != ND_FS_END; u += 2) { if (e->nl1 >= MM_L1) return; e->l1[2u * e->nl1] = u[0]; e->l1[2u * e->nl1 + 1u] = u[1]; e->nl1++; } }
+    if (!keep && r[1]) { const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; for (; (u[0] >> 24) != ND_FS_END; u += 2) { if (e->nl1 >= MM_L1) { mm_sf[0]++; return; } e->l1[2u * e->nl1] = u[0]; e->l1[2u * e->nl1 + 1u] = u[1]; e->nl1++; } }
     const uint32_t* b = (const uint32_t*)&mm_b; const uint32_t* a = (const uint32_t*)&nd_ds; unsigned n = 0;
-    for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u); i++) if (!mm_ringw(i) && a[i] != b[i]) { if (n >= MM_D) return; e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
-    e->nd = n; e->cl = nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n; e->cb = nd_ds.tm.blk_n - mm_b.tm.blk_n; mm_ring_get(&nd_ds, e->al, e->ab); e->ok = 1;
+    for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u); i++) if (!mm_ringw(i) && a[i] != b[i]) { if (n >= MM_D) { mm_sf[1]++; return; } e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
+    mm_dh[n < 4u ? 0u : n < 8u ? 1u : n < 12u ? 2u : 3u]++; e->nd = n; e->cl = nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n; e->cb = nd_ds.tm.blk_n - mm_b.tm.blk_n; mm_ring_get(&nd_ds, e->al, e->ab); e->ok = 1;
 }
 static __attribute__((cold, noinline)) void mm_diff(const char* what, unsigned at) { if (mm_diffs++ < 16u) pm_log_evt("mmemo f%u diff %s %u", pm_frame_count(), what, at); }
 static unsigned mm_nn; /* near misses: the same key and record, only S differs; counted by the part of S (m, sv, rg, lr, br) */
