@@ -1,0 +1,2 @@
+build3ds/azt/logs/kkj14_cgfx_drec.txt:#148 rngrun f31 pre
+build3ds/azt/logs/isk01_cgfx_drec.txt:#147 rngrun f31 pre
