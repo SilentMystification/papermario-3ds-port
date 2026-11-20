@@ -253,8 +253,9 @@ int tile_bound(int n) {
 }
 
 int tile_texel(int n, int s, int t, unsigned char o[4]) {
-    const u8* p = nd_c0.td[n].src;
-    int w = nd_c0.td[n].w, h = nd_c0.td[n].h;
+    const NdTd* const d = ND_BTD(n); /* NC0T2: the block of the rectangle */
+    const u8* p = d->src;
+    int w = d->w, h = d->h;
     if (n == 0) {
         s %= w; if (s < 0) s += w;
         t %= h; if (t < 0) t += h;
@@ -262,9 +263,9 @@ int tile_texel(int n, int s, int t, unsigned char o[4]) {
         if (s < 0) s = 0; else if (s >= w) s = w - 1;
         if (t < 0) t = 0; else if (t >= h) t = h - 1;
     }
-    size_t i = (size_t)t * (size_t)nd_c0.td[n].stride + (size_t)s;
+    size_t i = (size_t)t * (size_t)d->stride + (size_t)s;
     unsigned c;
-    switch (nd_c0.td[n].fmt * 4 + nd_c0.td[n].siz) {
+    switch (d->fmt * 4 + d->siz) {
     case 4 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = ((i & 1) ? (b & 15u) : (b >> 4)) * 17u; o[0] = o[1] = o[2] = o[3] = (u8)v; return 1; }
     case 4 * 4 + 1: o[0] = o[1] = o[2] = o[3] = p[i]; return 1;
     case 3 * 4 + 0: { u8 b = p[i >> 1]; unsigned v = (i & 1) ? (b & 15u) : (b >> 4); o[0] = o[1] = o[2] = (u8)((v >> 1) * 36u); o[3] = (v & 1u) ? 255 : 0; return 1; }
@@ -273,9 +274,9 @@ int tile_texel(int n, int s, int t, unsigned char o[4]) {
     case 0 * 4 + 2: c = ((unsigned)p[i * 2] << 8) | p[i * 2 + 1]; break;
     case 2 * 4 + 0: case 2 * 4 + 1: {
         unsigned idx;
-        if (!nd_c0.td[n].pal) return 0;
-        if (nd_c0.td[n].siz == 0) { u8 b = p[i >> 1]; idx = (i & 1) ? (b & 15u) : (b >> 4); } else idx = p[i];
-        c = ((unsigned)((const u8*)nd_c0.td[n].pal)[idx * 2] << 8) | ((const u8*)nd_c0.td[n].pal)[idx * 2 + 1];
+        if (!d->pal) return 0;
+        if (d->siz == 0) { u8 b = p[i >> 1]; idx = (i & 1) ? (b & 15u) : (b >> 4); } else idx = p[i];
+        c = ((unsigned)((const u8*)d->pal)[idx * 2] << 8) | ((const u8*)d->pal)[idx * 2 + 1];
         break;
     }
     default: return 0;

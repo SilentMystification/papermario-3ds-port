@@ -61,10 +61,14 @@ void combchk_run(const NdCombIn* in, int worked);
 extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 
 
+/* NC0T2: census of the recorded tile 1 valid (nd_ap->in) against the walker (nd_c0.td[1]); one line per drec frame. */
+int pm_drec_now(void);
+static __attribute__((cold, noinline)) void nd_txsrc_note(void) { static unsigned fr = ~0u; if (pm_drec_now() && pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("txsrc f%u", fr); } }
+
 /* The constant colour mode of the walker state (nd_decide.c nd_const_rgb on the walker's inputs). */
 int const_rgb_tex_alpha(unsigned* out) { /* NWS4B */
     NdCombIn c;
-    c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = ND_TEXON(); c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_c0.td[1].valid; c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
+    c.omode_h = nd_ap->in.omode_h; c.comb_set = nd_ap->in.w0 != 0; /* NWS2 */ c.tex_on = ND_TEXON(); c.prim = nd_ap->in.prim; c.env = nd_ap->in.env; c.t1_valid = nd_ap->in.t1_valid; if (__builtin_expect(c.t1_valid != nd_c0.td[1].valid, 0)) nd_txsrc_note(); c.conv_k4 = nd_ap->in.conv_k4; /* NWS4B */
     memcpy(c.tst, nd_ap->in.tst, sizeof c.tst); /* NWS4B */
     return nd_const_rgb(&c, out);
 }
