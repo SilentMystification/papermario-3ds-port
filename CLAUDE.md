@@ -10,7 +10,9 @@ Orchestrator: read docs/handoff/orchestrator_rules.md at the start and after eve
 2. NO VISUAL CHECKS. No agent looks at a shot, describes a picture or counts pixels. Proof is the code read, the host unit tests
    (nd_host) and the mechanical byte compare (`bench.py base <bench>`, then `bench.py cmp <bench> --row <id>`).
 3. TESTS. Coders run all tests. The oracle runs none. The main proof is the host unit tests
-   (`sh 3ds/tools/nd_host_test.sh`, seconds). The emulator runs once per group of files, never per file. A gate costs at most
+   (`sh 3ds/tools/nd_host_test.sh`, seconds). TIERS: every commit = build, host tests, c0gate; a row gate = only the 1-2 benches
+   the page names for the changed path (a pure deletion: 1); a wave gate = all 4 benches once per about 5 merged rows (bisect a wave
+   DIFF over its rows). Every compare stays byte-exact. The emulator runs once per group of files, never per file. A gate costs at most
    1 build and 2 Azahar runs. Budget: 8 Azahar starts per task. Every run uses
    `python 3ds/tools/bench.py run <bench> --row <id> --why "<text>"` with PM_ROW=<id> and PM_LANE=<id>. A scenario has an
    until-line (a log event of the subject), ends within 5 s of it, and has a cap of 10-25 s (45 s max). A new scenario and its
