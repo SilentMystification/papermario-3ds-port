@@ -252,20 +252,22 @@ static unsigned char c6_mark, c6_on; unsigned nd_c6_bad; static __attribute__((c
 /* HC4a: one typed scalar op (nd_op.h) with the walker's rules: the skip test, then the prologue (pm_gbi_cur_op, gv_epoch, the debug op hook)
  * and the setter. */
 static void nr_set(unsigned dbg, const uint32_t* u, const void* at) {
-    const int same = nd_unit_same(u); int cut = !same; /* NAT4C: the cut of this unit */ if (c6_on && !(ep_stream && ex_depth == 0)) { cut = c6_mark != 0; if (cut == same) c6_note(); } /* NAT6B: a copy unit cuts on its core 1 mark */
+    const int same = nd_unit_same(u); int cut = !same, ap = !same; /* NAT4C: the cut of this unit; NAT6D1: and its apply */
     { const unsigned i_ = u[0] >> 24; const int ca_ = i_ == ND_FS_OML || (i_ >= ND_FS_PRIM && i_ <= ND_FS_BLEND) || i_ == ND_FS_RARE || i_ == ND_FS_COMB || i_ == ND_FS_FILL || i_ == ND_FS_PRIMZ /* NAT4H */, cb_ = !ca_ && ((i_ >= ND_FS_OMH && i_ <= ND_FS_COMB) || (i_ >= ND_FS_TIMG && i_ <= ND_FS_LOADTLUT)); /* NAT4G all other scalar units */
+      if (c6_on) { const int mk = c6_mark != 0, s0 = ep_stream && ex_depth == 0; if (s0 && ca_) return; /* NAT6D1: at the stream level the combine class stays adopted */
+        if ((s0 ? 0 : !same) != mk || !same != mk) c6_note(); cut = mk; ap = mk; } else /* NAT6D1: a copy unit: the core 1 mark is its cut and its apply */
       if (ep_stream && ex_depth == 0 && (ca_ || cb_)) {
         if (cb_) { nd_epk_n++; if ((same == 0) != (ep_mark != 0)) { nd_epk_bad++; epk_note(i_, same, u); } } /* NAT4F: count only OMH, TEXTURE (the combine class fields are stale on core 0 since NAT4D) */
         const int mk_ = ep_mark != 0; ep_mark = 0;
         if (ca_) return; /* NAT4K: the mark cut */
         cut = 0; /* NAT4K: the mark cut */ } } /* NAT4F: OMH and TEXTURE cut on the mark and still run when they change a field */
-    if (same && !cut) return;
+    if (!ap && !cut) return; /* NAT6D1 */
     const unsigned id = u[0] >> 24;
     pm_gbi_cur_op = id; /* DEL1D1: the unit id */
     if (cut) gv_epoch++; /* GV1b; NST2H source; NAT4C: the cut */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, id, u[0], u[1]);
-    if (!same) nd_unit_apply(u); /* NAT4C */
+    if (ap) nd_unit_apply(u); /* NAT4C; NAT6D1 */
     if (__builtin_expect(fp, 0)) pm_ph_pop();
 }
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
@@ -392,7 +394,7 @@ static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of
     const unsigned dbg = pm_walk_dbg;
     for (const uint32_t* e = q + 2u * n; q < e; q += 2) { const unsigned id = q[0] >> 24;
         if (q[0] == ND_NOP_A || id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) continue;
-        if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_tx_texon(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { if (!nd_unit_same(q)) nd_unit_apply(q); }
+        if (id == ND_FS_OMH) ls_omh(q); else if (id == ND_FS_TEXTURE) nd_tx_texon(q[0] & 0xffffffu, q[1]); else if (id == ND_FS_GEOM) { const int sm = nd_unit_same(q), ap = c6_on ? c6_mark != 0 : !sm; if (c6_on && ap == sm) c6_note(); if (ap) nd_unit_apply(q); } /* NAT6D1 */
         else if (__builtin_expect(!nd_op_typed(id), 0)) nr_unknown(dbg, q); else if (nd_op_geo(id)) nr_geo(dbg, q, q);
         else if (nd_op_ctl(id)) { const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) q = e - 2; else q += 2u * r; }
         else if (id == ND_FS_END) break; else nr_set(dbg, q, q);
