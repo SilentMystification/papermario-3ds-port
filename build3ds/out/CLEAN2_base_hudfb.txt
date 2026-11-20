@@ -1,0 +1,1 @@
+base hudfb_drec at 9f6be238a: stored, 1 shots at C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\basecache\9f6be238aa5a43e1de8f16cd1136ec68b4b93baf\hudfb_drec. No build, no run.

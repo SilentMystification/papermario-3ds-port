@@ -1,0 +1,19 @@
+QUEUE: 0 waiting, 0 running or granted, 2 Azahar slots
+queue: position 1 of 1 waiting (lane 'CLEAN2', speed normal, scenario spot_mac01_drec, want slot any)
+queue: granted slot 1 after 0.1 s (position 1 at enqueue)
+AZT: scenario spot_mac01_drec, row CLEAN2, lane 'CLEAN2', slot 1, cap 35 s, deadline 30 s after the Azahar start
+AZT: warm restart in the kept Azahar, deadline kind warm: 30 s (scenario deadline). The deadline clock runs
+AZT: boot time warm start, first marker after 2.6 s (deadline kind warm, 30 s)
+azslot: slot 1 pid 27280 warm
+run: rc 0: slot1: stopped after 4s: matched 'drec f\d+ draws \d+ bytes \d+' (Azahar running; stopped by this run) warm kept; until at 4.0 s; end at 4.4 s; 0.4 s after the until line | queue: position 1 at enqueue; waited 0.1 s; slot 1; shot files 0 of 0 full
+cap high: spot_mac01_drec cap 35 until 4
+PASS  prof on: #15 prof=1 log=off
+PASS  drec: #61 drec f201 draws 170 bytes 277942
+LOG: C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CLEAN2\build3ds\azt\logs\spot_mac01_drec.txt (copy of this run's log; slot 1)
+SUBJECT: Toad Town mac_01, Mario placed at pos 0 0 200 (warp entry 0), cold det start with the drec switch: the draw records of frames 200 and 201 go to shots/drec.txt.
+SHOTS: 1 from this run
+  C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CLEAN2\build3ds\azt\shots\spot_mac01_drec\CLEAN2\drec.txt
+LOG CHECKS PASS (2 of 2). The script does not read the picture. A person must open the shot and confirm the subject.
+ingested C:\Users\Andrew\Documents\GitHub\papermario-3ds-port\build3ds\wt\CLEAN2\build3ds\lane-CLEAN2\slot1\last_log.txt: 1 scene run(s), scene-change windows dropped 0, run ids 2434823, build 7527, commit b73975a553
+  scene -                              windows   0 fps - ft -
+bench spot_mac01_drec: azt.ps1 exit 0. azt.ps1 wrote the run record (ingest-last) to 3ds/logs/perf/runs.jsonl.
