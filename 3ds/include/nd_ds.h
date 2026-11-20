@@ -29,6 +29,7 @@ typedef struct NdDs {
 } NdDs;
 extern NdDs nd_ds;
 extern unsigned nd_altw[8]; /* PERF0 */
+unsigned nd_wdiff(uint32_t a, uint32_t b); /* CNTFIX: the words of a stream range a..b */
 /* Applies one typed unit (w0 = id << 24 | a, w1 = b). Bit 0 of the result: a field value changed. Other ids change nothing. */
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v);
 /* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an ND_FS_CALL unit of nd_rec_nr); see nd_ds.c. */
