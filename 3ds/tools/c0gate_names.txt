@@ -11,7 +11,6 @@ interp part_units
 interp nd_comb_set
 interp nd_tx_ldblk
 interp nd_tx_ldtile
-interp nd_comb_sync
 interp comb_in_walker
 interp nd_rnd_sync
 interp box_fold_sync
@@ -27,10 +26,6 @@ state box_folded
 state box_save
 state comb_set
 state comb_alpha_shade
-state comb_gen
-state cmb_gen_seen
-state sc_ok
-state sc_sig
 state fogc
 state blendc
 state sci_x0

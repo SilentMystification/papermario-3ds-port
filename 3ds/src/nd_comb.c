@@ -10,7 +10,6 @@
 #include "nd_int.h"
 #include "pm_gpu.h"
 #include "nd.h"
-#include "nd_scsig.h"
 #include "nd_dual.h"
 #include "nd_api.h"
 #include "nd_snap.h"
@@ -25,14 +24,12 @@ unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 int dual_on;
 int box_prod; PM_HOTD int box_folded;
-unsigned comb_gen, cmb_gen_seen;
 int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
 unsigned box_save[4];
 int comb_set;
 int comb_alpha_shade = 1;
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
 PmPlan cur_plan;
-void nd_comb_sync(void);
 extern int pm_comb_vprim; /* S4COL: the particle plan flag (pm_comb.c), in the memo keys */
 const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
 const char* const cc_nm_b[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "KEYC", "K4" };
@@ -41,7 +38,6 @@ const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1",
 const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
 const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
 int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
-unsigned sc_sig; PM_HOTD int sc_ok; /* DIP2: the inputs of the last nd_comb_sync and whether its result is still what pm_gpu holds */
 unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
     &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
 unsigned aux_key;
@@ -154,15 +150,6 @@ void cc_cycle1(const float* t0, const float* t1, float out[4]) {
     }
 }
 
-/* R2B: the nd_comb_sync input hash (the fields the skip test reads); nd_comb_sync and the g2_same skip use the same value */
-unsigned sc_sig_now(void) {
-    unsigned parts[] = { nd_ws.comb_w0, nd_ws.comb_w1, nd_ws.omode_h, nd_ws.prim, nd_ws.envc, (unsigned)(u8)nd_ws.prim_lod, keyc, keys, conv_k4, (unsigned)leg_mode,
-                         nd_sc_flags(nd_ws.tex_on, nd_ws.use_t1, nd_ws.td[1].valid, dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, pm_comb_vprim) };
-    unsigned sg = 2166136261u;
-    for (unsigned k = 0; k < sizeof parts / sizeof parts[0]; k++) sg = (sg ^ parts[k]) * 16777619u;
-    return sg;
-}
-
 /* NPSO4: the walker's description of the draw, the NdPsoDesc fields of the last applied snap (NCS1) (the psochk compare, nd_psochk.c). */
 void nd_walker_desc(NdPsoDesc* d) { /* NCS1: the fields of the last applied snap */
     const NdSnapChk* s = nd_snap_cur(); const NdCombIn in = s->in; memset(d, 0, sizeof *d); /* NCS1 */
@@ -270,23 +257,10 @@ void nd_comb_apply(const NdCombOut* o, uint32_t w0, uint32_t w1, int use_t1, uin
     pm_gpu_set_combine(leg_mode);
 }
 
-void nd_comb_sync(void) {
-    {   /* DIP2: the same inputs as the call before give the same combine mode or plan. Skip the work. The inputs are everything sync_legacy, const_rgb_tex_alpha, decide and
-         * pm_comb_colours read. pm_gpu_set_combine at the box pattern draw (below) and the start of a display list clear sc_ok. Switch nodip2 turns it off. */
-        unsigned sg = sc_sig_now();
-        if (sc_ok && sg == sc_sig) { GP_SET(5, 1); return; }
-        sc_sig = sg;
-        sc_ok = 0; sr_ok = 0; /* set again below when the work is done */
-        nd_ent_cfull += nd_ent_in;
-    }
-    sc_ok = 1; /* NAT3A: the combine of each draw comes from its snap (core 1, plan_native.md P1). Core 0 keeps the skip state of nd_unit_same only. */
-}
-
 int pm_drec_now(void); /* NCS2: pm_gpu.c */
 static __attribute__((cold, noinline)) void bfold_log(void) { static unsigned fr = ~0u; if (pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("bfold f%u", fr); } } /* NCS2 */
 void nd_bfold_note(void) { if (__builtin_expect(pm_drec_now(), 0) && (box_prod && nd_ws.td[1].valid && nd_td_white(&nd_ws.td[0])) != box_folded) bfold_log(); } /* NCS2: the drec marker of the deleted core 0 box fold (UD-N5); NWS1 deletes it */
 static __attribute__((cold, noinline)) void ncs3_log(const char* k) { static unsigned fr[2] = { ~0u, ~0u }; const unsigned i = k[0] == 'c'; if (pm_frame_count() != fr[i]) { fr[i] = pm_frame_count(); pm_log_evt("%s f%u", k, fr[i]); } } /* NCS3 */
-void nd_csync_note(void) { if (__builtin_expect(pm_drec_now(), 0) && (!sc_ok || sc_sig_now() != sc_sig)) ncs3_log("csync"); } /* NCS3: the old nd_comb_sync would act here (UD-N5); NWS1 deletes it */
 void nd_rndw_note(void) { if (__builtin_expect(pm_drec_now(), 0)) ncs3_log("rndw"); } /* NCS3: a draw with no live snap; the old nd_rnd_sync ran here (UD-N5); NWS1 deletes it */
 
 float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
@@ -442,7 +416,6 @@ void nd_comb_set(u32 w0, u32 w1) {
                        nd_ws.tst1.comb2_aa == 7 && nd_ws.tst1.comb2_ab == 7 && nd_ws.tst1.comb2_ac == 7 && nd_ws.tst1.comb2_ad == 0;
             comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
                                ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
-            cmb_gen_seen = comb_gen; /* R2B */
 }
 
 /* ---- MV-10: debug switch combchk, cut from the former pm_gbi.c (no change) ---- */

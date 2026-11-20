@@ -147,7 +147,7 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
                         d[3] = b[3];
                     }
                 }
-                if (!pm_tex_load_rgba8(box_buf, key, cw, ch, box_buf)) { nd_csync_note(); return 0; } /* NCS3 */
+                if (!pm_tex_load_rgba8(box_buf, key, cw, ch, box_buf)) { return 0; } /* NWS1 */
             }
             int tw = 1, th = 1;
             pm_tex_size(&tw, &th);
@@ -156,7 +156,6 @@ __attribute__((cold, noinline)) int box_pattern_rect(int xl, int yl, int xh, int
     }
     nd_ws.cur_tile = -1; /* the bound texture is the composite */
     ens_clear();
-    nd_csync_note(); /* NCS3 */
     return 1;
 }
 

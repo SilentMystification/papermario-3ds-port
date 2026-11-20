@@ -153,7 +153,7 @@ void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed sna
     nd_c0w &= ~2u; /* NAT1B */
 }
 static unsigned char lr_geo; void nd_lsr_geo(void) { lr_geo = 1; } /* NCONV2D: the open list runs ls_run (nd_walk.c) */
-extern int sc_ok, box_folded, dual_on, box_prod, comb_set, comb_alpha_shade; extern unsigned keyc, keys, conv_k4; extern unsigned box_save[4]; /* nd_comb.c */
+extern int box_folded, dual_on, box_prod, comb_set, comb_alpha_shade; extern unsigned keyc, keys, conv_k4; extern unsigned box_save[4]; /* nd_comb.c */
 void pm_comb_set_k4(unsigned k4); void pm_gpu_set_prim(unsigned rgba, unsigned lod); void pm_gpu_set_env(unsigned rgba); void pm_gpu_flush(void); /* pm_gpu.h */
 static void ls_gpu(uint32_t w0, uint32_t w1, int cset, uint32_t prim, uint32_t plod, uint32_t env, uint32_t k4) { /* NCONV2D: the GPU calls of the skipped units */
     if (nd_ws.comb_w0 != w0 || nd_ws.comb_w1 != w1 || (cset && !comb_set)) pm_gpu_flush(); if (nd_ws.prim != prim || nd_ws.prim_lod != plod) pm_gpu_set_prim(prim, plod);
@@ -171,7 +171,7 @@ static void ds_take(const NdDs* c) { /* NCONV2D: list end: the fields of the ski
             nd_ws.use_t1 = ku;
         }
     }
-    fogc = c->fogc; blendc = c->blendc; keyc = c->keyc; keys = c->keys; conv_k4 = c->conv_k4; comb_set = c->comb_set; box_prod = c->box_prod; comb_alpha_shade = c->comb_alpha_shade; dual_on = c->dual_on; sc_ok = 0; }
+    fogc = c->fogc; blendc = c->blendc; keyc = c->keyc; keys = c->keys; conv_k4 = c->conv_k4; comb_set = c->comb_set; box_prod = c->box_prod; comb_alpha_shade = c->comb_alpha_shade; dual_on = c->dual_on; }
 /* NCONV2B: the walker takes the combine and render inputs of the consumed snap (the 1:1 fields of comb_in_walker, nd_comb.c:200).
  * DEL3A: the compare that named each field is deleted. geom and tss stay core 0 state. */
 static void sc_adopt(void) {

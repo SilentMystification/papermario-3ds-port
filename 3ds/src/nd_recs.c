@@ -25,7 +25,7 @@ void pm_gpu_set_r13_t1(int bound);
  * (the list runs as G_DL), fog (rec_fog), matrix (nd_xf_load), panner tiles, billboard. rec_op runs one op through the skip test and handler of the walker. */
 static unsigned rng_seen; /* NATRS: bit 0 pre, bit 1 post: the first run of each kind logs rngrun once (coverage proof) */
 static void rec_range(const uint32_t* a, unsigned k) { /* NATRS: an R11 custom gfx range; the skip state reset of the old nd_range_run list start */
-    sc_ok = 0; nd_sr_forget();
+    nd_sr_forget(); /* NWS1 */
     if (__builtin_expect(!(rng_seen & k), 0)) { rng_seen |= k; pm_log_evt("rngrun f%u %s", pm_frame_count(), k == 1u ? "pre" : "post"); }
     nd_range_run(a);
 }
@@ -129,7 +129,7 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
 }
 /* the combine of a hit, as rec_top runs it (nd_unit_same COMB, nd_comb_set) */
 static __attribute__((noinline)) void hd_comb(const NdHitD* d) {
-    if (!(comb_set && d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0 && cmb_gen_seen == comb_gen)) nd_comb_set(d->cw0, d->cw1);
+    if (!(comb_set && d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0)) nd_comb_set(d->cw0, d->cw1);
 }
 static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
@@ -183,7 +183,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         gv_epoch++;
         nat = 1; hit = !wskip;
         hit_apply(q, mce); /* HC6 step 1: the walker state a miss leaves */
-        sc_ok = 0; nd_sr_forget();
+        nd_sr_forget(); /* NWS1 */
     } else {
     if (!full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; } /* HC6 step 2: a cached key whose hit failed: the store reads the full key */
     rec_apply(q, mdone);
@@ -234,7 +234,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         /* S3N-4: the record drew natively (nd_model_draw): no walker geometry. The native draws set the TEV and the texture unit, so the walker
          * sends its combine and render mode again at its next op (the shadows of those ops are cleared). */
         nat = 1;
-        sc_ok = 0; nd_sr_forget();
+        nd_sr_forget(); /* NWS1 */
     }
     }
     if (q[12].words.w0 == 0 && PMDL("waterlog") && pm_frame_count() >= 200u && pm_frame_count() <= 201u) { /* POND-M1: copy record with no geometry; hit taken or not, the combine after the decision */
@@ -269,7 +269,7 @@ unsigned rec_run(const NdW2* q) {
     /* S3N-6 hit: rec_apply is not run (its matrix ops ran above); the walker state is the miss's (hit_apply); the sticky shadows are cleared as after a native draw */
     gv_epoch++;
     hit_apply(q, mce);
-    sc_ok = 0; nd_sr_forget();
+    nd_sr_forget(); /* NWS1 */
     if (q[11].words.w1) rec_range((const uint32_t*)(uintptr_t)q[11].words.w1, 2u); /* S3G-1: custom gfx post (D10a: a stream range) NATRS */
     if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     rec_nat_last = 1;

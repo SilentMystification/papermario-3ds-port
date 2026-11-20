@@ -22,7 +22,7 @@ unsigned pm_frame_count(void) { return 0; }
 void pm_fatal_stop(const char* msg) { printf("FAIL nd_direct fatal %s\n", msg); exit(1); }
 
 NdWs nd_ws;
-int dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, plan_active, leg_mode, comb_mode5, sc_ok, rm_frame;
+int dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, plan_active, leg_mode, comb_mode5, rm_frame;
 NdTgt nd_tgt;
 int zcol;
 void pm_zbuf_need(void) {}
@@ -52,7 +52,7 @@ void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     out->leg = 2;
 }
 void nd_comb_set(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
-void nd_rndw_note(void) { n_render++; } void nd_csync_note(void) {} /* NCS3 */
+void nd_rndw_note(void) { n_render++; } /* NCS3 */
 extern unsigned nd_snap_render_n; /* NAT2A */
 void nd_sr_forget(void) { n_forget++; }
 void ens_clear(void) { n_end_clear++; }
@@ -181,9 +181,9 @@ int main(void) {
     nd_direct_rect((42u * 4u) << 12 | (36u * 4u), (10u * 4u) << 12 | (20u * 4u), 0u, (1024u << 16) | 1024u);
     CHECK(n_rect == 1 && last_rect[0] == 10 && last_rect[1] == 20 && last_rect[2] == 41 && last_rect[3] == 35);
     CHECK(last_st[0] == 0.f && last_st[1] == 0.f && last_st[2] == 1.f && last_st[3] == 1.f);
-    n_forget = 0; n_end_clear = 0; sc_ok = 1; gv_epoch = 7;
+    n_forget = 0; n_end_clear = 0; gv_epoch = 7;
     nd_direct_end();
-    CHECK(n_end_clear == 1 && n_forget == 1 && sc_ok == 0 && nd_ws.cur_tile == -1 && gv_epoch == 8);
+    CHECK(n_end_clear == 1 && n_forget == 1 && nd_ws.cur_tile == -1 && gv_epoch == 8);
     /* S5TRECT: nd_trect_run of a 32 x 32 RGBA16 window (uls 0, ult 0, lrs 31, lrt 31): the window arguments are the HUD ones (sh 2, stride = width,
      * the lower right in quarter texels), then the direct rectangle (the same words as the case above) */
     {
