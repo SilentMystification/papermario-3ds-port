@@ -103,6 +103,7 @@ const NdCombOut* nd_snap_dec(void) { /* MSNAP2: the decision of nd_ds now (the S
     sn_leg = sd_now.leg; sn_mode5 = sd_now.mode5; sn_pat = sd_now.pat;
     sn_cmds = ~0u; return &sd_now;
 }
+void nd_snap_dec_only(void) { (void)nd_snap_dec(); } /* DO1: the decision call of a model memo hit (sets sn_leg, sn_pat, sn_mode5, sn_cmds) */
 #define LS_SMAX 256u /* NAT2D: unique snaps, each in its own stream block */
 #define LS_RMAX 256u /* NAT2D: ranges */
 static const NdSnapChk* ls_np; static const NdSnapChk* ls_p[LS_SMAX]; static uint32_t ls_f[LS_RMAX]; static unsigned ls_n, ls_sn, ls_ord; static unsigned char ls_chg;

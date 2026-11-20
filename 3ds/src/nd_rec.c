@@ -333,6 +333,14 @@ static __attribute__((cold, noinline)) void mm_census(MmEnt* e, const uint32_t* 
     mm_apply(&mm_b, e);
     const uint32_t* a = (const uint32_t*)&nd_ds; const uint32_t* b = (const uint32_t*)&mm_b; unsigned nb = 0; for (unsigned i = 0; i < MM_NDW && nb < 4u; i++) if (a[i] != b[i]) { mm_diff("ds", i * 4u); nb++; }
 }
+void nd_snap_dec_only(void); int pm_drec_now(void);
+/* Step 2: the hit writes the copy of the last block (the record words R2 w1 and R8 from the new record) and the after state of nd_ds; the decision call stays. */
+static void mm_fast(const MmEnt* e, uint32_t* p, const uint32_t* r, unsigned keep) {
+    const unsigned nw = 2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U;
+    memcpy(p, e->blk, nw * 4u); p[2 + 5] = r[5]; p[2 + 16] = r[16]; p[2 + 17] = r[17];
+    p[1] = nd_mkey_a(p + 2); p[2u + 2u * (G_PM_REC_WORDS + keep) + 1u] = (uint32_t)(uintptr_t)(p + nw);
+    mm_apply(&nd_ds, e); nd_snap_dec_only();
+}
 static void mm_done(MmEnt* e, const uint32_t* r, unsigned keep, uint32_t* p, unsigned hit) {
     mm_models++;
     if (hit) { mm_hits++; mm_census(e, r, keep, p); e->blk = p; e->ctx = (uint8_t)rec_ctx; e->cg = mm_cg[rec_ctx]; }
@@ -345,12 +353,19 @@ void nd_rec_model(const void* rec, unsigned words) {
     const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) keep++; /* R13NOP: a typed sync is not an R13 op */
     rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U); /* NREC1B: room for the jump and the model snap */ ndc_n[NDC_MODEL]++;
+    const int mmc = !r[22] && !r[23]; MmEnt* me = NULL; unsigned mh = 0; /* DO1: a record with a custom gfx range has no memo */
+    if (mmc) {
+        me = mm_find(r, words, keep, &mh);
+        if (me && mh && !(pm_drec_now() || (mm_hits & 63u) == 0u)) { /* a hit: the copy; the census (drec frames and 1 hit in 64) runs the full path and compares */
+            mm_fast(me, p, r, keep); mm_models++; mm_hits++; me->blk = p; me->ctx = (uint8_t)rec_ctx; me->cg = mm_cg[rec_ctx];
+            NDT_E(tq, NDT_RMDL); return;
+        }
+        if (me) memcpy(&mm_b, &nd_ds, sizeof mm_b);
+    } else mm_skip++;
     memcpy(p + 2, rec, G_PM_REC_WORDS * 8u); uint32_t* q = p + 2; uint32_t* o = q + 2 * G_PM_REC_WORDS;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
     { uint32_t* j = p + 2u + 2u * (G_PM_REC_WORDS + keep); j[0] = NDC_HDR(NDC_JUMP, 0, 0); j[1] = (uint32_t)(uintptr_t)(j + 2u + 2u * ND_MSNAP_U); } /* NREC1B */
-    const int mmc = !r[22] && !r[23]; MmEnt* me = NULL; unsigned mh = 0; /* DO1: a record with a custom gfx range has no memo */
-    if (mmc) { me = mm_find(r, words, keep, &mh); if (me) memcpy(&mm_b, &nd_ds, sizeof mm_b); } else mm_skip++;
     nd_msnap_pre(&nd_ds); /* NAT2C: the state before the record */
     { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
@@ -834,7 +849,7 @@ __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_snap_alt(const NdDs* s, int rect) { (void)s; (void)rect; } /* NWS4A: strong in nd_snap.c; the host units record no snap */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
 __attribute__((weak)) void nd_msnap_pre(const NdDs* s) { (void)s; } /* NAT2C */
-__attribute__((weak)) void nd_msnap_take(const NdDs* s, NdMSnap* m) { (void)s; memset(m, 0, sizeof *m); } __attribute__((weak)) void nd_snap_sv(uint32_t o[4]) { memset(o, 0, 16u); } __attribute__((weak)) unsigned nd_tex_gen(void) { return 0u; } /* DO1: the host units link nd_rec.c without nd_snap.c and nd_tex.c */
+__attribute__((weak)) void nd_msnap_take(const NdDs* s, NdMSnap* m) { (void)s; memset(m, 0, sizeof *m); } __attribute__((weak)) void nd_snap_dec_only(void) {} __attribute__((weak)) int pm_drec_now(void) { return 0; } __attribute__((weak)) void nd_snap_sv(uint32_t o[4]) { memset(o, 0, 16u); } __attribute__((weak)) unsigned nd_tex_gen(void) { return 0u; } /* DO1: the host units link nd_rec.c without nd_snap.c and nd_tex.c */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
 __attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
 __attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */
