@@ -153,7 +153,7 @@ void nd_walk_rec_model(const NdW2* q) {
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
-static void spr_geo_walk(const uint32_t* g); static void ent_dl_walk(unsigned dbg, const NdW2* c); /* NAT5W */
+static void spr_geo_walk(const uint32_t* g); static void ent_dl_walk(unsigned dbg, const NdW2* c, const uint32_t* br); /* NAT5W */
 /* DIRECT D2: NDC_SPR (nd_rec.c): the sprite record and its vertex and triangle words, at the point of its final draw (the walker state is the
  * draw state). Native, or else the walker loads and draws the two words, as the G_VTX arm. */
 void nd_walk_spr(const NdW2* q) {
@@ -185,7 +185,7 @@ void nd_walk_ent(const NdW2* q, unsigned words) {
     NDT_E(te, NDT_ENT);
     if (__builtin_expect(fp, 0)) pm_ph_pop();
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1);
-    if (!drawn && words > G_PM_ENT_WORDS) ent_dl_walk(dbg, q + G_PM_ENT_WORDS); /* NAT5W */ /* D10c: its G_DL on the op executor (nr_call) */
+    if (!drawn && words > G_PM_ENT_WORDS) ent_dl_walk(dbg, q + G_PM_ENT_WORDS, (const uint32_t*)(uintptr_t)((const uint32_t*)q)[2u * G_PM_ENT_WORDS + 2u]); /* NAT5W */ /* NAT6E2 */ /* D10c: its G_DL on the op executor (nr_call) */
     nd_lsr_end(); /* NREC2 */
 }
 /* DIRECT D10c: the list executor. A list (a G_DL target, a render mode list) runs on nd_walk_state from its first op to its G_ENDDL (no length:
@@ -437,9 +437,9 @@ static void spr_geo_walk(const uint32_t* g) {
     pm_gbi_cur_op = ND_FS_TRI2; tri_prep_ok = 0; draw_tri(g[2] & 0xffffffu); draw_tri(g[3]);
     ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
 /* NAT5W: the G_DL unit of a refused entity record: the list start and end of nd_nr_list (keep 1), the CALL arm of nr_ctl. */
-static void ent_dl_walk(unsigned dbg, const NdW2* c) {
+static void ent_dl_walk(unsigned dbg, const NdW2* c, const uint32_t* br) {
     PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
-    const uint32_t* u_ = (const uint32_t*)c; pm_gbi_cur_op = ND_FS_CALL; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1], NULL); /* NAT5W; NAT5N */
+    const uint32_t* u_ = (const uint32_t*)c; const uint32_t ab[4] = { (uint32_t)(uintptr_t)(br + 2), br[1], (uint32_t)(uintptr_t)br, 0u }; /* ab[3] 0: ent_gdl gets no cut table, as with ab NULL */ pm_gbi_cur_op = ND_FS_CALL; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1], ab); /* NAT5W; NAT5N; NAT6E2: the copy of x[0] */
     ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
 /* NAT5A: the units of a cut raw alt range ab (nd_alt_eput), with the list start and end of nd_nr_list (keep 1). NATEF */
 void nd_ent_slice(const uint32_t* ab) {
