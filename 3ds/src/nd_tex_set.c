@@ -14,6 +14,7 @@
 #include "nd_snap.h"
 #include "nd_fs.h"
 #include "nd_ds.h" /* NAT5T: NdTxR */
+#include "nd_sv.h" /* NSET1 */
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
 NdTexM nd_tm; /* D4a: the load side of the texture model (nd_int.h) */
@@ -612,3 +613,8 @@ void nd_tex_bind_glyph(uint32_t raster, uint32_t pal, int tlut, int w, int h) {
         gr.pal = nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] ? nd_tm.tlut_pal[nd_ws.tst1.tile_pal[0] & 15] : nd_ws.tlut; gr.pal_n = nd_ws.tlut_n; gr.timg = nd_ws.timg;
         nd_tsz_set(0, 0, 0, (w - 1) << 2, (h - 1) << 2, &gr); }
 }
+void nd_sv_timg(const uint32_t* r) { const uint32_t a = r[0]; nd_ws.timg = (const void*)(uintptr_t)r[1]; if (nd_ws.timg && pm_is_cfb(nd_ws.timg) && !pm_is_cur_cfb(nd_ws.timg)) pm_cfb_capture_prev(); nd_ws.tst1.timg_fmt = (a >> 21) & 7; nd_ws.tst1.timg_siz = (a >> 19) & 3; nd_ws.tst1.timg_stride = (int)(a & 0xfff) + 1; nd_tm.ld_valid = 0; } /* NSET1: set_timg, the image core 1 resolved */
+void nd_sv_tile(const uint32_t* r) { const uint32_t a = r[0], b = r[1]; const unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 }; set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15); } /* NSET1: nd_tx_tile */
+void nd_sv_tsz(const uint32_t* r) { const unsigned t = r[0] >> 28; const int uls = (int32_t)(r[0] << 4) >> 18, ult = (int32_t)(r[0] << 18) >> 18, lrs = (int16_t)r[1], lrt = (int16_t)(r[1] >> 16); int* const z = nd_ws.tst1.tile_sz[t]; GP_SET(4, z[0] == uls && z[1] == ult && z[2] == lrs && z[3] == lrt); z[0] = uls; z[1] = ult; z[2] = lrs; z[3] = lrt; } /* NSET1: nd_tsz_set, tile 2-7 */
+void nd_sv_tlut(const uint32_t* r) { const unsigned slot = r[0] & 0xffu; nd_ws.tlut = (const void*)(uintptr_t)r[1]; nd_ws.tlut_n = (int)(r[0] >> 8); nd_tm.tlut_pal[slot] = nd_ws.tlut; tlut_v20(slot); } /* NSET1: set_loadtlut */
+void nd_sv_tlutn(const uint32_t* r) { nd_ws.tlut = (const void*)(uintptr_t)r[1]; nd_ws.tlut_n = (int)(r[0] >> 8); } /* NSET1: set_loadtlut, no palette slot */

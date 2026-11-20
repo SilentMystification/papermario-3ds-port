@@ -265,4 +265,7 @@ void nd_tex_run(const uint32_t* r) { const unsigned on = r[0] & 0xffffffu, ss = 
 void nd_omh_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */
     const int same = (v & m) == (nd_ws.omode_h & m) && sc_ok; if (same) nd_ws.om_kh |= m;
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_OMH; if (mk) gv_epoch++;
-    if (!same) set_om(1, r[0] & 0xffu, (r[0] >> 8) & 0xffu, m, v); }
+    if (!same) { const uint32_t sv[2] = { m, v & m }; nd_sv_omh(sv); if (r[0] & 0x40000000u) nd_comb_sync(); } } /* NSET1: core 1 bit 30 is the cycle sync of set_om */
+void nd_sv_nop(const uint32_t* r) { (void)r; } /* NSET1: LOADBLOCK, LOADTILE: no core 0 state */
+void nd_sv_omh(const uint32_t* r) { const uint32_t m = r[0], tf = nd_ws.omode_h & (3u << 12); nd_ws.omode_h = (nd_ws.omode_h & ~m) | r[1]; nd_ws.om_kh |= m; /* NSET1: set_om H without the sync */
+    if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }

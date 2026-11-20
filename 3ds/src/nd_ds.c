@@ -13,6 +13,7 @@
 #include "nd_dual.h"
 #include "macros.h"
 #include "nd_fs.h"
+#include "nd_sv.h" /* NSET1 */
 unsigned char nd_alt_raw_on; __attribute__((weak)) void nd_alt_put(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; } /* NAT5F */
 __attribute__((weak)) void nd_alt_mark(unsigned rc) { (void)rc; } /* NAT6B */
 __attribute__((weak)) void nd_alt_eput(uint32_t w0, uint32_t w1) { nd_alt_put(w0, w1); } __attribute__((weak)) void nd_alt_et_begin(void) {} /* NAT5A */
@@ -517,3 +518,39 @@ void nd_ds_scomp(NdDs* s, const uint32_t* du, unsigned n, uint32_t vmask, const 
         if (w0 != ND_NOP_A) unit(s, w0, w1);
     }
 }
+#define SV_W(f) __attribute__((weak)) void f(const uint32_t* r) { (void)r; } /* NSET1 */
+SV_W(nd_sv_nop) SV_W(nd_sv_omh) SV_W(nd_sv_oml) SV_W(nd_sv_geom) SV_W(nd_sv_prim) SV_W(nd_sv_env) SV_W(nd_sv_fog) SV_W(nd_sv_blend) SV_W(nd_sv_fill) SV_W(nd_sv_primz) SV_W(nd_sv_sci) SV_W(nd_sv_tex) SV_W(nd_sv_nlt) SV_W(nd_sv_lcol) SV_W(nd_sv_fogf) SV_W(nd_sv_seg) SV_W(nd_sv_conv) SV_W(nd_sv_keyr) SV_W(nd_sv_keygb) SV_W(nd_sv_comb) SV_W(nd_sv_timg) SV_W(nd_sv_tile) SV_W(nd_sv_tsz) SV_W(nd_sv_tlut) SV_W(nd_sv_tlutn) /* strong: nd_set.c, nd_tex_set.c */ /* NSET1 */
+NdNapiRun nd_sv_enc(const NdDs* s, uint32_t w0, uint32_t w1, uint32_t* v) { /* NSET1 */ const uint32_t a = w0 & 0xffffffu, b = w1; v[0] = a; v[1] = b; /* NSET1 */
+    switch (w0 >> 24) { /* core 1: s is the state after nd_ds_apply of the unit */ /* NSET1 */
+    case ND_FS_OMH: case ND_FS_OML: v[0] = nd_op_om_mask(a); v[1] = b & v[0]; return (w0 >> 24) == ND_FS_OMH ? nd_sv_omh : nd_sv_oml; /* NSET1 */
+    case ND_FS_GEOM: return nd_sv_geom; /* NSET1 */
+    case ND_FS_PRIM: v[0] = a & 0xffffu; return nd_sv_prim; /* NSET1 */
+    case ND_FS_ENV: return nd_sv_env; /* NSET1 */
+    case ND_FS_FOG: return nd_sv_fog; /* NSET1 */
+    case ND_FS_BLEND: return nd_sv_blend; /* NSET1 */
+    case ND_FS_FILL: return nd_sv_fill; /* NSET1 */
+    case ND_FS_PRIMZ: v[1] = s->w.prim_z; return nd_sv_primz; /* NSET1 */
+    case ND_FS_TEXTURE: return nd_sv_tex; /* NSET1 */
+    case ND_FS_SCISSOR: v[0] = ((uint32_t)s->sci_x0 & 0xffffu) | (uint32_t)s->sci_y0 << 16; v[1] = ((uint32_t)s->sci_x1 & 0xffffu) | (uint32_t)s->sci_y1 << 16; return nd_sv_sci; /* NSET1 */
+    case ND_FS_MW: { const unsigned k = a >> 16, g = a & 0xffffu; v[0] = g; /* NSET1 */
+        if (k == ND_FS_MW_NUMLIGHT) { v[1] = s->lt_n; return nd_sv_nlt; } /* NSET1 */
+        if (k == ND_FS_MW_LIGHTCOL) return g < 9u ? nd_sv_lcol : nd_sv_nop; /* NSET1 */
+        if (k == ND_FS_MW_FOG) return nd_sv_fogf; /* NSET1 */
+        if (k == ND_FS_MW_SEG && g < 16u) { v[1] = s->w.segbase[g]; return nd_sv_seg; } /* NSET1 */
+        return nd_sv_nop; } /* NSET1 */
+    case ND_FS_RARE: /* NSET1 */
+        if (a == ND_FS_RARE_CONV) { v[1] = s->conv_k4; return nd_sv_conv; } /* NSET1 */
+        if (a == ND_FS_RARE_KEYR) { v[0] = (b >> 8 & 0xffu) << 24; v[1] = (b & 0xffu) << 24; return nd_sv_keyr; } /* NSET1 */
+        v[0] = (b >> 24 & 0xffu) << 16 | (b >> 8 & 0xffu) << 8; v[1] = (b >> 16 & 0xffu) << 16 | (b & 0xffu) << 8; return nd_sv_keygb; /* NSET1 */
+    case ND_FS_COMB: v[0] = ND_FS_COMB_W0(a); return nd_sv_comb; /* NSET1 */
+    case ND_FS_TIMG: v[1] = (uint32_t)(uintptr_t)s->w.timg; return nd_sv_timg; /* NSET1 */
+    case ND_FS_TILE: return nd_sv_tile; /* NSET1 */
+    case ND_FS_TILESIZE: { const unsigned t = (b >> 24) & 7u; const int* z = s->w.tst1.tile_sz[t]; /* NSET1 */
+        v[0] = t << 28 | ((uint32_t)z[0] & 0x3fffu) << 14 | ((uint32_t)z[1] & 0x3fffu); v[1] = ((uint32_t)z[2] & 0xffffu) | (uint32_t)z[3] << 16; return nd_sv_tsz; } /* NSET1 */
+    case ND_FS_LOADTLUT: { const unsigned sl = (s->w.tst1.tile_tmem[(b >> 24) & 7u] - 256u) >> 4; /* NSET1 */
+        v[0] = (sl & 0xffu) | (uint32_t)s->w.tlut_n << 8; v[1] = (uint32_t)(uintptr_t)s->w.tlut; return sl < 16u ? nd_sv_tlut : nd_sv_tlutn; } /* NSET1 */
+    default: return nd_sv_nop; } /* NSET1 */
+}
+unsigned nd_sv_sync(uint32_t w0) { const unsigned id = w0 >> 24, sft = w0 & 0xffu, len = (w0 >> 8) & 0xffu; /* 1: the old setter ends with nd_comb_sync (set_om cycle type, PRIM, ENV, TEXTURE, RARE, COMB) */ /* NSET1 */
+    if (id == ND_FS_OMH) return sft <= G_MDSFT_CYCLETYPE && sft + len > G_MDSFT_CYCLETYPE; /* NSET1 */
+    return id == ND_FS_PRIM || id == ND_FS_ENV || id == ND_FS_TEXTURE || id == ND_FS_RARE || id == ND_FS_COMB; } /* NSET1 */
