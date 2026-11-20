@@ -112,8 +112,8 @@ int main(void) {
         static const uint32_t l[] = { U(ND_FS_ENV, 0x12345678), U(ND_FS_ENV, 0x12345678), U(ND_FS_END, 0) };
         uint32_t ab[2]; uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 1; nd_ds_list(&nd_ds, l, 0); nd_alt_raw_on = 0; nd_alt_close(br, ab);
         uint32_t out[32]; const uint32_t* hs[16]; unsigned ns; const unsigned n = walk(ab, out, 16u, hs, &ns);
-        chk(n == 2u && ns == 1u, "c5 n ns");
-        if (ns == 1u) { chk(hs[0][1] == (uint32_t)(uintptr_t)nd_cpy_run && ((hs[0][0] >> 16) & 0xffu) == 4u, "c5 hdr"); chk(hs[0][2] == (ND_C6_MARK | ND_FS_ENV | ND_SV_SYNC) && hs[0][3] == (uint32_t)(uintptr_t)nd_sv_env && hs[0][4] == 0u && hs[0][5] == 0x12345678u && hs[0][6] == (ND_NOP_A | ND_FS_ENV | ND_SV_SYNC) && hs[0][9] == 0x12345678u, "c5 slots"); }
+        chk(n == 1u && ns == 1u, "c5 n ns"); /* ALTU: the second ENV is unmarked and dropped */
+        if (ns == 1u) { chk(hs[0][1] == (uint32_t)(uintptr_t)nd_cpy_run && ((hs[0][0] >> 16) & 0xffu) == 2u, "c5 hdr"); chk(hs[0][2] == (ND_C6_MARK | ND_FS_ENV | ND_SV_SYNC) && hs[0][3] == (uint32_t)(uintptr_t)nd_sv_env && hs[0][4] == 0u && hs[0][5] == 0x12345678u, "c5 slots"); }
     }
     { /* case 6 NAT6E1: a call unit of a raw fallback range is a nested raw copy (CALL | 2), the top range keeps 3 units */
         static const uint32_t in6[] = { U(ND_FS_VTX, 0), U(ND_FS_END, 0) };
