@@ -255,6 +255,7 @@ void nd_mmemo_log(void) {
     pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits);
     { char o[400]; int n = 0; for (unsigned i = 0; i < 34u; i++) if (mm_wc[i]) n += snprintf(o + n, sizeof o - (unsigned)n, " %u:%u", i, mm_wc[i]); pm_log_evt("mmemo why%s", o); }
     pm_log_evt("mmemo store fail delta %u", mm_sf);
+    pm_log_evt("mmemo offsets tst1 %u td %u conv_k4 %u fog_fm %u lt %u lt_n %u lk %u vp_sx %u tm %u m1v %u size %u", (unsigned)offsetof(NdDs, w.tst1), (unsigned)offsetof(NdDs, w.td), (unsigned)offsetof(NdDs, conv_k4), (unsigned)offsetof(NdDs, fog_fm), (unsigned)offsetof(NdDs, lt), (unsigned)offsetof(NdDs, lt_n), (unsigned)offsetof(NdDs, lk), (unsigned)offsetof(NdDs, vp_sx), (unsigned)offsetof(NdDs, tm), (unsigned)offsetof(NdDs, m1v), (unsigned)sizeof(NdDs));
     pm_log_evt("mmemo slots used %u ok %u of %u, hits per ok slot %u, delta words mean %u max %u, block words mean %u, ent %u B, table %u B", used, ok, MM_N, ok ? mm_hits / ok : 0u, ok ? nds / ok : 0u, ndmax, ok ? blkw / ok : 0u, (unsigned)sizeof(MmEnt), (unsigned)(MM_N * sizeof(MmEnt)));
     pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs);
 }
