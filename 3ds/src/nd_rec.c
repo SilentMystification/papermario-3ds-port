@@ -422,6 +422,7 @@ void nd_rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { rec_open(); rec_nat(run
 static unsigned char cg_keep; void nd_rec_cgfx(int on) { cg_keep = (unsigned char)(on != 0); } /* NAT6A: a custom gfx range keeps its combine class units (nd_r11_walk) */
 __attribute__((weak)) void nd_mls_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_mle_run(const uint32_t* r) { (void)r; } /* NAT5B: strong in nd_walk.c */
 __attribute__((weak)) void nd_txs_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_oml_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_prim_run(const uint32_t* r) { (void)r; } /* NAT6A: strong in nd_walk.c */
+__attribute__((weak)) void nd_epm_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_cbd_run(const uint32_t* r) { (void)r; } /* NAT6C: strong in nd_walk.c */
 void nd_alt_lst(unsigned end) { nd_rec_nat(end ? nd_mle_run : nd_mls_run, 0u, 0u); } /* NAT5B: the list start and end markers of nd_nr_list keep 0 */
 static const NdDs* alt_s = &nd_ds; /* NAT5T: the state that the txr puts read (a scratch copy on the static paths) */
 static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window of a TILESIZE of tile 0 or 1, as nd_tsz_set and tex_tile1 compute it */
@@ -454,8 +455,8 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
         return; }
     if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
         if (id >= ND_FS_TIMG && !(id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u)) { rec_nat(nd_txs_run, w0, w1); return; } /* NAT6A: a texture unit and its mark (rc is never 0 here) */
-        if (!rc && !cg_keep && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) { if (id == ND_FS_OML) rec_nat(nd_oml_run, w0 & 0xffffffu, w1); else if (id == ND_FS_PRIM) rec_nat(nd_prim_run, w0 & 0xffffffu, w1); return; } /* NAT6A */
-        if (rc) { st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason */
+        if (!rc && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) { if (id == ND_FS_OML) rec_nat(nd_oml_run, w0 & 0xffffffu, w1); else if (id == ND_FS_PRIM) rec_nat(nd_prim_run, w0 & 0xffffffu, w1); else if (cg_keep) rec_nat(nd_cbd_run, w0, w1); return; } /* NAT6A; NAT6C: a custom gfx range keeps the others as data records */
+        if (rc) { rec_nat(nd_epm_run, 0u, rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason; NAT6C: a native record */
             if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
     if (id == ND_FS_CALL) { /* NAT5T: the called static list as a raw alt range, its tile sizes carry the core 1 window; core 1 state keeps no nested state */
         NdDs* const sc = nd_alt_scr_on(); const unsigned char om = nd_alt_raw_on; nd_alt_raw_on = 1; uint32_t* const blk = nd_alt_call(w0, w1);
