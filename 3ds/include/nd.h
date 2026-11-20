@@ -551,7 +551,6 @@ unsigned nd_ent_strip(const uint32_t* l, uint32_t* out);
 
 /* The walker entry points (were pm_gbi.h, S10-1): nd_walk.c, nd_cen.c and nd_mtx_set.c define them. */
 void pm_gbi_init(void);
-void nd_list_run(const void* l); /* DIRECT D10c: a list to its G_ENDDL on the op executor (a list start: full sync) */
 void nd_nr_list(const void* l, unsigned n, int keep); /* DIRECT D10b: n ops of a flat range on the op executor (keep: no full sync at its start) */
 void pm_gbi_fallback(void);
 /* Once a frame. The log gets one summed line per second, and only when it changes. */

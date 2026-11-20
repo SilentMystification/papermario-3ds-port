@@ -399,7 +399,6 @@ static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of
 static __attribute__((cold, noinline)) void ops_cen_end(void) {
     if (pm_ph_cen) walk_dbg_end(pm_walk_dbg);
 }
-void nd_list_run(const void* l) { nd_nr_list(l, ND_LIST_MAX, 0); }
 /* DEL1A: was nd_nr_list */
 void nd_nr_list(const void* l, unsigned n, int keep) {
     PM_WALK_OWN(); /* CORE2-3a: a run is walker-side only */
@@ -544,7 +543,7 @@ void nd_ntab_rec(const uint32_t* rec) { const NdNDev* nt = (const NdNDev*)(uintp
 void nd_ntab_rec_e(const uint32_t* rec) { nd_psochk_draw((const NdPsoDesc*)(uintptr_t)rec[3]); nd_ntab_rec(rec); }
 void nd_ndev_rec(const uint32_t* rec) { NdNDev d; nd_ndev_unpack(&d, rec); nd_gtr_rec++; gt_run(d.list, &d, rec, rec + 10); } /* NTABFIND: the record-time copy (nd_gtab.h) */
 /* DIRECT D10a: a custom gfx range of the frame stream (model record R11, build_custom_gfx), run to its NDC_END as the walker ran the list it
- * replaces: the list start (gv_epoch, dlc_on, a full combine and render sync: DIP2) and the list end (the vertex and texture streak flush). */
+ * replaces: the list start (gv_epoch, dlc_on; the caller resets the skip state: nd_recs.c rec_range, NATRS) and the list end (the vertex and texture streak flush). */
 void nd_range_run(const uint32_t* a) {
     PM_WALK_OWN();
     const int d = ex_depth;
@@ -552,7 +551,6 @@ void nd_range_run(const uint32_t* a) {
     gv_epoch++; /* GV1b */
     dlc_on = 1;
     gp_prev_op = -1;
-    sc_ok = 0; sr_ok = 0;
     pm_walk_side++;
     nd_ds_rpl++; /* NST2D */
     nd_stream_run(a);

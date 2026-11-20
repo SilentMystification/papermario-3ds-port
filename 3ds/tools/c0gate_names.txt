@@ -5,7 +5,6 @@ interp nd_nr_list
 interp nd_list_run
 interp nd_ent_units
 interp nd_ntab_run
-interp nd_range_run
 interp nd_scomp_run
 interp gt_run
 interp nr_set
