@@ -196,6 +196,7 @@ void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch sn
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
 void nd_snap_comb(void) { nd_comb_apply(&sc_cur.o, sc_cur.in.w0, sc_cur.in.w1, sc_cur.in.use_t1, sc_cur.in.env); nd_c0w &= ~1u; /* NAT1B */ }
 const NdSnapBind* nd_snap_cur_b(void) { return sc_cur.b; } /* NDR1C */
+const NdSnapChk* nd_snap_cur(void) { return &sc_cur; } /* NCS1: the snap core 0 applied last (debug readers) */
 /* NDR1C: the render state log of a rectangle (drec runs): one line per frame that differs from the walker. */
 void nd_snap_rlog(void) {
     static unsigned sc_rfr = ~0u;

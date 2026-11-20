@@ -71,6 +71,7 @@ void nd_snap_rect(void);
 extern unsigned char nd_snap_live;
 /* NDR1C, nd_snap.c, core 0: the tile words of the armed snap, for the rectangle binds (nd_rect.c nd_bsrc). */
 const NdSnapBind* nd_snap_cur_b(void);
+const NdSnapChk* nd_snap_cur(void); /* NCS1, nd_snap.c, core 0: the last applied snap */
 /* NDR1C, nd_snap.c, core 0: the combine of the armed snap (nd_comb_apply on its inputs). */
 void nd_snap_comb(void);
 /* NDR1C, nd_snap.c, core 0: the drec log line `rectsnap f<n>` for a rectangle whose snap differs from the walker. */
