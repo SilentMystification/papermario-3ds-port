@@ -25,7 +25,7 @@ unsigned nd_snb, nd_snn, nd_snm; /* NAT1: core 1 snap_build calls, new snaps, ta
 static const NdSnapChk sn_zero; static const NdSnapChk* sn_lp = &sn_zero; /* PERF1: the last snap */
 typedef struct { uint32_t h; int32_t m5; uint32_t vp; const NdSnapChk* p; } SiEnt; static SiEnt si_t[256]; static unsigned si_n, si_next; unsigned nd_si_new, nd_si_hit, nd_si_full;
 typedef struct { uint32_t h; int32_t m5; uint32_t vp; int32_t key; NdCombIn in; NdCombOut o; } SdEnt; /* SNAPD: one decision */
-#define SD_N 32u /* SNAPD: entries (a power of 2), about 17 KB on the heap at first use */
+#define SD_N 128u /* C1MIC: about 66 KB on the heap at first use (MDLBLK freed 256 KB); SNAPD: entries (a power of 2) */
 static SdEnt* sd_t; static unsigned char sd_tried; unsigned nd_sd_new, nd_sd_hit;
 static uint32_t si_hw(uint32_t h, const void* p, unsigned n) { const uint32_t* w = (const uint32_t*)p; for (unsigned i = 0; i < n / 4u; i++) h = (h ^ w[i]) * 16777619u; return h; }
 static int si_eq(const NdSnapChk* a, const NdSnapChk* b) { return !memcmp(&a->in, &b->in, sizeof a->in) && !memcmp(&a->role, &b->role, 6u * 4u) && !memcmp(&a->plod, &b->plod, sizeof *a - offsetof(NdSnapChk, plod)); }
@@ -48,9 +48,7 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1) {
 
 static const NdSnapChk* snap_build0(const NdDs* s, int zc) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle */
     NdSnapChk r;
-    NdCombOut o;
     memset(&r, 0, sizeof r);
-    memset(&o, 0, sizeof o);
     nd_snb++; /* NAT1 */
     nd_snap_in(s, sn_leg, sn_pat, &r.in);
     nd_snap_rnd(s, &r);
@@ -68,17 +66,16 @@ static const NdSnapChk* snap_build0(const NdDs* s, int zc) { /* NDR0E2: the snap
     if (!sd_t && !sd_tried) { sd_tried = 1; sd_t = (SdEnt*)calloc(SD_N, sizeof *sd_t); if (sd_t) for (unsigned q = 0; q < SD_N; q++) sd_t[q].m5 = INT32_MIN; } /* SNAPD: NULL keeps the plain decision; INT32_MIN never matches an empty entry */
     SdEnt* const de = sd_t ? &sd_t[hi & (SD_N - 1u)] : NULL;
     r.plan_on = -1;
-    if (de && de->h == hi && de->m5 == m5 && de->vp == sn_vprim && !memcmp(&de->in, &r.in, sizeof r.in)) { nd_sd_hit++; r.key = de->key; o = de->o; }
+    if (de && de->h == hi && de->m5 == m5 && de->vp == sn_vprim && !memcmp(&de->in, &r.in, sizeof r.in)) { nd_sd_hit++; r.key = de->key; r.o = de->o; }
     else {
-        r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
-        if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
-        else { nd_snm++; nd_comb_core1(&r.in, sn_vprim, sn_mode5, &o); } /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
-        if (o.plan_on) pm_comb_colours_k(&o.plan, r.in.prim, r.in.env, r.in.prim_lo8 & 0xffu, r.in.key_c, r.in.key_s, r.in.conv_k4 & 255u);
-        nd_sd_new++; if (de) { de->h = hi; de->m5 = m5; de->vp = sn_vprim; de->key = r.key; de->in = r.in; de->o = o; }
+        r.key = nd_pso_find_i(&r.in, sn_vprim, &r.o);
+        if (r.key >= 0) nd_pso_fix(&r.o, &r.in, sn_mode5);
+        else { nd_snm++; nd_comb_core1(&r.in, sn_vprim, sn_mode5, &r.o); } /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
+        if (r.o.plan_on) pm_comb_colours_k(&r.o.plan, r.in.prim, r.in.env, r.in.prim_lo8 & 0xffu, r.in.key_c, r.in.key_s, r.in.conv_k4 & 255u);
+        nd_sd_new++; if (de) { de->h = hi; de->m5 = m5; de->vp = sn_vprim; de->key = r.key; de->in = r.in; de->o = r.o; }
     }
-    r.o = o;
-    sn_leg = o.leg; sn_mode5 = o.mode5; sn_pat = o.pat;
-    r.plan_on = o.plan_on;
+    sn_leg = r.o.leg; sn_mode5 = r.o.mode5; sn_pat = r.o.pat;
+    r.plan_on = r.o.plan_on;
     r.leg = sn_leg; r.mode5 = sn_mode5; r.pat = sn_pat;
     NdSnapChk* const p = (NdSnapChk*)nd_rec_data_st(sizeof r); *p = r; nd_si_new++; sn_lp = p;
     if (k < 8u && si_n < 192u) { si_t[i].h = h; si_t[i].m5 = m5; si_t[i].vp = sn_vprim; si_t[i].p = p; si_n++; } else nd_si_full++; return p;

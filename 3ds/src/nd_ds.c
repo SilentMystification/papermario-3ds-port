@@ -430,8 +430,9 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
             if (w0 & 1u) return;
         } else {
             const int lost = s->sc_lost, dirty = s->sc_dirty; const unsigned ch = nd_ds_apply(s, w0, w1);
-            if (nd_alt_raw_on) nd_alt_mark(nd_ds_ep_rule(w0, ch, lost, dirty)); /* NAT6B */
-            if (nd_lsc_on) { if (nd_ds_ep_rule(w0, ch, lost, dirty)) nd_lsc_ep(); nd_lsc_unit(w0); } /* NCONV2C */
+            if (nd_alt_raw_on | nd_lsc_on) { const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty); /* C1MIC: once */
+                if (nd_alt_raw_on) nd_alt_mark(rc); /* NAT6B */
+                if (nd_lsc_on) { if (rc) nd_lsc_ep(); nd_lsc_unit(w0); } } /* NCONV2C */
         }
     }
 }
