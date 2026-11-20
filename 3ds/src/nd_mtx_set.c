@@ -196,19 +196,6 @@ void nd_xf_popb(u32 w1) {
     upload_mvp();
 }
 
-/* HC4d: the lights of a model record (gSPSetLights0 to 7, F3DEX2) by their typed fields: the light count (G_MW_NUMLIGHT, NUML(n), n at
- * least 1), then G_MOVEMEM light k (k = 1 to n: l[k - 1], n + 1: the ambient) at offset k * 24 + 24, each with the walker's skip test. */
-void rec_lights(const Lightsn* L, unsigned k) {
-    if (k > 7u) return;
-    const unsigned n = k ? k : 1u; /* NUMLIGHTS_0 is 1 */
-    nd_light_count(NUML(n)); /* NAT5F: set_mw NUMLIGHT (nd_set.c:110); nd_unit_same is 0 for it (:143) */
-    for (unsigned i = 1; i <= n + 1u; i++) {
-        const u32 a = (((u32)sizeof(Light) - 1u) / 8u) << 19 | ((i * 24u + 24u) / 8u) << 8 | G_MV_LIGHT;
-        const u32 b = (u32)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a);
-        if (!lt_mem_same(a, b)) nd_mv_mem(a, b);
-    }
-}
-
 void mtx_elem(Mtx* dst, int r, int c, float v) {
     s32 fixed = (s32)(v * 65536.f);
     u32* m = (u32*)dst->m;

@@ -9,5 +9,6 @@ void nd_msnap_use(const uint32_t* q);
 const uint32_t* nd_msnap_w(void);
 const struct NdTd* nd_msnap_td0(void);
 const uint32_t* nd_msnap_key(const uint32_t* q); /* NAT2C: k_omh .. k_geom of the record's snap, NULL when none */
+const uint32_t* nd_msnap_ab(const uint32_t* q); /* NAT5B: the first of 2 alt ranges (4 words) of the record payload q */
 void nd_msnap_dec(const uint32_t* q); /* NAT2K: the decision words of the record's snap into the walker globals */
 #endif
