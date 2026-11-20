@@ -2537,7 +2537,7 @@ def cmd_cmp(a):
             print("  %s DIFF %d px bbox x %d..%d y %d..%d, diff %s" % (n, res["px"], x0, x1, y0, y1, posix(out / ("diff_" + n[:-4] + ".png"))))
             bad += 1
     for n in row_names:
-        if n not in base_names:
+        if n not in base_names and n != "gst.txt":  # DO0: the base has no gst.txt (the page: not compared)
             print("  %s extra (not in base)" % n)
             bad += 1
     print("%d/%d byte-equal" % (equal, len(base_names)))
