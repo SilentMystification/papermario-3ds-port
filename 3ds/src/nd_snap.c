@@ -156,6 +156,7 @@ const NdSnapBind* nd_snap_eb(void) {
 const NdSnapBind* nd_snap_eb_of(const NdSnapBind* b) { if (!b) return NULL; memcpy(sc_eb, b, sizeof sc_eb); return sc_eb; }
 /* NC0C, drec census: the recorded block b differs from the walker tiles: one cold line per site and frame. */
 static __attribute__((cold, noinline)) void bs_log(unsigned site) { static unsigned fr[6] = { ~0u, ~0u, ~0u, ~0u, ~0u, ~0u }; if (pm_frame_count() != fr[site]) { fr[site] = pm_frame_count(); pm_log_d("bindsrc f%u s%u", fr[site], site); } }
+unsigned nd_snap_wdiff(const NdSnapBind* e) { NdSnapBind w[2]; return nd_snap_bdiff(e, sc_wb(NULL, w)); } /* MCOPY1 census */
 void nd_bsrc_chk(const NdSnapBind* b, unsigned site) { NdSnapBind w[2]; if (__builtin_expect(b != NULL && pm_drec_now(), 0) && nd_snap_bdiff(b, sc_wb(NULL, w)) != 0u) bs_log(site); }
 
 void nd_snapchk_run(const uint32_t* rec) {

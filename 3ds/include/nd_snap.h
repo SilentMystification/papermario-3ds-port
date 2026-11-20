@@ -42,6 +42,7 @@ int nd_snap_bnew(const NdSnapBind* e);
 /* NDR0G2, nd_snap.c, core 0: the blocks of the armed snapshot for the open epoch (a copy kept until the next epoch). */
 const NdSnapBind* nd_snap_eb(void);
 const NdSnapBind* nd_snap_eb_of(const NdSnapBind* b); /* NC0C: b copied into the epoch blocks, NULL gives NULL */
+unsigned nd_snap_wdiff(const NdSnapBind* e); /* MCOPY1 census: nd_snap_bdiff of e and the walker tiles */
 void nd_bsrc_chk(const NdSnapBind* b, unsigned site); /* NC0C: drec census, sites 1 stream, 2 static, 3 rect, 4 sprite, 5 model tile 1 */
 
 /* nd_snap_in.c: the combine inputs of an NdDs (leg and pat are the walker's leg and box_pat of the snapshot). */

@@ -629,6 +629,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
+    { extern void nd_mcopy_end(void); nd_mcopy_end(); } /* MCOPY1 census */
     { extern unsigned nd_altw[8]; pm_log_evt("altw f%u c1 m %u e %u c %u o %u c0 all %u m %u e %u gd %u gw %u bd %u bw %u d %u", pm_frame_count(), nd_altw[0], nd_altw[1], nd_altw[2], nd_altw[3], nd_altw[4], nd_altw[5], nd_altw[6], sc_gd[0], sc_gw[0], sc_gd[1], sc_gw[1], nd_altw[7]); } /* PERF0 */
     drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_idx = NULL; drec_idx_cap = 0; drec_on = 0; drec_win = -1; /* one window per run */
 }
