@@ -27,6 +27,7 @@
 #include "nd_nr.h"
 
 /* GLOB: definitions moved here from the former pm_gbi.c (layout only). */
+extern unsigned char nd_alt_cls; /* PERF0: nd_rec.c */
 unsigned pm_gbi_cur_op; /* PI2: the unit id (ND_FS_*) of the step now running, or a record op G_PM_* (DEL1D1; one store per op) */
 
 int pm_gpu_spr_native(const uint32_t* rec); /* SPR4 */
@@ -288,7 +289,7 @@ static void spr_geo_walk(const uint32_t* g) {
 /* NAT5W: the G_DL unit of a refused entity record: the list start and end of nd_nr_list (keep 1), the CALL arm of nr_ctl. */
 static void ent_dl_walk(unsigned dbg, const NdW2* c, const uint32_t* br) {
     PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
-    const uint32_t* u_ = (const uint32_t*)c; const uint32_t ab[4] = { (uint32_t)(uintptr_t)(br + 2), br[1], (uint32_t)(uintptr_t)br, 0u }; /* ab[3] 0: ent_gdl gets no cut table, as with ab NULL */ pm_gbi_cur_op = ND_FS_CALL; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1], ab); /* NAT5W; NAT5N; NAT6E2: the copy of x[0] */
+    const uint32_t* u_ = (const uint32_t*)c; const uint32_t ab[4] = { (uint32_t)(uintptr_t)(br + 2), br[1], (uint32_t)(uintptr_t)br, 0u }; /* ab[3] 0: ent_gdl gets no cut table, as with ab NULL */ pm_gbi_cur_op = ND_FS_CALL; nd_alt_cls = 2u; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1], ab); nd_alt_cls = 0u; /* NAT5W; NAT5N; NAT6E2: the copy of x[0] */
     ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
 /* NAT5A: the units of a cut raw alt range ab (nd_alt_eput), with the list start and end of nd_nr_list (keep 1). NATEF */
 void nd_ent_slice(const uint32_t* ab) {
@@ -296,7 +297,7 @@ void nd_ent_slice(const uint32_t* ab) {
     const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
     gv_epoch++; dlc_on = 1; gp_prev_op = -1;
     pm_walk_side++; ex_depth = d + 1;
-    const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m;
+    const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_cls = 2u; nd_alt_run(ab); nd_alt_cls = 0u; alt_mode = m;
     ex_depth = d; pm_walk_side--;
     gv_streak_flush(); tex_streak_flush();
     if (cen) ops_cen_end();
@@ -414,7 +415,7 @@ void nd_range_run(const uint32_t* a) {
 void nd_mls_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; sr_ok = 0; pm_walk_side++; ex_depth++; } /* NAT5B: nd_nr_list keep 0 start */
 void nd_mle_run(const uint32_t* r) { (void)r; ex_depth--; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); if (__builtin_expect(pm_walk_dbg & WD_CEN, 0) && ex_depth == 0) ops_cen_end(); } /* NAT5B: its end */
 void nd_alt_run_x(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5T: the fallback range of a record, as the static table ran it */
-void nd_mdl_alt(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5B: a model alt range, as rec_top ran it */
+void nd_mdl_alt(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_cls = 1u; nd_alt_run(ab); nd_alt_cls = 0u; alt_mode = m; } /* NAT5B: a model alt range, as rec_top ran it */
 /* ---- MV-7: walk core, cut from the former pm_gbi.c (no change): host range, pointer resolve, init, cold modifyvtx, lt compare, run entry, fallback ---- */
 extern char __end__[]; /* linker: end of .bss */
 int is_host(u32 p) {

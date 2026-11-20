@@ -481,9 +481,9 @@ static void pf_c1_now(unsigned* x) {
     pm_wq_pf(w);
     x[0] = w[0]; x[1] = w[1]; x[2] = pm_au_pf_lgj; x[3] = pm_au_pf_job; x[4] = pm_au2_pf_busy;
 }
-extern unsigned nd_snb, nd_snn, nd_snm, nd_lsf_n, nd_lsb_n, nd_lse_n, nd_altu_n, nd_altr_n; static unsigned lg0_c[8]; /* NAT8A */
+extern unsigned nd_snb, nd_snn, nd_snm, nd_lsf_n, nd_lsb_n, nd_lse_n, nd_altu_n, nd_altr_n; static unsigned lg0_c[8]; /* NAT8A */ static unsigned long long c1s_t[2], c1s_m[2]; static unsigned aw_m[8], gw_m[4]; extern unsigned nd_altw[8]; void pm_gpu_gw_now(unsigned o[4]); /* PERF0 */
 static void pf_c1n_now(unsigned* x) { x[0] = nd_snb; x[1] = nd_snn; x[2] = nd_snm; x[3] = nd_lsf_n; x[4] = nd_lsb_n; x[5] = nd_lse_n; x[6] = nd_altu_n; x[7] = nd_altr_n; } /* NAT8A */
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; } /* NAT8A */
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; c1s_m[0] = c1s_t[0]; c1s_m[1] = c1s_t[1]; memcpy(aw_m, nd_altw, sizeof aw_m); pm_gpu_gw_now(gw_m); } /* NAT8A */ /* PERF0 */
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
@@ -692,7 +692,7 @@ static void pf_report(void) {
                 bw / 100u, bw % 100u, fw / 100u, fw % 100u, aj / 100u, aj % 100u, au / 100u, au % 100u, mx / 100u, mx % 100u);
             pm_log_prof_line("prof f%u w%u core2 drain dr %u.%02u drw %u.%02u wqf %u.%02u", pf_total, pf_w,
                 dr / 100u, dr % 100u, drw / 100u, drw % 100u, wqf / 100u, wqf % 100u);
-            { unsigned c[8]; pf_c1n_now(c); pm_log_prof_line("prof f%u w%u c1n n %u snb %u snn %u snm %u lsf %u lsb %u lse %u altu %u altr %u", pf_total, pf_w, dn, c[0] - lg0_c[0], c[1] - lg0_c[1], c[2] - lg0_c[2], c[3] - lg0_c[3], c[4] - lg0_c[4], c[5] - lg0_c[5], c[6] - lg0_c[6], c[7] - lg0_c[7]); } /* NAT8A */ /* window totals over n logic steps */
+            { unsigned c[8]; pf_c1n_now(c); pm_log_prof_line("prof f%u w%u c1n n %u snb %u snn %u snm %u lsf %u lsb %u lse %u altu %u altr %u", pf_total, pf_w, dn, c[0] - lg0_c[0], c[1] - lg0_c[1], c[2] - lg0_c[2], c[3] - lg0_c[3], c[4] - lg0_c[4], c[5] - lg0_c[5], c[6] - lg0_c[6], c[7] - lg0_c[7]); } /* NAT8A */ /* window totals over n logic steps */ { const unsigned d1_ = dn ? dn : 1u, pw1_ = pf_w ? pf_w : 1u; unsigned g_[4]; unsigned long long s0_ = (c1s_t[0] - c1s_m[0]) * 100ull / PF_TPM / d1_, s1_ = (c1s_t[1] - c1s_m[1]) * 100ull / PF_TPM / d1_; pm_gpu_gw_now(g_); pm_log_prof_line("prof f%u w%u c1s logic %u.%02u dl %u.%02u", pf_total, pf_w, (unsigned)(s0_ / 100u), (unsigned)(s0_ % 100u), (unsigned)(s1_ / 100u), (unsigned)(s1_ % 100u)); pm_log_prof_line("prof f%u w%u c1a m %u e %u c %u o %u c0 %u m %u e %u gpu d %u w %u bd %u bw %u", pf_total, pf_w, (nd_altw[0] - aw_m[0]) / d1_, (nd_altw[1] - aw_m[1]) / d1_, (nd_altw[2] - aw_m[2]) / d1_, (nd_altw[3] - aw_m[3]) / d1_, (nd_altw[4] - aw_m[4]) / pw1_, (nd_altw[5] - aw_m[5]) / pw1_, (nd_altw[6] - aw_m[6]) / pw1_, (g_[0] - gw_m[0]) / pw1_, (g_[1] - gw_m[1]) / pw1_, (g_[2] - gw_m[2]) / pw1_, (g_[3] - gw_m[3]) / pw1_); } /* PERF0 */
         }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
@@ -1109,20 +1109,20 @@ void __wrap_step_game_loop(void) {
     pm_interp_start();
     PH_PUSH(PH_LOGIC);
     FS_MARK(FS_LOGIC);
-    __real_step_game_loop();
+    const unsigned c0_ = pm_pf_on ? pm_ticks() : 0u; __real_step_game_loop(); if (pm_pf_on) c1s_t[0] += (unsigned)(pm_ticks() - c0_); /* PERF0 */
     FS_MARK(FS_DL);
     PH_POP();
 }
 
 void __wrap_gfx_task_background(void) {
     PH_PUSH(PH_GAMEDRAW);
-    __real_gfx_task_background();
+    const unsigned c0_ = pm_pf_on ? pm_ticks() : 0u; __real_gfx_task_background(); if (pm_pf_on) c1s_t[1] += (unsigned)(pm_ticks() - c0_); /* PERF0 */
     PH_POP();
 }
 
 void __wrap_gfx_draw_frame(void) {
     PH_PUSH(PH_GAMEDRAW);
-    __real_gfx_draw_frame();
+    const unsigned c0_ = pm_pf_on ? pm_ticks() : 0u; __real_gfx_draw_frame(); if (pm_pf_on) c1s_t[1] += (unsigned)(pm_ticks() - c0_); /* PERF0 */
     PH_POP();
 }
 
