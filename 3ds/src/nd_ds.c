@@ -15,6 +15,7 @@
 #include "nd_fs.h"
 #include "nd_sv.h" /* NSET1 */
 unsigned char nd_alt_raw_on; __attribute__((weak)) void nd_alt_put(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; } /* NAT5F */
+unsigned nd_altw[8]; /* PERF0: alt words. Core 1 written: 0 model, 1 entity, 2 stream call, 3 fallback. Core 0 run (top level): 4 all, 5 model, 6 entity */
 __attribute__((weak)) void nd_alt_mark(unsigned rc) { (void)rc; } /* NAT6B */
 __attribute__((weak)) void nd_alt_eput(uint32_t w0, uint32_t w1) { nd_alt_put(w0, w1); } __attribute__((weak)) void nd_alt_et_begin(void) {} /* NAT5A */
 __attribute__((weak)) uint32_t* nd_alt_call(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; return NULL; } __attribute__((weak)) void nd_alt_call_end(uint32_t* b) { (void)b; } /* NAT5N */
@@ -482,12 +483,12 @@ void nd_ds_model(NdDs* s, const uint32_t* q, const uint32_t* rm, unsigned nrm, N
     if (dm_on && rm) nd_alt_lst(1u); /* NAT5B */
     if (f & 32u) { T(ND_FS_OML, ND_FS_A_RENDERMODE, (uint32_t)(PM_RM_SHROUD) | q[15]); T(ND_FS_FOG, 0, q[8]); if (f & 16u) T(ND_FS_BLEND, 0, q[14]); FOGP(q[11]); }
     else if (f & 2u) { T(ND_FS_FOG, 0, q[8]); FOGP(q[11]); }
-    if (br) { dm_on = 0; nd_alt_close(br, ab); } /* NAT5B: the units before the pre range */
+    if (br) { dm_on = 0; nd_alt_close(br, ab); nd_altw[0] += (ab[1] - ab[0]) >> 2; } /* NAT5B: the units before the pre range */
     if (q[22]) nd_ds_range(s, (const uint32_t*)(uintptr_t)q[22], NULL); /* NST2D: custom gfx pre (R11, nd_range_run) */
     br = ab ? nd_alt_open() : NULL; dm_on = br != NULL; /* NAT5B */
     if (q[18]) dm_u(s, q[18], q[19], NULL); /* NAT5B */
     if (q[20]) dm_u(s, q[20], q[21], NULL); /* NAT5B */
-    if (br) { dm_on = 0; nd_alt_close(br, ab + 2); } /* NAT5B: the panner units after the pre range */
+    if (br) { dm_on = 0; nd_alt_close(br, ab + 2); nd_altw[0] += (ab[3] - ab[2]) >> 2; } /* NAT5B: the panner units after the pre range */
     s->sc_lost = 1; /* NST2J: the model runner leaves sc_ok 0 before the post range NREC1A: the caller applies the post range */
 }
 #undef T

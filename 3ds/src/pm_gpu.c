@@ -290,7 +290,7 @@ static int dc_on;
 /* DS0: cold counters for pm_gpu_dcsum_frame. Ticks and counts in this file's flushes, sampled closes and cmd words; sums over 300 drawn frames. */
 static unsigned dcs_gt, dcs_fl, dcs_cmd, dcs_smp, dcs_cl, dcs_us[DCU_N], dcs_n, dcs_c[DC_N];
 /* PERF2: submit counters (totals, the prof cls line takes them per window): program switches, native shadow resets, C3Di_UpdateContext calls, command list splits */
-static unsigned sc_prg, sc_shr, sc_upd, sc_spl;
+static unsigned sc_prg, sc_shr, sc_upd, sc_spl; static unsigned sc_gd[2], sc_gw[2]; /* PERF0: draws and command words, 0 emitted, 1 cached block */
 static void gpu_flush_written(void) {
     unsigned g0 = dc_on ? pm_ticks() : 0;
     pm_tex_flush_pend_only();
@@ -636,6 +636,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
+    { extern unsigned nd_altw[8]; pm_log_evt("altw f%u c1 m %u e %u c %u o %u c0 all %u m %u e %u gd %u gw %u bd %u bw %u", pm_frame_count(), nd_altw[0], nd_altw[1], nd_altw[2], nd_altw[3], nd_altw[4], nd_altw[5], nd_altw[6], sc_gd[0], sc_gw[0], sc_gd[1], sc_gw[1]); } /* PERF0 */
     drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_idx = NULL; drec_idx_cap = 0; drec_on = 0; drec_win = -1; /* one window per run */
 }
 static const uint8_t* drec_p2v(uint32_t phys, uint32_t dl) { /* the inverse of osConvertVirtToPhys for the two regions a draw reads: VRAM (the texture cache) and the linear heap (dl = phys - virt of a linear pointer) */
@@ -1359,7 +1360,8 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         else C3Di_UpdateContext();
         sc_upd++; } /* what citro3d staged (program, buffers, scissor, an older TEV) goes out first, the native words then overwrite it */
     { u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff); /* PERF1-6: emitted in place (no copy) */
-      GPUCMD_SetBufferOffset(coff + (ndn_bq && !d->use5 && !d->no_uni && d->npal == 1u ? blk_put(cb + coff, ndn_bq, d) : nd_emit_draw(cb + coff, &ndn_sh, d))); } /* HC6 step 4: a cache hit copies its block */
+      const int bq_ = ndn_bq && !d->use5 && !d->no_uni && d->npal == 1u; const unsigned nw_ = bq_ ? blk_put(cb + coff, ndn_bq, d) : nd_emit_draw(cb + coff, &ndn_sh, d);
+      GPUCMD_SetBufferOffset(coff + nw_); sc_gd[bq_]++; sc_gw[bq_] += nw_; } /* HC6 step 4: a cache hit copies its block */
     if (tex) ndunit_after();
     if (__builtin_expect(drec_on, 0)) c0_count(d); /* NAT1 */
     if (__builtin_expect(drec_on, 0)) drec_draw(d, ndt_mdl || nb.gi_kind == 1); /* HOSTCORE2: the golden record of this draw */
@@ -4564,6 +4566,7 @@ void pm_gpu_cnt_take(unsigned o[8]) { /* PERF2 step 6: the counters of the prof 
     for (int i = 0; i < 8; i++) { o[i] = now[i] - last[i]; last[i] = now[i]; }
 }
 void pm_gpu_cnt_now(unsigned o[8]) { const unsigned now[8] = { sc_prg, sc_shr, sc_upd, sc_spl, spr_nat_n - spc_miss, spc_miss, nd_ent_cfull_all(), nd_gdl_lists() }; memcpy(o, now, sizeof now); } /* FXCEN1: totals, no reset */
+void pm_gpu_gw_now(unsigned o[4]) { o[0] = sc_gd[0]; o[1] = sc_gw[0]; o[2] = sc_gd[1]; o[3] = sc_gw[1]; } /* PERF0: totals */
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, NdGvP* o, const NdGvC* gc); /* NWS4C */
 /* S4-2: the sprite record as a native draw (nd_sprite_draw, nd_sprite.c). The walker inputs of the draw (sticky state, gv, env and prim of the record),
  * the NdDraw without palette and index (set by pm_gpu_spr_submit), the key st and palette 0 (the walker combined matrix, post x combined). 1 native, 0 with why

@@ -28,6 +28,7 @@ typedef struct NdDs {
     uint8_t sc_lost, sc_dirty;     /* NST2J: core 1 view of !sc_ok and sc_sig != sc_sig_now() (nd_comb.c:342); not in ds_fields */
 } NdDs;
 extern NdDs nd_ds;
+extern unsigned nd_altw[8]; /* PERF0 */
 /* Applies one typed unit (w0 = id << 24 | a, w1 = b). Bit 0 of the result: a field value changed. Other ids change nothing. */
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v);
 /* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an ND_FS_CALL unit of nd_rec_nr); see nd_ds.c. */

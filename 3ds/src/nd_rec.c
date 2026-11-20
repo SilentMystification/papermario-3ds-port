@@ -245,7 +245,7 @@ static uint32_t* ent_m1(const NdDs* s0, const NdNDev* nt, const void* list) { /*
     static NdDs es; es = *s0; const NdDs* const sa = alt_s; const unsigned char sr = nd_alt_raw_on, sl = nd_lsc_on; uint32_t ab[2];
     nd_lsc_on = 0; uint32_t* const br = nd_alt_open(); alt_s = &es; nd_alt_raw_on = 1;
     if (nt) nd_ds_pairs0(&es, nt->u, nt->nu); else nd_ds_list(&es, list, 0);
-    nd_alt_close(br, ab); nd_alt_raw_on = sr; alt_s = sa; nd_lsc_on = sl; return br; }
+    nd_alt_close(br, ab); nd_altw[1] += (ab[1] - ab[0]) >> 2; nd_alt_raw_on = sr; alt_s = sa; nd_lsc_on = sl; return br; }
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form) {
     NdW2 r[G_PM_ENT_WORDS + 1];
     gPmEntDrawRecord(r, list, segid, varray);
@@ -261,7 +261,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     const NdNDev* const ent_nt = nd_ntab_find(list); const int ent_c = ent_has_call(ent_nt); static NdDs ent_s0; if (ent_c) ent_s0 = nd_ds; /* NAT6E2: the state before the flat copy */
     uint32_t* const x = p + 2u + 2u * (G_PM_ENT_WORDS + 1u); uint32_t ab[2]; x[0] = x[1] = 0u; uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 2; nd_alt_et_begin(); /* NAT5A */
     nd_lsc_begin(); nd_ds_list(&nd_ds, list, 0);
-    nd_alt_raw_on = 0; nd_alt_close(br, ab); x[1] = (uint32_t)(uintptr_t)nd_alt_et_end(ab[1]); /* NAT5A */
+    nd_alt_raw_on = 0; nd_alt_close(br, ab); nd_altw[1] += (ab[1] - ab[0]) >> 2; x[1] = (uint32_t)(uintptr_t)nd_alt_et_end(ab[1]); /* NAT5A */
     x[0] = (uint32_t)(uintptr_t)(ent_c ? ent_m1(&ent_s0, ent_nt, list) : br); /* NAT6E2: the copy for the G_DL of a refused record */
     nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at nd_eg_run or walk_call) NREC2: the list snap table in header word 1 */
 }
@@ -464,7 +464,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
             if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
     if (id == ND_FS_CALL) { /* NAT5T: the called static list as a raw alt range, its tile sizes carry the core 1 window; core 1 state keeps no nested state */
         NdDs* const sc = nd_alt_scr_on(); const unsigned char om = nd_alt_raw_on; nd_alt_raw_on = 1; uint32_t* const blk = nd_alt_call(w0, w1);
-        nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_alt_raw_on = om; nd_alt_scr_off(); return; }
+        nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_altw[2] += (blk[2] - blk[1]) >> 2; nd_alt_raw_on = om; nd_alt_scr_off(); return; }
     if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { cp_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); return; } /* NAT5T */
     cp_put(t[0], t[1]); /* NAT4A */
 }
@@ -482,7 +482,7 @@ void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uin
         if (w0 == ND_NOP_A) continue;
         if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && k + 2u < an) { nd_rec_texrect(w0, w1 & ~ND_FS_RECT_TEX, au[2u * k + 3u], au[2u * k + 5u]); k += 2u; continue; } /* as nd_rec_list */
         nd_rec_nr(w0, w1); }
-    st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp; /* NAT5R */
+    st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp; /* NAT5R */ nd_altw[3] += (ab[1] - ab[0]) >> 2; /* PERF0 */
     if (lost) nd_ds.sc_lost = 1; /* the old nd_ds_feed_dir */ NDT_E(nt8, NDT_ALT); /* NAT8A */
 }
 /* NAT5T, core 1: as nd_rec_alt, the fallback units au copied raw (tile sizes of tile 0 and 1 carry their window); the units apply to a scratch copy of core 1 state, which stays as it was. */
@@ -500,7 +500,7 @@ void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const
     NdDs* const sc = nd_alt_scr_on();
     for (unsigned k = 0; k < an; k++) { const uint32_t w0 = au[2u * k], w1 = au[2u * k + 1u]; if ((w0 >> 24) == ND_FS_CALL) { alt_call_raw(sc, w0, w1); continue; } /* NAT6E1 */ const int lost = sc->sc_lost, dirty = sc->sc_dirty; nd_alt_put(w0, w1); nd_alt_mark(nd_ds_ep_rule(w0, nd_ds_apply(sc, w0, w1), lost, dirty)); } /* NAT6B */
     nd_alt_scr_off();
-    st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp;
+    st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp; nd_altw[3] += (ab[1] - ab[0]) >> 2; /* PERF0 */
 }
 static uint32_t* c6_slot; static uint32_t c6_w0, c6_w1; void nd_alt_mark(unsigned rc) { if (c6_slot) { uint32_t v[2]; const NdNapiRun f = nd_sv_enc(alt_s, c6_w0, c6_w1, v); c6_slot[0] = (rc ? ND_C6_MARK : ND_NOP_A) | (c6_w0 >> 24) | (nd_sv_sync(c6_w0) ? ND_SV_SYNC : 0u); c6_slot[1] = (uint32_t)(uintptr_t)f; c6_slot[2] = v[0]; c6_slot[3] = v[1]; } c6_slot = NULL; } /* NAT6B: after the apply of the unit nd_alt_put wrote last */ /* NSET2: the slot gets the mark, the applier and the 2 values of the applied state */
 /* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
@@ -723,4 +723,5 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
     }
 }
 void nd_stream_run(const uint32_t* p) { stream_run(p, NULL); }
-void nd_alt_run(const uint32_t* ab) { nd_ds_rpl++; stream_run((const uint32_t*)(uintptr_t)ab[0], (const uint32_t*)(uintptr_t)ab[1]); nd_ds_rpl--; } /* NAT5R */
+unsigned char nd_alt_cls; static unsigned char altx_d; /* PERF0: core 0, the caller class (1 model, 2 entity) and the nesting depth */
+void nd_alt_run(const uint32_t* ab) { if (!altx_d) { const unsigned w = (ab[1] - ab[0]) >> 2; nd_altw[4] += w; if (nd_alt_cls) nd_altw[4u + nd_alt_cls] += w; } altx_d++; nd_ds_rpl++; stream_run((const uint32_t*)(uintptr_t)ab[0], (const uint32_t*)(uintptr_t)ab[1]); nd_ds_rpl--; altx_d--; } /* NAT5R; PERF0 */
