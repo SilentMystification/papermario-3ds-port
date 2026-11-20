@@ -153,10 +153,10 @@ void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed sna
     nd_c0w &= ~2u; /* NAT1B */
 }
 static unsigned char lr_geo; void nd_lsr_geo(void) { lr_geo = 1; } /* NCONV2D: the open list runs ls_run (nd_walk.c) */
-extern int box_folded, dual_on, box_prod, comb_set, comb_alpha_shade; extern unsigned keyc, keys, conv_k4; extern unsigned box_save[4]; /* nd_comb.c */
+extern int box_folded, dual_on; extern unsigned keyc, keys, conv_k4; /* nd_comb.c */
 void pm_comb_set_k4(unsigned k4); void pm_gpu_set_prim(unsigned rgba, unsigned lod); void pm_gpu_set_env(unsigned rgba); void pm_gpu_flush(void); /* pm_gpu.h */
 static void ls_gpu(uint32_t w0, uint32_t w1, int cset, uint32_t prim, uint32_t plod, uint32_t env, uint32_t k4) { /* NCONV2D: the GPU calls of the skipped units */
-    if (nd_ws.comb_w0 != w0 || nd_ws.comb_w1 != w1 || (cset && !comb_set)) pm_gpu_flush(); if (nd_ws.prim != prim || nd_ws.prim_lod != plod) pm_gpu_set_prim(prim, plod);
+    if (nd_ws.comb_w0 != w0 || nd_ws.comb_w1 != w1 || (cset && !nd_ws.comb_w0)) pm_gpu_flush(); /* NWS2 */ if (nd_ws.prim != prim || nd_ws.prim_lod != plod) pm_gpu_set_prim(prim, plod);
     if (nd_ws.envc != env) pm_gpu_set_env(env); if (conv_k4 != k4) pm_comb_set_k4(k4); nd_ws.prim_lod = plod; }
 static void ds_take(const NdDs* c) { /* NCONV2D: list end: the fields of the skipped units from the core 1 end state (dschk: core 1 equals core 0 at each command) */
     ls_gpu(c->w.comb_w0, c->w.comb_w1, c->comb_set, c->w.prim, c->w.prim_lod, c->w.envc, c->conv_k4);
@@ -165,26 +165,23 @@ static void ds_take(const NdDs* c) { /* NCONV2D: list end: the fields of the ski
         const NdTst k = nd_ws.tst1; const int ku = nd_ws.use_t1;
         nd_ws.tst1 = c->w.tst1; nd_ws.use_t1 = c->w.use_t1;
         if (box_folded) {
-            box_save[0] = c->w.tst1.comb_a; box_save[1] = c->w.tst1.comb_b; box_save[2] = c->w.tst1.comb_c; box_save[3] = c->w.tst1.comb_d;
             nd_ws.tst1.comb_a = k.comb_a; nd_ws.tst1.comb_b = k.comb_b; nd_ws.tst1.comb_c = k.comb_c; nd_ws.tst1.comb_d = k.comb_d;
             nd_ws.tst1.comb_aa = k.comb_aa; nd_ws.tst1.comb_ab = k.comb_ab; nd_ws.tst1.comb_ac = k.comb_ac; nd_ws.tst1.comb_ad = k.comb_ad;
             nd_ws.use_t1 = ku;
         }
     }
-    fogc = c->fogc; blendc = c->blendc; keyc = c->keyc; keys = c->keys; conv_k4 = c->conv_k4; comb_set = c->comb_set; box_prod = c->box_prod; comb_alpha_shade = c->comb_alpha_shade; dual_on = c->dual_on; }
+    fogc = c->fogc; blendc = c->blendc; keyc = c->keyc; keys = c->keys; conv_k4 = c->conv_k4; dual_on = c->dual_on; } /* NWS2 */
 /* NCONV2B: the walker takes the combine and render inputs of the consumed snap (the 1:1 fields of comb_in_walker, nd_comb.c:200).
  * DEL3A: the compare that named each field is deleted. geom and tss stay core 0 state. */
 static void sc_adopt(void) {
-    extern unsigned* const tst_f[16]; /* nd_comb.c:46 */
     extern unsigned keyc, keys, conv_k4; /* nd_comb.c:24-25 */
-    extern int dual_on, box_prod, box_folded, comb_set, comb_alpha_shade; /* nd_comb.c:26-32 */
+    extern int dual_on, box_folded; /* nd_comb.c:26-32 */
     const NdCombIn* i = &sc_cur.in;
     ls_gpu(i->w0, i->w1, i->comb_set, i->prim, sc_cur.plod, i->env, i->conv_k4); /* NCONV2D; NAT4D: also for stream snaps */
     nd_ws.comb_w0 = i->w0; nd_ws.comb_w1 = i->w1; nd_ws.omode_h = i->omode_h; nd_ws.prim = i->prim; nd_ws.envc = i->env;
     keyc = i->key_c; keys = i->key_s; conv_k4 = i->conv_k4;
-    for (int k = 0; k < 16; k++) *tst_f[k] = i->tst[k];
-    nd_ws.tex_on = i->tex_on; nd_ws.use_t1 = i->use_t1; dual_on = i->dual_on; box_prod = i->box_prod; box_folded = i->box_folded;
-    comb_set = i->comb_set; comb_alpha_shade = i->comb_alpha_shade;
+    { NdTst* t = &nd_ws.tst1; const uint32_t* s = i->tst; t->comb_a = s[0]; t->comb_b = s[1]; t->comb_c = s[2]; t->comb_d = s[3]; t->comb_aa = s[4]; t->comb_ab = s[5]; t->comb_ac = s[6]; t->comb_ad = s[7]; t->comb2_a = s[8]; t->comb2_b = s[9]; t->comb2_c = s[10]; t->comb2_d = s[11]; t->comb2_aa = s[12]; t->comb2_ab = s[13]; t->comb2_ac = s[14]; t->comb2_ad = s[15]; } /* NWS2 */
+    nd_ws.tex_on = i->tex_on; nd_ws.use_t1 = i->use_t1; dual_on = i->dual_on; box_folded = i->box_folded;
     nd_ws.omode_l = sc_cur.oml; fogc = sc_cur.fogc; blendc = sc_cur.blendc;
     nd_ws.fill = sc_cur.fill; nd_ws.prim_z = sc_cur.primz; /* NAT4H */
 }

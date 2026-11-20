@@ -33,7 +33,7 @@ PmPlan cur_plan;
 M1Rec m1;
 struct TszLast tsz_last;
 
-static int n_decide, n_setcomb, n_prim, n_plan, n_leg, n_const, n_rect, n_render, n_forget, n_flush, n_filter, n_end_clear;
+static int n_decide, n_setcomb, n_prim, n_plan, n_leg, n_const, n_rect, n_forget, n_flush, n_filter, n_end_clear;
 static unsigned last_prim, last_const, last_leg;
 static int last_rect[4];
 static float last_st[4];
@@ -52,7 +52,7 @@ void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     out->leg = 2;
 }
 void nd_comb_set(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
-void nd_rndw_note(void) { n_render++; } /* NCS3 */
+int nd_cw_box_prod(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; return box_prod; } /* NWS2 */
 extern unsigned nd_snap_render_n; /* NAT2A */
 void nd_sr_forget(void) { n_forget++; }
 void ens_clear(void) { n_end_clear++; }
@@ -103,7 +103,6 @@ void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
 void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }
 void nd_img_check(void) {}
-void nd_bfold_note(void) {} /* NCS2 */
 void nd_tile_bind(int n) { (void)n; }
 void dual_bind(void) {}
 void pm_tex_size(int* w, int* h) { *w = 32; *h = 16; }

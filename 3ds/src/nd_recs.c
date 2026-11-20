@@ -129,7 +129,7 @@ static __attribute__((cold, noinline)) void hitst_note(const NdHitD* d) {
 }
 /* the combine of a hit, as rec_top runs it (nd_unit_same COMB, nd_comb_set) */
 static __attribute__((noinline)) void hd_comb(const NdHitD* d) {
-    if (!(comb_set && d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0)) nd_comb_set(d->cw0, d->cw1);
+    if (!(d->cw0 == nd_ws.comb_w0 && d->cw1 == nd_ws.comb_w1 && box_folded == 0)) nd_comb_set(d->cw0, d->cw1);
 }
 static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;

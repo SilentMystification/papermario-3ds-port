@@ -26,8 +26,6 @@ void nd_img_check(void);
 float shift_mul(unsigned n);
 void nd_tile_bind(int n);
 void gp3_t0_surv(void);
-void nd_bfold_note(void); /* NCS2, nd_comb.c: the drec marker of the deleted core 0 box fold */
-void nd_rndw_note(void); /* NCS3, nd_comb.c: drec marker */
 unsigned rgba_from_5551(unsigned c);
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out);
 void dual_bind(void);
@@ -93,7 +91,6 @@ extern unsigned s;
 extern NdLight lt[9];
 extern float combined[4][4];
 extern float vert_p[64][4];
-extern int comb_set;
 extern int dlc_on;
 extern int lit_pending;
 extern int rec_nat_last;
@@ -223,7 +220,8 @@ int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3
 void nd_comb_set(u32 w0, u32 w1);                 /* the former pm_gbi.c, combine group */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 /* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
-extern int comb_mode5, plan_active, fog_fm, fog_fo, box_prod, box_pat, comb_alpha_shade, leg_mode;
+extern int comb_mode5, plan_active, fog_fm, fog_fo, box_pat, leg_mode;
+int nd_cw_ashade(uint32_t w0, uint32_t w1); int nd_cw_box_prod(uint32_t w0, uint32_t w1); /* NWS2, nd_comb.c */
 extern PmPlan cur_plan; extern float dual_f[4];
 void cc_cycle1(const float* t0, const float* t1, float out[4]);
 /* ---- C (ST-2): the combine group in nd_comb.c ---- */

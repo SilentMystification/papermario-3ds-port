@@ -106,7 +106,7 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o) {
     in.lighting = (geo & G_LIGHTING) != 0; in.texgen = (geo & G_TEXTURE_GEN) != 0; in.fog = (geo & G_FOG) != 0;
     in.comb5 = comb_mode5; in.plan_active = plan_active;
     in.plan_vtx_ok = cur_plan.vtxname != PM_NM_SHADE && cur_plan.vtxname != PM_NM_NONE;
-    in.alpha_shade = comb_alpha_shade;
+    in.alpha_shade = nd_cw_ashade(nd_ws.comb_w0, nd_ws.comb_w1); /* NWS2 */
     in.boost = dual_on && nd_ws.tst1.comb2_a == G_CCMUX_SHADE && nd_ws.tst1.comb2_b == G_CCMUX_ENVIRONMENT && nd_ws.tst1.comb2_c == G_CCMUX_COMBINED && nd_ws.tst1.comb2_d == G_CCMUX_COMBINED;
     in.primz = (nd_ws.omode_l & (1u << G_MDSFT_ZSRCSEL)) != 0; in.prim_z = nd_ws.prim_z;
     in.envc = nd_ws.envc; in.plan_vtx = cur_plan.vtx;
@@ -344,7 +344,7 @@ void draw_tri(unsigned w) {
     idx[0] = i0;
     idx[1] = i1;
     idx[2] = i2;
-    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { nd_img_check(); nd_bfold_note(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* NCS2 */ /* PG4: the second triangle of a G_TRI2 sees the same state */
+    if (!tri_prep_ok) { if (ep_osc != gv_epoch) { nd_img_check(); ep_osc = gv_epoch; } tri_prep_ok = 1; } /* NCS2 */ /* PG4: the second triangle of a G_TRI2 sees the same state */
     if (nd_ls_on) nd_lsr_tri(nd_ls_ord - 1u);
     if (nd_snap_arm && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++; /* NDR0G2: other tile words than the open epoch: a new epoch */
     nd_snap_rpend = nd_snap_arm | nd_ls_on; /* NCONV1D2: a list triangle binds from its range snap. NDR0F1B: only the epoch of this triangle compares its snap; a rectangle never sets it */
@@ -396,7 +396,7 @@ int nd_part_draw(const NdNDev* t) {
             gp_ntri++;
             n_cmd++;
             tri_since_vtx = 1;
-            if (ep_osc != gv_epoch) { nd_img_check(); nd_bfold_note(); ep_osc = gv_epoch; } /* NCS2 */
+            if (ep_osc != gv_epoch) { nd_img_check(); ep_osc = gv_epoch; } /* NCS2 */
             if (nd_ls_on) { nd_ls_ord++; nd_lsr_tri(nd_ls_ord - 1u); } /* NREC4: the instance snap */
             const unsigned char sn = nd_snap_arm; /* NAT5E: the stream instance snap */
             if (sn && ep_epoch == gv_epoch && nd_snap_bnew(nd_ep_bs)) gv_epoch++;

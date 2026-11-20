@@ -23,12 +23,12 @@
 unsigned conv_k4; /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 unsigned keyc, keys; /* B6: G_SETKEYR/G_SETKEYGB chroma key CENTER, 0xRRGGBB00. Only the combiner input CENTER reads it. */
 int dual_on;
-int box_prod; PM_HOTD int box_folded;
+PM_HOTD int box_folded;
 int box_pat; /* D03: (PRIM - ENV) * TEXEL0 + ENV with alpha from TEXEL1 only: window with a tile 0 pattern */
-unsigned box_save[4];
-int comb_set;
-int comb_alpha_shade = 1;
 int plan_active; /* S25: the general combiner (mode 8) draws, not the legacy mode */
+int nd_cw_ashade(uint32_t w0, uint32_t w1) { return !w0 || ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4; } /* NWS2: comb_alpha_shade of the applied words (1 before the first combine) */
+int nd_cw_box_prod(uint32_t w0, uint32_t w1) { uint32_t t[16]; nd_comb_tst(w0, w1, 0, 0, t); return t[0] == 1 && t[1] >= 7 && t[2] == 2 && t[3] == 7 && t[4] == 7 && t[5] == 7 && t[6] == 7 && t[7] == 2 &&
+    t[8] == 3 && t[9] == 5 && t[10] == 0 && t[11] == 5 && t[12] == 7 && t[13] == 7 && t[14] == 7 && t[15] == 0; } /* NWS2: box_prod of the applied words */
 PmPlan cur_plan;
 extern int pm_comb_vprim; /* S4COL: the particle plan flag (pm_comb.c), in the memo keys */
 const char* const cc_nm_a[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1", "NOISE" };
@@ -38,18 +38,15 @@ const char* const cc_nm_d[8] = { "CMB", "T0", "T1", "PRIM", "SHADE", "ENV", "1",
 const char* const cc_nm_aa[8] = { "CMBA", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "1", "0" };
 const char* const cc_nm_ac[8] = { "LODF", "T0A", "T1A", "PRIMA", "SHADEA", "ENVA", "PLODF", "0" };
 int ls_use = -9, ls_why, ls_cyc, ls_dual, ls_frame;
-unsigned* const tst_f[16] = { &nd_ws.tst1.comb_a, &nd_ws.tst1.comb_b, &nd_ws.tst1.comb_c, &nd_ws.tst1.comb_d, &nd_ws.tst1.comb_aa, &nd_ws.tst1.comb_ab, &nd_ws.tst1.comb_ac, &nd_ws.tst1.comb_ad,
-    &nd_ws.tst1.comb2_a, &nd_ws.tst1.comb2_b, &nd_ws.tst1.comb2_c, &nd_ws.tst1.comb2_d, &nd_ws.tst1.comb2_aa, &nd_ws.tst1.comb2_ab, &nd_ws.tst1.comb2_ac, &nd_ws.tst1.comb2_ad };
 unsigned aux_key;
 
 
 /* globals of the combine state, owned by the former pm_gbi.c until their group moves (D10 debt, listed in the ST-2 commit) */
-extern unsigned aux_key, box_save[4];
-extern int box_pat, box_prod, comb_alpha_shade, dual_on, plan_active;
+extern unsigned aux_key;
+extern int box_pat, dual_on, plan_active;
 extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame;
 extern PmPlan cur_plan;
 extern const char* const cc_nm_a[8], * const cc_nm_aa[8], * const cc_nm_ac[8];
-extern unsigned* const tst_f[16];
 extern float vp_sx, vp_sy, vp_tx, vp_ty;
 int ph_pick(void); void grab_cur(const void* src, int w, int h); void ens_clear(void);
 void unpack8(unsigned c, float o[4]);
@@ -65,8 +62,8 @@ extern const char* const cc_nm_b[8], * const cc_nm_c[16], * const cc_nm_d[8];
 /* The constant colour mode of the walker state (nd_decide.c nd_const_rgb on the walker's inputs). */
 int const_rgb_tex_alpha(unsigned* out) {
     NdCombIn c;
-    c.omode_h = nd_ws.omode_h; c.comb_set = comb_set; c.tex_on = nd_ws.tex_on; c.prim = nd_ws.prim; c.env = nd_ws.envc; c.t1_valid = nd_ws.td[1].valid; c.conv_k4 = conv_k4;
-    for (int i = 0; i < 16; i++) c.tst[i] = *tst_f[i];
+    c.omode_h = nd_ws.omode_h; c.comb_set = nd_ws.comb_w0 != 0; /* NWS2 */ c.tex_on = nd_ws.tex_on; c.prim = nd_ws.prim; c.env = nd_ws.envc; c.t1_valid = nd_ws.td[1].valid; c.conv_k4 = conv_k4;
+    { const NdTst* s = &nd_ws.tst1; const uint32_t t[16] = { s->comb_a, s->comb_b, s->comb_c, s->comb_d, s->comb_aa, s->comb_ab, s->comb_ac, s->comb_ad, s->comb2_a, s->comb2_b, s->comb2_c, s->comb2_d, s->comb2_aa, s->comb2_ab, s->comb2_ac, s->comb2_ad }; memcpy(c.tst, t, sizeof t); } /* NWS2 */
     return nd_const_rgb(&c, out);
 }
 
@@ -213,7 +210,7 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) {
     uint32_t v[48]; unsigned n = 0;
     v[n++] = nd_ws.envc; v[n++] = (uint32_t)comb_mode5; v[n++] = (uint32_t)plan_active; v[n++] = cur_plan.vtxname; v[n++] = cur_plan.vtx;
     v[n++] = (uint32_t)dual_on; v[n++] = nd_ws.tst1.comb2_a; v[n++] = nd_ws.tst1.comb2_b; v[n++] = nd_ws.tst1.comb2_c; v[n++] = nd_ws.tst1.comb2_d;
-    v[n++] = (uint32_t)comb_alpha_shade; v[n++] = (uint32_t)nd_ws.use_t1; v[n++] = (uint32_t)nd_ws.tex_on; v[n++] = (uint32_t)nd_ws.tile_x0; v[n++] = (uint32_t)nd_ws.tile_y0;
+    v[n++] = (uint32_t)nd_cw_ashade(nd_ws.comb_w0, nd_ws.comb_w1); /* NWS2 */ v[n++] = (uint32_t)nd_ws.use_t1; v[n++] = (uint32_t)nd_ws.tex_on; v[n++] = (uint32_t)nd_ws.tile_x0; v[n++] = (uint32_t)nd_ws.tile_y0;
     v[n++] = gvk_bits(nd_ws.tile_fx); v[n++] = gvk_bits(nd_ws.tile_fy);
     v[n++] = nd_ws.tst1.tile_shift[0][0]; v[n++] = nd_ws.tst1.tile_shift[0][1]; v[n++] = nd_ws.tst1.tile_shift[1][0]; v[n++] = nd_ws.tst1.tile_shift[1][1];
     v[n++] = gvk_bits(vp_sx); v[n++] = gvk_bits(vp_sy); v[n++] = gvk_bits(vp_tx); v[n++] = gvk_bits(vp_ty);
@@ -257,11 +254,6 @@ void nd_comb_apply(const NdCombOut* o, uint32_t w0, uint32_t w1, int use_t1, uin
     pm_gpu_set_combine(leg_mode);
 }
 
-int pm_drec_now(void); /* NCS2: pm_gpu.c */
-static __attribute__((cold, noinline)) void bfold_log(void) { static unsigned fr = ~0u; if (pm_frame_count() != fr) { fr = pm_frame_count(); pm_log_evt("bfold f%u", fr); } } /* NCS2 */
-void nd_bfold_note(void) { if (__builtin_expect(pm_drec_now(), 0) && (box_prod && nd_ws.td[1].valid && nd_td_white(&nd_ws.td[0])) != box_folded) bfold_log(); } /* NCS2: the drec marker of the deleted core 0 box fold (UD-N5); NWS1 deletes it */
-static __attribute__((cold, noinline)) void ncs3_log(const char* k) { static unsigned fr[2] = { ~0u, ~0u }; const unsigned i = k[0] == 'c'; if (pm_frame_count() != fr[i]) { fr[i] = pm_frame_count(); pm_log_evt("%s f%u", k, fr[i]); } } /* NCS3 */
-void nd_rndw_note(void) { if (__builtin_expect(pm_drec_now(), 0)) ncs3_log("rndw"); } /* NCS3: a draw with no live snap; the old nd_rnd_sync ran here (UD-N5); NWS1 deletes it */
 
 float t1_p[4]; /* the unit 1 uv map set by dual_bind: scale s t, offset s t */
 int t1_ox, t1_oy, t1_w, t1_h; /* window origin in the slot, texture size of unit 1 */
@@ -362,16 +354,15 @@ void t1_fold_tri(const unsigned ri[3], unsigned tss) {
 
 
 void nd_comb_set(u32 w0, u32 w1) {
-            GP_SET(0, nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set);
+            GP_SET(0, nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1); /* NWS2 */
             /* POND 3a: an open batch is drawn with the combine it was queued with. A new combine closes it first (the copy record's combine closed the blocker batch with the water combine). */
-            if (!(nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1 && comb_set)) pm_gpu_flush();
+            if (!(nd_ws.comb_w0 == w0 && nd_ws.comb_w1 == w1)) pm_gpu_flush(); /* NWS2 */
             nd_ws.comb_w0 = w0;
             nd_ws.comb_w1 = w1;
             nd_ws.tst1.comb_a = (w0 >> 20) & 0xf;
             nd_ws.tst1.comb_c = (w0 >> 15) & 0x1f;
             nd_ws.tst1.comb_b = (w1 >> 28) & 0xf;
             nd_ws.tst1.comb_d = (w1 >> 15) & 7;
-            comb_set = 1;
             nd_ws.tst1.comb_aa = (w0 >> 12) & 7;
             nd_ws.tst1.comb_ac = (w0 >> 9) & 7;
             nd_ws.tst1.comb_ab = (w1 >> 12) & 7;
@@ -410,12 +401,6 @@ void nd_comb_set(u32 w0, u32 w1) {
             }
             if (dual_on && !nd_dual_keep(nd_ws.tst1.comb_a, nd_ws.tst1.comb_c)) dual_on = 0; /* COIN: a combine that is not the shaded sprite combine ends the shaded sprite mode (a stale dual_on skipped decide: item_entity.c coins drew texel * vertex colour 0) */
             box_folded = 0;
-            box_prod = nd_ws.tst1.comb_a == 1 && nd_ws.tst1.comb_b >= 7 && nd_ws.tst1.comb_c == 2 && nd_ws.tst1.comb_d == 7 &&
-                       nd_ws.tst1.comb_aa == 7 && nd_ws.tst1.comb_ab == 7 && nd_ws.tst1.comb_ac == 7 && nd_ws.tst1.comb_ad == 2 &&
-                       nd_ws.tst1.comb2_a == 3 && nd_ws.tst1.comb2_b == 5 && nd_ws.tst1.comb2_c == 0 && nd_ws.tst1.comb2_d == 5 &&
-                       nd_ws.tst1.comb2_aa == 7 && nd_ws.tst1.comb2_ab == 7 && nd_ws.tst1.comb2_ac == 7 && nd_ws.tst1.comb2_ad == 0;
-            comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 ||
-                               ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
 }
 
 /* ---- MV-10: debug switch combchk, cut from the former pm_gbi.c (no change) ---- */

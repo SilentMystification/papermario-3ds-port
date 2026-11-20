@@ -1,0 +1,99 @@
+3ds/src/nd_comb.c:29:int nd_cw_ashade(uint32_t w0, uint32_t w1) { return !w0 || ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4; } /* NWS2: comb_alpha_shade of the applied words (1 before the first combine) */
+3ds/src/nd_comb.c:31:    t[8] == 3 && t[9] == 5 && t[10] == 0 && t[11] == 5 && t[12] == 7 && t[13] == 7 && t[14] == 7 && t[15] == 0; } /* NWS2: box_prod of the applied words */
+3ds/src/nd_comb.c:65:    c.omode_h = nd_ws.omode_h; c.comb_set = nd_ws.comb_w0 != 0; /* NWS2 */ c.tex_on = nd_ws.tex_on; c.prim = nd_ws.prim; c.env = nd_ws.envc; c.t1_valid = nd_ws.td[1].valid; c.conv_k4 = conv_k4;
+3ds/src/nd_comb.c:156:    d->box_prod = (uint8_t)in.box_prod; d->box_folded = (uint8_t)in.box_folded; d->comb_set = (uint8_t)in.comb_set; d->comb_alpha_shade = (uint8_t)in.comb_alpha_shade;
+3ds/src/nd_comb.c:185:    if ((unsigned)(in->tex_on | in->use_t1 | in->t1_valid | in->dual_on | in->box_prod | in->box_folded | in->comb_set | in->comb_alpha_shade) > 1u) {
+3ds/src/nd_comb.c:186:        static int once; if (!once) { once = 1; pm_log_evt("psomiss flags above 1: %d %d %d %d %d %d %d %d", in->tex_on, in->use_t1, in->t1_valid, in->dual_on, in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade); } return;
+3ds/src/nd_comb.c:189:        nd_pso_flags(in->tex_on, in->use_t1, in->t1_valid, in->dual_on, in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade) };
+3ds/src/nd_comb.c:196:        in->box_prod, in->box_folded, in->comb_set, in->comb_alpha_shade, (unsigned)pm_comb_vprim, (unsigned)(in->prim_lo8 & 0xffu));
+3ds/src/nd_decide.c:9: *   nd_ws.tst1.comb_a..comb2_ad (tst_f) -> in->tst[16] (decoded from cw0, cw1 by nd_comb_tst)
+3ds/src/nd_decide.c:11: *   box_prod, box_folded, comb_set, comb_alpha_shade -> the fields of the same name     box_pat -> in->box_pat (desc: 0, no field)
+3ds/src/nd_decide.c:44:    c->box_pat = c->box_prod && !c->box_folded; /* V10: the 2-cycle window with a pattern in tile 0 (not white): product on the CPU */
+3ds/src/nd_decide.c:60:    else if (wants_prim && !c->comb_set) mode = 1;
+3ds/src/nd_decide.c:73:    float sa = c->comb_alpha_shade ? in->sh[3] : 1.f;
+3ds/src/nd_decide.c:219:    unsigned parts[] = { c->w0, c->w1, (unsigned)two, (unsigned)c->leg_mode, (unsigned)(c->tex_on | c->use_t1 << 1 | c->t1_valid << 2), (unsigned)c->comb_alpha_shade,
+3ds/src/nd_decide.c:237:    out->use = -1; out->cyc = (int)cyc; out->dual = c.dual_on | c.box_prod << 1 | c.box_pat << 2;
+3ds/src/nd_decide.c:238:    if (cyc <= 1 && c.comb_set && !c.dual_on && (!c.box_prod || !c.box_folded)) { /* VIS1: a draw_box window with a pattern in tile 0 reads TEXEL0 * TEXEL1 on the GPU plan too */
+3ds/src/nd_decide.c:258:    in->box_prod = d->box_prod; in->box_pat = 0; in->box_folded = d->box_folded; in->comb_set = d->comb_set; in->comb_alpha_shade = d->comb_alpha_shade;
+3ds/src/nd_ds.c:30:    .comb_alpha_shade = 1, .sc_lost = 1,
+3ds/src/nd_ds.c:60:/* nd_comb.c nd_comb_set: the combine words, the derived fields, the TEXEL1 rename, dual_on, box_prod, comb_alpha_shade. */
+3ds/src/nd_ds.c:70:    SET(s->comb_set, 1);
+3ds/src/nd_ds.c:107:    SET(s->box_prod, t->comb_a == 1 && t->comb_b >= 7 && t->comb_c == 2 && t->comb_d == 7 &&
+3ds/src/nd_ds.c:111:    SET(s->comb_alpha_shade, ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4);
+3ds/src/nd_model.c:211:    ci->box_prod = 0; ci->box_pat = 0; ci->box_folded = 0; ci->comb_set = 1;
+3ds/src/nd_model.c:212:    ci->comb_alpha_shade = ((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4;
+3ds/src/nd_psochk.c:15:    PSOCHK_F(box_prod, "%02x"); PSOCHK_F(box_folded, "%02x"); PSOCHK_F(comb_set, "%02x"); PSOCHK_F(comb_alpha_shade, "%02x");
+3ds/src/nd_psokey.c:44:    if (((c->omode_h >> G_MDSFT_CYCLETYPE) & 3) > 1 || !c->comb_set || !c->tex_on) return 0;
+3ds/src/nd_psokey.c:104:uint8_t nd_pso_flags(int tex_on, int use_t1, int t1_valid, int dual_on, int box_prod, int box_folded, int comb_set, int comb_alpha_shade) {
+3ds/src/nd_psokey.c:105:    return (uint8_t)((tex_on ? 1u : 0u) | (use_t1 ? 2u : 0u) | (t1_valid ? 4u : 0u) | (dual_on ? 8u : 0u) | (box_prod ? 16u : 0u) |
+3ds/src/nd_psokey.c:106:                     (box_folded ? 32u : 0u) | (comb_set ? 64u : 0u) | (comb_alpha_shade ? 128u : 0u));
+3ds/src/nd_psokey.c:113:    if ((unsigned)(w->tex_on | w->use_t1 | w->t1_valid | w->dual_on | w->box_prod | w->box_folded | w->comb_set | w->comb_alpha_shade) > 1u) return 0;
+3ds/src/nd_psokey.c:117:    if (nd_pso_flags(w->tex_on, w->use_t1, w->t1_valid, w->dual_on, w->box_prod, w->box_folded, w->comb_set, w->comb_alpha_shade) != d->flags) return 0;
+3ds/src/nd_psokey.c:126:    o->dual = w->dual_on | w->box_prod << 1 | o->pat << 2;
+3ds/src/nd_scomp.c:81: * takes the def's value; with a combine unit the combine fields derived from the words (tst1, use_t1, box_prod, box_folded 0, comb_set 1,
+3ds/src/nd_scomp.c:82: * comb_alpha_shade) are a function of the def, so they are left out. */
+3ds/src/nd_scomp.c:94:        fl |= (uint32_t)(in->use_t1 != 0) << 9 | (uint32_t)(in->box_prod != 0) << 12 | (uint32_t)(in->box_folded != 0) << 13 | (uint32_t)(in->comb_set != 0) << 14 |
+3ds/src/nd_scomp.c:95:              (uint32_t)(in->comb_alpha_shade != 0) << 15;
+3ds/src/nd_snap.c:102:    if (sn_tmp.w.comb_w0 != p->cw0 || sn_tmp.w.comb_w1 != p->cw1 || !sn_tmp.comb_set) nd_ds_apply(&sn_tmp, ND_FS_W0(ND_FS_COMB, p->cw0), p->cw1);
+3ds/src/nd_snap.c:162:    ls_gpu(c->w.comb_w0, c->w.comb_w1, c->comb_set, c->w.prim, c->w.prim_lod, c->w.envc, c->conv_k4);
+3ds/src/nd_snap.c:164:    {   /* NST2G: a folded core 0 keeps its folded combine; box_save takes the core 1 (unfolded) values, so dschk_fill and the unfold give them */
+3ds/src/nd_snap.c:180:    ls_gpu(i->w0, i->w1, i->comb_set, i->prim, sc_cur.plod, i->env, i->conv_k4); /* NCONV2D; NAT4D: also for stream snaps */
+3ds/src/nd_snap_in.c:22:    in->box_prod = s->box_prod; in->box_pat = pat; in->box_folded = 0; in->comb_set = s->comb_set; in->comb_alpha_shade = s->comb_alpha_shade;
+3ds/src/nd_snap_in.c:23:    if (s->box_prod && s->w.td[1].valid && nd_td_white(&s->w.td[0])) { /* NDR0D: box_fold_sync nd_comb.c:377-381 */
+3ds/include/nd.h:479:    int leg_mode, tex_on, use_t1, t1_valid, dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade;
+3ds/include/nd.h:522:uint8_t nd_pso_flags(int tex_on, int use_t1, int t1_valid, int dual_on, int box_prod, int box_folded, int comb_set, int comb_alpha_shade);
+3ds/include/nd_api.h:37:    uint8_t box_prod, box_folded, comb_set, comb_alpha_shade; /* draw_box window product state, combine set, alpha shade */
+3ds/include/nd_ds.h:17:    int dual_on, box_prod, comb_set, comb_alpha_shade;
+3ds/include/nd_gtab.h:27:#define NDG_IN_COMB 0x01u  /* comb words, tst[16], use_t1, box_prod, box_folded, comb_set, comb_alpha_shade: a COMB unit */
+3ds/include/nd_scsig.h:4:static inline unsigned nd_sc_flags(int tex_on, int use_t1, int t1_valid, int dual_on, int box_prod, int box_pat, int box_folded, int comb_set, int comb_alpha_shade, int vprim) {
+3ds/include/nd_scsig.h:5:    return (unsigned)(tex_on | use_t1 << 1 | t1_valid << 2 | dual_on << 3 | box_prod << 4 | box_pat << 5 | box_folded << 6 | comb_set << 7 | comb_alpha_shade << 8) | (unsigned)vprim << 9;
+3ds/tools/c0gate_names.txt:23:state box_prod
+3ds/tools/c0gate_names.txt:25:state box_save
+3ds/tools/c0gate_names.txt:26:state comb_set
+3ds/tools/c0gate_names.txt:27:state comb_alpha_shade
+3ds/tools/c0gate_names.txt:36:state tst_f
+3ds/tools/gen_pso_main.c:99:        k.flags = nd_pso_flags(d->tex_on, d->use_t1, d->t1_valid, d->dual_on, d->box_prod, d->box_folded, d->comb_set, d->comb_alpha_shade);
+3ds/tools/nd_decide_test.c:45:static void walker_comb(uint32_t w0, uint32_t w1, uint32_t t[16], int* use_t1, int* box_prod, int* ashade) {
+3ds/tools/nd_decide_test.c:68:    *box_prod = t[0] == 1 && t[1] >= 7 && t[2] == 2 && t[3] == 7 && t[4] == 7 && t[5] == 7 && t[6] == 7 && t[7] == 2 &&
+3ds/tools/nd_decide_test.c:97:    int use_t1, box_prod, ashade;
+3ds/tools/nd_decide_test.c:98:    walker_comb(s->w0, s->w1, t, &use_t1, &box_prod, &ashade);
+3ds/tools/nd_decide_test.c:99:    if (folded && !box_prod) return;
+3ds/tools/nd_decide_test.c:105:    in.leg_mode = leg; in.tex_on = tex_on; in.use_t1 = use_t1; in.t1_valid = t1v; in.dual_on = dual; in.box_prod = box_prod; in.box_pat = 0; in.box_folded = folded;
+3ds/tools/nd_decide_test.c:106:    in.comb_set = cset; in.comb_alpha_shade = ashade;
+3ds/tools/nd_decide_test.c:111:    d.box_prod = (uint8_t)box_prod; d.box_folded = (uint8_t)folded; d.comb_set = (uint8_t)cset; d.comb_alpha_shade = (uint8_t)ashade;
+3ds/tools/nd_decide_test.c:190:        one(s, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, pe[1][0], pe[1][1]); /* comb_set 0 */
+3ds/tools/nd_direct_test.c:25:int dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, plan_active, leg_mode, comb_mode5, rm_frame;
+3ds/tools/nd_direct_test.c:54:void nd_comb_set(u32 w0, u32 w1) { n_setcomb++; nd_ws.comb_w0 = w0; nd_ws.comb_w1 = w1; comb_set = 1; }
+3ds/tools/nd_direct_test.c:55:int nd_cw_box_prod(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; return box_prod; } /* NWS2 */
+3ds/tools/nd_direct_test.c:133:    comb_set = 1;
+3ds/tools/nd_ds_test.c:79:        CHK("comb_set", s->comb_set, 1); CHK("use_t1", s->w.use_t1, 0); CHK("box_prod", s->box_prod, 0);
+3ds/tools/nd_ds_test.c:80:        CHK("comb_alpha_shade", s->comb_alpha_shade, 0);
+3ds/tools/nd_dual_test.c:31:    memset(&d, 0, sizeof d); d.cw0 = cw0; d.cw1 = cw1; d.omh = omh; d.tex_on = 1; d.use_t1 = (uint8_t)use_t1; d.t1_valid = (uint8_t)use_t1; d.comb_set = 1; nd_comb_tst(cw0, cw1, use_t1, 0, t); d.dual_on = (uint8_t)(force || nd_dual_keep(t[0], t[2]));
+3ds/tools/nd_gfx_conv.c:261:/* the pipeline description of the state now (the walker's rules of nd_comb_set: use_t1, box_prod, alpha shade are functions of the combine words) */
+3ds/tools/nd_gfx_conv.c:280:    d.box_prod = (uint8_t)(f[0] == 1 && f[1] >= 7 && f[2] == 2 && f[3] == 7 && f[4] == 7 && f[5] == 7 && f[6] == 7 && f[7] == 2 && f[8] == 3 && f[9] == 5 &&
+3ds/tools/nd_gfx_conv.c:282:    d.comb_set = (uint8_t)s->has_comb;
+3ds/tools/nd_gfx_conv.c:283:    d.comb_alpha_shade = (uint8_t)(((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4);
+3ds/tools/nd_gfx_conv.c:917:                 ".tex_on = %u, .use_t1 = %u, .t1_valid = %u, .dual_on = %u, .box_prod = %u, .box_folded = %u, .comb_set = %u, .comb_alpha_shade = %u, "
+3ds/tools/nd_gfx_conv.c:919:                 i, d->cw0, d->cw1, d->omh, d->oml, d->geom, d->key_c, d->key_s, d->conv_k4, d->tex_on, d->use_t1, d->t1_valid, d->dual_on, d->box_prod, d->box_folded,
+3ds/tools/nd_gfx_conv.c:920:                 d->comb_set, d->comb_alpha_shade, d->leg_prev, d->vprim, d->zimg, d->plod);
+3ds/tools/nd_gtab_test.c:247:/* the walker's combine rules (nd_comb_set and box_prod, as nd_decide_test.c walker_comb) */
+3ds/tools/nd_gtab_test.c:251:    d.cw0 = s->cw0; d.cw1 = s->cw1; d.omh = s->omh; d.oml = s->oml; d.geom = s->geom; d.t1_valid = (uint8_t)s->td1_valid; d.tex_on = (uint8_t)s->tex_on; d.comb_set = (uint8_t)s->has_comb; d.plod = (uint8_t)s->plod;
+3ds/tools/nd_gtab_test.c:265:    if (d.use_t1) { /* the rename of tile 1 to tile 0 changes t[], so box_prod reads the renamed fields */
+3ds/tools/nd_gtab_test.c:269:    d.box_prod = (uint8_t)(t[0] == 1 && t[1] >= 7 && t[2] == 2 && t[3] == 7 && t[4] == 7 && t[5] == 7 && t[6] == 7 && t[7] == 2 &&
+3ds/tools/nd_gtab_test.c:271:    d.comb_alpha_shade = (uint8_t)(((w0 >> 12) & 7) == 4 || ((w0 >> 9) & 7) == 4 || ((w1 >> 12) & 7) == 4 || ((w1 >> 9) & 7) == 4);
+3ds/tools/nd_gv_test.c:23:    int comb_mode5 = g->comb5, plan_active = g->plan_active, comb_alpha_shade = g->alpha_shade, dual_boost = g->boost;
+3ds/tools/nd_gv_test.c:26:    int a255 = !plan_active && !plan && !comb_alpha_shade;
+3ds/tools/nd_psolk_test.c:27:    k->flags = nd_pso_flags(d->tex_on, d->use_t1, d->t1_valid, d->dual_on, d->box_prod, d->box_folded, d->comb_set, d->comb_alpha_shade);
+3ds/tools/nd_psolk_test.c:60:static void walker_comb(uint32_t w0, uint32_t w1, uint32_t t[16], int* use_t1, int* box_prod, int* ashade) {
+3ds/tools/nd_psolk_test.c:83:    *box_prod = t[0] == 1 && t[1] >= 7 && t[2] == 2 && t[3] == 7 && t[4] == 7 && t[5] == 7 && t[6] == 7 && t[7] == 2 &&
+3ds/tools/nd_psolk_test.c:95:    int use_t1, box_prod, ashade;
+3ds/tools/nd_psolk_test.c:96:    walker_comb(s->w0, s->w1, t, &use_t1, &box_prod, &ashade);
+3ds/tools/nd_psolk_test.c:97:    if (folded && !box_prod) return;
+3ds/tools/nd_psolk_test.c:103:    in.leg_mode = leg; in.tex_on = tex_on; in.use_t1 = use_t1; in.t1_valid = t1v; in.dual_on = dual; in.box_prod = box_prod; in.box_pat = bp; in.box_folded = folded;
+3ds/tools/nd_psolk_test.c:104:    in.comb_set = cset; in.comb_alpha_shade = ashade;
+3ds/tools/nd_psolk_test.c:109:    d.box_prod = (uint8_t)box_prod; d.box_folded = (uint8_t)folded; d.comb_set = (uint8_t)cset; d.comb_alpha_shade = (uint8_t)ashade;
+3ds/tools/nd_psolk_test.c:136:    w->box_prod = (key->flags >> 4) & 1; w->box_folded = (key->flags >> 5) & 1; w->comb_set = (key->flags >> 6) & 1; w->comb_alpha_shade = (key->flags >> 7) & 1;
+3ds/tools/nd_scomp_test.c:82:    in->tex_on = 1; in->use_t1 = 0; in->comb_set = 1;
+3ds/tools/nd_scomp_test.c:128:    b = a; b.w0 ^= 0x0f0000u; b.w1 ^= 0x1u; b.tst[3] = 99; b.use_t1 = 1; b.comb_set = 0; b.box_folded = 1; i2 = id_of(&t, &cam, &b, 0, &m2);
+3ds/tools/nd_scsig_test.c:5:static const char* names[10] = { "tex_on", "use_t1", "t1_valid", "dual_on", "box_prod", "box_pat", "box_folded", "comb_set", "comb_alpha_shade", "vprim" };
+3ds/tools/nd_snap_test.c:55:            f.box_prod = 1;
