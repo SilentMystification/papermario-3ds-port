@@ -32,6 +32,7 @@ extern NdDs nd_ds;
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v);
 /* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an ND_FS_CALL unit of nd_rec_nr); see nd_ds.c. */
 void nd_ds_list(NdDs* s, const void* l, int depth);
+struct NdNDev; NdDs* nd_alt_flat_save(const NdDs* s, unsigned d); void nd_alt_flat(NdDs* sv, const struct NdNDev* nt); void nd_ds_pairs0(NdDs* s, const uint32_t* u, unsigned n); /* NAT5T */
 struct NdNDev; void nd_ds_units(NdDs* s, const struct NdNDev* nt, const uint32_t* u, unsigned n); /* NAT5T */
 /* NST2b: applies one typed unit of a record (the ds_unit of nd_rec.c: nd_ds_apply, the ND_FS_CALL list, the ep rule). */
 typedef void (*NdDsUnitFn)(NdDs* s, uint32_t w0, uint32_t w1);

@@ -431,16 +431,21 @@ static void ds_pairs(NdDs* s, const uint32_t* u, unsigned n, unsigned depth, int
     }
 }
 static int ds_ent_ok(const NdNDev* nt) { if (!nt || !nt->ntri) return 0; for (unsigned i = 0; i < nt->nu; i++) { const uint32_t w0 = nt->u[2u * i]; const unsigned id = w0 >> 24; if (w0 != ND_NOP_A && !(id >= ND_FS_BASE && id <= ND_FS_COMB) && !(id >= ND_FS_TIMG && id <= ND_FS_MOVEMEM)) return 0; } return 1; } /* NAT5A */
+/* NAT5T: a list that core 0 compiles as an entity but that holds a call (ds_ent_ok refuses it): a second, flat copy (mode 2) from the state before the pass */
+static int ds_ent_flat(const NdNDev* nt) { if (!nt || !nt->ntri) return 0; int c = 0; for (unsigned i = 0; i < nt->nu; i++) { const uint32_t w0 = nt->u[2u * i]; const unsigned id = w0 >> 24; if (id == ND_FS_CALL) c = 1; else if (w0 != ND_NOP_A && !(id >= ND_FS_BASE && id <= ND_FS_COMB) && !(id >= ND_FS_TIMG && id <= ND_FS_MOVEMEM)) return 0; } return c; }
+__attribute__((weak)) NdDs* nd_alt_flat_save(const NdDs* s, unsigned d) { (void)s; (void)d; return NULL; } __attribute__((weak)) void nd_alt_flat(NdDs* sv, const NdNDev* nt) { (void)sv; (void)nt; }
+void nd_ds_pairs0(NdDs* s, const uint32_t* u, unsigned n) { ds_pairs(s, u, n, 0, 0); }
 static void ds_list_at(NdDs* s, uint32_t w, unsigned depth) {
     if (depth >= DS_LIST_DEPTH) return;
     const void* l = ds_ptr(s, w);
     if (!l) return;
     const NdNDev* nt = nd_ntab_find(l);
     if (nd_alt_raw_on == 1u && ds_ent_ok(nt)) nd_alt_et_begin(); /* NAT5A */
-    if (nt) { ds_pairs(s, nt->u, nt->nu, depth, 0); return; }
+    NdDs* const sv = (nd_alt_raw_on == 1u && ds_ent_flat(nt)) ? nd_alt_flat_save(s, depth) : NULL; /* NAT5T */
+    if (nt) { ds_pairs(s, nt->u, nt->nu, depth, 0); if (sv) nd_alt_flat(sv, nt); return; }
     ds_pairs(s, (const uint32_t*)l, DS_LIST_MAX, depth, 1);
 }
-void nd_ds_units(NdDs* s, const NdNDev* nt, const uint32_t* u, unsigned n) { if (nd_alt_raw_on == 1u && ds_ent_ok(nt)) nd_alt_et_begin(); /* NAT5T: as ds_list_at */ ds_pairs(s, u, n, 0, 0); } /* NAT5T: the units of a device entry (nd_rec_ndev) */
+void nd_ds_units(NdDs* s, const NdNDev* nt, const uint32_t* u, unsigned n) { if (nd_alt_raw_on == 1u && ds_ent_ok(nt)) nd_alt_et_begin(); /* NAT5T: as ds_list_at */ NdDs* const sv = (nd_alt_raw_on == 1u && ds_ent_flat(nt)) ? nd_alt_flat_save(s, 0u) : NULL; ds_pairs(s, u, n, 0, 0); if (sv) nd_alt_flat(sv, nt); } /* NAT5T: the units of a device entry (nd_rec_ndev) */
 /* nd_rec_ntab (nd_gtab.c) and nd_rec_nr (nd_rec.c, an ND_FS_CALL unit with depth 1). l: a host address or a segment address. */
 void nd_ds_list(NdDs* s, const void* l, int depth) { ds_list_at(s, (uint32_t)(uintptr_t)l, (unsigned)depth); }
 

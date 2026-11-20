@@ -500,8 +500,16 @@ void nd_alt_eput(uint32_t w0, uint32_t w1) {
     nd_alt_put(w0, w1);
     if (et_n < ND_DLC_MAXOPS) et_ua[et_n] = cut ? (uint32_t)(uintptr_t)st_hdr : 0u;
     et_n++; et_c = c; }
+static NdDs fl_sv[12]; static uint32_t* et_flat; /* NAT5T */
+NdDs* nd_alt_flat_save(const NdDs* s, unsigned d) { fl_sv[d] = *s; return &fl_sv[d]; } /* NAT5T */
+void nd_alt_flat(NdDs* sv, const NdNDev* nt) { /* NAT5T: the flat copy (mode 2) of a list with calls, from the saved state; its cut table waits in et_flat for nd_alt_et_end */
+    const NdDs* const sa = alt_s; const unsigned char sr = nd_alt_raw_on; const unsigned char sl = nd_lsc_on; uint32_t ab[2];
+    nd_lsc_on = 0; uint32_t* const br = nd_alt_open(); alt_s = sv; nd_alt_raw_on = 2; nd_alt_et_begin();
+    nd_ds_pairs0(sv, nt->u, nt->nu);
+    nd_alt_close(br, ab); nd_alt_raw_on = sr; et_flat = nd_alt_et_end(ab[1]);
+    alt_s = sa; nd_lsc_on = sl; }
 uint32_t* nd_alt_et_end(uint32_t end) { /* stream data: t[0] n, t[1 + i] the run header of cut unit i (else 0), t[1 + n] end. NULL: no copy */
-    if (!et_on) return NULL;
+    if (!et_on) { uint32_t* const fl = et_flat; et_flat = NULL; return fl; } /* NAT5T */
     et_on = 0;
     if (et_n >= ND_DLC_MAXOPS) return NULL;
     uint32_t* const t = (uint32_t*)nd_rec_data_st(4u * (et_n + 2u)); t[0] = et_n; memcpy(t + 1, et_ua, 4u * et_n); t[1u + et_n] = end; return t; }
