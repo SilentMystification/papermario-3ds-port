@@ -163,22 +163,14 @@ unsigned sc_sig_now(void) {
     return sg;
 }
 
-void comb_in_walker(NdCombIn* in) {
-    in->w0 = nd_ws.comb_w0; in->w1 = nd_ws.comb_w1; in->omode_h = nd_ws.omode_h; in->prim = nd_ws.prim; in->env = nd_ws.envc; in->prim_lo8 = (u8)nd_ws.prim_lod;
-    in->key_c = keyc; in->key_s = keys; in->conv_k4 = conv_k4;
-    for (int i = 0; i < 16; i++) in->tst[i] = *tst_f[i];
-    in->leg_mode = leg_mode; in->tex_on = nd_ws.tex_on; in->use_t1 = nd_ws.use_t1; in->t1_valid = nd_ws.td[1].valid; in->dual_on = dual_on;
-    in->box_prod = box_prod; in->box_pat = box_pat; in->box_folded = box_folded; in->comb_set = comb_set; in->comb_alpha_shade = comb_alpha_shade;
-}
-
-/* NPSO4: the walker's description of the draw, the NdPsoDesc fields that comb_in_walker and nd_ws give (the psochk compare, nd_psochk.c). */
-void nd_walker_desc(NdPsoDesc* d) {
-    NdCombIn in; comb_in_walker(&in); memset(d, 0, sizeof *d);
-    d->cw0 = in.w0; d->cw1 = in.w1; d->omh = in.omode_h; d->oml = nd_ws.omode_l; d->geom = nd_ws.geom;
+/* NPSO4: the walker's description of the draw, the NdPsoDesc fields of the last applied snap (NCS1) (the psochk compare, nd_psochk.c). */
+void nd_walker_desc(NdPsoDesc* d) { /* NCS1: the fields of the last applied snap */
+    const NdSnapChk* s = nd_snap_cur(); const NdCombIn in = s->in; memset(d, 0, sizeof *d); /* NCS1 */
+    d->cw0 = in.w0; d->cw1 = in.w1; d->omh = in.omode_h; d->oml = s->oml; d->geom = s->geom; /* NCS1 */
     d->key_c = in.key_c; d->key_s = in.key_s; d->conv_k4 = in.conv_k4;
     d->tex_on = (uint8_t)in.tex_on; d->use_t1 = (uint8_t)in.use_t1; d->t1_valid = (uint8_t)in.t1_valid; d->dual_on = (uint8_t)in.dual_on;
     d->box_prod = (uint8_t)in.box_prod; d->box_folded = (uint8_t)in.box_folded; d->comb_set = (uint8_t)in.comb_set; d->comb_alpha_shade = (uint8_t)in.comb_alpha_shade;
-    d->leg_prev = (uint8_t)in.leg_mode; d->vprim = (uint8_t)pm_comb_vprim; d->zimg = (uint8_t)(nd_img_role(0) == ROLE_DEPTHQ); d->plod = (uint8_t)nd_ws.prim_lod;
+    d->leg_prev = (uint8_t)in.leg_mode; d->vprim = (uint8_t)pm_comb_vprim; d->zimg = (uint8_t)(nd_img_role(0) == ROLE_DEPTHQ); d->plod = (uint8_t)s->plod; /* NCS1 */
 }
 
 /* NPSO4: the psochk debug switch (read once). Each draw that states a description compares it with the walker's; the first 8 bad ones are logged, and a line every 100 frames. Off: one test. */
