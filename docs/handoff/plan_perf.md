@@ -145,6 +145,32 @@ The hit delta (nd_recs.c:86-151) goes with the last scalar field. Each of NC0D t
   Read: lgms, c1s logic and dl, c1t snap, c1a, wk - wwait, gpu words.
 - Captures only when the user asks (user, 20 Nov). Rows give Azahar proxies: altw words, snapi new, hit, dec, GPU words. C1HOT and MDLHIT2 need a capture.
 - Real alt ms from a sampled step = c1t alt - altu per step x cal / 268112 (FACT timer per unit, nd_rec.c:509).
+## 11. Audit 2 (NATIVE17): where core 1 spends 35 ms, old stage against native form (console build 7680 = main f0a9f642e4, old build 3542 = 92e01310)
+FACT (build3ds/out/live_prof_170.txt f1289, live_old_170.txt): native core 1 busy 35.2 (lgms 41.41 - bw 6.25), old 12.1; core 0 30.7, old 47.9; ft 42.9 against 54.8.
+Core 1 game logic (c1s logic, step_game_loop) 2.40 ms; draw side dl 40.60 incl. the wait bw 6.25 (GUESS: bw sits inside dl), so draw busy about 34.4 ms.
+Old draw busy about 9.7 ms (12.1 - 2.4, GUESS same logic) = the game draw code plus N64 word stores. Timed recorder (exclusive): snap 4.78, rmdl 4.33,
+rnr 3.65, alt 1.85, rent 1.07, rspr 0.23, lsc 0.06 = 15.97 ms. Left: 34.4 - 9.7 - 16.0 = about 8.7 ms untimed recorder work plus cache misses (PROF3 splits it).
+Per step (FACT c1n/c1d / 290): 693 units, 175 snap builds (172 past the memo, about 90 new per frame written to the stream), 477 alt units, 20 alt ranges;
+113 PICA draws and 6574 words per frame. Unit cost 5.3 us (rnr / units), snap 28 us, alt unit 3.9 us. ic1 73.6K against 33.7K, dc1 43.4K against 25.8K.
+| # | old stage -> native form (worse) | file:line | cost per step | fix | gain (GUESS) |
+|---|---|---|---|---|---|
+| D1 | immediate mode kept: every step the game reissues every unit, core 1 decodes it into nd_ds (the old interpreter switch), core 0 walks the stream again (double walk) | nd_rec.c:471-500, nd_ds.c nd_ds_apply, nd_walk.c stream_run | core 1 rnr 3.65 + untimed; core 0 rest 5.77 + raw 1.91 (FACT) | design DRAWOBJ: retained draw objects per model, entity, sprite; core 1 writes only changed matrices and colours | core 1 -15 to -25, core 0 -10 to -20 ms |
+| D2 | N64 word stores (2 per gSP) -> a call per unit through 4 to 6 functions, interleaved with game code | nd_rec.c:471-500 | ic1 +40K, dc1 +17.6K misses (FACT) = 6 to 13 ms at 30 to 60 cycles | batch: the game writes units into a buffer, one tight record loop per object (design) | core 1 -3 to -6 ms |
+| C1 | incremental state -> a full snapshot (630 to 760 B) per triangle group: memset, 2 hashes over about 660 B, memcmp, 760 B stream copy | nd_snap.c:49-80 | 4.78 ms (FACT) | MSNAP2 (models), then delta snaps keyed on inputs before the build | -2.2 ms (MSNAP2), -1 to -2 ms more |
+| C2 | model record runs nd_snap_now: a full snap build only for 5 decision words | nd_msnap.c:22, nd_snap.c:87 | inside snap 4.78; about 93 per frame | ws_MSNAP2 | core 1 -2.2 ms |
+| C3 | unchanged models re-recorded each step: record copy, nd_ds_model, msnap with 2 bind blocks, key A hash | nd_rec.c:226-240 | rmdl 4.33 ms, about 46 us per model (FACT / GUESS 93) | core 1 model record memo (same words and inputs as last step: copy the block) | core 1 -2 to -3 ms |
+| C4 | entity copy written each step; core 0 runs only the gap ranges (ALT2C) | nd_rec.c:244-281, :535-546 | alt 1.85 ms, e 2071 words (FACT) | write the gap units only, the refusal fallback from the list (design) | core 1 -1 ms |
+| C5 | decision table 128 x about 520 B = 66 KB direct mapped: every probe misses L1, 140 B memcmp | nd_snap.c:27-28, :68 | 175 probes | split the key words (8 B each) from the entries | core 1 -0.2 ms |
+| C6 | whole NdDs (about 1.4 KB) copied per stream CALL and raw alt range | nd_rec.c:466, :526 | about 30 per step | scratch copy of the fields the list can change | core 1 -0.2 ms |
+| C7 | interpolation node scan: linear over all nodes at each open (O(n^2), up to 1024 nodes) | pm_interp.c:63-64 | OPEN (no node count logged) | hash of (parent, a, b) to a count | core 1 0.1 to 2 ms |
+| C8 | profiler cost: about 2000 timer pairs per sampled step, each an svcGetSystemTick | pm_gpu.c:1182, :1189 | GUESS 0.5 to 2 ms in prof windows | read prof numbers with this bias | - |
+| K1 | model hit on core 0: texture lookup, template touch, matrix combine, palette compose and a flush per model | pm_gpu.c:4141-4200 | c0r hit 4.12 ms (FACT), about 44 us per model | MDLHIT2: per-model work cached in the entry | core 0 -1.5 to -2.5 ms |
+| K2 | submit: 53 us per PICA draw (sub 5.97 / 113) where a pre-baked PSO block needs 1 to 2 us | pm_gpu.c:1280-1330, nd_emit.c | 5.97 ms (FACT) | pre-baked command blocks per PSO (design) | core 0 -4 ms |
+Minimum native draw (GUESS, ARM11 268 MHz): a pre-baked state block copy (20 to 40 words), a matrix upload (4 uniforms), an index draw (about 10 words),
+resident vertices: 300 to 500 cycles = 1 to 2 us on core 0, about 0.5 us on core 1 to write a 32 B draw entry. For 113 draws: core 0 0.2 ms, core 1 0.1 ms
+above the game code. Now: core 1 about 300 us and core 0 about 270 us per draw: the floor on core 1 without DRAWOBJ is the game draw code (about 9.7 ms) plus logic.
+Old cost under another name: per-unit decode (nd_ds_apply), per-step rebuild of unchanged data (models, snaps, entity copies), copies (snap, NdDs scratch),
+hashing (si_hw, nd_mkey_a, key B), a second walk of the same frame on core 0. Design change: DRAWOBJ (user decision, epic size); rows C1 to C7 are tweaks.
 ## 10. User decisions (defaults)
 - UP1: no push until the user wakes (20 Nov). UP2: Sonnet when a page marks the row and says why (20 Nov). UP3: MCOPY design pass yes (20 Nov).
 - UP4: expected-diff gate for MCOPY in model-miss frames, marker mmiss (20 Nov).
@@ -154,6 +180,7 @@ The hit delta (nd_recs.c:86-151) goes with the last scalar field. Each of NC0D t
 - Q5 (open): after NC0T2 core 0 still keeps a texture model (nd_txw: the TMEM state the recorded texture units build). Readers: the bind fallback of a
   static call after a copy texture unit and of the glyph, TMEM rects, the model full key. Is it the static register of Q3 (class C)? Default yes. No: core 1 must
   record a tile block for each bind inside a static list (a design pass; core 1 cost GUESS +0.1 to +0.5 ms).
+- Q6 (open): DRAWOBJ, retained native draw objects (section 11 D1). Default: a design pass after PROF3 and MSNAP2 numbers; no code before the user's yes.
 - Q4 (open): to reach c0gate state 0, the GPU memos (comb, prim, env, k4) move to the GPU layer and the bind outputs (uv origin, cur_tile) to the bind module.
   These are caches, not decisions. Accept the move (the names list then drops nd_c0)? Default yes.
 
