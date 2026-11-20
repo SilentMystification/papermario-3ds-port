@@ -305,21 +305,21 @@ EntKey* ent_lookup(const NdW2* l, u32 vb) {
     return NULL;
 }
 
-extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal with blend (two native passes at the close) */
+extern unsigned char nd_ent_rsn; /* ALT2C: nd_rec.c, the entity copy reason */ extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal with blend (two native passes at the close) */
 unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
 __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSeg* s) {
     extern unsigned char pm_ent_decal_ok;
-    if (ND_GEOM() & G_LIGHTING) { ent_sw[1]++; return 0; }
-    if (fogmix_on && (ND_GEOM() & G_FOG) && !gv_fog_gpu_ok()) { ent_sw[2]++; return 0; }
-    if (!pm_gpu_gidx_room(3u * s->ntri)) { ent_sw[3]++; return 0; }
+    if (ND_GEOM() & G_LIGHTING) { nd_ent_rsn = 33u; ent_sw[1]++; return 0; }
+    if (fogmix_on && (ND_GEOM() & G_FOG) && !gv_fog_gpu_ok()) { nd_ent_rsn = 34u; ent_sw[2]++; return 0; }
+    if (!pm_gpu_gidx_room(3u * s->ntri)) { nd_ent_rsn = 35u; ent_sw[3]++; return 0; }
     pm_gpu_set_mode((ND_GEOM() & G_ZBUFFER) != 0, (ND_GEOM() & G_LIGHTING) != 0);
     unsigned gmi = dlc_gmi();
-    if (gmi == GV_NONE) { ent_sw[4]++; return 0; }
+    if (gmi == GV_NONE) { nd_ent_rsn = 36u; ent_sw[4]++; return 0; }
     pm_ent_decal_ok = 1;
     int r = dlc_seg(k->idx + 3u * s->tri0, s->ntri, gmi);
     pm_ent_decal_ok = 0;
     if (r) return 1;
-    ent_sw[5 + (dbg_seg < 10 ? dbg_seg : 10)]++;
+    nd_ent_rsn = 32u + 5u + (dbg_seg < 10 ? dbg_seg : 10); ent_sw[5 + (dbg_seg < 10 ? dbg_seg : 10)]++;
     if (dbg_seg == 9) { pm_ent_decal_ok = 1; ent_gw[pm_gpu_grange_why(gm_tab[gmi], 3u * s->ntri, k->idx + 3u * s->tri0) & 7]++; pm_ent_decal_ok = 0; }
     ((EntKey*)k)->nint++;
     return 0;
@@ -398,7 +398,7 @@ int ent_gdl(const NdW2* l, const uint32_t* et) {
 int ent_draw(const NdW2* rec, const uint32_t* et) {
     const NdW2* l = (const NdW2*)ptr_of(rec[0].words.w1);
     const NdW2* nx = rec + G_PM_ENT_WORDS;
-    if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || nx->words.w0 != ND_OP_CALL_W0 || nx->words.w1 != rec[0].words.w1) return 0;
+    if (!l || !dlc_on || !is_host((u32)l) || ((u32)l & 7u) || nx->words.w0 != ND_OP_CALL_W0 || nx->words.w1 != rec[0].words.w1) { nd_ent_rsn = 1u; return 0; }
     if (dlc_seen_gen != pm_dlc_gen) { dlc_reset(); dlc_seen_gen = pm_dlc_gen; }
     if (ent_gen_seen != pm_dlc_gen) ent_reset();
     ent_c.draws++;
@@ -434,28 +434,28 @@ static void __attribute__((noinline, cold)) ent_run_seg_interp(const EntKey* k, 
 }
 int nd_eg_run(const NdW2* l, EntKey* k, u32 segid, const uint32_t* et) {
     const unsigned f = pm_frame_count();
-    if (!k) { ent_c.why[1]++; ent_c.fb++; return 0; }
+    if (!k) { nd_ent_rsn = 2u; ent_c.why[1]++; ent_c.fb++; return 0; }
     if (k->st == ENT_OK && k->fr != f) { /* content, once per frame */
         k->fr = f;
         if (ent_hash(k->v2 ? NULL : l, k->vp, k->vlen) != k->hash) ent_run_recompile(k, l);
     } else if (k->st == ENT_REF && k->why == 6 && f >= k->retry) { nd_eg_build(k, l); }
     k->ndraw++; k->segid = segid;
-    if (k->st != ENT_OK) { ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
-    if (entchk_on()) { ent_c.nat++; return 0; }
-    if (!et || et[0] != k->nops) { ent_fb_note(k, et ? 1u : 0u); ent_c.fb++; return 0; } /* NAT5A; NATEF: no cut table or another count: the caller runs the list */
+    if (k->st != ENT_OK) { nd_ent_rsn = k->st == ENT_DYN ? 3u : 4u + (k->why < 12u ? k->why : 0u); ent_c.fb++; if (k->st == ENT_REF) ent_c.why[k->why < 12 ? k->why : 0]++; return 0; }
+    if (entchk_on()) { nd_ent_rsn = 16u; ent_c.nat++; return 0; }
+    if (!et || et[0] != k->nops) { nd_ent_rsn = 17u; ent_fb_note(k, et ? 1u : 0u); ent_c.fb++; return 0; } /* NAT5A; NATEF: no cut table or another count: the caller runs the list */
     nd_ent_in = 1;
     const unsigned lb = nd_ls_ord;
     for (unsigned s = 0; s < k->nseg; s++) {
         const EntSeg* e = &k->seg[s];
         const NdW2* fw = k->fw;
-        if (e->op0 > e->a0) ent_gap(e->sd, k, et, e->a0, e->op0);
+        if (e->op0 > e->a0) { nd_ent_rsn = 20u; ent_gap(e->sd, k, et, e->a0, e->op0); }
         if (!e->ntri) continue; /* a state-only or vertex-only segment: the loads replay when a later segment needs them */
         nd_ls_ord = lb + e->tri0;
         if (e->ntri && ent_seg_native(k, e)) { ent_c.segn++; nd_ls_ord = lb + e->tri0 + e->ntri; continue; }
         ent_run_seg_interp(k, et, e);
         nd_ls_ord = lb + e->tri0 + e->ntri;
     }
-    { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { ent_gap(k->tail, k, et, e->op1, k->nops); } }
+    { const EntSeg* e = &k->seg[k->nseg - 1]; nd_ls_ord = lb + e->tri0 + e->ntri; if (k->nops > e->op1) { nd_ent_rsn = 21u; ent_gap(k->tail, k, et, e->op1, k->nops); } }
     tri_since_vtx = 1; memset(vert_live, 0, sizeof vert_live); dlc_dirty = 1; /* as the skipped groups of nd_sg_try */
     nd_ent_in = 0;
     ent_c.nat++;
@@ -463,12 +463,12 @@ int nd_eg_run(const NdW2* l, EntKey* k, u32 segid, const uint32_t* et) {
 }
 
 /* G_PM_ENT in the walk (nd_walk.c): returns 1 when the entity draw ran from the pools (the walk skips the record's G_DL), else 0. */
-int nd_ent_case(const NdW2* rec, u32 w0, u32 w1, const uint32_t* et) {
+int nd_ent_case(const NdW2* rec, u32 w0, u32 w1, const uint32_t* et) { nd_ent_rsn = 19u;
     if (w0 & G_PM_ENT_END) { /* LKEY: a moved list key (NDN) gives its device units and an end unit */
         static uint32_t eb[2u * 256u];
         const void* el = (const void*)(uintptr_t)w1;
         const uint32_t* eu = nd_lkey_end(el, nd_ntab_find(el), eb, 256u);
-        pm_gbi_ent_texchk(eu); pm_gbi_ent_segchk(eu); return 0;
+        nd_ent_rsn = 18u; pm_gbi_ent_texchk(eu); pm_gbi_ent_segchk(eu); return 0;
     }
     if (w0 & G_PM_ENT_DRAW) {
         pm_tex_tagi = 4;

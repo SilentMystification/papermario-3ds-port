@@ -754,5 +754,5 @@ static void stream_run(const uint32_t* p, const uint32_t* stop) {
     }
 }
 void nd_stream_run(const uint32_t* p) { stream_run(p, NULL); }
-unsigned char nd_alt_cls; static unsigned char altx_d; /* PERF0: core 0, the caller class (1 model, 2 entity) and the nesting depth */
-void nd_alt_run(const uint32_t* ab) { if (!altx_d) { const unsigned w = nd_wdiff(ab[0], ab[1]); nd_altw[4] += w; if (nd_alt_cls) nd_altw[4u + nd_alt_cls] += w; } altx_d++; nd_ds_rpl++; stream_run((const uint32_t*)(uintptr_t)ab[0], (const uint32_t*)(uintptr_t)ab[1]); nd_ds_rpl--; altx_d--; } /* NAT5R; PERF0 */
+unsigned char nd_alt_cls; unsigned char nd_ent_rsn; unsigned nd_entn[64], nd_entw[64]; /* ALT2C: entity copy runs and words by reason */ static unsigned char altx_d; /* PERF0: core 0, the caller class (1 model, 2 entity) and the nesting depth */
+void nd_alt_run(const uint32_t* ab) { if (!altx_d) { const unsigned w = nd_wdiff(ab[0], ab[1]); nd_altw[4] += w; if (nd_alt_cls) nd_altw[4u + nd_alt_cls] += w; if (nd_alt_cls == 2u) { nd_entn[nd_ent_rsn & 63u]++; nd_entw[nd_ent_rsn & 63u] += w; } } altx_d++; nd_ds_rpl++; stream_run((const uint32_t*)(uintptr_t)ab[0], (const uint32_t*)(uintptr_t)ab[1]); nd_ds_rpl--; altx_d--; } /* NAT5R; PERF0 */
