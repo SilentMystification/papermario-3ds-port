@@ -20,6 +20,7 @@
 #include "nd_ds.h"
 #include "nd_msnap.h"
 #include "nd_fs.h"
+#include "nd_sv.h" /* NSET1 */
 
 extern s32 gCurrentDisplayContextIndex;
 void nd_walk_rec_model(const NdW2* q);           /* nd_walk.c: a model record, as the walker's G_PM_REC arm */
@@ -445,6 +446,7 @@ static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window 
     if (tile == 1u && t->tile_fmt[1] == 2 && t->tile_siz[1] == 0 && s->tm.ld_valid && s->w.timg) { r->m1v = 1; r->m1src = (const uint8_t*)s->w.timg + (size_t)s->tm.ld_y * (size_t)t->timg_stride + (size_t)s->tm.ld_x;
         r->m1stride = t->timg_stride * 2; r->m1w = ((lrs - uls) >> 2) + 1; r->m1h = ((lrt - ult) >> 2) + 1; r->m1x0 = uls >> 2; r->m1y0 = ult >> 2; } /* tex_tile1 :457-466 */
     return (uint32_t)(uintptr_t)r; }
+static void rec_nat2(NdNapiRun run, uint32_t a, uint32_t b, uint32_t c, uint32_t d) { st_take = 1; uint32_t* p = rec_take(6); st_take = 0; ndc_n[NDC_NRUN]++; p[0] = NDC_HDR(NDC_NAPI, 2, 1); p[1] = (uint32_t)(uintptr_t)run; p[2] = a; p[3] = b; p[4] = c; p[5] = d; } /* NSET1: 2 units, flag 1 keeps the snap arm */
 NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
 void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
@@ -459,11 +461,11 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
         if (id == ND_FS_SCISSOR) rec_nat(nd_sci_run, ((uint32_t)nd_ds.sci_x0 & 0xffffu) | (uint32_t)nd_ds.sci_y0 << 16, ((uint32_t)nd_ds.sci_x1 & 0xffffu) | (uint32_t)nd_ds.sci_y1 << 16);
         else if (id == ND_FS_GEOM) rec_nat(nd_geo_run, nd_ds.w.geom, mk);
         else if (id == ND_FS_TEXTURE) rec_nat(nd_tex_run, (w0 & 0xffffffu) | mk, w1); /* NAT4J */
-        else if (id == ND_FS_OMH) rec_nat(nd_omh_run, (w0 & 0xffffu) | mk, w1); /* NAT4J */
+        else if (id == ND_FS_OMH) rec_nat(nd_omh_run, (w0 & 0xffffu) | mk | (nd_sv_sync(w0) ? 0x40000000u : 0u), w1); /* NAT4J; NSET1: bit 30 is the cycle sync */
         else { const unsigned k = (w0 >> 16) & 0xffu, g = w0 & 0xffffu; rec_nat(nd_mw_run, (w0 & 0xffffffu) | mk, (k == ND_FS_MW_SEG && g < 16u) ? nd_ds.w.segbase[g] : k == ND_FS_MW_NUMLIGHT ? nd_ds.lt_n : w1); }
         return; }
     if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
-        if (id >= ND_FS_TIMG && !(id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u)) { rec_nat(nd_txs_run, w0, w1); return; } /* NAT6A: a texture unit and its mark (rc is never 0 here) */
+        if (id >= ND_FS_TIMG && !(id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u)) { uint32_t v[2]; const NdNapiRun f = nd_sv_enc(&nd_ds, w0, w1, v); rec_nat2(nd_txs_run, w0, (uint32_t)(uintptr_t)f, v[0], v[1]); return; } /* NSET1 */ /* NAT6A: a texture unit and its mark (rc is never 0 here) */
         if (!rc && (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB)) { if (id == ND_FS_OML) rec_nat(nd_oml_run, w0 & 0xffffffu, w1); else if (id == ND_FS_PRIM) rec_nat(nd_prim_run, w0 & 0xffffffu, w1); else if (cg_keep) rec_nat(nd_cbd_run, w0, w1); return; } /* NAT6A; NAT6C: a custom gfx range keeps the others as data records */
         if (rc) { rec_nat(nd_epm_run, 0u, rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason; NAT6C: a native record */
             if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */

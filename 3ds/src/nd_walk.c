@@ -383,7 +383,7 @@ void nd_ctl_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (re
     for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_NOP_A) continue; const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) break; q += 2u * r; }
     if (m != 2u) { ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); } }
 void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
-    nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; nd_unit_apply(r); }
+    nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; ((NdNapiRun)(uintptr_t)r[1])(r + 2); } /* NSET1: r[1] the applier, r[2], r[3] its values (core 1) */
 void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */
 void nd_prim_run(const uint32_t* r) { if (nd_ws.prim == r[1] && (uint8_t)nd_ws.prim_lod == (uint8_t)r[0] && sc_ok) { pm_gpu_set_prim(nd_ws.prim, r[0]); nd_ws.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */
 void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep_mw = r[1]; nd_epk_mk++; gv_epoch++; } /* NAT6C: nr_ctl MISC_EP */
