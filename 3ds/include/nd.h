@@ -456,6 +456,7 @@ unsigned nd_ent_cfull_all(void); unsigned nd_gdl_lists(void); /* PERF2: nd_ent.c
 void pm_gpu_cnt_take(unsigned o[8]); /* PERF2: since the last take: program switches, shadow resets, UpdateContext calls, splits, sprite memo hits, misses, full combine syncs in ent, ent_gdl lists */
 void pm_gpu_ndt_push(void);
 void pm_gpu_ndt_pop(int k);
+void pm_gpu_ndt_take_g(uint64_t o[9], unsigned u[9]); /* GD0: the core 1 class ticks and nd_rec_nr calls of the window, then reset */
 #define NDT_B(v) const int v = pm_ph_on; if (__builtin_expect(v, 0)) pm_gpu_ndt_push()
 #define NDT_BD(v, dbg) const unsigned v = (dbg) & WD_PH; if (__builtin_expect(v, 0)) pm_gpu_ndt_push()
 #define NDT_E(v, k) do { if (__builtin_expect((v) != 0, 0)) pm_gpu_ndt_pop(k); } while (0)
