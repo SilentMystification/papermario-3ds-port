@@ -24,6 +24,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "pm_gpu_int.h"
 #include "pm_flipfps.h"
 #include "nd_msnapw.h"
+#include "nd_snap.h" /* NWS4B */
 
 static int drew;
 /* 3D writes the depth buffer. A later texrect has to win even if the test stays on. */

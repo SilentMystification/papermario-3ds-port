@@ -17,6 +17,7 @@
 #include "nd_op.h"
 #include "nd_fs.h"
 #include "nd_sv.h" /* NSET1 */
+#include "nd_snap.h" /* NWS4B */
 
 #define GP_SET(k, same) do { if (gp_on()) gp_note(k, (same)); } while (0)
 #define pm_gpu_flush() pm_gpu_flush_at(__LINE__) /* PG0: the flush counter by cause (prof mode) */

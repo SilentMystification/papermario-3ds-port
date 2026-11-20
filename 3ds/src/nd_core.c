@@ -2,6 +2,7 @@
  * (S10-2): pm_nusys.c walks the task's words with pm_gbi_run directly. */
 #include <stdint.h>
 #include "nd.h"
+#include "nd_snap.h" /* NWS4B */
 
 extern unsigned nd_native_draws, nd_native_refused;
 extern int pm_debug_has(const char* key);
