@@ -232,10 +232,9 @@ void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak belo
 unsigned pm_frame_count(void);
 void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim */
 #define MM_SETS 128u
-#define MM_D 32u
-#define MM_L1 24u
-#define MM_RG ((unsigned)((offsetof(NdDs, lt) - offsetof(NdDs, conv_k4)) / 4u) + 4u)
-typedef struct MmS { NdMSnap m; uint32_t sv[4]; uint32_t rg[MM_RG]; } MmS;
+#define MM_D 24u
+#define MM_L1 8u
+typedef struct MmS { uint32_t h0, h1, sv[4]; } MmS; /* the before state: a 64 bit hash of nd_ds (the lights lt[] left out: nd_ds_model writes them) and the decision inputs */
 typedef struct MmEnt {
     uint32_t kg, k0, cg, nl1; const uint32_t* blk; uint32_t keep, nd, ctx, ok, hasl;
     MmS s; Lightsn lt; uint32_t c9[2]; uint32_t l1[2u * MM_L1]; uint16_t di[MM_D]; uint32_t dv[MM_D];
@@ -246,11 +245,10 @@ static MmS mm_s; static NdDs mm_b;
 static uint32_t mm_scr[MM_BLK];
 void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_SETS * 2u * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
 static void mm_s_take(MmS* s) {
-    memset(s, 0, sizeof *s);
-    nd_msnap_take(&nd_ds, &s->m); nd_snap_sv(s->sv);
-    const uint32_t* d = (const uint32_t*)&nd_ds; unsigned n = 0;
-    for (unsigned i = (unsigned)(offsetof(NdDs, conv_k4) / 4u); i < (unsigned)(offsetof(NdDs, lt) / 4u); i++) s->rg[n++] = d[i];
-    s->rg[n++] = nd_ds.w.prim_z; s->rg[n++] = (uint32_t)nd_ds.w.tex_on; s->rg[n++] = nd_ds.w.fill; s->rg[n++] = nd_ds.lt_n;
+    const uint32_t* d = (const uint32_t*)&nd_ds; uint32_t h0 = 2166136261u, h1 = 0x9e3779b9u;
+    for (unsigned i = 0; i < (unsigned)(offsetof(NdDs, lt) / 4u); i++) { h0 = (h0 ^ d[i]) * 16777619u; h1 = (h1 + d[i]) * 2246822519u; h1 ^= h1 >> 15; }
+    for (unsigned i = (unsigned)(offsetof(NdDs, lt_n) / 4u); i < (unsigned)(sizeof(NdDs) / 4u); i++) { h0 = (h0 ^ d[i]) * 16777619u; h1 = (h1 + d[i]) * 2246822519u; h1 ^= h1 >> 15; }
+    s->h0 = h0; s->h1 = h1; nd_snap_sv(s->sv);
 }
 static int mm_lights(const uint32_t* r) { return r[7] && r[4] <= 7u; }
 static int mm_list_eq(const MmEnt* e, const uint32_t* r) { /* the pointed words of the record that nd_ds_model reads */
@@ -302,7 +300,7 @@ static __attribute__((cold, noinline)) void mm_census(MmEnt* e, const uint32_t* 
     mm_scr[1] = nd_mkey_a(mm_scr + 2); mm_scr[2u + 2u * (G_PM_REC_WORDS + keep) + 1u] = (uint32_t)(uintptr_t)(p + nw);
     for (unsigned i = 0; i < nw; i++) if (mm_scr[i] != p[i]) { mm_diff("blk", i); break; }
     uint32_t* b = (uint32_t*)&mm_b; for (unsigned i = 0; i < e->nd; i++) b[e->di[i]] = e->dv[i];
-    const uint32_t* a = (const uint32_t*)&nd_ds; for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u); i++) if (a[i] != b[i]) { mm_diff("ds", i * 4u); break; }
+    const uint32_t* a = (const uint32_t*)&nd_ds; unsigned nb = 0; for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u) && nb < 4u; i++) if (a[i] != b[i]) { mm_diff("ds", i * 4u); nb++; }
 }
 static void mm_done(MmEnt* e, const uint32_t* r, unsigned keep, uint32_t* p, unsigned hit) {
     mm_models++;
@@ -805,7 +803,7 @@ __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_snap_alt(const NdDs* s, int rect) { (void)s; (void)rect; } /* NWS4A: strong in nd_snap.c; the host units record no snap */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
 __attribute__((weak)) void nd_msnap_pre(const NdDs* s) { (void)s; } /* NAT2C */
-__attribute__((weak)) void nd_msnap_take(const NdDs* s, NdMSnap* m) { (void)s; memset(m, 0, sizeof *m); } __attribute__((weak)) void nd_snap_sv(uint32_t o[4]) { memset(o, 0, 16u); } __attribute__((weak)) unsigned nd_tex_gen(void) { return 0u; } /* DO1: the host units link nd_rec.c without nd_snap.c and nd_tex.c */
+__attribute__((weak)) void nd_snap_sv(uint32_t o[4]) { memset(o, 0, 16u); } __attribute__((weak)) unsigned nd_tex_gen(void) { return 0u; } /* DO1: the host units link nd_rec.c without nd_snap.c and nd_tex.c */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
 __attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
 __attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */
