@@ -239,89 +239,21 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
  * D10b: also the op executor of a flat op range (nd_nr_list): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; /* NAT4B */ /* NAT6F */
-/* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
- * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
-static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, const void* at) {
-    const unsigned id = u[0] >> 24;
-    const u32 a = u[0] & 0xffffffu, b = u[1];
-    if (id == ND_FS_MOVEMEM) {
-        if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
-        gv_epoch++; /* GV1b; NST2H source */
-    }
-    pm_gbi_cur_op = id; /* DEL1D1: the unit id */
-    int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, id, u[0], u[1]);
-    switch (id) {
-    case ND_FS_VTX: nd_geom_vtx(a, b, (const NdW2*)at); break;
-    case ND_FS_TRI1:
-        tri_prep_ok = 0;
-        draw_tri(a);
-        break;
-    case ND_FS_TRI2:
-        tri_prep_ok = 0;
-        draw_tri(a);
-        draw_tri(b);
-        break;
-    case ND_FS_MTX:
-        if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)at, (NdW2*)at + 1);
-        nd_xf_load(a, b, 0);
-        break;
-    case ND_FS_POPMTX: nd_xf_popb(b); break;
-    default:
-        if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); /* POSTFAIL2 (debug tool) */
-        nd_mv_mem(a, b);
-        break;
-    }
-    if (__builtin_expect(fp, 0)) pm_ph_pop();
-}
-/* HC4d2: one control op (nd_op_ctl) with the walker's prologue (pm_gbi_cur_op; gv_epoch but not for a list call or G_MODIFYVTX; the debug
- * op hook), then its handler. u: the typed unit, at: its place in the run (a texture rectangle reads the b of the two units after it).
- * Returns the units it took after u (2 for a texture rectangle), or ~0u when a branch ends the run. */
-static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u, const uint32_t* at, const uint32_t* e) {
-    const unsigned id = u[0] >> 24;
-    const u32 a = u[0] & 0xffffffu, b = u[1];
-    const unsigned sub = a >> 16;
-    /* DEL1D1: the unit id; a list mark keeps its record op (G_PM_LST, G_PM_ND) */
-    const unsigned op = id != ND_FS_MISC ? id : sub == ND_FS_MISC_LST ? (unsigned)G_PM_LST : sub == ND_FS_MISC_ND ? (unsigned)G_PM_ND : (unsigned)ND_FS_MISC;
-    unsigned r = 0;
-    pm_gbi_cur_op = op;
-    if (id != ND_FS_CALL && !(id == ND_FS_MISC && (sub == ND_FS_MISC_MODVTX || sub == ND_FS_MISC_EP)) && !(id == ND_FS_TXR && ep_stream && ex_depth == 0)) { gv_epoch++; } /* NAT5T: the mark cut a stream tile size */ /* GV1b; no cut for a list call or a vertex modify */
-    int fp = 0;
-    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, op, u[0], u[1]);
-    switch (id) {
-    case ND_FS_CALL:
-        nr_call(dbg, (const NdW2*)at, a & ~2u, (a & 2u) ? ((const uint32_t*)(uintptr_t)b)[0] : b, (a & 2u) ? (const uint32_t*)(uintptr_t)b + 1 : NULL); /* NAT5N */
-        if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
-        break;
-    case ND_FS_TXR: /* NAT5T */
-        if (ep_stream && ex_depth == 0) { nd_epk_n++; ep_mark = 0; } /* NAT5T: the mark of nr_set */
-        pm_gbi_cur_op = ND_FS_TILESIZE; nd_tx_tszr((const NdTxR*)(uintptr_t)b); break; /* NAT5T */
-    case ND_FS_RECT:
-        
-        if (!(b & ND_FS_RECT_TEX)) nd_frect_draw(a, b);
-        else if (at + 4 < e) { nd_trect_draw(a, b & 0x07ffffffu, at[3], at[5]); r = 2; } /* D10b: the op and its two RDPHALF units */
-        break;
-    default:
-        switch (sub) {
-        case ND_FS_MISC_LST: ent_skipgen = 0; gp_prev_op = -1; break; /* D11a: an in-line static state list (nd_rec.c rec_inline): its list start as nr_call and nd_nr_list */
-        case ND_FS_MISC_ND: nd_native_rec((a >> 8) & 0xffu, a & 0xffu); break; /* D9: the native-only payload (the water splash bracket; PAUSEFADE: the low byte, the gutter fade 0..128, splash and grab hold pass 0 or 1) */
-        case ND_FS_MISC_MODVTX: nd_modvtx((a >> 8) & 0xffu, a & 0xffu); break;
-        case ND_FS_MISC_CIMG: nd_cimg_set(a, b); break;
-        case ND_FS_MISC_EP: ep_mark = 1; ep_mw = b; nd_epk_mk++; gv_epoch++; break; /* NAT4B; NAT4K: the mark is the cut */
-        default: break;
-        }
-        break;
-    }
-    if (__builtin_expect(fp, 0)) pm_ph_pop();
-    return r;
-}
-void nd_geo_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; /* NAT5G: nr_geo per unit, as nd_nr_exec and ls_run */
-    for (unsigned k = 0; k < n; k++) nr_geo(dbg, rec + 2u * k, rec + 2u * k);
-    if (__builtin_expect(dbg & WD_PH, 0) && m != 2u) pm_gpu_ndt_cls(-1); }
-void nd_ctl_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; const uint32_t* const e = rec + 2u * n; /* NAT5G: nr_ctl per unit */
-    if (m != 2u) ep_stream = m == 0u; /* as nd_nr_run */
-    for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_NOP_A) continue; const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) break; q += 2u * r; }
-    if (m != 2u) { ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); } }
+static inline int r_pro(unsigned dbg, unsigned op, const uint32_t* u) { pm_gbi_cur_op = op; return __builtin_expect(dbg, 0) ? walk_dbg_op(dbg, (const NdW2*)u, 0, op, u[0], u[1]) : 0; } /* NAT6G1: the op prologue of nr_geo, nr_ctl */ static inline void r_end(unsigned dbg) { if (__builtin_expect(dbg & WD_PH, 0) && alt_mode != 2u) pm_gpu_ndt_cls(-1); } /* NAT6G1: the class span end of a record */
+#define R_EACH(name, ...) void name(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu; for (unsigned k = 0; k < n; k++) { const uint32_t* const u = rec + 2u * k; const u32 a = u[0] & 0xffffffu, b = u[1]; (void)a; (void)b; (void)u; __VA_ARGS__ } r_end(dbg); } /* NAT6G1 */
+R_EACH(nd_vtx_run, { const int fp = r_pro(dbg, ND_FS_VTX, u); nd_geom_vtx(a, b, (const NdW2*)u); if (fp) pm_ph_pop(); })
+R_EACH(nd_tri1_run, { const int fp = r_pro(dbg, ND_FS_TRI1, u); tri_prep_ok = 0; draw_tri(a); if (fp) pm_ph_pop(); }) R_EACH(nd_tri2_run, { const int fp = r_pro(dbg, ND_FS_TRI2, u); tri_prep_ok = 0; draw_tri(a); draw_tri(b); if (fp) pm_ph_pop(); })
+R_EACH(nd_mtx_run, { const int fp = r_pro(dbg, ND_FS_MTX, u); if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)u, (NdW2*)u + 1); nd_xf_load(a, b, 0); if (fp) pm_ph_pop(); }) R_EACH(nd_pop_run, { const int fp = r_pro(dbg, ND_FS_POPMTX, u); nd_xf_popb(b); if (fp) pm_ph_pop(); })
+R_EACH(nd_mvm_run, { if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) continue; gv_epoch++; const int fp = r_pro(dbg, ND_FS_MOVEMEM, u); if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); nd_mv_mem(a, b); if (fp) pm_ph_pop(); })
+R_EACH(nd_call_run, { const int fp = r_pro(dbg, ND_FS_CALL, u); nr_call(dbg, (const NdW2*)u, a & ~2u, (a & 2u) ? ((const uint32_t*)(uintptr_t)b)[0] : b, (a & 2u) ? (const uint32_t*)(uintptr_t)b + 1 : NULL); if (fp) pm_ph_pop(); if (a & 1u) break; })
+R_EACH(nd_txr_run, { const int s0 = alt_mode == 0u && ex_depth == 0; if (!s0) gv_epoch++; const int fp = r_pro(dbg, ND_FS_TXR, u); if (s0) { nd_epk_n++; ep_mark = 0; } pm_gbi_cur_op = ND_FS_TILESIZE; nd_tx_tszr((const NdTxR*)(uintptr_t)b); if (fp) pm_ph_pop(); })
+R_EACH(nd_frect_run, { gv_epoch++; const int fp = r_pro(dbg, ND_FS_RECT, u); nd_frect_draw(a, b); if (fp) pm_ph_pop(); })
+R_EACH(nd_lst_run, { gv_epoch++; const int fp = r_pro(dbg, G_PM_LST, u); ent_skipgen = 0; gp_prev_op = -1; if (fp) pm_ph_pop(); })
+R_EACH(nd_mnd_run, { gv_epoch++; const int fp = r_pro(dbg, G_PM_ND, u); nd_native_rec((a >> 8) & 0xffu, a & 0xffu); if (fp) pm_ph_pop(); }) R_EACH(nd_mvx_run, { const int fp = r_pro(dbg, ND_FS_MISC, u); nd_modvtx((a >> 8) & 0xffu, a & 0xffu); if (fp) pm_ph_pop(); })
+R_EACH(nd_cimg_run, { gv_epoch++; const int fp = r_pro(dbg, ND_FS_MISC, u); nd_cimg_set(a, b); if (fp) pm_ph_pop(); }) R_EACH(nd_nop_run, { })
+void nd_rtex_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu; const uint32_t* const e = rec + 2u * n; /* NAT6G1: texture rectangles, each with its 2 half units */
+    for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_NOP_A) continue; gv_epoch++; const int fp = r_pro(dbg, ND_FS_RECT, q); if (q + 4 < e) { nd_trect_draw(q[0] & 0xffffffu, q[1] & 0x07ffffffu, q[3], q[5]); q += 4; } if (fp) pm_ph_pop(); }
+    r_end(dbg); }
 void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
     nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; ((NdNapiRun)(uintptr_t)r[1])(r + 2); } /* NSET1: r[1] the applier, r[2], r[3] its values (core 1) */
 void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */

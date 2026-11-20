@@ -381,10 +381,12 @@ static void xr_put(NdNapiRun run, uint32_t w0, uint32_t w1, unsigned need) { /* 
     uint32_t* p = rec_take(2u + 2u * need); wp = p + 4; st_take = 0; ndc_n[NDC_NRUN]++; /* room for need units in this chunk */
     p[0] = NDC_HDR(NDC_NAPI, 1u, 1u); p[1] = (uint32_t)(uintptr_t)run; p[2] = w0; p[3] = w1; st_hdr = p; st_end = wp; }
 unsigned nd_left_units; static __attribute__((cold, noinline)) void left_unit(uint32_t w0) { static unsigned n; nd_left_units++; if (n++ < 4u) pm_log_e("ndc: unit %08x has no record (not run)", (unsigned)w0); } /* NAT6F */
-static void cp_put(uint32_t w0, uint32_t w1) { const unsigned id = w0 >> 24; /* NAT5G: a unit into the record of its family */
-    if (nd_op_geo(id)) xr_put(nd_geo_rec, w0, w1, 1u);
-    else if (nd_op_ctl(id)) xr_put(nd_ctl_rec, w0, w1, (id == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) ? 3u : 1u); /* a texture rectangle and its 2 half units */
-    else left_unit(w0); } /* NAT6F: END, DROP or untyped: no record (PSOFB) */
+static NdNapiRun cp_run(uint32_t w0, uint32_t w1) { switch (w0 >> 24) { case ND_FS_VTX: return nd_vtx_run; case ND_FS_TRI1: return nd_tri1_run; case ND_FS_TRI2: return nd_tri2_run; case ND_FS_MTX: return nd_mtx_run; case ND_FS_POPMTX: return nd_pop_run; case ND_FS_MOVEMEM: return nd_mvm_run; /* NAT6G1, core 1: the runner of a unit, NULL: none */
+    case ND_FS_CALL: return nd_call_run; case ND_FS_TXR: return nd_txr_run; case ND_FS_RECT: return (w1 & ND_FS_RECT_TEX) ? nd_rtex_run : nd_frect_run;
+    case ND_FS_MISC: switch ((w0 & 0xffffffu) >> 16) { case ND_FS_MISC_NOP: return nd_nop_run; case ND_FS_MISC_LST: return nd_lst_run; case ND_FS_MISC_ND: return nd_mnd_run; case ND_FS_MISC_MODVTX: return nd_mvx_run; case ND_FS_MISC_CIMG: return nd_cimg_run; default: return NULL; } default: return NULL; } }
+static unsigned char cp_half; /* NAT6G1: the half units still owed to a texture rectangle record */
+static void cp_put(uint32_t w0, uint32_t w1) { if (w0 == ND_NOP_A && cp_half) { cp_half--; xr_put(nd_rtex_run, w0, w1, 1u); return; } /* NAT6G1 */
+    const NdNapiRun r = cp_run(w0, w1); if (!r) { left_unit(w0); return; } cp_half = r == nd_rtex_run ? 2u : 0u; xr_put(r, w0, w1, r == nd_rtex_run ? 3u : 1u); } /* NAT6F fallback for END, DROP, untyped, MISC_EP */
 /* HC4d2: a typed op into the open state run (the shadow decides a drop). */
 static void rec_op_t(const uint32_t t[2]) {
     rec_open();
@@ -396,7 +398,22 @@ static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
     static int k;
     if (k++ < 4) pm_log_e("ndc: untyped word %08x not recorded", (unsigned)w0);
 }
-__attribute__((weak)) void nd_geo_rec(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_ctl_rec(const uint32_t* r) { (void)r; } /* NAT5G: strong in nd_walk.c */
+#define ND_WK(f) __attribute__((weak)) void f(const uint32_t* r) { (void)r; } /* NAT6G1: strong in nd_walk.c */
+ND_WK(nd_vtx_run)
+ND_WK(nd_tri1_run)
+ND_WK(nd_tri2_run)
+ND_WK(nd_mtx_run)
+ND_WK(nd_pop_run)
+ND_WK(nd_mvm_run)
+ND_WK(nd_call_run)
+ND_WK(nd_txr_run)
+ND_WK(nd_frect_run)
+ND_WK(nd_lst_run)
+ND_WK(nd_mnd_run)
+ND_WK(nd_mvx_run)
+ND_WK(nd_cimg_run)
+ND_WK(nd_nop_run)
+ND_WK(nd_rtex_run) /* NAT6G1 */
 __attribute__((weak)) void nd_cpy_run(const uint32_t* r) { (void)r; } /* NAT6B: strong in nd_walk.c */
 /* HC4a: typed on the recorder (nd_op.h). HC4e4: an untyped word is not recorded. */
 __attribute__((weak)) void nd_sci_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_geo_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_mw_run(const uint32_t* r) { (void)r; } /* NAT4I: strong in nd_set.c */

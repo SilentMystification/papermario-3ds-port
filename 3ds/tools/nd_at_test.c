@@ -47,7 +47,7 @@ static uint32_t ulog[512]; static unsigned nulog;
 void nd_nr_run(const uint32_t* q) { const unsigned n = (q[-2] >> 16) & 0xffu;
     for (unsigned i = 0; i < n && nulog < 256u; i++) { ulog[2u * nulog] = q[2u * i]; ulog[2u * nulog + 1u] = q[2u * i + 1u]; nulog++; }
 }
-void nd_geo_rec(const uint32_t* q) { nd_nr_run(q); } void nd_ctl_rec(const uint32_t* q) { nd_nr_run(q); } /* NAT5G: the records log as a run */
+#include "nd_rec_log.h" /* NAT6G1 */
 
 /* nd_model.c defines nd_r11_state (MDL-5f); nd_recs.c reads it */
 int nd_r11_state(uint32_t addr, const uint32_t** nr, uint32_t* cw, int* has_cb, uint32_t* mo, unsigned* nmo);

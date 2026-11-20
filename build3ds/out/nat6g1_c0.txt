@@ -1,0 +1,10 @@
+BASE e923f5bce0 basebin ccd39397a5e5551f
+c0gate file 3ds/src/nd_set.c 1
+c0gate interp_syms nd_comb_set nr_ctl nr_geo
+c0gate state_syms blendc box_folded box_prod box_save comb_alpha_shade comb_set conv_k4 dual_on fog_fm fog_fo fogc keyc keys nd_ws sci_x0 sci_x1 sci_y0 sci_y1 tst_f
+c0gate calls 7 interp 3 state 19
+TIP
+c0gate file 3ds/src/nd_set.c 1
+c0gate interp_syms nd_comb_set
+c0gate state_syms blendc box_folded box_prod box_save comb_alpha_shade comb_set conv_k4 dual_on fog_fm fog_fo fogc keyc keys nd_ws sci_x0 sci_x1 sci_y0 sci_y1 tst_f
+c0gate calls 5 interp 1 state 19
