@@ -4,15 +4,18 @@
   "draw_objs": ["/nd_[^/]*\\.o$", "/pm_gpu[^/]*\\.o$", "/pm_tex\\.o$", "/pm_comb\\.o$", "libcitro3d\\.a"],
   "ext_allow": ["GPUCMD_Add", "BufInfo_Init", "BufInfo_Add", "osConvertVirtToPhys"],
   "classes": {
-    "A": {"name": "stream and op loop", "roots": ["nd_nr_exec", "nd_tsz_set", "nd_comb_set", "tex_tile1"]},
-    "B": {"name": "combine sync", "roots": ["pm_comb_eval", "pm_gpu_set_plan", "decide", "const_rgb_tex_alpha", "name_colour"]},
-    "C": {"name": "model record hit", "roots": ["rec_run", "pm_gpu_model_hit", "pm_gpu_model_key", "nd_tex_get"]},
+    "A": {"name": "stream and op loop", "roots": ["stream_run", "nd_cpy_run", "nd_tsz_set", "tex_tile1"]},
+    "B": {"name": "combine sync", "roots": ["nd_snapchk_tri", "nd_comb_apply", "pm_gpu_set_plan", "const_rgb_tex_alpha", "name_colour"]},
+    "C": {"name": "model record hit", "roots": ["rec_run", "pm_gpu_model_hit", "pm_gpu_model_keyb", "nd_tex_get"]},
     "D": {"name": "native submit and emit", "roots": ["nd_native_submit", "nd_emit_draw", "C3Di_UpdateContext", "C3D_UpdateUniforms"]},
     "E": {"name": "batch close", "roots": ["nd_raw_native", "nd_tev_build", "rect_sig_check", "nd_tmpl_build"]},
     "F": {"name": "vertex and triangle", "roots": ["nd_gv_tri", "pm_gpu_gtrip", "nd_geom_vtx", "nd_gv_params"]},
     "G": {"name": "texrect and fillrect", "roots": ["nd_trect_draw", "nd_tile_bind", "pm_gpu_tex_rect", "box_pattern_rect"]},
     "H": {"name": "sprite", "roots": ["nd_model_state_in", "pm_gpu_spr_build", "nd_comb_dec"]},
-    "I": {"name": "entity and dlc", "roots": ["nd_sg_try", "pm_gpu_grange", "dlc_box_out", "nd_eg_run"]}
+    "I": {"name": "entity and dlc", "roots": ["nd_sg_try", "pm_gpu_grange", "dlc_box_out", "nd_eg_run"]},
+    "J": {"name": "core 1 stream units", "roots": ["nd_rec_nr", "nd_ds_apply", "ds_pairs", "nd_alt_put", "nd_alt_mark", "xr_put", "nd_sv_enc"]},
+    "K": {"name": "core 1 snap", "roots": ["snap_build0", "nd_snap_in", "nd_snap_rnd", "nd_snap_bind", "nd_lsc_unit", "nd_render_state", "nd_snap_mix"]},
+    "L": {"name": "core 1 records", "roots": ["nd_rec_model", "nd_ds_model", "nd_msnap_rec", "nd_msnap_take", "nd_rec_ent_draw", "nd_rec_spr", "txr_take", "nd_mkey_a"]}
   },
   "calls": {
     "log": ["^pm_log"],
