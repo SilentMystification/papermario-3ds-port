@@ -197,7 +197,7 @@ void pm_cfb_capture_prev(void);
 void gp_note(int k, int same);
 void gp3_t0_set(void);
 void tlut_v20(unsigned slot);
-void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt);
+struct NdTxR; void tex_tile1(unsigned tile, int uls, int ult, int lrs, int lrt, const struct NdTxR* r); void nd_tx_tszr(const struct NdTxR* r); /* NAT5T */
 int tex_shaded0(int uls, int ult);
 void tex_win_s25(int* p_uls, int* p_ult, int* p_lrs, int* p_lrt, unsigned fs, unsigned ms, unsigned ft, unsigned mt);
 /* HC4c: the typed texture setters (nd_op.h fields; nd_unit_apply runs them by id) */

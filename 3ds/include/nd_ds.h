@@ -8,6 +8,8 @@
 #include "nd_int.h"
 #include "nd_fs.h"
 
+typedef struct NdTxR { uint32_t tile; int32_t uls, ult, lrs, lrt; const uint8_t* src; int32_t w, h, stride, x0; const void* pal; int32_t pal_n; const void* timg; uint32_t m1v; const uint8_t* m1src; int32_t m1stride, m1w, m1h, m1x0, m1y0; } NdTxR; /* NAT5T */
+
 typedef struct NdDs {
     NdWs w;
     unsigned conv_k4;              /* nd_comb.c */
@@ -22,6 +24,7 @@ typedef struct NdDs {
     float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
     NdTexM tm;                     /* nd_tex_set.c nd_tm: the load side of the texture model */
     int m1v, m1w, m1h;             /* NST2F: the shaded sprite record of tile 1 (m1.valid, m1.w, m1.h) */
+    unsigned char zslot;           /* NAT5T: a zcol texrect was seen (nd_ws zslot_on) */
     uint8_t sc_lost, sc_dirty;     /* NST2J: core 1 view of !sc_ok and sc_sig != sc_sig_now() (nd_comb.c:342); not in ds_fields */
 } NdDs;
 extern NdDs nd_ds;

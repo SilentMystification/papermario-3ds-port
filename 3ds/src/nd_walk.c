@@ -313,7 +313,7 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
     const unsigned op = id != ND_FS_MISC ? id : sub == ND_FS_MISC_LST ? (unsigned)G_PM_LST : sub == ND_FS_MISC_ND ? (unsigned)G_PM_ND : (unsigned)ND_FS_MISC;
     unsigned r = 0;
     pm_gbi_cur_op = op;
-    if (id != ND_FS_CALL && !(id == ND_FS_MISC && (sub == ND_FS_MISC_MODVTX || sub == ND_FS_MISC_EP))) { gv_epoch++; } /* GV1b; no cut for a list call or a vertex modify */
+    if (id != ND_FS_CALL && !(id == ND_FS_MISC && (sub == ND_FS_MISC_MODVTX || sub == ND_FS_MISC_EP)) && !(id == ND_FS_TXR && ep_stream && ex_depth == 0)) { gv_epoch++; } /* NAT5T: the mark cut a stream tile size */ /* GV1b; no cut for a list call or a vertex modify */
     int fp = 0;
     if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, op, u[0], u[1]);
     switch (id) {
@@ -321,6 +321,9 @@ static __attribute__((noinline)) unsigned nr_ctl(unsigned dbg, const uint32_t* u
         nr_call(dbg, (const NdW2*)at, a & ~2u, (a & 2u) ? ((const uint32_t*)(uintptr_t)b)[0] : b, (a & 2u) ? (const uint32_t*)(uintptr_t)b + 1 : NULL); /* NAT5N */
         if (a & 1u) r = ~0u; /* D10c: a branch ends the list that holds it */
         break;
+    case ND_FS_TXR: /* NAT5T */
+        if (ep_stream && ex_depth == 0) { nd_epk_n++; ep_mark = 0; } /* NAT5T: the mark of nr_set */
+        pm_gbi_cur_op = ND_FS_TILESIZE; nd_tx_tszr((const NdTxR*)(uintptr_t)b); break; /* NAT5T */
     case ND_FS_RECT:
         
         if (!(b & ND_FS_RECT_TEX)) nd_frect_draw(a, b);

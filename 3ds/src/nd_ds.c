@@ -221,6 +221,7 @@ static unsigned ds_tilesize(NdDs* s, u32 a, u32 b) {
 static unsigned ds_timg(NdDs* s, u32 a, u32 addr) {
     unsigned ch = 0;
     SET(s->w.timg, (const void*)ds_ptr(s, addr));
+    if (!addr && s->zslot && ((a >> 19) & 3u) == 2u) SET(s->w.timg, (const void*)0x1000); /* NAT5T: zb_fake (nd_target.c:30) */
     SET(s->w.tst1.timg_fmt, (a >> 21) & 7);
     SET(s->w.tst1.timg_siz, (a >> 19) & 3);
     SET(s->w.tst1.timg_stride, (int)(a & 0xfff) + 1);

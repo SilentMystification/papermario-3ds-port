@@ -410,6 +410,18 @@ static void rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { /* NAT4I: a native 
 void nd_rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { rec_open(); rec_nat(run, a, b); } /* NAT5E */
 __attribute__((weak)) void nd_mls_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_mle_run(const uint32_t* r) { (void)r; } /* NAT5B: strong in nd_walk.c */
 void nd_alt_lst(unsigned end) { nd_rec_nat(end ? nd_mle_run : nd_mls_run, 0u, 0u); } /* NAT5B: the list start and end markers of nd_nr_list keep 0 */
+static const NdDs* alt_s = &nd_ds; /* NAT5T: the state that the txr puts read (a scratch copy on the static paths) */
+static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window of a TILESIZE of tile 0 or 1, as nd_tsz_set and tex_tile1 compute it */
+    const NdDs* s = alt_s; const NdTst* t = &s->w.tst1; const unsigned tile = (b >> 24) & 7u; NdWin wn;
+    int uls = (int)((a >> 12) & 0xfff), ult = (int)(a & 0xfff), lrs = (int)((b >> 12) & 0xfff), lrt = (int)(b & 0xfff);
+    if (((lrs - uls) >> 2) + 1 <= 0 || ((lrt - ult) >> 2) + 1 <= 0) tex_win_s25(&uls, &ult, &lrs, &lrt, t->tile_wrap[tile][0], t->tile_wrap[tile][2], t->tile_wrap[tile][1], t->tile_wrap[tile][3]);
+    NdTxR* r = (NdTxR*)nd_rec_data_st(sizeof *r); memset(r, 0, sizeof *r);
+    if (tile == 0u) nd_texw0(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn); else nd_texw1(t, &s->tm, s->w.timg, uls, ult, lrs, lrt, &wn);
+    r->tile = tile; r->uls = uls; r->ult = ult; r->lrs = lrs; r->lrt = lrt; r->src = wn.src; r->w = wn.w; r->h = wn.h; r->stride = wn.stride; r->x0 = wn.x0;
+    r->pal = s->tm.tlut_pal[t->tile_pal[tile] & 15] ? s->tm.tlut_pal[t->tile_pal[tile] & 15] : s->w.tlut; r->pal_n = s->w.tlut_n; r->timg = s->w.timg;
+    if (tile == 1u && t->tile_fmt[1] == 2 && t->tile_siz[1] == 0 && s->tm.ld_valid && s->w.timg) { r->m1v = 1; r->m1src = (const uint8_t*)s->w.timg + (size_t)s->tm.ld_y * (size_t)t->timg_stride + (size_t)s->tm.ld_x;
+        r->m1stride = t->timg_stride * 2; r->m1w = ((lrs - uls) >> 2) + 1; r->m1h = ((lrt - ult) >> 2) + 1; r->m1x0 = uls >> 2; r->m1y0 = ult >> 2; } /* tex_tile1 :457-466 */
+    return (uint32_t)(uintptr_t)r; }
 void nd_rec_nr(uint32_t w0, uint32_t w1) {
     const uint32_t t[2] = { w0, w1 };
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); return; }
@@ -428,6 +440,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
     if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { /* NAT4G */ const unsigned rc = nd_ds_ep_rule(w0, ch, lost, dirty);
         if (rc) { st_put(ND_FS_W0(ND_FS_MISC, ND_FS_MISC_EP << 16), rc | (lost ? 0x100u : 0u) | (dirty ? 0x200u : 0u) | (ch & 1u) << 10); /* NAT4B: the cut and its reason */
             if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_PRIMZ) || id == ND_FS_RARE || id == ND_FS_COMB) return; } } /* NAT4K: a marked combine class unit is not recorded */
+    if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { st_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); return; } /* NAT5T */
     st_put(t[0], t[1]); /* NAT4A */
 }
 /* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
@@ -448,6 +461,7 @@ void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uin
 /* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
  * A texture rectangle and its 2 RDPHALF units stay in one NRUN run (nr_ctl reads at[3], at[5]). */
 void nd_alt_put(uint32_t w0, uint32_t w1) {
+    if ((w0 >> 24) == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { w1 = txr_take(w0, w1); w0 = ND_FS_W0(ND_FS_TXR, 0); } /* NAT5T */
     if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && st_hdr && (((st_hdr[0] >> 16) & 0xffu) > 252u || wp + 6u > wend)) st_hdr = NULL;
     st_put(w0, w1); }
 uint32_t* nd_alt_open(void) { rec_open(); uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
