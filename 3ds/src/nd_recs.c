@@ -54,6 +54,12 @@ static __attribute__((noinline)) void rec_lights(const NdW2* q) {
 }
 static unsigned mm_fr = ~0u;
 static __attribute__((cold, noinline)) void mmiss_note(void) { const unsigned f = pm_frame_count(); if (f != mm_fr) { mm_fr = f; pm_log_evt("mmiss f%u", f); } } /* the miss path takes the hit state: marker of the expected-diff gate */
+static unsigned t1_fr = ~0u; /* T1FIX: the bind took the tile of the snap before: marker of the expected-diff gate */
+static __attribute__((cold, noinline)) void t1fix_note(const uint32_t* pw) {
+    const uint32_t* const mw = nd_msnap_w();
+    if (!plan_active || !cur_plan.uses_tex1 || nd_cw_t1only(pw[MSW_CW0], pw[MSW_CW1]) == nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1])) return;
+    const unsigned f = pm_frame_count(); if (f != t1_fr) { t1_fr = f; pm_log_evt("t1fix f%u", f); }
+}
 static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone, const NdMEnt* e) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
     gv_epoch++; mmiss_note(); hit_apply(q, e); rec_lights(q); nd_sr_forget(); /* MCOPY1: the hit state, the lights; the tile blocks come from the model snap */
@@ -199,14 +205,15 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
     } else {
     if (!full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; } /* HC6 step 2: a cached key whose hit failed: the store reads the full key */
     rec_apply(q, mdone, mce);
+    const uint32_t* const pw_ = nd_msnap_w(); /* T1FIX: the snap of the record before (the old tile 1 source, marker only) */
+    nd_msnap_use((const uint32_t*)q); /* NREC1B: model_draw reads this snap; T1FIX: before the tile 1 bind (nd_tex_set.c:30 reads it) */
     { /* MDL-1b v2: once per record after rec_aux, before the ndm and model branches. SBKW: every record, not only R13 texture-only ones: the walker's
        * tile 1 step (nd_tile_bind(1) of a plan that reads TEXEL1) runs for all records, so the native combine decision sees td[1].valid (sbk_56 water) */
         nd_msnap_dec((const uint32_t*)q); /* NAT2K: the decision words of this record (the walker set them in rec_apply) */
         const uint32_t* qw = (const uint32_t*)q; uint32_t cw_[4]; int cb_ = 0; int t1 = 0;
-        if (!qw[26] || (!PMDL("r13off") && nd_r13_texonly(qw + NDMC_RW, qw[26], cw_, &cb_))) t1 = pm_gbi_bind_tile1(qw);
+        if (!qw[26] || (!PMDL("r13off") && nd_r13_texonly(qw + NDMC_RW, qw[26], cw_, &cb_))) { t1fix_note(pw_); t1 = pm_gbi_bind_tile1(qw); }
         pm_gpu_set_r13_t1(t1);
     }
-    nd_msnap_use((const uint32_t*)q); /* NREC1B: model_draw reads this snap */
     if (q[13].words.w0 || q->words.w1 || q[9].words.w0 || q[10].words.w0) { nd_bsrc = nd_msnap_bq((const uint32_t*)q); nd_tile_bind(0); nd_bsrc = NULL; } /* MCOPY1: the uv origin of tile 0 (census b8) */
     /* MDL-5f: the walker order is record combine, render mode list, pre list (rec_apply), so a state-only pre list's SETCOMBINE and SETOTHERMODE
      * ops win over the record's words. The native draw gets them in the same order: its combine replaces cwp, the render mode list is copied
