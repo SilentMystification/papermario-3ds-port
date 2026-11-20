@@ -25,8 +25,8 @@ int pm_drec_now(void) { return 1; }
 extern int dual_on; extern unsigned keyc, keys;
 static void ap_sync(void) {
     memset(&ap_stub, 0, sizeof ap_stub);
-    ap_stub.in.w0 = nd_c0.comb_w0; ap_stub.in.w1 = nd_c0.comb_w1; ap_stub.in.omode_h = nd_c0.omode_h; ap_stub.oml = t_oml;
-    ap_stub.in.prim = nd_c0.prim; ap_stub.plod = nd_c0.prim_lod; ap_stub.in.env = nd_c0.envc;
+    ap_stub.in.w0 = nd_gm.cw0; ap_stub.in.w1 = nd_gm.cw1; ap_stub.in.omode_h = nd_gm.omh; ap_stub.oml = t_oml;
+    ap_stub.in.prim = nd_gm.prim; ap_stub.plod = nd_gm.plod; ap_stub.in.env = nd_gm.env;
     ap_stub.in.dual_on = dual_on; ap_stub.in.key_c = keyc; ap_stub.in.key_s = keys;
 }
 
@@ -40,6 +40,7 @@ unsigned pm_frame_count(void) { return 0; }
 void pm_fatal_stop(const char* msg) { printf("FAIL nd_direct fatal %s\n", msg); exit(1); }
 
 NdC0 nd_c0;
+NdGm nd_gm; /* NC0M */
 int dual_on, box_prod, box_pat, box_folded, comb_set, comb_alpha_shade, plan_active, leg_mode, comb_mode5, rm_frame;
 NdTgt nd_tgt;
 int zcol;
@@ -59,7 +60,7 @@ static int fake_aux = -1;
 /* the role comes from the target record (nd_tgt_role): MAIN = no image, SLOT = an image that is not a frame buffer */
 static void fake_role_set(int r) { nd_tgt.img = NULL; nd_tgt.siz = 2; nd_tgt.kind = r == ROLE_MAIN ? NDK_NULL : 0; }
 
-void comb_in_walker(NdCombIn* in) { memset(in, 0, sizeof *in); in->w0 = nd_c0.comb_w0; in->w1 = nd_c0.comb_w1; in->omode_h = nd_c0.omode_h; }
+void comb_in_walker(NdCombIn* in) { memset(in, 0, sizeof *in); in->w0 = nd_gm.cw0; in->w1 = nd_gm.cw1; in->omode_h = nd_gm.omh; }
 void nd_comb_dec(const NdCombIn* in, NdCombOut* out) {
     n_decide++;
     memset(out, 0, sizeof *out);
@@ -146,6 +147,7 @@ int main(void) {
     NdPsoN64 cc = { 0xfc000003u, 0u, 0x00504340u, 0u, 0u };
     NdPso ia, ib, it1, ipl, icc;
     memset(&nd_c0, 0, sizeof nd_c0);
+    memset(&nd_gm, 0, sizeof nd_gm); /* NC0M: the memo resets with nd_c0 */
     t_oml = 0x5u;
     comb_set = 1;
     ia = nd_pso_n64(&a); ib = nd_pso_n64(&b);
@@ -155,10 +157,10 @@ int main(void) {
     CHECK(nd_direct_bind(it1, 0x01020304u, 0u) == 0);
     snap_none = 1; CHECK(nd_direct_bind(ia, 1u, 2u) == 0); snap_none = 0; /* NDR2D: no live snap: the record walks */
     /* a bind: the other mode as the stream sets it (the render mode replaces bits 3 to 31, bits 0 to 2 stay), the combine words, the primitive colour */
-    nd_c0.omode_h = 0; n_filter = 0;
+    nd_gm.omh = 0; n_filter = 0;
     CHECK(nd_direct_bind(ia, 0xff804020u, 0x55u) == 1);
-    CHECK(nd_c0.comb_w0 == 0xfc000010u && nd_c0.comb_w1 == 0x11111111u);
-    CHECK(nd_c0.prim == 0xff804020u && last_prim == 0xff804020u && nd_c0.prim_lod == 0u && nd_c0.envc == 0x55u);
+    CHECK(nd_gm.cw0 == 0xfc000010u && nd_gm.cw1 == 0x11111111u);
+    CHECK(nd_gm.prim == 0xff804020u && last_prim == 0xff804020u && nd_gm.plod == 0u && nd_gm.env == 0x55u);
     CHECK(n_leg == 1 && last_leg == 2u && leg_mode == 2 && n_plan == 0 && nd_snap_render_n >= 1);
     CHECK(dual_on == 0);
     n_flush = 0;
@@ -175,12 +177,12 @@ int main(void) {
         f.omh = 3u << 12; f.omh_m = 3u << 12; f.cw0 = 0xfc000020u;
         i = nd_pso_n64(&f);
         n_filter = 0;
-        CHECK(nd_direct_bind(i, 0u, 0u) == 1 && n_filter == 1 && (nd_c0.omode_h & (3u << 12)) == (3u << 12));
+        CHECK(nd_direct_bind(i, 0u, 0u) == 1 && n_filter == 1 && (nd_gm.omh & (3u << 12)) == (3u << 12));
     }
     /* COPY cycle and a G_ZS_PRIM rectangle are not stated */
-    nd_c0.omode_h = 2u << G_MDSFT_CYCLETYPE;
+    nd_gm.omh = 2u << G_MDSFT_CYCLETYPE;
     CHECK(nd_direct_bind(ia, 0u, 0u) == 0);
-    nd_c0.omode_h = 0;
+    nd_gm.omh = 0;
     /* ready: the main colour image only */
     fake_role_set(ROLE_MAIN); nd_tgt.img = NULL;
     CHECK(nd_direct_ready() == 1);
@@ -209,7 +211,7 @@ int main(void) {
         t.lrs = 31; t.lrt = 31; t.masks = 5; t.maskt = 5;
         t.w0 = (42u * 4u) << 12 | (36u * 4u); t.w1 = (10u * 4u) << 12 | (20u * 4u); t.hs = 0u; t.hd = (1024u << 16) | 1024u;
         t.cw0 = 0xfc000010u; t.cw1 = 0x11111111u; t.oml = 0x00504340u; t.omh = 0u; t.prim = 0xff00ff00u;
-        nd_c0.omode_h = 0; nd_tgt.img = NULL; fake_role_set(ROLE_MAIN); fake_aux = -1; m1.valid = 0;
+        nd_gm.omh = 0; nd_tgt.img = NULL; fake_role_set(ROLE_MAIN); fake_aux = -1; m1.valid = 0;
         n_win = n_gx = n_walk = 0; n_rect = 0;
         nd_trect_run((const uint32_t*)&t);
         CHECK(n_win == 1 && win_a[0] == 32 && win_a[1] == 0 && win_a[2] == 0 && win_a[3] == 32 && win_a[4] == 32);

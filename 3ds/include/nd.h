@@ -163,10 +163,6 @@ typedef struct NdWs {
 } NdWs;
 /* NWS3: the core 0 draw state (the RSP and texture state the native records write). NdWs above stays the core 1 field model (NdDs.w). */
 typedef struct NdC0 {
-    unsigned omode_h;                  /* other mode high; NC0R: the low word lives in the snap */
-    unsigned prim;                     /* primitive colour */
-    unsigned envc;                     /* env colour */
-    uint32_t prim_lod;                 /* G_SETPRIMCOLOR w0 low 16 bits (m and l) */
     const void* timg;
     const void* tlut;
     int tlut_n;
@@ -174,12 +170,12 @@ typedef struct NdC0 {
     float tile_fx, tile_fy;
     int cur_tile;
     uint32_t segbase[16];
-    unsigned comb_w0, comb_w1;
     NdTst tst1;
     NdTd td[2];
-    unsigned conv_k4;                  /* G_SETCONVERT K4 (8 bit part), the combiner input K4 */
 } NdC0;
 extern NdC0 nd_c0;
+typedef struct NdGm { unsigned omh, prim, env, plod, cw0, cw1, k4; } NdGm; /* NC0M: the last values the walker sent to the GPU setters (class C memo) */
+extern NdGm nd_gm;
 void nd_words(NdWs* s, const unsigned* w, unsigned n); /* reference decode (host tests): n word pairs (NdW2) into s. Not called during the walk. */
 
 /* NDDLC (S3-1): a static display list (a map shape list) compiled once into an NdObj. A group starts at a G_VTX at slot 0 after triangles, so a group reads only the vertices
