@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdlib.h>
 #include "ultra64.h"
 #include "nd.h"
 #include "nd_int.h"
@@ -23,9 +24,12 @@ static int sn_leg, sn_mode5, sn_pat;
 unsigned nd_snb, nd_snn, nd_snm; /* NAT1: core 1 snap_build calls, new snaps, table misses */
 static const NdSnapChk sn_zero; static const NdSnapChk* sn_lp = &sn_zero; /* PERF1: the last snap */
 typedef struct { uint32_t h; int32_t m5; uint32_t vp; const NdSnapChk* p; } SiEnt; static SiEnt si_t[256]; static unsigned si_n, si_next; unsigned nd_si_new, nd_si_hit, nd_si_full;
+typedef struct { uint32_t h; int32_t m5; uint32_t vp; int32_t key; NdCombIn in; NdCombOut o; } SdEnt; /* SNAPD: one decision */
+#define SD_N 32u /* SNAPD: entries (a power of 2), about 17 KB on the heap at first use */
+static SdEnt* sd_t; static unsigned char sd_tried; unsigned nd_sd_new, nd_sd_hit;
 static uint32_t si_hw(uint32_t h, const void* p, unsigned n) { const uint32_t* w = (const uint32_t*)p; for (unsigned i = 0; i < n / 4u; i++) h = (h ^ w[i]) * 16777619u; return h; }
 static int si_eq(const NdSnapChk* a, const NdSnapChk* b) { return !memcmp(&a->in, &b->in, sizeof a->in) && !memcmp(&a->role, &b->role, 6u * 4u) && !memcmp(&a->plod, &b->plod, sizeof *a - offsetof(NdSnapChk, plod)); }
-static __attribute__((cold, noinline)) void si_log(void) { si_next = pm_frame_n + 100u; pm_log_evt("snapi f%u new %u hit %u full %u snn %u", pm_frame_n, nd_si_new, nd_si_hit, nd_si_full, nd_snn); }
+static __attribute__((cold, noinline)) void si_log(void) { si_next = pm_frame_n + 100u; pm_log_evt("snapi f%u new %u hit %u full %u snn %u dec %u dhit %u", pm_frame_n, nd_si_new, nd_si_hit, nd_si_full, nd_snn, nd_sd_new, nd_sd_hit); }
 void nd_snap_ctx(void) { memset(si_t, 0, sizeof si_t); si_n = 0; sn_lp = &sn_zero; if (pm_frame_n >= si_next) si_log(); } /* PERF1: a context chain restarts */
 static unsigned sn_cmds = ~0u;
 void nd_snap_task(void) { sn_cmds = ~0u; } /* NAT2J: a task stream starts with its own snap */
@@ -57,14 +61,21 @@ static const NdSnapChk* snap_build0(const NdDs* s, int zc) { /* NDR0E2: the snap
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
     if (sn_cmds == nd_rec_cmds() && si_eq(&r, sn_lp)) return NULL;
     nd_snn++; /* NAT1 */
-    const int m5 = sn_mode5; const uint32_t h = si_hw(si_hw(si_hw(2166136261u ^ (uint32_t)m5 ^ sn_vprim << 8, &r.in, sizeof r.in), &r.role, 24u), &r.plod, sizeof r - offsetof(NdSnapChk, plod));
+    const int m5 = sn_mode5; const uint32_t hi = si_hw(2166136261u ^ (uint32_t)m5 ^ sn_vprim << 8, &r.in, sizeof r.in);
+    const uint32_t h = si_hw(si_hw(hi, &r.role, 24u), &r.plod, sizeof r - offsetof(NdSnapChk, plod)); /* SNAPD: hi is the decision key */
     unsigned i = h & 255u, k; for (k = 0; k < 8u && si_t[i].p; k++, i = (i + 1u) & 255u) if (si_t[i].h == h && si_t[i].m5 == m5 && si_t[i].vp == sn_vprim && si_eq(&r, si_t[i].p)) {
         const NdSnapChk* const q = si_t[i].p; nd_si_hit++; sn_leg = q->leg; sn_mode5 = q->mode5; sn_pat = q->pat; sn_lp = q; return q; }
-    r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
+    if (!sd_t && !sd_tried) { sd_tried = 1; sd_t = (SdEnt*)calloc(SD_N, sizeof *sd_t); if (sd_t) for (unsigned q = 0; q < SD_N; q++) sd_t[q].m5 = INT32_MIN; } /* SNAPD: NULL keeps the plain decision; INT32_MIN never matches an empty entry */
+    SdEnt* const de = sd_t ? &sd_t[hi & (SD_N - 1u)] : NULL;
     r.plan_on = -1;
-    if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
-    else { nd_snm++; nd_comb_core1(&r.in, sn_vprim, sn_mode5, &o); } /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
-    if (o.plan_on) pm_comb_colours_k(&o.plan, r.in.prim, r.in.env, r.in.prim_lo8 & 0xffu, r.in.key_c, r.in.key_s, r.in.conv_k4 & 255u);
+    if (de && de->h == hi && de->m5 == m5 && de->vp == sn_vprim && !memcmp(&de->in, &r.in, sizeof r.in)) { nd_sd_hit++; r.key = de->key; o = de->o; }
+    else {
+        r.key = nd_pso_find_i(&r.in, sn_vprim, &o);
+        if (r.key >= 0) nd_pso_fix(&o, &r.in, sn_mode5);
+        else { nd_snm++; nd_comb_core1(&r.in, sn_vprim, sn_mode5, &o); } /* NDR0D: a table miss decides on core 1 with its own table (nd_decide.c) */
+        if (o.plan_on) pm_comb_colours_k(&o.plan, r.in.prim, r.in.env, r.in.prim_lo8 & 0xffu, r.in.key_c, r.in.key_s, r.in.conv_k4 & 255u);
+        nd_sd_new++; if (de) { de->h = hi; de->m5 = m5; de->vp = sn_vprim; de->key = r.key; de->in = r.in; de->o = o; }
+    }
     r.o = o;
     sn_leg = o.leg; sn_mode5 = o.mode5; sn_pat = o.pat;
     r.plan_on = o.plan_on;
