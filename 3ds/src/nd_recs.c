@@ -40,58 +40,28 @@ static __attribute__((noinline)) void rec_matrix(const NdW2* q) {
     else nd_mtx_static = 1;
     if (q[8].words.w0) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1);
 }
-/* MCOPY1 step 1 (census, drec frames only): would hit_apply and the record lights give the state the 2 alt ranges give? */
-static __attribute__((cold, noinline)) void hit_delta(const NdW2* q, NdHitD* d);
-typedef struct McPre { unsigned omh, oml, prim, plod, env, w0, w1, tex, fm, fo, ltn; NdLight lt[9]; int tx0, ty0; float fx, fy; int cur; } McPre;
-static unsigned mc_miss, mc_b[5], mc_logn, mc_f;
-static __attribute__((cold, noinline)) void mc_pre(McPre* p) {
-    p->omh = nd_c0.omode_h & ~(3u << G_MDSFT_TEXTFILT); p->oml = nd_c0.omode_l; p->prim = nd_c0.prim; p->plod = nd_c0.prim_lod; p->env = nd_c0.envc;
-    p->w0 = nd_c0.comb_w0; p->w1 = nd_c0.comb_w1; p->tex = (unsigned)nd_c0.tex_on; p->fm = (unsigned)nd_c0.fog_fm; p->fo = (unsigned)nd_c0.fog_fo;
-    p->ltn = lt_n; memcpy(p->lt, lt, sizeof lt);
-    p->tx0 = nd_c0.tile_x0; p->ty0 = nd_c0.tile_y0; p->fx = nd_c0.tile_fx; p->fy = nd_c0.tile_fy; p->cur = pm_tex_cur_idx();
+static void hit_apply(const NdW2* q, const NdMEnt* e);
+/* MCOPY1: the lights of a record (R2, R3), the movemem words of nd_ds_model in its order, run as nd_mvm_run runs them. */
+static __attribute__((noinline)) void rec_lights(const NdW2* q) {
+    if (!q[3].words.w1 || q[2].words.w0 > 7u) return;
+    const unsigned n = q[2].words.w0 ? q[2].words.w0 : 1u;
+    const Lightsn* L = (const Lightsn*)(uintptr_t)q[3].words.w1;
+    nd_light_count(NUML(n));
+    for (unsigned i = 1; i <= n + 1u; i++) {
+        const u32 w0 = (((u32)sizeof(Light) - 1u) / 8u) << 19 | (3u * i + 3u) << 8 | G_MV_LIGHT;
+        const u32 w1 = (u32)(uintptr_t)(i <= n ? (const void*)&L->l[i - 1u] : (const void*)&L->a);
+        if (lt_mem_same(w0, w1)) continue;
+        gv_epoch++; nd_mv_mem(w0, w1);
+    }
 }
-static int mc_slot(const NdLight* s, const uint8_t* l) { return s->col[0] == l[0] && s->col[1] == l[1] && s->col[2] == l[2] && s->dir[0] == (int8_t)l[8] && s->dir[1] == (int8_t)l[9] && s->dir[2] == (int8_t)l[10]; }
-static __attribute__((cold, noinline)) unsigned mc_post1(const NdW2* q, const McPre* p) { /* after the first alt range: bit 1 scalar, bit 2 lights */
-    NdHitD d; unsigned m = 0u; mc_f = 0u;
-    hit_delta(q, &d);
-    const unsigned kf = ~(3u << G_MDSFT_TEXTFILT);
-    if ((nd_c0.omode_h & kf) != (((p->omh & ~d.omh_m) | d.omh_v) & kf)) mc_f |= 1u;
-    if (nd_c0.omode_l != ((p->oml & ~d.oml_m) | d.oml_v)) mc_f |= 2u;
-    if (nd_c0.prim != ((d.fl & HD_PRIM) ? d.prim : p->prim)) mc_f |= 4u;
-    if (nd_c0.prim_lod != ((d.fl & HD_PRIM) ? d.plod : p->plod)) mc_f |= 8u;
-    if (nd_c0.envc != ((d.fl & HD_ENV) ? d.env : p->env)) mc_f |= 16u;
-    if (nd_c0.comb_w0 != ((d.fl & HD_COMB) ? d.cw0 : p->w0) || nd_c0.comb_w1 != ((d.fl & HD_COMB) ? d.cw1 : p->w1)) mc_f |= 32u;
-    if ((unsigned)nd_c0.tex_on != ((d.fl & HD_TEX) ? (unsigned)d.tex : p->tex)) mc_f |= 64u;
-    if ((unsigned)nd_c0.fog_fm != ((d.fl & HD_FOGF) ? (unsigned)(int)d.fm : p->fm) || (unsigned)nd_c0.fog_fo != ((d.fl & HD_FOGF) ? (unsigned)(int)d.fo : p->fo)) mc_f |= 128u;
-    if (mc_f & ~2u) m |= 1u; /* b1 without the omode_l bit (oml census only) */
-    if (q[3].words.w1 != 0u && q[2].words.w0 <= 7u) {
-        const unsigned n = q[2].words.w0 ? q[2].words.w0 : 1u;
-        const Lightsn* L = (const Lightsn*)(uintptr_t)q[3].words.w1;
-        if (lt_n != n) m |= 2u;
-        for (unsigned i = 0; i <= n; i++) if (!mc_slot(&lt[i], (const uint8_t*)(i < n ? (const void*)&L->l[i] : (const void*)&L->a))) m |= 2u;
-    } else if (lt_n != p->ltn || memcmp(lt, p->lt, sizeof lt)) m |= 2u;
-    return m;
-}
-static __attribute__((cold, noinline)) void mc_post2(const NdW2* q, const McPre* p, unsigned m) { /* after the second alt range: bit 4 tile blocks, 8 uv origin, 16 texture slot */
-    if (nd_snap_wdiff(nd_msnap_bq((const uint32_t*)q)) != 0u) m |= 4u;
-    if (nd_c0.tile_x0 != p->tx0 || nd_c0.tile_y0 != p->ty0 || nd_c0.tile_fx != p->fx || nd_c0.tile_fy != p->fy) m |= 8u;
-    if (pm_tex_cur_idx() != p->cur) m |= 16u;
-    mc_miss++;
-    for (unsigned k = 0; k < 5u; k++) mc_b[k] += (m >> k) & 1u;
-    if (m && mc_logn < 32u) { mc_logn++; pm_log_evt("mcopy f%u rec %08x d %u fld %u", pm_frame_count(), (unsigned)(uintptr_t)q, m, mc_f); }
-}
-void nd_mcopy_end(void) { pm_log_evt("mcopyc f%u miss %u b1 %u b2 %u b4 %u b8 %u b16 %u", pm_frame_count(), mc_miss, mc_b[0], mc_b[1], mc_b[2], mc_b[3], mc_b[4]); }
-static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone) {
-    McPre mp; unsigned mm = 0u; const int mcn = 1; /* census: every miss of the run */
-    if (__builtin_expect(mcn, 0)) mc_pre(&mp);
+static unsigned mm_fr = ~0u;
+static __attribute__((cold, noinline)) void mmiss_note(void) { const unsigned f = pm_frame_count(); if (f != mm_fr) { mm_fr = f; pm_log_evt("mmiss f%u", f); } } /* the miss path takes the hit state: marker of the expected-diff gate */
+static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone, const NdMEnt* e) {
     u32 f = q[3].words.w0; /* S3F-2b: the flags of R3 (see model.c appendGfx_model) */
-    gv_epoch++; nd_mdl_alt(nd_msnap_ab((const uint32_t*)q)); /* NAT5B: the units before the matrix: core 1 wrote them as an alt range */
-    if (__builtin_expect(mcn, 0)) mm = mc_post1(q, &mp);
+    gv_epoch++; if (__builtin_expect(pm_drec_now(), 0)) mmiss_note(); hit_apply(q, e); rec_lights(q); nd_sr_forget(); /* MCOPY1: the hit state, the lights; the tile blocks come from the model snap */
     if (!(f & 256u) && !mdone) nd_xf_load(q[1].words.w0, q[2].words.w1, q[1].words.w1); /* S3F-1a: the matrix load of the model, the same function as G_MTX (256: IGNORE_MATRIX) */
     else if (f & 256u) nd_mtx_static = 1; /* SEAM2: IGNORE_MATRIX, no model matrix */
     if (q[11].words.w0) rec_range((const uint32_t*)(uintptr_t)q[11].words.w0, 1u); /* S3G-1: custom gfx pre, after the matrix as the old order (D10a: a stream range) NATRS */
-    nd_mdl_alt(nd_msnap_ab((const uint32_t*)q) + 2); /* NAT5B: the panner units (R9, R10) */
-    if (__builtin_expect(mcn, 0)) mc_post2(q, &mp, mm);
     if (q[8].words.w0 && !mdone) nd_xf_load(q[8].words.w0, q[8].words.w1, q[1].words.w1); /* S3F-2c: billboard matrix op (MUL, no push) */
 }
 /* S3F-4: the record is the whole state of the model (the walker model path is gone, no old words follow it). */
@@ -230,7 +200,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         nd_sr_forget(); /* NWS1 */
     } else {
     if (!full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; } /* HC6 step 2: a cached key whose hit failed: the store reads the full key */
-    rec_apply(q, mdone);
+    rec_apply(q, mdone, mce);
     { /* MDL-1b v2: once per record after rec_aux, before the ndm and model branches. SBKW: every record, not only R13 texture-only ones: the walker's
        * tile 1 step (nd_tile_bind(1) of a plan that reads TEXEL1) runs for all records, so the native combine decision sees td[1].valid (sbk_56 water) */
         nd_msnap_dec((const uint32_t*)q); /* NAT2K: the decision words of this record (the walker set them in rec_apply) */
@@ -239,6 +209,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         pm_gpu_set_r13_t1(t1);
     }
     nd_msnap_use((const uint32_t*)q); /* NREC1B: model_draw reads this snap */
+    if (q[13].words.w0 || q->words.w1 || q[9].words.w0 || q[10].words.w0) { nd_bsrc = nd_msnap_bq((const uint32_t*)q); nd_tile_bind(0); nd_bsrc = NULL; } /* MCOPY1: the uv origin of tile 0 (census b8) */
     /* MDL-5f: the walker order is record combine, render mode list, pre list (rec_apply), so a state-only pre list's SETCOMBINE and SETOTHERMODE
      * ops win over the record's words. The native draw gets them in the same order: its combine replaces cwp, the render mode list is copied
      * without its SETCOMBINE (when the pre list has one) and its SETOTHERMODE ops are followed by the pre list's ops, then ENDDL. */
