@@ -316,7 +316,7 @@ typedef struct { u32 addr, gen, hash, nops, exit_am, exit_om; u16 ngrp; u8 refus
 #define DLC_GPU_GEOM(g) ((g) & (G_ZBUFFER | G_LIGHTING))
 typedef struct { u32 a0, op0, op1, tri0, ntri; struct NdSDef* sd; } EntSeg; /* S6E sd: the gap before the segment as a compiled def, or NULL */
 void nd_ent_slice(const uint32_t* ab); /* NAT5A */
-void nd_ent_units(const uint32_t* u, unsigned n); /* nd_walk.c, core 0 (DEL1B): n flat units of an entity list, the list start and end of nd_ops_run (keep 1) */
+extern unsigned char nd_ent_src; /* NATEF, nd_ent.c: the caller of nd_eg_run (entfb line) */
 typedef struct {
     u32 list, vb, nops, hash, fr, vlen, retry;
     const u8* vp;

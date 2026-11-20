@@ -216,7 +216,7 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
     int ring = 0; /* PBATCH1: a particle list (ent_gdl -1) runs on the op executor, not nd_sg_try */
     if (ent_skipgen) ent_skipgen = 0;
     else if (!ow && dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
-        NDT_BD(te, dbg); pm_tex_tagi = 5; int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[3] : NULL); NDT_E(te, NDT_ENT);
+        NDT_BD(te, dbg); pm_tex_tagi = 5; nd_ent_src = ab ? 2u : 1u; /* NATEF */ int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[3] : NULL); NDT_E(te, NDT_ENT);
         if (eh > 0) return;
         if (eh < 0) ring = 1;
     }
@@ -427,19 +427,7 @@ static void ent_dl_walk(unsigned dbg, const NdW2* c) {
     PM_WALK_OWN(); const int d = ex_depth; gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = d + 1;
     const uint32_t* u_ = (const uint32_t*)c; pm_gbi_cur_op = ND_FS_CALL; nr_call(dbg, c, u_[0] & 0xffffffu, u_[1], NULL); /* NAT5W; NAT5N */
     ex_depth = d; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); }
-/* DEL1B: n flat units of an entity list (a gap, the loads and ops of a refused segment) with the list start and end of nd_nr_list (keep 1).
- * ENT_GBI (nd_ent.c) ran them with nd_nr_list; the steps and their order are the same. */
-void nd_ent_units(const uint32_t* u, unsigned n) {
-    PM_WALK_OWN();
-    const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
-    gv_epoch++; dlc_on = 1; gp_prev_op = -1; /* GV1b, as nd_nr_list */
-    pm_walk_side++; ex_depth = d + 1;
-    nd_nr_exec(u, n);
-    ex_depth = d; pm_walk_side--;
-    gv_streak_flush(); tex_streak_flush();
-    if (cen) ops_cen_end();
-}
-/* NAT5A: as nd_ent_units, the units of a cut raw alt range ab (nd_alt_eput). */
+/* NAT5A: the units of a cut raw alt range ab (nd_alt_eput), with the list start and end of nd_nr_list (keep 1). NATEF */
 void nd_ent_slice(const uint32_t* ab) {
     PM_WALK_OWN();
     const int d = ex_depth, cen = __builtin_expect(pm_walk_dbg & WD_CEN, 0) && d == 0;
@@ -520,6 +508,7 @@ static void gt_run0(const void* key, const NdNDev* nt, const uint32_t* rec, cons
     int ring = 0;
     if (ent_skipgen) ent_skipgen = 0;
     else if (dlc_on && !(nt && !nt->ntri) && !((u32)next - (u32)gMapShapeData < 0x40000u)) {
+        nd_ent_src = 3u; /* NATEF */
         const int eh = ent_gdl(next, ab ? (const uint32_t*)(uintptr_t)ab[-1] : NULL); /* NAT5A; NAT5T: rec[5], rec[9] 0 for a device record */
         if (eh > 0) { nd_gtr_ent++; return; }
         if (eh < 0) ring = 1;
