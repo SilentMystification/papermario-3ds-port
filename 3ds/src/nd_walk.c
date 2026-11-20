@@ -240,6 +240,41 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
 unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; /* NAT4B */ /* NAT6F */
 int pm_drec_now(void); extern int sc_ok; extern unsigned sc_sig, comb_gen, cmb_gen_seen; unsigned sc_sig_now(void); extern int box_folded;
 static unsigned char c6_mark; /* NAT6B: the slot of the copy unit that runs; NAT6D2 */
+/* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
+ * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
+static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, const void* at) {
+    const unsigned id = u[0] >> 24;
+    const u32 a = u[0] & 0xffffffu, b = u[1];
+    if (id == ND_FS_MOVEMEM) {
+        if ((a & 0xffu) == G_MV_LIGHT && lt_mem_same(a, b)) return;
+        gv_epoch++; /* GV1b; NST2H source */
+    }
+    pm_gbi_cur_op = id; /* DEL1D1: the unit id */
+    int fp = 0;
+    if (__builtin_expect(dbg, 0)) fp = walk_dbg_op(dbg, (const NdW2*)at, 0, id, u[0], u[1]);
+    switch (id) {
+    case ND_FS_VTX: nd_geom_vtx(a, b, (const NdW2*)at); break;
+    case ND_FS_TRI1:
+        tri_prep_ok = 0;
+        draw_tri(a);
+        break;
+    case ND_FS_TRI2:
+        tri_prep_ok = 0;
+        draw_tri(a);
+        draw_tri(b);
+        break;
+    case ND_FS_MTX:
+        if (!is_host((u32)(uintptr_t)ptr_of(b))) nd_bad_mtx(a, b, (NdW2*)at, (NdW2*)at + 1);
+        nd_xf_load(a, b, 0);
+        break;
+    case ND_FS_POPMTX: nd_xf_popb(b); break;
+    default:
+        if ((a & 0xffu) == G_MV_VIEWPORT && !is_host(b)) nd_bad_vp(u); /* POSTFAIL2 (debug tool) */
+        nd_mv_mem(a, b);
+        break;
+    }
+    if (__builtin_expect(fp, 0)) pm_ph_pop();
+}
 /* HC4d2: one control op (nd_op_ctl) with the walker's prologue (pm_gbi_cur_op; gv_epoch but not for a list call or G_MODIFYVTX; the debug
  * op hook), then its handler. u: the typed unit, at: its place in the run (a texture rectangle reads the b of the two units after it).
  * Returns the units it took after u (2 for a texture rectangle), or ~0u when a branch ends the run. */
