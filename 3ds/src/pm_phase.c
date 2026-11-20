@@ -634,6 +634,9 @@ static void pf_report(void) {
                 CS(cm[NDT_RMDL]), CS(cm[NDT_RENT]), CS(cm[NDT_RSPR]), CS(cm[NDT_RNR]), nd_rnr_n - rnr_m); /* PROF2 */
             pm_log_prof_line("prof f%u w%u c0r key %u.%02u mtx %u.%02u hit %u.%02u", pf_total, pf_w,
                 CS(cm[NDT_MKEY]), CS(cm[NDT_MMTX]), CS(cm[NDT_MHIT])); /* PROF2 */
+            { unsigned ur[8], u10[8]; pm_gpu_updr_take(ur); for (int k = 0; k < 8; k++) u10[k] = (unsigned)((unsigned long long)ur[k] * 10u / pw); /* DO3 */
+                pm_log_prof_line("prof f%u w%u c0s upd %u.%02u emit %u.%02u r flg %u.%u lt %u.%u fa %u.%u gas %u.%u una %u.%u fv %u.%u iv %u.%u", pf_total, pf_w,
+                    CS(cm[NDT_SUPD]), CS(cm[NDT_SEMIT]), C1(u10[0]), C1(u10[1]), C1(u10[2]), C1(u10[3]), C1(u10[4]), C1(u10[5]), C1(u10[6])); }
             pm_log_prof_line("prof f%u w%u c1g ent %u.%02u mdl %u.%02u ply %u.%02u npc %u.%02u wrk %u.%02u fx %u.%02u task %u.%02u thud %u.%02u ui %u.%02u", pf_total, pf_w,
                 CS(cm[NDT_GENT]), CS(cm[NDT_GMDL]), CS(cm[NDT_GPLY]), CS(cm[NDT_GNPC]), CS(cm[NDT_GWRK]), CS(cm[NDT_GFX]), CS(cm[NDT_GTASK]),
                 CS(cm[NDT_GTHUD]), CS(cm[NDT_GUI])); /* PROF3 */
