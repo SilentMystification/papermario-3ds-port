@@ -164,6 +164,7 @@ __attribute__((cold, noinline)) void nd_rm_build(unsigned i) {
 }
 
 /* The context of the build: a new one resets its chain. */
+void nd_snap_ctx(void); /* PERF1 */
 static void rec_ctx_check(void) {
     int x = (int)(gCurrentDisplayContextIndex & 1);
     if (x == rec_ctx) return;
@@ -172,7 +173,7 @@ static void rec_ctx_check(void) {
     task_head = NULL;
     st_hdr = NULL;
     sh_all();
-    nd_ds_lg_reset();
+    nd_ds_lg_reset(); nd_snap_ctx(); /* PERF1 */
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
 static int st_take; /* HC4b: rec_take of a state op (the shadow stays) */
@@ -681,6 +682,7 @@ static __attribute__((cold, noinline)) void run_bad(uint32_t h, const uint32_t* 
 }
 __attribute__((weak)) void nd_snap_mesh(void) {} /* NDR0E2: strong in nd_snap.c; weak for the host units that link nd_rec.c */
 __attribute__((weak)) void nd_snap_task(void) {} /* NAT2J: host units link nd_rec.c without nd_snap.c */
+__attribute__((weak)) void nd_snap_ctx(void) {} /* PERF1 */
 __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_snap_alt(const NdDs* s, int rect) { (void)s; (void)rect; } /* NWS4A: strong in nd_snap.c; the host units record no snap */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */

@@ -86,11 +86,12 @@ unsigned pm_iw_us[3];
 static unsigned long long iw_tk; /* INTERP1: ticks inside nd_stream_run of the pass being timed */
 
 /* S10-2, DIRECT D0: one replay of the task stream (nd_rec.c). The phase line keeps its format: the walk time goes to pm_pf_nd_add as one legacy span. */
+void nd_snap_hold(void);
 static void stream_walk(const uint32_t* s) {
     uint64_t t0 = pm_ph_on ? svcGetSystemTick() : 0;
     const uint64_t f0 = pm_cnt_on ? svcGetSystemTick() : 0; /* FXSPLIT */
     const uint64_t w0 = svcGetSystemTick(); /* INTERP1 */
-    nd_stream_run(s);
+    nd_stream_run(s); nd_snap_hold(); /* PERF1 */
     iw_tk += svcGetSystemTick() - w0; /* INTERP1 */
     if (pm_ph_on) pm_pf_nd_add(svcGetSystemTick() - t0, 1);
     if (pm_cnt_on) pm_fx_walk_us += (unsigned)((svcGetSystemTick() - f0) / 268u); /* FXSPLIT */
