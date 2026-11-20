@@ -156,7 +156,7 @@ static __attribute__((noinline)) void hd_rare(const NdHitD* d) {
     const unsigned fl = d->fl;
     if (fl & HD_PRIM) { nd_c0.prim = d->prim; nd_c0.prim_lod = d->plod; }
     if (fl & HD_ENV) nd_c0.envc = d->env;
-    if (fl & HD_TEX) nd_c0.tex_on = d->tex;
+    if (fl & HD_TEX) { nd_c0.tex_on = d->tex; nd_tf_w = 4; }
     if (fl & HD_FOGF) { nd_c0.fog_fm = d->fm; nd_c0.fog_fo = d->fo; }
 }
 static void hit_apply(const NdW2* q, const NdMEnt* e) {

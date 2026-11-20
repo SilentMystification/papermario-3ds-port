@@ -54,7 +54,7 @@ static const NdSnapChk* snap_build0(const NdDs* s, int zc) { /* NDR0E2: the snap
     nd_snap_rnd(s, &r);
     r.role = nd_tgt_role(sn_tgt.kind, sn_tgt.siz, 0, s->w.omode_l, s->w.omode_h, zc);
     r.mixk = nd_snap_mix(s->w.omode_l, s->fogc, s->blendc, pm_nofog, &r.mixc); /* NDR0F1: the mix of nd_rnd_sync */
-    r.fill = s->w.fill; r.primz = s->w.prim_z; /* NAT4H */ r.kh = s->w.om_kh; r.kl = s->w.om_kl; /* NC0A */
+    r.fogf = ND_FOGPK(s->fog_fm, s->fog_fo); /* NC0V */ r.fill = s->w.fill; r.primz = s->w.prim_z; /* NAT4H */ r.kh = s->w.om_kh; r.kl = s->w.om_kl; /* NC0A */
     nd_render_state(s->w.omode_h, s->w.omode_l, r.role == ROLE_DEPTH, &r.rs); /* NDR0F1: the render state of nd_rnd_sync */
     nd_snap_bind(&s->w.td[0], &s->w.tst1, 0, &r.b[0]); nd_snap_bind(&s->w.td[1], &s->w.tst1, 1, &r.b[1]); /* NDR0G1 */
     if (sn_cmds == nd_rec_cmds() && si_eq(&r, sn_lp)) return NULL;
@@ -124,7 +124,17 @@ unsigned char nd_snap_rpend; /* NDR0F1: set by draw_tri for its own triangle, cl
 static NdSnapChk sc_cur;
 const NdSnapChk* nd_ap = &sc_cur; /* PERF1: the applied snap, in the stream or the hold copy */
 uint32_t nd_apw(int k) { const NdSnapChk* a = nd_ap; switch (k) { case NDAPW_W0: return a->in.w0; case NDAPW_W1: return a->in.w1; case NDAPW_OH: return a->in.omode_h; case NDAPW_OL: return a->oml; case NDAPW_PRIM: return a->in.prim; case NDAPW_PLOD: return a->plod; case NDAPW_ENV: return a->in.env; case NDAPW_FOGC: return a->fogc; case NDAPW_DUAL: return (uint32_t)a->in.dual_on; case NDAPW_KH: return a->kh; case NDAPW_KL: return a->kl; default: return (uint32_t)a->in.use_t1; } } /* NWS4B: pm_gpu.c does not include nd_snap.h */
-void nd_apw_gvc(NdGvC* c) { c->w0 = nd_ap->in.w0; c->w1 = nd_ap->in.w1; c->env = nd_ap->in.env; c->oml = nd_ap->oml; c->primz = nd_ap->primz; c->use_t1 = nd_ap->in.use_t1; c->dual_on = nd_ap->in.dual_on; } /* NWS4C */
+void nd_apw_gvc(NdGvC* c) { c->fogf = ND_FOGF(); c->tex_on = ND_TEXON(); nd_tf_chk(c->fogf, c->tex_on, 1u); /* NC0V */ c->w0 = nd_ap->in.w0; c->w1 = nd_ap->in.w1; c->env = nd_ap->in.env; c->oml = nd_ap->oml; c->primz = nd_ap->primz; c->use_t1 = nd_ap->in.use_t1; c->dual_on = nd_ap->in.dual_on; } /* NWS4C */
+/* NC0V census: the recorded fog and tex_on against nd_c0 (drec frames, once per site and frame) */
+unsigned pm_frame_count(void); int pm_drec_now(void);
+unsigned char nd_tf_w;
+__attribute__((cold, noinline)) void nd_tf_chk(uint32_t fogf, int ton, unsigned site) {
+    static unsigned fr[8];
+    if (site > 7u || !pm_drec_now()) return;
+    if (fogf == ND_FOGPK(nd_c0.fog_fm, nd_c0.fog_fo) && ton == nd_c0.tex_on) return;
+    const unsigned f = pm_frame_count(); if (fr[site] == f + 1u) return; fr[site] = f + 1u;
+    pm_log_evt("texfog f%u s%u ton %d/%d fog %08x/%08x w%u", f, site, ton, nd_c0.tex_on, (unsigned)fogf, (unsigned)ND_FOGPK(nd_c0.fog_fm, nd_c0.fog_fo), (unsigned)nd_tf_w);
+}
 static NdSnapBind sc_eb[2];
 static unsigned sc_bfr = ~0u; /* NDR0G2: walker tiles not the snap (data), last bindsnap frame */
 unsigned pm_frame_count(void);
@@ -186,7 +196,7 @@ void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch sn
     { /* NWS4D: the GPU memo of the applied words (the walker shadow is gone) */
         const NdCombIn* i = &nd_ap->in;
         ls_gpu(i->w0, i->w1, i->comb_set, i->prim, nd_ap->plod, i->env, i->conv_k4); /* NCONV2D; NAT4D: also for stream snaps */
-        nd_c0.comb_w0 = i->w0; nd_c0.comb_w1 = i->w1; nd_c0.omode_h = i->omode_h; nd_c0.prim = i->prim; nd_c0.envc = i->env; nd_c0.conv_k4 = i->conv_k4; nd_c0.tex_on = i->tex_on;
+        nd_c0.comb_w0 = i->w0; nd_c0.comb_w1 = i->w1; nd_c0.omode_h = i->omode_h; nd_c0.prim = i->prim; nd_c0.envc = i->env; nd_c0.conv_k4 = i->conv_k4; nd_c0.tex_on = i->tex_on; nd_tf_w = 3;
     }
 }
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */

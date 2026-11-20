@@ -112,13 +112,13 @@ void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o, const NdGv
     in.envc = gc->env; in.plan_vtx = cur_plan.vtx; /* NWS4C */
     in.tw = tw; in.th = th;
     in.shs = ND_BSH(st)[0]; in.sht = ND_BSH(st)[1];
-    in.tex_on = nd_c0.tex_on;
+    in.tex_on = gc->tex_on; /* NC0V */
     in.vp[0] = vp_sx; in.vp[1] = vp_sy; in.vp[2] = vp_tx; in.vp[3] = vp_ty;
     in.tile_x0 = nd_c0.tile_x0; in.tile_y0 = nd_c0.tile_y0; in.tile_fx = nd_c0.tile_fx; in.tile_fy = nd_c0.tile_fy;
     in.fogmix = fogmix_on && (geo & G_FOG);
     in.zc_ok = 0; in.za = 1.f; in.zb = 0.f;
     if (in.fogmix) in.zc_ok = pm_gpu_gv_zcoef(&in.za, &in.zb);
-    in.fog_fm = nd_c0.fog_fm; in.fog_fo = nd_c0.fog_fo;
+    in.fog_fm = (int16_t)(gc->fogf >> 16); in.fog_fo = (int16_t)gc->fogf; /* NC0V */
     in.lt = lt; in.lt_n = lt_n; in.lk = (const int8_t (*)[3])lk;
     nd_gv_params(&in, o);
 }
@@ -440,7 +440,7 @@ int nd_part_draw(const NdNDev* t) {
 }
 
 void nd_geo_units(const uint32_t* u, unsigned n) { /* NATFB: flat geometry units with the arms of nr_geo and the GEOM arm of nr_set (nd_walk.c) */
-    NdGs loc, * const s0 = nd_gs, * g = s0; if (!g) { loc = (NdGs){ nd_ap->geom, nd_ap->tss, nd_ap->oml, nd_ap->in.omode_h, nd_ap->b }; g = nd_gs = &loc; } /* NC0B */
+    NdGs loc, * const s0 = nd_gs, * g = s0; if (!g) { loc = (NdGs){ nd_ap->geom, nd_ap->tss, nd_ap->oml, nd_ap->in.omode_h, nd_ap->b, nd_ap->fogf, nd_ap->in.tex_on }; g = nd_gs = &loc; } /* NC0B */
     for (const uint32_t* q = u, *e = u + 2u * n; q < e; q += 2) {
         const unsigned id = q[0] >> 24; const u32 a = q[0] & 0xffffffu, b = q[1];
         if (q[0] == ND_NOP_A) continue;
