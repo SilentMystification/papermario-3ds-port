@@ -287,6 +287,9 @@ static int nd_r11_walk(uint32_t addr, int pre, const uint32_t** nr, uint32_t* cw
         case NDC_JUMP: p = (const uint32_t*)(uintptr_t)p[1]; continue;
         case NDC_NAPI:
             if (p[1] == (uint32_t)(uintptr_t)nd_omh_run) { if ((p[2] >> 31) || i >= 16u || !nd_r11_op(ND_FS_W0(ND_FS_OMH, p[2] & 0xffffu), p[3], pre, &pend, has_cb, cw, mo, nmo)) return 0; i++; break; } /* NAT4J: an unmarked OMH record is the OMH unit; a marked one is refused as its mark was */
+            if (p[1] == (uint32_t)(uintptr_t)nd_oml_run || p[1] == (uint32_t)(uintptr_t)nd_prim_run || p[1] == (uint32_t)(uintptr_t)nd_cbd_run) { /* NAT6C: a unit record of a custom gfx range */
+                const uint32_t w0 = p[1] == (uint32_t)(uintptr_t)nd_oml_run ? ND_FS_W0(ND_FS_OML, p[2]) : p[1] == (uint32_t)(uintptr_t)nd_prim_run ? ND_FS_W0(ND_FS_PRIM, p[2]) : p[2];
+                if (i >= 16u || !nd_r11_op(w0, p[3], pre, &pend, has_cb, cw, mo, nmo)) { return 0; } i++; break; }
             if (p[1] != (uint32_t)(uintptr_t)nd_nr_run && p[1] != (uint32_t)(uintptr_t)nd_ctl_rec && p[1] != (uint32_t)(uintptr_t)nd_geo_rec) return 0; /* NAT5G */ /* NSTREAM2: only a run of native records */
             for (unsigned k = 0; k < n; k++, i++) {
                 if (i >= 16u) return 0;

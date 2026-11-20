@@ -192,6 +192,7 @@ __attribute__((weak)) int pm_wide; __attribute__((weak)) int is_host(unsigned p)
 __attribute__((weak)) void nd_omh_run(const uint32_t* q) { (void)q; } /* NAT4J: nd_r11_walk (nd_model.c) names the OMH record runner */
 __attribute__((weak)) void nd_nr_run(const uint32_t* q) { (void)q; } /* NSTREAM2: nd_r11_walk (nd_model.c) names the native record runner; weak: nd_geo_test.c and the other unit doubles define their own */
 __attribute__((weak)) void nd_geo_rec(const uint32_t* q) { (void)q; } __attribute__((weak)) void nd_ctl_rec(const uint32_t* q) { (void)q; } /* NAT5G: nd_r11_walk (nd_model.c) names the geometry and control runners */
+__attribute__((weak)) void nd_oml_run(const uint32_t* q) { (void)q; } __attribute__((weak)) void nd_prim_run(const uint32_t* q) { (void)q; } __attribute__((weak)) void nd_cbd_run(const uint32_t* q) { (void)q; } /* NAT6C: nd_r11_walk names them */
 " > /tmp/ndcombs.c
   t0=$(date +%s); stage() { now=$(date +%s); echo "STAGE $1 $((now - t0)) s" >&2; t0=$now; }
   # the inline block runs as an async subshell (set -e holds there; in an && list it would not), its status from wait
