@@ -8,7 +8,7 @@
 #include "nd_ops.h"
 #include "nd_tgt.h"
 
-ND_HOTD NdC0 nd_c0 = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .prim = 0xffffffffu, .envc = 0xffffffffu, .fill = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF, .sci_x1 = 320, .sci_y1 = 240 };
+ND_HOTD NdC0 nd_c0 = { .geom = 0, .omode_h = 0, .omode_l = 0x00000030u, .prim = 0xffffffffu, .envc = 0xffffffffu, .tex_ss = 0xFFFF, .tex_ts = 0xFFFF, .sci_x1 = 320, .sci_y1 = 240 };
 ND_HOTD NdTgt nd_tgt = { .img = 0, .stride = 320, .siz = 2, .kind = NDK_NULL }; /* NTGT: the target record; the initial target is the main image (no address, not the zero word) */
 
 #define MW_SEGMENT 0x06

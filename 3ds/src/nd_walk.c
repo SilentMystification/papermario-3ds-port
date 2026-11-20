@@ -206,7 +206,6 @@ static __attribute__((cold, noinline)) void orb_enter(unsigned t) {
 /* DIRECT D5, D10c: a gSPDisplayList (push form, or a branch inside a list: nd_walk_state ends that list after it). As the walker's G_DL arm: a
  * static list goes to the entity path (ent_gdl) or a compiled map shape (nd_sg_try); else the list runs on the op executor with the sync state
  * kept: from a stream command as a list of its own (nd_nr_list), inside a list nested. */
-unsigned nd_stat_calls; static __attribute__((cold, noinline)) void stat_call(const void* l) { static unsigned n; nd_stat_calls++; if (n++ < 4u) pm_log_e("ndc: static call %p f%u", l, pm_frame_count()); } /* NAT6E3: a call with no copy is not run (PSOFB) */
 static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t* ab) { /* NAT5N: ab NULL: the static table */
     NdW2* next = (NdW2*)ptr_of(w1);
     if (!next) return;
@@ -231,7 +230,6 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
         if (!ex_depth) { PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; pm_walk_side++; ex_depth = 1; alt_mode = 1u; nd_alt_run(ab); ex_depth = 0; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* nd_nr_list keep 1 */
         else if (ex_depth < ND_LIST_DEPTH) { ex_depth++; if (nt && nd_ls_on) nd_lsr_geo(); alt_mode = (nt && nd_ls_on) ? 2u : 1u; nd_alt_run(ab); ex_depth--; }
         alt_mode = m; }
-    else stat_call(next); /* NAT6E3 */
     if (__builtin_expect(dbg & WD_ORB, 0) && orb_tag != ot) { pm_gpu_flush(); orb_tag = ot; } /* FX1-3 */
 }
 /* DIRECT D4b-3, D5: native record run (nd_rec.c): a run of ops recorded by the nd_gbi.h redirect. Each op runs as the walker runs it inside a
@@ -257,11 +255,11 @@ void nd_rtex_run(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (r
     r_end(dbg); }
 void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
     nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; ((NdNapiRun)(uintptr_t)r[1])(r + 2); } /* NSET1: r[1] the applier, r[2], r[3] its values (core 1) */
-void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ap->oml & m)) nd_c0.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */ /* NWS4B */
+void nd_oml_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */ /* NWS4B */
 void nd_prim_run(const uint32_t* r) { if (nd_ap->in.prim == r[1] && (uint8_t)nd_ap->plod == (uint8_t)r[0]) { pm_gpu_set_prim(nd_ap->in.prim, r[0]); nd_c0.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */ /* NWS4B */
 void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep_mw = r[1]; nd_epk_mk++; gv_epoch++; } /* NAT6C: nr_ctl MISC_EP */
 void nd_cbd_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6C: nr_set of a pure combine unit at ep_stream, ex_depth 0 */
-static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ap->in.omode_h & a)) nd_c0.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ap->oml & a)) nd_c0.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ap->in.prim == b && (uint8_t)nd_ap->plod == (uint8_t)a) { pm_gpu_set_prim(nd_ap->in.prim, a); nd_c0.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */ /* NWS4B */
+static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_PRIM && nd_ap->in.prim == b && (uint8_t)nd_ap->plod == (uint8_t)a) { pm_gpu_set_prim(nd_ap->in.prim, a); nd_c0.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */ /* NWS4B */
 static void cp_unit(unsigned dbg, const uint32_t* u, unsigned m, int mk) { const unsigned id = u[0] & 0xffu; const NdNapiRun f = (NdNapiRun)(uintptr_t)u[1]; int cut = 1; /* NSET2: u the slot, u + 2 the values */ /* NAT6D2: one copy state unit, nr_set and ls_run under NAT6D1 */
     if (m == 2u) { if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) return;
         if (id == ND_FS_OMH || id == ND_FS_TEXTURE) { f(u + 2); return; } if (id == ND_FS_GEOM) cut = 0; else cp_vside(u); } /* NSET2 */

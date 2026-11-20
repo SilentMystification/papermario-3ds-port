@@ -54,8 +54,8 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
     if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_c0.geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
     {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
         const unsigned old_tf = nd_ap->in.omode_h & (3u << 12); /* NWS4B */
-        nd_c0.omode_h = mh; nd_c0.om_kh |= p->omh_m;
-        nd_c0.omode_l = ml; nd_c0.om_kl |= ~7u;
+        nd_c0.omode_h = mh;
+        nd_c0.omode_l = ml;
         if ((nd_c0.omode_h & (3u << 12)) != old_tf) { /* V15: G_MDSFT_TEXTFILT */
             pm_gpu_flush();
             pm_tex_set_filter((nd_c0.omode_h & (3u << 12)) != 0);
