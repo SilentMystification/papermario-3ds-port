@@ -374,6 +374,13 @@ void nd_nr_exec(const uint32_t* q, unsigned n) { /* DEL1D2: was nd_walk_state */
     if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); /* the class span ends with the command */
 }
 void nd_nr_run(const uint32_t* rec) { const unsigned n = (rec[-2] >> 16) & 0xffu; if (alt_mode == 2u) ls_run(rec, n); else { ep_stream = alt_mode == 0u; nd_nr_exec(rec, n); ep_stream = 0; } } /* NAT4A; NAT5F; NAT5N */
+void nd_geo_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; /* NAT5G: nr_geo per unit, as nd_nr_exec and ls_run */
+    for (unsigned k = 0; k < n; k++) nr_geo(dbg, rec + 2u * k, rec + 2u * k);
+    if (__builtin_expect(dbg & WD_PH, 0) && m != 2u) pm_gpu_ndt_cls(-1); }
+void nd_ctl_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; const uint32_t* const e = rec + 2u * n; /* NAT5G: nr_ctl per unit */
+    if (m != 2u) ep_stream = m == 0u; /* as nd_nr_run */
+    for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_NOP_A) continue; const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) break; q += 2u * r; }
+    if (m != 2u) { ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); } }
 void pm_tex_set_filter(int linear); /* pm_tex.c */ static void ls_omh(const uint32_t* q) { const uint32_t m = nd_op_om_mask(q[0] & 0xffffffu), tf = nd_ws.omode_h & (3u << 12); /* NCONV2D: set_om H (nd_set.c:84-91) without the sync */
     nd_ws.omode_h = (nd_ws.omode_h & ~m) | (q[1] & m); nd_ws.om_kh |= m; if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
 static void ls_run(const uint32_t* q, unsigned n) { /* NCONV2D: the unit copy of a list with a snap table: nd_walk_state without the combine units */

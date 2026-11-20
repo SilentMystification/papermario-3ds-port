@@ -1,35 +1,40 @@
-# ws_NAT5G (Sonnet: 2 files, both cores, record layout of every unit copy): the geometry units (VTX, TRI1, TRI2, MTX, POPMTX, MOVEMEM) and the control units (RECT with its 2 RDPHALF units, MISC, CALL, ND_FS_TXR) of every unit copy go into their own records: nd_geo_rec and nd_ctl_rec. NRUN records (nd_nr_run) keep only the state units. Exact by construction: each runner calls the same nr_geo and nr_ctl per unit. Counter: c0gate calls about +2 (GUESS: the 2 runner calls of nr_geo and nr_ctl), interp as base. It prepares NAT6 (the state units). Gate: drec byte-equal.
-DRAFT. WAIT: `Merge NAT5T`. Refresh the line facts after the NAT5T merge. Designer: oracle NATIVE3 (a86ed4bedc3a8575e). Worktree build3ds/wt/NAT5G, branch NAT5G. PM_ROW=NAT5G PM_LANE=NAT5G. Owns: 3ds/src/nd_rec.c (st_put, nd_alt_put, nd_rec_nr), 3ds/src/nd_walk.c (two new runners next to nd_nr_run), 3ds/include/nd_api.h (2 prototypes). NAT7x rows (oracle NATIVE6) do not edit these functions.
-## Facts (main 73db70e24e plus NAT5T; cite by name)
-- FACT st_put (nd_rec.c) extends the open NRUN record (st_hdr, st_end) or opens a new one (NDC_NAPI, flag 0, run nd_nr_run). stream_run keeps the snap arm for nd_nr_run records and for flag 1 records. nd_alt_put and nd_rec_nr write every unit of a copy through st_put (NAT5F, NAT5N, NAT5B, NAT5A, NAT5T).
-- FACT nr_geo (nd_walk.c) is the same rule in every executor (nd_nr_exec, ls_run, the stream): gv_epoch only for MOVEMEM, pm_gbi_cur_op, the handler. nr_ctl (dbg, u, at, e) returns the units it took (2 for a texture rectangle, which reads at[3], at[5]) or ~0u for a branch. nd_nr_exec and ls_run skip ND_NOP_A.
-## Edits (new lines end with `/* NAT5G */`)
-1. nd_rec.c: st_put becomes `static void run_put(NdNapiRun run, unsigned flag, uint32_t w0, uint32_t w1)`, the same body with `h[1] == (uint32_t)(uintptr_t)run` added to the extend test, and the header `NDC_HDR(NDC_NAPI, 1, flag)` with p[1] = run. `#define st_put(w0, w1) run_put(nd_nr_run, 0u, (w0), (w1))` keeps every old call. ndc_n[NDC_NRUN] counts all three runs.
-2. nd_rec.c: the router for the units of a copy, called by nd_alt_put (after the NAT5T swap) and by nd_rec_nr in place of its final st_put:
+# ws_NAT5G (Sonnet: 11 files, both cores, record layout of every unit copy and of the stream): geometry and control records
+Objective: the geometry units (VTX, TRI1, TRI2, MTX, POPMTX, MOVEMEM) and the control units (CALL, RECT, MISC incl. ND_NOP_A, TXR) of the stream and of every copy go into records with the runners nd_geo_rec and nd_ctl_rec. NRUN records (nd_nr_run) keep the state units and the MISC_EP mark. Each runner calls nr_geo or nr_ctl per unit, as nd_nr_exec and ls_run do: exact by construction. It prepares NAT6. Counter C13 (c0gate calls): base 82 (FACT orchestrator, clean archive of 8288b39b57), expected 84 (FACT c0gate.py: 2 new call sites). interp 32 and state 23 stay.
+READY. Start commit: main. Worktree build3ds/wt/NAT5G, branch NAT5G. PM_ROW=NAT5G PM_LANE=NAT5G. Designer: oracle NATIVE9 (id in the launch prompt). Owns: 3ds/src/nd_rec.c, nd_walk.c, nd_model.c, 3ds/include/nd_api.h, 3ds/tools/nd_host_test.sh, 3ds/tools/nd_at_test.c, nd_geo_test.c, nd_st_test.c, nd_tx_test.c, nd_val_test.c, nd_alt_et_test.c. Never in parallel with ws_NAT8A (nd_alt_put) or ws_WALKSRC (nd_walk.c). If NAT8A is in the start commit: keep its timer lines in nd_alt_put, change only the lines of edit 3.
+## Facts (main 8288b39b57; after a NAT8A merge the nd_rec.c lines move: find each place by its quoted text)
+- FACT st_put (nd_rec.c:370-392) extends the open run with no runner test (:373). rec_take (:179) closes the open run at any other record. stunit.sh:12 seeds the text `p[0] = NDC_HDR(NDC_NAPI, 1, 0);` (:386); nat5a.sh:7 seeds ` || c == 1u;` (:498).
+- FACT copy writers: nd_alt_put (:481-484; callers nd_alt_eput :496-502, nd_ds.c:421, dm_u nd_ds.c:457, nd_rec_alt_raw :475, nd_alt_call :491), nd_rec_nr (:443 EP mark, :448 TXR, :449 last put), rec_op_t (:398, MISC_LST from :547). FACT nd_nr_exec (nd_walk.c:358-375) and ls_run (:379-387) run a geometry unit with nr_geo, a control unit with nr_ctl, skip ND_NOP_A, end the record at a branch. nd_nr_run (:376) sets ep_stream only when alt_mode is not 2. A CALL unit is the last unit of its record (nd_alt_call opens a jump at once, nd_rec.c:491, :485). A texture rectangle has 2 ND_NOP_A half units (nd_tx.h:67-69); nr_ctl draws it only when at + 4 < e (nd_walk.c:330). Readers of the runner word: stream_run (nd_rec.c:678: header flag 1 keeps the snap arm), nd_r11_walk (nd_model.c:290), the host doubles (logger nd_nr_run in 5 tests, nd_alt_et_test.c:58, :80), weak stubs in /tmp/ndcombs.c (nd_host_test.sh:192-193) for the nd_model.c links at :257, :261. ndc_n[NDC_NRUN] is not in nd_rec_cmds (:646): the snap memo does not change.
+## Edits (each new line ends with `/* NAT5G */`)
+1. nd_rec.c:373. Before: `if (h && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) {` After: `if (h && h[1] == (uint32_t)(uintptr_t)nd_nr_run && wp == st_end && ((h[0] >> 16) & 0xffu) < 255u && wp + 2u <= wend) { /* NAT5G */`. Do not change :386.
+2. nd_rec.c, after :392 (need: the units that must share the record; the header text must not be `NDC_HDR(NDC_NAPI, 1, 1)`, stunit.sh:17 seeds it):
 ```c
-static unsigned char cp_half; /* NAT5G: the RDPHALF units still owed to a texture rectangle */
-static void cp_put(uint32_t w0, uint32_t w1) { /* NAT5G: a unit of a copy into the record of its family */
-    const unsigned id = w0 >> 24;
-    if (w0 == ND_NOP_A) { if (cp_half) { cp_half--; run_put(nd_ctl_rec, 1u, w0, w1); } return; } /* a sync is not run; an RDPHALF follows its rectangle */
-    if (nd_op_geo(id)) { run_put(nd_geo_rec, 1u, w0, w1); return; }
-    if (nd_op_ctl(id)) { if (id == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) { if (st_hdr && (((st_hdr[0] >> 16) & 0xffu) > 252u || wp + 6u > wend)) st_hdr = NULL; cp_half = 2u; } run_put(nd_ctl_rec, 1u, w0, w1); return; }
-    st_put(w0, w1); }
+static void xr_put(NdNapiRun run, uint32_t w0, uint32_t w1, unsigned need) { /* NAT5G: into the open record of run, else a new one (flag 1 keeps the snap arm) */
+    uint32_t* h = st_hdr; st_take = 1; if (h && h[1] == (uint32_t)(uintptr_t)run && wp == st_end && ((h[0] >> 16) & 0xffu) + need <= 255u && wp + 2u * need <= wend) {
+        h[0] += 1u << 16; uint32_t* p = rec_take(2); st_take = 0; p[0] = w0; p[1] = w1; st_hdr = h; st_end = wp; return; }
+    uint32_t* p = rec_take(2u + 2u * need); wp = p + 4; st_take = 0; ndc_n[NDC_NRUN]++; /* room for need units in this chunk */
+    p[0] = NDC_HDR(NDC_NAPI, 1u, 1u); p[1] = (uint32_t)(uintptr_t)run; p[2] = w0; p[3] = w1; st_hdr = p; st_end = wp; }
+static void cp_put(uint32_t w0, uint32_t w1) { const unsigned id = w0 >> 24; /* NAT5G: a unit into the record of its family */
+    if (nd_op_geo(id)) xr_put(nd_geo_rec, w0, w1, 1u);
+    else if (nd_op_ctl(id)) xr_put(nd_ctl_rec, w0, w1, (id == ND_FS_RECT && (w1 & ND_FS_RECT_TEX)) ? 3u : 1u); /* a texture rectangle and its 2 half units */
+    else st_put(w0, w1); }
 ```
-   The NAT5F texture rectangle rule in nd_alt_put goes (cp_put holds it). A copy is never cut between a rectangle and its RDPHALF units: they are the next 2 units of the same list.
-3. nd_walk.c, after nd_nr_run:
+3. nd_rec.c: `st_put(` becomes `cp_put(` at :398, :448, :449. :443 keeps st_put (nd_st_test.c:156 reads the EP mark in an NRUN record). nd_alt_put. Before (:483-484): `if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && st_hdr && ...) st_hdr = NULL;` and `st_put(w0, w1); }`. After: delete :483, then `cp_put(w0, w1); } /* NAT5G: xr_put need 3 holds the NAT5F rectangle rule */`. Fix the comment at :480 to name nd_ctl_rec.
+4. nd_rec.c after :411: `__attribute__((weak)) void nd_geo_rec(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_ctl_rec(const uint32_t* r) { (void)r; } /* NAT5G: strong in nd_walk.c */`. nd_api.h after :17: `void nd_geo_rec(const uint32_t* rec); void nd_ctl_rec(const uint32_t* rec); /* NAT5G, nd_walk.c, core 0: the geometry and control records */`.
+5. nd_walk.c after :376:
 ```c
-void nd_geo_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu; /* NAT5G: geometry units, nr_geo each */
+void nd_geo_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; /* NAT5G: nr_geo per unit, as nd_nr_exec and ls_run */
     for (unsigned k = 0; k < n; k++) nr_geo(dbg, rec + 2u * k, rec + 2u * k);
-    if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); }
-void nd_ctl_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu; const uint32_t* const e = rec + 2u * n; /* NAT5G: control units, nr_ctl each */
-    ep_stream = alt_mode == 0u; /* as nd_nr_run: nr_ctl reads it for ND_FS_TXR */
+    if (__builtin_expect(dbg & WD_PH, 0) && m != 2u) pm_gpu_ndt_cls(-1); }
+void nd_ctl_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (rec[-2] >> 16) & 0xffu, m = alt_mode; const uint32_t* const e = rec + 2u * n; /* NAT5G: nr_ctl per unit */
+    if (m != 2u) ep_stream = m == 0u; /* as nd_nr_run */
     for (const uint32_t* q = rec; q < e; q += 2) { if (q[0] == ND_NOP_A) continue; const unsigned r = nr_ctl(dbg, q, q, e); if (r == ~0u) break; q += 2u * r; }
-    ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); }
+    if (m != 2u) { ep_stream = 0; if (__builtin_expect(dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); } }
 ```
-   nd_api.h: `void nd_geo_rec(const uint32_t* rec); void nd_ctl_rec(const uint32_t* rec); /* NAT5G, nd_walk.c, core 0 */`. Add weak stubs of both next to the other weak stubs of nd_rec.c (host units link nd_rec.c without nd_walk.c).
-4. A branch CALL ends its list: core 1 puts no unit after it (ds_pairs returns), so the break in nd_ctl_rec ends the same units as `q = e - 2` in nd_nr_exec.
-## Steps (output to build3ds/out/, read the last 20 lines, Bash `timeout: 600000`, 1 build, 8 Azahar starts of 8)
-1. Refresh the facts on main after the NAT5T merge (names above; one line each in the commit message). Edits 1-3. `sh 3ds/tools/nd_host_test.sh > build3ds/out/nat5g_host.txt 2>&1`: PASS (stunit `run` checks read the NRUN header: fix their expected header if a test record holds a geometry unit). Commit `NAT5G 1: geometry and control records`.
-2. For B in spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec: `python 3ds/tools/bench.py base <B>`. 3. `sh 3ds/tools/rowloop.sh --row NAT5G --bench spot_mac01_drec,entcape_kmr03_drec,fxparts_drec,wscmb_pause_drec --no-host --why "NAT5G: geometry and control records" > build3ds/out/nat5g_loop.txt 2>&1`. 4. `grep -H "drec frame\|drec draw .* DIFF" build3ds/azt/logs/*_drec.txt > build3ds/out/nat5g_c0src.txt`. 5. c0gate on build3ds/lane-NAT5G/pm_3ds.elf (base: the start-commit ELF of the bench base lane).
-## Gate (exact): host PASS, 4 drec equal, interp and state as base, report calls. Fix rights: compile errors, prototypes, host stubs and stunit expectations. A DIFF, a crash or a tool fault: stop, send nat5g_c0src.txt and the first DIFF line to oracle NATIVE3 (a86ed4bedc3a8575e), wait.
-## Hand-back: last commit `NAT5G 2: gate. <lines>` with `git add -f build3ds/out/nat5g_c0src.txt build3ds/out/nat5g_loop.txt`. It deletes this page. One SubagentHandback: hash, gate line per bench, c0gate line.
+6. nd_model.c:290. Before: `if (p[1] != (uint32_t)(uintptr_t)nd_nr_run) return 0;` After: `if (p[1] != (uint32_t)(uintptr_t)nd_nr_run && p[1] != (uint32_t)(uintptr_t)nd_ctl_rec && p[1] != (uint32_t)(uintptr_t)nd_geo_rec) return 0; /* NAT5G */`.
+7. nd_host_test.sh after :193 (inside the printf text): the 2 weak stubs of edit 4. nd_at_test.c:49, nd_geo_test.c:53, nd_st_test.c:50, nd_tx_test.c:51, nd_val_test.c:50 (the `}` after the logger nd_nr_run), add: `void nd_geo_rec(const uint32_t* q) { nd_nr_run(q); } void nd_ctl_rec(const uint32_t* q) { nd_nr_run(q); } /* NAT5G: the records log as a run */`.
+8. nd_alt_et_test.c: :58 accepts the 3 runners (nd_nr_run, nd_geo_rec, nd_ctl_rec). :80 compares h[1] with `fam(l[2u * i])`, a new helper `static NdNapiRun fam(uint32_t w0) { const unsigned id = w0 >> 24; return nd_op_geo(id) ? nd_geo_rec : nd_op_ctl(id) ? nd_ctl_rec : nd_nr_run; }`. Add `void nd_alt_put(uint32_t w0, uint32_t w1);` and case 4 before :98: nd_alt_open; nd_alt_put of VTX, RECT with ND_FS_RECT_TEX, ND_NOP_A 1, ND_NOP_A 2, OMH; nd_alt_close; walk gives n 5, ns 3; hs[0][1] nd_geo_rec, hs[1][1] nd_ctl_rec with units 3 and flag 1, hs[2][1] nd_nr_run. :99 prints `nat5a cases 4 bad %u`.
+## Steps (output to build3ds/out/, read the last 20 lines, Bash `timeout: 600000`, foreground only, 1 build, 8 Azahar starts)
+1. Edits 1-8. `sh 3ds/tools/nd_host_test.sh > build3ds/out/nat5g_host.txt 2>&1`: PASS and `nat5a cases 4 bad 0`. Commit `NAT5G 1: geometry and control records`.
+2. `python 3ds/tools/bench.py base spot_mac01_drec > build3ds/out/nat5g_base1.txt 2>&1`, then the same for fxparts_drec (nat5g_base2.txt). spot_mac01: stream, models (R11), entity cut tables. fxparts: particles, HUD raw copies with texture rectangles. 3. `sh 3ds/tools/rowloop.sh --row NAT5G --bench spot_mac01_drec,fxparts_drec --no-host --why "NAT5G: geometry and control records" > build3ds/out/nat5g_loop.txt 2>&1`. 4. `python 3ds/tools/c0gate.py build3ds/lane-NAT5G/pm_3ds.elf > build3ds/out/nat5g_c0.txt 2>&1`.
+## Gate (exact): host PASS; LOOP PASS (2 benches byte-equal); last line of nat5g_c0.txt `c0gate calls 84 interp 32 state 23`. Fix rights: compile errors, prototypes, host stubs, host test expectations of the record layout. A DIFF, a crash, other c0gate values or a tool fault: stop. Send the cmp file path and its first DIFF line to oracle NATIVE9 with SendMessage. Wait.
+## Hand-back: last commit `NAT5G 2: gate. <lines>` with `git add -f build3ds/out/nat5g_loop.txt build3ds/out/nat5g_c0.txt`. It deletes this page. One SubagentHandback: hashes, cmp line per bench, c0gate line.
