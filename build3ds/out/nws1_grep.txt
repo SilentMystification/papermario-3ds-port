@@ -1,0 +1,25 @@
+3ds/src/nd_cen.c:15:unsigned gp_same[8], gp_set[8]; /* PG0: state op calls and calls that set the value it already had: 0 combine, 1 prim, 2 env, 3 tile 0, 4 tile size, 5 nd_comb_sync calls, 6 nd_rnd_sync calls */
+3ds/src/nd_comb.c:2: * nd_comb_sync work call pm_gpu_*. The decision itself is nd_decide.c (NPSO2). */
+3ds/src/nd_comb.c:73:/* ST-3: leg_mode is the mode pm_gpu got last; sl_* the gpu calls of the last nd_comb_sync work (the legacy mode and the audit are in nd_decide.c, NPSO2). */
+3ds/src/nd_comb.c:74:int leg_mode;               /* S25: the combine mode nd_comb_sync() last gave pm_gpu */
+3ds/src/nd_comb.c:422:/* S3N-3d: debug switch combchk. Each combine work of nd_comb_sync runs nd_comb_dec on its inputs and compares the outputs with the walker state. */
+3ds/src/nd_direct.c:33:extern int ls_use, ls_why, ls_cyc, ls_dual, ls_frame; /* nd_comb.c: the decision the last nd_comb_sync made (diagnostics, the memo) */ extern int sl_const, sl_env; extern unsigned sl_cc; /* NREC2B */
+3ds/src/nd_direct.c:71:    {   /* what nd_comb_sync does with the decision (scm_replay) */
+3ds/src/nd_direct.c:91:    nd_sr_forget(); /* nd_comb_sync of the stream path clears it when the inputs change: the render state is made again */
+3ds/src/nd_ds.c:2: * handler named in its comment, in the same order. Left out: every pm_gpu_* call, flush, nd_comb_sync, GP_SET, lit_freeze, log, and the
+3ds/src/nd_ds.c:388:        else if (s->w.omode_h != h0) s->sc_dirty = 1;                                          /* omode_h is a sc_sig input */
+3ds/src/nd_ds.c:491:    s->sc_lost = 1; /* NST2J: the model runner leaves sc_ok 0 before the post range NREC1A: the caller applies the post range */
+3ds/src/nd_ds.c:554:unsigned nd_sv_sync(uint32_t w0) { const unsigned id = w0 >> 24, sft = w0 & 0xffu, len = (w0 >> 8) & 0xffu; /* 1: the old setter ends with nd_comb_sync (set_om cycle type, PRIM, ENV, TEXTURE, RARE, COMB) */ /* NSET1 */
+3ds/src/nd_rec.c:71: * light colour) drop while the field is valid; ops whose skip also reads sc_ok and the combine input hash (othermode H, prim, env, texture,
+3ds/src/nd_rec.c:72: * combine) drop only while no word op came between (a draw, tile, load or matrix word may change those inputs: sh_sc) and sc_ok is known 1
+3ds/src/nd_rec.c:370:    nd_rec_napi(nd_pbeg_run, z, 1u); nd_ds.sc_lost = 1; nd_snap_vprim(1u); /* NAT5E: the run start (a command, as the old record): vprim 1, sc_ok 0 */
+3ds/src/nd_rec.c:374:    nd_rec_nat(nd_pend_run, 0u, 0u); nd_snap_vprim(0u); nd_ds.sc_lost = 0; nd_ds.sc_dirty = 0; /* NAT5E: the run end (nd_comb_sync on core 0) */
+3ds/src/nd_rec.c:377:void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); nd_ds.sc_lost = 1; } /* NST2J: a direct draw ends with sc_ok 0 */
+3ds/src/nd_recs.c:62: * depended on hit or miss. The copy writes values only (no GPU call): the hit's native draws set their own GPU state, and sc_ok 0 and nd_sr_forget
+3ds/src/nd_rect.c:123:    nd_sr_forget(); /* DIP2; NCS3: sc_ok stays, the end note compares */
+3ds/src/nd_scomp.c:30:/* S6SYNC: 1 when the op path runs nd_comb_sync on this static unit (set_om over the cycle bits, nd_unit_apply TEXTURE and COMB). */
+3ds/src/nd_scomp.c:155: * skips a no-op), the cut and the render resync, the post value units. The static units take the walker decision (nd_comb_sync), as a list def (NREC5). */
+3ds/include/nd_ds.h:28:    uint8_t sc_lost, sc_dirty;     /* NST2J: core 1 view of !sc_ok and sc_sig != sc_sig_now() (nd_comb.c:342); not in ds_fields */
+3ds/include/nd_scomp.h:22:    /* S6SYNC: the sync units (the op path runs nd_comb_sync there: OMH over the cycle bits, TEXTURE, COMB); at most 4, else the def is refused */
+3ds/include/nd_scsig.h:3:/* HWFIX: the flag word of sc_sig_now (nd_comb.c): each flag has its own bit, vprim from bit 9 */
+3ds/include/nd_sv.h:9:unsigned nd_sv_sync(uint32_t w0); /* NSET1: 1 when the old setter ends with nd_comb_sync */

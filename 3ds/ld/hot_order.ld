@@ -2,7 +2,6 @@
  * Hot .text group, by class (hotset.json), then calls per frame. Order matters: first in .text. Regenerate when the census changes; hotset.py M2 reads this file. */
 		/* class A: stream and op loop */
 		*(.text.pm_gpu_flush_at)  /* 73.3 calls/frame, 416 B */
-		*(.text.nd_comb_sync)  /* 55.7 calls/frame, 312 B */
 		*(.text.nr_geo)  /* 40.7 calls/frame, 380 B */
 		*(.text.nd_comb_set)  /* 37.0 calls/frame, 1172 B */
 		*(.text.nd_tsz_set)  /* 30.0 calls/frame, 2360 B */
@@ -177,7 +176,6 @@
 		*(.text.flush_impl_body)  /* 192.7 calls/frame, 220 B */
 		*(.text.pm_wq_on_logic)  /* 157.3 calls/frame, 52 B */
 		*(.text.nd_mtx_mul)  /* 140.3 calls/frame, 100 B */
-		*(.text.sc_sig_now)  /* 118.0 calls/frame, 304 B */
 		*(.text.pm_gpu_note_mvp)  /* 95.3 calls/frame, 156 B */
 		*(.text.upload_mvp)  /* 95.3 calls/frame, 76 B */
 		*(.text.mc_eq)  /* 88.7 calls/frame, 52 B */

@@ -27,7 +27,7 @@ float shift_mul(unsigned n);
 void nd_tile_bind(int n);
 void gp3_t0_surv(void);
 void nd_bfold_note(void); /* NCS2, nd_comb.c: the drec marker of the deleted core 0 box fold */
-void nd_csync_note(void); void nd_rndw_note(void); /* NCS3, nd_comb.c: drec markers */
+void nd_rndw_note(void); /* NCS3, nd_comb.c: drec marker */
 unsigned rgba_from_5551(unsigned c);
 int fold_axis(int plo, float width, float a0, float a1, float mw, int flip, int negclamp, FoldSeg* out);
 void dual_bind(void);
@@ -67,7 +67,6 @@ int pm_gpu_spr_native(const uint32_t* rec);
 unsigned gv_matrix_id(int need_nm);
 unsigned rec_run(const NdW2* q);
 int pm_gbi_bind_tile1(void); /* MDL-1b: the walker's tile 1 step, the former pm_gbi.c */
-unsigned sc_sig_now(void);
 void draw_tri(unsigned w);
 void nd_modvtx(unsigned where, unsigned vi); /* HC4d2: ND_FS_MISC_MODVTX fields */
 void nd_mv_mem(u32 w0, u32 w1);
@@ -79,7 +78,6 @@ void nd_xf_load(u32 w0, u32 w1, u32 hdr);
 void note(unsigned op);
 void pm_gbi_ent_segchk(const uint32_t* dl);
 void pm_gbi_ent_texchk(const uint32_t* dl);
-void nd_comb_sync(void);
 void tex_streak_flush(void);
 void tex_streak_op(unsigned op);
 void* ptr_of(u32 w);
@@ -110,8 +108,6 @@ extern u8 vert_live[64];
 extern u8 vert_scr[64];
 extern unsigned blendc;
 extern unsigned char vert_cb[64];
-extern unsigned cmb_gen_seen;
-extern unsigned comb_gen;
 extern unsigned conv_k4;
 extern unsigned ent_skipgen;
 extern unsigned fogc;
@@ -132,7 +128,6 @@ extern unsigned keyc;
 extern unsigned keys;
 extern unsigned n_ops;
 extern unsigned pm_gbi_cur_op;
-extern unsigned sc_sig;
 extern unsigned short vert_gmi[64];
 extern unsigned short vert_ring[64];
 extern unsigned st_vx;
@@ -155,7 +150,7 @@ extern unsigned fogc, blendc;                /* ST-1: nd_state.c */
 extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
 int ent_gdl(const NdW2* l, const uint32_t* et);
 extern u8 gMapShapeData[];
-extern int sc_ok, gp_prev_op, box_folded;
+extern int gp_prev_op, box_folded; /* NWS1 */
 extern unsigned char nd_c0w; /* NAT1: bit 0 combine, bit 1 render, bit 2 bind set by the walker (pm_gpu.c) */
 void nd_c0_src(void); /* NAT1B: pm_gpu.c, the producer of a walker decision */
 extern unsigned nd_ent_in, nd_ent_cfull, nd_ent_rfull, nd_ent_gbi; /* PERF2: inside nd_eg_run; full combine and render syncs and walks run there (entsync line) */

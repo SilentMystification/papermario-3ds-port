@@ -132,7 +132,6 @@ void nd_direct_rect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
 void nd_direct_end(void) {
     ens_clear();
     nd_ws.cur_tile = -1;
-    sc_ok = 0;
     nd_dq_on = 0;
     nd_sr_forget();
     gv_epoch++; /* the ops of the stream path each raise it: the first triangle after this draw takes its state again */
