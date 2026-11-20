@@ -1,6 +1,6 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
 
-State: main 1472130686 plus the PERF commit, 2026-11-20. Oracle NATIVE15.
+State: main c23333bb73 plus the pages of oracle NATIVE15, 2026-11-20.
 ## Goal
 - User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
 - The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, measurement plan). Old plans: plan_native.md, design_native_draw.md.
@@ -12,9 +12,9 @@ State: main 1472130686 plus the PERF commit, 2026-11-20. Oracle NATIVE15.
 - Gate benches (drec, byte-equal shots): spot_mac01_drec, entcape_kmr03_drec, fxparts_drec, wscmb_pause_drec, hudfb_drec (debug words in 3ds/tools/azt.d/*.json).
 - Prof lines (pm_phase.c:575-703): fps, core2 lgms, c1n, c1t, cls, ndc, pmu. PERF0 adds c1s (core 1 logic and list ms) and c1a (alt words, GPU draw words).
 ## Open work (order)
-1. Pages on main: ws_PERF0 (counters), ws_PERF1 (snap intern), ws_PERF3 (dead code, shroud fix) run in parallel. ws_PERF2 (audio on core 0) WAITs capture 1.
-2. After Merge PERF0 and PERF1: console capture 1, A and B (plan_perf.md section 9). Read lgms, c1s, c1t snap, c1a, wk - wwait.
-3. Then write ALTM and ALTE pages from the altw counts (Azahar gate logs of PERF0), then C1HOT, MDLHIT, the NC0 rows (plan_perf.md section 6, 7).
+1. Merged: PERF0, PERF1, PERF3 (main c23333bb73). PERF2 dropped by the user. No console capture until the user asks. Haiku only.
+2. Pages on main, parallel: ws_MDLBLK, ws_SNAPD, ws_DUPMS, ws_ALTU (plan_perf.md section 6 ranks 1 to 4, regions listed there).
+3. After Merge DUPMS: write NC0A (sprite known bits from core 1), then NC0B to NC0G in order (plan_perf.md section 6, 7). C1HOT and MDLHIT2 wait for a capture.
 ## Facts that cost time
 - Sources are CRLF. Git Bash `sed -i` turns them into LF: pages say `sed -b -i` or the Edit tool.
 - Host -Werror units link some files: nd_rec.c with nd_ds.c (geounit, hunit, nat5a, nmdl0, ns3unit, stunit), nd_ds.c alone (nst1, nset1),
@@ -25,6 +25,7 @@ State: main 1472130686 plus the PERF commit, 2026-11-20. Oracle NATIVE15.
 - The c1t timers run in sampled steps only. The alt timer is per unit: subtract altu x cal ticks (cal 303 ticks per pair) for real ms.
 - mx in the core2 wait line is mixer wall time (pm_au2.c:168-176), not CPU.
 - Model cache hit path (nd_recs.c:251-276) runs no rec_apply, no nd_msnap_use: core 0 state on a hit comes from hit_apply only.
+- PERF0 altw (drec end) and PERF1 snapi lines are cumulative from boot: compare a tip run with its base log, never with a steady-state rate.
 - Snap memo: a new snap needs a new command between draws (sn_cmds, nd_snap.c:53). nd_snap_alt and nd_snap_now force the next snap new.
 - Core 1 runs while core 0 walks. Det runs are serial: a race does not show in a bench.
 - A SendMessage to a coder that handed back resumes it. Never start a second coder on the same worktree.
