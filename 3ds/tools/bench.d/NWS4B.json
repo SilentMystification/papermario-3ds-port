@@ -1,0 +1,21 @@
+{
+  "benches": [
+    {
+      "name": "hudfb_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "NWS4B: draw records of frames 102-103 where the HUD fallback copies run, cold det start.",
+      "scenario": "hudfb_drec",
+      "cap": 25,
+      "until": "drec f103 draws [1-9]\d* bytes \d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
