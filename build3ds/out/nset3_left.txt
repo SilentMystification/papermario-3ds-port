@@ -1,0 +1,33 @@
+3ds/src/nd_ds.c:23:extern int pm_wide;  /* nd_set.c set_scissor: the wide sign rule */
+3ds/src/nd_ds.c:47:/* nd_set.c set_om (HC4a): the state writes of the othermode setter. */
+3ds/src/nd_ds.c:115:/* nd_set.c set_rare: G_SETCONVERT, G_SETKEYR, G_SETKEYGB. */
+3ds/src/nd_ds.c:129:/* nd_set.c set_mw and nd_mtx_set.c nd_light_count. */
+3ds/src/nd_ds.c:153:/* nd_set.c set_scissor (pm_wide sign rule). */
+3ds/src/nd_ds.c:355:    case ND_FS_GEOM: SET(s->w.geom, (s->w.geom & a) | b); break; /* nd_set.c set_geom */
+3ds/src/nd_ds.c:356:    case ND_FS_PRIM: SET(s->w.prim, b); SET(s->w.prim_lod, a & 0xffffu); break; /* nd_set_prim */
+3ds/src/nd_ds.c:357:    case ND_FS_ENV: SET(s->w.envc, b); break; /* nd_envc_set */
+3ds/src/nd_ds.c:554:unsigned nd_sv_sync(uint32_t w0) { const unsigned id = w0 >> 24, sft = w0 & 0xffu, len = (w0 >> 8) & 0xffu; /* 1: the old setter ends with nd_comb_sync (set_om cycle type, PRIM, ENV, TEXTURE, RARE, COMB) */ /* NSET1 */
+3ds/src/nd_geom.c:449:            pm_gbi_cur_op = id; gv_epoch++; nd_ws.geom = g; pm_gpu_set_mode(z, l); continue; } /* nr_set cut, set_geom */
+3ds/src/nd_recs.c:63: * make the walker send its combine and render state again. The texture filter bits of othermode H stay (set_om sets the filter on a change of them:
+3ds/src/nd_scomp.c:30:/* S6SYNC: 1 when the op path runs nd_comb_sync on this static unit (set_om over the cycle bits, nd_unit_apply TEXTURE and COMB). */
+3ds/src/nd_scomp.c:68:        case ND_FS_GEOM: d->geom_c &= a; d->geom_s = (d->geom_s & a) | b; d->has_geom = 1; break; /* set_geom: geom = (geom & a) | b, composed */
+3ds/src/nd_set.c:85:void nd_sci_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_SCISSOR; gv_epoch++; sci_x0 = (int16_t)r[0]; sci_y0 = (int16_t)(r[0] >> 16); sci_x1 = (int16_t)r[1]; sci_y1 = (int16_t)(r[1] >> 16); pm_gpu_set_scissor(sci_x0, sci_y0, sci_x1, sci_y1); }
+3ds/src/nd_set.c:95:void nd_tex_run(const uint32_t* r) { const unsigned on = r[0] & 0xffffffu, ss = r[1] >> 16, ts = r[1] & 0xffffu; const int mk = (int)(r[0] >> 31); /* NAT4J: TEXTURE, nr_set + nd_unit_apply */
+3ds/src/nd_set.c:99:void nd_omh_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */
+3ds/src/nd_set.c:102:    if (!same) { const uint32_t sv[2] = { m, v & m }; nd_sv_omh(sv); if (r[0] & 0x40000000u) nd_comb_sync(); } } /* NSET1: core 1 bit 30 is the cycle sync of set_om */
+3ds/src/nd_set.c:104:void nd_sv_omh(const uint32_t* r) { const uint32_t m = r[0], tf = nd_ws.omode_h & (3u << 12); nd_ws.omode_h = (nd_ws.omode_h & ~m) | r[1]; nd_ws.om_kh |= m; /* NSET1: set_om H without the sync */
+3ds/src/nd_set.c:109:void nd_sv_sci(const uint32_t* r) { sci_x0 = (int16_t)r[0]; sci_y0 = (int16_t)(r[0] >> 16); sci_x1 = (int16_t)r[1]; sci_y1 = (int16_t)(r[1] >> 16); pm_gpu_set_scissor(sci_x0, sci_y0, sci_x1, sci_y1); } void nd_sv_tex(const uint32_t* r) { nd_ws.tex_on = (int)r[0]; nd_ws.tex_ss = r[1] >> 16; nd_ws.tex_ts = r[1] & 0xffffu; }
+3ds/src/nd_set.c:112:void nd_sv_keygb(const uint32_t* r) { keyc = (keyc & 0xff000000u) | r[0]; keys = (keys & 0xff000000u) | r[1]; } void nd_sv_comb(const uint32_t* r) { nd_comb_set(r[0], r[1]); } /* NSET2: the setters of nd_unit_apply without the sync, on the core 1 values */
+3ds/src/nd_shape.c:115:void dlc_set_geom(u32 g);
+3ds/src/nd_shape.c:475:            dlc_set_geom(geom_at);
+3ds/src/nd_shape.c:502:__attribute__((noinline)) void dlc_set_geom(u32 g) {
+3ds/src/nd_shape.c:633:            nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1; pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0); /* NATFB: set_geom in place */
+3ds/src/nd_shape.c:923:        dlc_set_geom(gg);
+3ds/src/nd_shape.c:935:    dlc_set_geom((entry & e->exit_am) | e->exit_om);
+3ds/src/nd_tex_set.c:598:void nd_sv_tile(const uint32_t* r) { const uint32_t a = r[0], b = r[1]; const unsigned wr[4] = { (b >> 8) & 3, (b >> 18) & 3, (b >> 4) & 15, (b >> 14) & 15 }; set_tile((b >> 24) & 7, (a >> 21) & 7, (a >> 19) & 3, a & 0x1ff, (b >> 20) & 15, wr, b & 15, (b >> 10) & 15); } /* NSET1: nd_tx_tile */
+3ds/src/nd_walk.c:332:static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ws.omode_h & a) && sc_ok) nd_ws.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ws.omode_l & a)) nd_ws.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ws.prim == b && (uint8_t)nd_ws.prim_lod == (uint8_t)a && sc_ok) { pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */
+3ds/src/pm_gpu.c:3807: * through rm_ga (NdMode gand: the AND of the list's G_GEOMETRYMODE keep masks, set_geom). Before, key word 32 held the geometry mode the record before left
+3ds/src/pm_gpu.c:4720:void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
+3ds/include/nd_ds.h:2: * setters (same names and types). nd_ds_apply copies the state writes of nd_unit_apply (nd_set.c, nd_comb.c, nd_tex_set.c, nd_mtx_set.c)
+3ds/include/nd_op.h:1:/* nd_op.h: the typed op helpers of the host compiles. The unit ids are ND_FS_ (nd_fs.h, HC4); core 0 runs them by id (nd_set.c nd_unit_same, nd_unit_apply).
+3ds/include/pm_gpu.h:103:void pm_gpu_set_scissor(int x0, int y0, int x1, int y1);
