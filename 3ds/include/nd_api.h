@@ -55,7 +55,7 @@ int nd_part_draw(const struct NdNDev* t);                    /* nd_geom.c, core 
 
 /* NATIVEAPI A1 (NAPI2B): the shared direct-draw helpers. A direct executor (core 0) states a draw without the walker's op stream: the pso gives the
  * combine decision (made once, cold), the texture comes from a descriptor, the rectangle from the N64 rectangle words.
- * NdBindDesc: one texture window as a bind needs it (the facts nd_tile_bind_slow reads from nd_ws.td[n] and tst1). wrap: cms, cmt, masks, maskt (the
+ * NdBindDesc: one texture window as a bind needs it (the facts nd_tile_bind_slow reads from nd_c0.td[n] and tst1). wrap: cms, cmt, masks, maskt (the
  * G_SETTILE words); sz: the SetTileSize window (10.2); x0, y0: the window origin in texels; stride in texels of the format. */
 typedef struct NdBindDesc {
     const void* src; const void* pal;

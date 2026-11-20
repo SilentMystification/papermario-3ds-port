@@ -426,7 +426,7 @@ unsigned dbg_dsg, dbg_seg; /* S3N-3c debug: the static refusal codes */
 /* DLC2: one range of static triangles with the state of the current epoch. Returns 0 when the raw path refuses (nothing was queued). */
 static unsigned seg_osc_ep; /* DARK: the epoch of the last colour image check of a static range */
 __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, unsigned gmi) {
-    unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
+    unsigned tss = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu);
     /* DARK: a static range draws into the colour image of its epoch, as draw_tri does. The darkness stencil quad (Gfx_DarknessStencilQuad,
      * a static list on the SGEN-1 entity path) draws into the 64 x 64 image in the z-buffer memory; without this check it drew on the screen. */
     if (seg_osc_ep != gv_epoch) { nd_img_check(); seg_osc_ep = gv_epoch; }
@@ -457,7 +457,7 @@ __attribute__((noinline)) int dlc_seg(const unsigned short* idx, unsigned nt, un
 
 /* DLC2/C3: a group in view from the static area. Returns 0 when nothing was queued and the group must run through the ring. */
 __attribute__((noinline)) int dlc_static_group(const DlcEnt* e, const DlcGrp* g, unsigned gmi, u32 gg) {
-    u32 bad = (gv_lit_ok() ? 0 : G_LIGHTING) | (fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0), x = nd_ws.geom;
+    u32 bad = (gv_lit_ok() ? 0 : G_LIGHTING) | (fogmix_on && !gv_fog_gpu_ok() ? G_FOG : 0), x = nd_c0.geom;
     const u32 lm = G_LIGHTING | G_TEXTURE_GEN, x0 = x & lm; /* the RSP lights at the vertex load: the lighting state must not change inside the group, else the interpreter runs it */
     dbg_dsg = 0;
     if (x & bad) { dbg_dsg = 1; return 0; }
@@ -500,9 +500,9 @@ __attribute__((noinline)) DlcEnt* dlc_find(const void* l) {
 }
 
 __attribute__((noinline)) void dlc_set_geom(u32 g) {
-    if (g == nd_ws.geom) return;
-    nd_ws.geom = g;
-    pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+    if (g == nd_c0.geom) return;
+    nd_c0.geom = g;
+    pm_gpu_set_mode((nd_c0.geom & G_ZBUFFER) != 0, (nd_c0.geom & G_LIGHTING) != 0);
     gv_epoch++;
 }
 
@@ -594,7 +594,7 @@ int gp1_box_class(const s16 lo[3], const s16 hi[3], const float (*m)[4], unsigne
 
 /* One group in view: the interpreter code for G_VTX (GV1 ring copy, no CPU transform) and draw_tri. Returns 0 on success. */
 __attribute__((noinline)) void dlc_run_group(const uint32_t* l, const DlcGrp* g, unsigned gmi) {
-    unsigned tss = ((unsigned)nd_ws.tex_ss << 16) | ((unsigned)nd_ws.tex_ts & 0xffffu);
+    unsigned tss = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu);
     for (u32 j = g->op0; j < g->op1; j++) {
         const u32 w0 = l[2u * j], w1 = l[2u * j + 1u]; /* DEL5A: the unit pair */
         switch (w0 >> 24) {
@@ -630,7 +630,7 @@ __attribute__((noinline)) void dlc_run_group(const uint32_t* l, const DlcGrp* g,
             draw_tri(w1);
             break;
         case ND_FS_GEOM:
-            nd_ws.geom = (nd_ws.geom & (w0 & 0xffffffu)) | w1; pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0); /* NATFB: set_geom in place */
+            nd_c0.geom = (nd_c0.geom & (w0 & 0xffffffu)) | w1; pm_gpu_set_mode((nd_c0.geom & G_ZBUFFER) != 0, (nd_c0.geom & G_LIGHTING) != 0); /* NATFB: set_geom in place */
             gv_epoch++;
             break;
         default:
@@ -883,7 +883,7 @@ int nd_sg_try(const void* lv) {
     else dlc_c.hit++;
     if (e->refused) return 0;
     const float(*m)[4] = combined;
-    u32 entry = nd_ws.geom;
+    u32 entry = nd_c0.geom;
     unsigned gmi = GV_NONE;
     int gmi_ready = 0, skipped_last = 0, skipped_any = 0;
     dlc_c.lists++;

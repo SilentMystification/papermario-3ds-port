@@ -1,6 +1,6 @@
 /* nd_gbi_test.c: host test of the bridge form of nd_gbi.h (plan_native_slices S2-1, gate G1).
  * 1. Dual write: the list the wrapped macros write equals the list the plain gbi.h macros write (nd_gbi_ref.c), word for word.
- * 2. Native state: nd_ws (after nd_words of the plain words) holds the values the sequence set (geometry mode, other mode, colours, prim depth, texture, segment).
+ * 2. Native state: nd_c0 (after nd_words of the plain words) holds the values the sequence set (geometry mode, other mode, colours, prim depth, texture, segment).
  * 3. The opcode numbers of nd_state.c equal the gbi.h values. Usage: nd_gbi_test (no arguments). */
 #include <stdio.h>
 #include <string.h>
@@ -17,18 +17,18 @@ static int fails;
 #define CHECK(c, ...) do { if (!(c)) { fails++; printf("FAIL: " __VA_ARGS__); printf("\n"); } } while (0)
 
 int main(void) {
-    static Gfx a[256], b[256];
-    memset(&nd_ws, 0, sizeof nd_ws);
+    static Gfx a[256], b[256]; static NdWs ws;
+    memset(&ws, 0, sizeof ws);
     Gfx* ea = nd_seq_wrapped(a);
     Gfx* eb = nd_seq_ref(b);
     unsigned na = (unsigned)(ea - a), nb = (unsigned)(eb - b);
     CHECK(na == nb && na > 40, "word count %u wrapped, %u plain", na, nb);
     for (unsigned i = 0; i < na && i < nb; i++)
         if (a[i].words.w0 != b[i].words.w0 || a[i].words.w1 != b[i].words.w1) { CHECK(0, "word %u: %08x %08x vs %08x %08x", i, a[i].words.w0, a[i].words.w1, b[i].words.w0, b[i].words.w1); break; }
-    /* the reference decode of the plain words into nd_ws (CORE-2a-3: nd_ws is the state, nd_words the host decode) */
-    memset(&nd_ws, 0, sizeof nd_ws);
-    nd_words((const unsigned*)b, nb);
-    const NdWs* s = &nd_ws;
+    /* the reference decode of the plain words into nd_c0 (CORE-2a-3: nd_c0 is the state, nd_words the host decode) */
+    memset(&ws, 0, sizeof ws);
+    nd_words(&ws, (const unsigned*)b, nb);
+    const NdWs* s = &ws;
     CHECK(s->geom == (G_ZBUFFER | G_CULL_BACK), "geom %08x want %08x", s->geom, (unsigned)(G_ZBUFFER | G_CULL_BACK));
     CHECK(s->prim == 0x11223344u && ((s->prim_lod >> 8) & 0xFF) == 5 && (s->prim_lod & 0xFF) == 6, "prim %08x lod %04x", s->prim, s->prim_lod);
     CHECK(s->envc == 0x55667788u && s->fill == 0xAABBCCDDu, "env %08x fill %08x", s->envc, s->fill);

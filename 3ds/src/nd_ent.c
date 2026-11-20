@@ -42,13 +42,13 @@ void pm_gbi_ent_texchk(const uint32_t* dl) {
         if (c == NDTX_WIN && n_tbad++ < 6) pm_log_prof_line("texwin f%u w %u h %u ldw %u ldh %u tsiz %u", pm_frame_count(), d.w, d.h, d.stride, d.pal_n, d.fmt);
         if (c == NDTX_TILE && n_tbad++ < 6) pm_log_prof_line("texbad f%u op %02x tile %u", pm_frame_count(), d.bad_op >> 8, d.bad_op & 7u);
         if (c == NDTX_OK || c == NDTX_MULTI) {
-            int same = nd_ws.td[0].valid && (const void*)nd_ws.td[0].src == d.img && nd_ws.td[0].fmt == d.fmt && nd_ws.td[0].siz == d.siz && nd_ws.td[0].w == (int)d.w && nd_ws.td[0].h == (int)d.h &&
-                       nd_ws.td[0].stride == (int)d.stride && nd_ws.td[0].x0 == 0 && nd_ws.td[0].y0 == 0 && (d.fmt != 2u || (nd_ws.td[0].pal == d.pal && nd_ws.td[0].pal_n == (int)d.pal_n));
+            int same = nd_c0.td[0].valid && (const void*)nd_c0.td[0].src == d.img && nd_c0.td[0].fmt == d.fmt && nd_c0.td[0].siz == d.siz && nd_c0.td[0].w == (int)d.w && nd_c0.td[0].h == (int)d.h &&
+                       nd_c0.td[0].stride == (int)d.stride && nd_c0.td[0].x0 == 0 && nd_c0.td[0].y0 == 0 && (d.fmt != 2u || (nd_c0.td[0].pal == d.pal && nd_c0.td[0].pal_n == (int)d.pal_n));
             if (same) n_eq++;
             else {
                 n_diff++;
                 if (n_dlog++ < 8) pm_log_prof_line("texdiff f%u td v%d src %p fmt %u siz %u w %d h %d str %d x0 %d y0 %d pal %p n %d / dec src %p fmt %u siz %u w %u h %u str %u pal %p n %u",
-                    pm_frame_count(), nd_ws.td[0].valid, (const void*)nd_ws.td[0].src, nd_ws.td[0].fmt, nd_ws.td[0].siz, nd_ws.td[0].w, nd_ws.td[0].h, nd_ws.td[0].stride, nd_ws.td[0].x0, nd_ws.td[0].y0, nd_ws.td[0].pal, nd_ws.td[0].pal_n,
+                    pm_frame_count(), nd_c0.td[0].valid, (const void*)nd_c0.td[0].src, nd_c0.td[0].fmt, nd_c0.td[0].siz, nd_c0.td[0].w, nd_c0.td[0].h, nd_c0.td[0].stride, nd_c0.td[0].x0, nd_c0.td[0].y0, nd_c0.td[0].pal, nd_c0.td[0].pal_n,
                     d.img, d.fmt, d.siz, d.w, d.h, d.stride, d.pal, d.pal_n);
             }
         }
@@ -309,10 +309,10 @@ extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal w
 unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
 __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSeg* s) {
     extern unsigned char pm_ent_decal_ok;
-    if (nd_ws.geom & G_LIGHTING) { ent_sw[1]++; return 0; }
-    if (fogmix_on && (nd_ws.geom & G_FOG) && !gv_fog_gpu_ok()) { ent_sw[2]++; return 0; }
+    if (nd_c0.geom & G_LIGHTING) { ent_sw[1]++; return 0; }
+    if (fogmix_on && (nd_c0.geom & G_FOG) && !gv_fog_gpu_ok()) { ent_sw[2]++; return 0; }
     if (!pm_gpu_gidx_room(3u * s->ntri)) { ent_sw[3]++; return 0; }
-    pm_gpu_set_mode((nd_ws.geom & G_ZBUFFER) != 0, (nd_ws.geom & G_LIGHTING) != 0);
+    pm_gpu_set_mode((nd_c0.geom & G_ZBUFFER) != 0, (nd_c0.geom & G_LIGHTING) != 0);
     unsigned gmi = dlc_gmi();
     if (gmi == GV_NONE) { ent_sw[4]++; return 0; }
     pm_ent_decal_ok = 1;
@@ -358,7 +358,7 @@ EntKey* ent_find(const NdW2* l, u32 vb) {
     return NULL;
 }
 
-u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h = (h ^ nd_ws.segbase[i]) * 16777619u; return h | 1u; }
+u32 ent_segkey(void) { u32 h = 2166136261u; for (unsigned i = 1; i < 16; i++) h = (h ^ nd_c0.segbase[i]) * 16777619u; return h | 1u; }
 
 /* SGEN-1: every static list the walker meets (G_DL arm, no record). Lists in the display contexts are dynamic by address: walker (DIRECT D10a:
  * the frame stream holds no list). 1: drawn, 0 not drawn, -1 ring path wanted (the caller skips nd_sg_try). */

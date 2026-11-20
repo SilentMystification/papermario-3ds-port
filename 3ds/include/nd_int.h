@@ -20,7 +20,7 @@ extern u16 DepthCopyBuffer[16];
 extern unsigned short* nuGfxZBuffer;
 void pm_depth_query(const void* timg, int x, int id); /* F03, pm_depth.c */
 void pm_cfb_capture_prev_cpu_for(const void* fill);
-extern int zcol, zslot_on, sci_x0;
+extern int zcol, zslot_on;
 
 float depth_of_word(unsigned w16);
 void nd_img_check(void);
@@ -84,7 +84,6 @@ extern const u8* src;
 extern float vert_p[][4];
 extern int h;
 extern int splash_on;
-extern unsigned conv_k4;
 extern unsigned s;
 
 /* ---- W: variables of the former pm_gbi.c that the walk group uses (global now) ---- */
@@ -104,7 +103,6 @@ extern u8 vert_litf[64];
 extern u8 vert_live[64];
 extern u8 vert_scr[64];
 extern unsigned char vert_cb[64];
-extern unsigned conv_k4;
 extern unsigned ent_skipgen;
 extern unsigned gp1_ld_cross;
 extern unsigned gp1_ld_in;
@@ -136,10 +134,9 @@ void nd_render_apply(const NdRender* rs, int mixk, unsigned mixc, unsigned omh, 
 int nd_sr_same(unsigned sg);                /* NDR0F2: nd_set.c, 1 when the GPU state of signature sg is set (nd_rnd_sync skip) */
 void gp_note(int k, int same);               /* PG0 counter, the former pm_gbi.c */
 void lit_freeze(void);                       /* GV5, the former pm_gbi.c */
-extern int sci_x0, sci_y0, sci_x1, sci_y1;   /* ST-1: nd_state.c, scissor of the walker */
 void nd_light_count(u32 w1);                 /* ST-1: the former pm_gbi.c, G_MW_NUMLIGHT (lit_freeze, clamp 7) */
 extern unsigned lt_n;                        /* the former pm_gbi.c, lights count (GM-1) */
-extern int fog_fm, fog_fo, fogmix_on;        /* ST-1: nd_state.c, F08 fog factor */
+extern int fogmix_on;       /* ST-1: nd_state.c, F08 fog factor */
 int ent_gdl(const NdW2* l, const uint32_t* et);
 extern u8 gMapShapeData[];
 extern int gp_prev_op; /* NWS1 */
@@ -213,7 +210,7 @@ int load_shaded_sprite(void);           /* the former pm_gbi.c, TX-3 */
 int glyph_atlas_bound(void);                        /* the former pm_gbi.c, TX-3 */
 unsigned long long pm_gpu_fl_acc(void);             /* pm_gpu.c */
 /* TX-3 externs. owner: the former pm_gbi.c (combine and state groups, read by the snapshot in nd_tex.c until those groups move) */
-extern int comb_mode5, plan_active, fog_fm, fog_fo, box_pat, leg_mode;
+extern int comb_mode5, plan_active, box_pat, leg_mode;
 int nd_cw_t1only(uint32_t w0, uint32_t w1); /* NWS4C, nd_comb.c */ int nd_cw_ashade(uint32_t w0, uint32_t w1); int nd_cw_box_prod(uint32_t w0, uint32_t w1); /* NWS2, nd_comb.c */
 extern PmPlan cur_plan; extern float dual_f[4];
 void cc_cycle1(const float* t0, const float* t1, float out[4]);

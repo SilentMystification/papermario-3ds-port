@@ -126,7 +126,7 @@ int pm_drec_now(void);
 /* NDR0G2: the walker tile blocks when e is NULL, else e. */
 static const NdSnapBind* sc_wb(const NdSnapBind* e, NdSnapBind* w) {
     if (e) return e;
-    for (int n = 0; n < 2; n++) nd_snap_bind(&nd_ws.td[n], &nd_ws.tst1, n, &w[n]);
+    for (int n = 0; n < 2; n++) nd_snap_bind(&nd_c0.td[n], &nd_c0.tst1, n, &w[n]);
     return w;
 }
 
@@ -162,18 +162,17 @@ void nd_snap_render(void) { /* NDR0F2: the render state and mix of the armed sna
     nd_c0w &= ~2u; /* NAT1B */
 }
 static unsigned char lr_geo; void nd_lsr_geo(void) { lr_geo = 1; } /* NCONV2D: the open list runs ls_run (nd_walk.c) */
-extern unsigned conv_k4; /* nd_comb.c */
 void pm_comb_set_k4(unsigned k4); void pm_gpu_set_prim(unsigned rgba, unsigned lod); void pm_gpu_set_env(unsigned rgba); void pm_gpu_flush(void); /* pm_gpu.h */
 static void ls_gpu(uint32_t w0, uint32_t w1, int cset, uint32_t prim, uint32_t plod, uint32_t env, uint32_t k4) { /* NCONV2D: the GPU calls of the skipped units */
-    if (nd_ws.comb_w0 != w0 || nd_ws.comb_w1 != w1 || (cset && !nd_ws.comb_w0)) pm_gpu_flush(); /* NWS2 */ if (nd_ws.prim != prim || nd_ws.prim_lod != plod) pm_gpu_set_prim(prim, plod);
-    if (nd_ws.envc != env) pm_gpu_set_env(env); if (conv_k4 != k4) pm_comb_set_k4(k4); nd_ws.prim_lod = plod; }
+    if (nd_c0.comb_w0 != w0 || nd_c0.comb_w1 != w1 || (cset && !nd_c0.comb_w0)) pm_gpu_flush(); /* NWS2 */ if (nd_c0.prim != prim || nd_c0.prim_lod != plod) pm_gpu_set_prim(prim, plod);
+    if (nd_c0.envc != env) pm_gpu_set_env(env); if (nd_c0.conv_k4 != k4) pm_comb_set_k4(k4); nd_c0.prim_lod = plod; }
 void nd_snapchk_tri(void) {   /* NDR0E2: a mesh triangle: the compare (switch snapchk), then the combine of the snap */
     nd_snap_arm = 0;
     nd_snap_comb();
     { /* NWS4D: the GPU memo of the applied words (the walker shadow is gone) */
         const NdCombIn* i = &sc_cur.in;
         ls_gpu(i->w0, i->w1, i->comb_set, i->prim, sc_cur.plod, i->env, i->conv_k4); /* NCONV2D; NAT4D: also for stream snaps */
-        nd_ws.comb_w0 = i->w0; nd_ws.comb_w1 = i->w1; nd_ws.omode_h = i->omode_h; nd_ws.prim = i->prim; nd_ws.envc = i->env; conv_k4 = i->conv_k4; nd_ws.tex_on = i->tex_on;
+        nd_c0.comb_w0 = i->w0; nd_c0.comb_w1 = i->w1; nd_c0.omode_h = i->omode_h; nd_c0.prim = i->prim; nd_c0.envc = i->env; nd_c0.conv_k4 = i->conv_k4; nd_c0.tex_on = i->tex_on;
     }
 }
 /* NDR1C: the combine of the armed snap (nd_rect.c, rectangles; nd_snapchk_tri for triangles). */
@@ -199,7 +198,7 @@ void nd_lsr_end(void) { /* NCONV2D: list end: the GPU memo of the skipped units 
     if (nd_ls_on && lr_geo) {
         const NdDs* c = (const NdDs*)(const void*)((const char*)lr_b + ND_LS_HDR(lr_b[0] + lr_b[1]));
         ls_gpu(c->w.comb_w0, c->w.comb_w1, c->comb_set, c->w.prim, c->w.prim_lod, c->w.envc, c->conv_k4);
-        nd_ws.om_kl = c->w.om_kl; nd_ws.prim = c->w.prim; nd_ws.envc = c->w.envc; nd_ws.comb_w0 = c->w.comb_w0; nd_ws.comb_w1 = c->w.comb_w1; conv_k4 = c->conv_k4;
+        nd_c0.om_kl = c->w.om_kl; nd_c0.prim = c->w.prim; nd_c0.envc = c->w.envc; nd_c0.comb_w0 = c->w.comb_w0; nd_c0.comb_w1 = c->w.comb_w1; nd_c0.conv_k4 = c->conv_k4;
     }
     lr_geo = 0; nd_ls_on = 0; } /* NWS4D */
 void nd_lsr_seg(unsigned ord) { nd_lsr_tri(ord); }
@@ -223,7 +222,7 @@ int nd_snap_spr(uint32_t o[9]) { /* NDR4: env prim omh oml geom cw0 cw1 mixk mix
     o[0] = sc_cur.in.env; o[1] = sc_cur.in.prim; o[2] = sc_cur.in.omode_h; o[3] = sc_cur.oml; o[4] = sc_cur.geom;
     o[5] = sc_cur.in.w0; o[6] = sc_cur.in.w1; o[7] = (uint32_t)sc_cur.mixk; o[8] = sc_cur.mixc;
     if (pm_drec_now() && pm_frame_count() != sc_sfr && (o[0] != nd_ap->in.env || o[1] != nd_ap->in.prim || o[2] != nd_ap->in.omode_h || o[3] != nd_ap->oml || /* NWS4B */
-        o[4] != nd_ws.geom || o[5] != nd_ap->in.w0 || o[6] != nd_ap->in.w1 || sc_cur.fogc != nd_ap->fogc || sc_cur.blendc != nd_ap->blendc)) { sc_sfr = pm_frame_count(); pm_log_d("sprsnap f%u", sc_sfr); } /* NWS4B */
+        o[4] != nd_c0.geom || o[5] != nd_ap->in.w0 || o[6] != nd_ap->in.w1 || sc_cur.fogc != nd_ap->fogc || sc_cur.blendc != nd_ap->blendc)) { sc_sfr = pm_frame_count(); pm_log_d("sprsnap f%u", sc_sfr); } /* NWS4B */
     return 1;
 }
 

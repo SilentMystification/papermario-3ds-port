@@ -1,7 +1,7 @@
 /* nd_ds.c: the core 1 draw state and its apply (design_nstate.md section 4, row NST1). Each case copies the state writes of the core 0
  * handler named in its comment, in the same order. Left out: every pm_gpu_* call, flush, nd_comb_sync, GP_SET, lit_freeze, log, and the
  * draw-time fields (td[], tile_x0/y0, tile_fx/fy, cur_tile, box_folded, leg_mode, comb_mode5, box_pat, the plan, fogmix_on which nd_rnd_sync
- * writes, the tex_shaded0 record m1). The initial values are those of nd_ws (nd_state.c), the global initializers and pm_gbi_init
+ * writes, the tex_shaded0 record m1). The initial values are those of nd_c0 (nd_state.c), the global initializers and pm_gbi_init
  * (geom G_SHADE | G_SHADING_SMOOTH). Pure C: the host test builds it with stubs for is_host, pm_wide and tex_win_s25. */
 #include <stdint.h>
 #include <stdlib.h>
