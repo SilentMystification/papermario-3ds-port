@@ -226,125 +226,114 @@ void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
     nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
 }
 void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak below */
-/* DO1: the model record memo (core 1). An unchanged model copies the stream block of its last step. Entry: the key (geometry R12 w0, R0 w0), the block
- * pointer in the stream of the other display context (valid while that context is not built again: mm_cg), the before state S, the lights and
- * the pointed list words the record reads, and the delta of nd_ds (changed words, before to after). Step 1 builds the copy on a hit and compares it
- * with the real block and the real nd_ds (log `mmemo f<n> diff ...`). */
+/* DO1: the model record memo (core 1). An unchanged model copies the stream block of its last step. Entry: the key (geometry R12 w0, R0 w0), a 64 bit hash of
+ * every input (the record words with the matrix pointers left out, the model snap before, the scalar region and the lights of nd_ds, the decision inputs,
+ * both load rings in logical order, the Lightsn bytes, the pointed words of R4 and the R0 unit list), the block pointer in the stream of the other display
+ * context (valid while that context is not built again: mm_cg), and the delta of nd_ds (changed words and ring words, ring counter steps). The census
+ * (drec frames) builds the copy on a hit and compares it with the real block and the real nd_ds (log `mmemo f<n> diff ...`). */
 unsigned pm_frame_count(void);
 void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim */
 #define MM_N 256u /* slots: open addressing, linear probe of MM_PROBE */
 #define MM_PROBE 8u
-#define MM_D 48u
+#define MM_D 24u /* changed words per entry (nd_ds words and ring words); above it the model stores no entry */
 #define MM_LW ((unsigned)(sizeof(((NdTst*)0)->ldrec[0]) / 4u))
 #define MM_BW ((unsigned)(sizeof(((NdTst*)0)->blk[0]) / 4u))
-#define MM_RG ((unsigned)((offsetof(NdDs, lt) - offsetof(NdDs, conv_k4)) / 4u) + 4u)
-typedef struct MmS { NdMSnap m; uint32_t sv[4]; uint32_t rg[MM_RG]; uint32_t lr[4u * MM_LW], br[4u * MM_BW]; uint32_t lth[2]; } MmS; /* the before state: the model snap, the decision inputs, the scalar region of nd_ds and the 2 load rings in logical order (oldest first, the phase left out) */
+#define MM_RW (4u * MM_LW + 4u * MM_BW) /* the words of both load rings */
+#define MM_NDW ((unsigned)(sizeof(NdDs) / 4u))
 typedef struct MmEnt {
-    uint32_t kg, k0, cg, nl1; const uint32_t* blk; uint32_t keep, nd, ctx, ok, hasl;
-    MmS s; Lightsn lt; uint32_t c9[2]; uint32_t lh0, lh1; /* the unit list of R0 w1: count and 64 bit hash */ uint16_t di[MM_D]; uint32_t dv[MM_D]; uint32_t cl, cb, al[4u * MM_LW], ab[4u * MM_BW]; /* A: the ring counter steps and the rings after, logical order */
+    uint32_t kg, k0, h0, h1, cg; const uint32_t* blk;
+    uint16_t keep, nd; uint8_t ctx, ok; int16_t cl, cb;
+    uint16_t di[MM_D]; uint32_t dv[MM_D]; /* di < MM_NDW: a word of nd_ds; else a word of the rings (logical order of the phase before) */
 } MmEnt;
-static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits, mm_skip, mm_diffs;
-static unsigned mm_nc[8], mm_wc[40], mm_sf[4], mm_dh[8]; /* store fails: 0 list too long, 1 delta too long; dh: delta size histogram */ static MmS mm_s; static NdDs mm_b;
+static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits, mm_skip, mm_diffs, mm_wc[40], mm_sf;
+static NdDs mm_b; static uint32_t mm_h[2];
 #define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
 static uint32_t mm_scr[MM_BLK];
-void nd_mmemo_log(void) { pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits); { char o[400]; int n = 0; for (unsigned i = 0; i < 34u; i++) if (mm_wc[i]) n += snprintf(o + n, sizeof o - (unsigned)n, " %u:%u", i, mm_wc[i]); pm_log_evt("mmemo why%s", o); }
-    pm_log_evt("mmemo store fail list %u delta %u; stored delta 0-3 %u 4-7 %u 8-11 %u 12+ %u", mm_sf[0], mm_sf[1], mm_dh[0], mm_dh[1], mm_dh[2], mm_dh[3]);
-    pm_log_evt("mmemo near m %u sv %u rg %u lr %u br %u", mm_nc[0], mm_nc[1], mm_nc[2], mm_nc[3], mm_nc[4]); { unsigned used = 0, ok = 0, lts = 0, nds = 0, ndmax = 0, blkw = 0; if (mm_t) for (unsigned i = 0; i < MM_N; i++) { const MmEnt* e = &mm_t[i]; if (!e->blk) continue; used++; if (e->ok) { ok++; nds += e->nd; if (e->nd > ndmax) ndmax = e->nd; if (e->lh0 | e->nl1) lts++; blkw += 2u + 2u * (G_PM_REC_WORDS + e->keep) + 2u + 2u * ND_MSNAP_U; } }
-      pm_log_evt("mmemo slots used %u ok %u of %u, hits per ok slot %u, delta words mean %u max %u, block words mean %u, S %u B, A fixed %u B, ent %u B", used, ok, MM_N, ok ? mm_hits / ok : 0u, ok ? nds / ok : 0u, ndmax, ok ? blkw / ok : 0u, (unsigned)sizeof(MmS), (unsigned)(offsetof(MmEnt, al) + sizeof(((MmEnt*)0)->al) + sizeof(((MmEnt*)0)->ab) - offsetof(MmEnt, cl)), (unsigned)sizeof(MmEnt)); (void)lts; }
-    pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs); }
+void nd_mmemo_log(void) {
+    unsigned used = 0, ok = 0, nds = 0, ndmax = 0, blkw = 0;
+    if (mm_t) for (unsigned i = 0; i < MM_N; i++) { const MmEnt* e = &mm_t[i]; if (!e->blk) continue; used++; if (e->ok) { ok++; nds += e->nd; if (e->nd > ndmax) ndmax = e->nd; blkw += 2u + 2u * (G_PM_REC_WORDS + e->keep) + 2u + 2u * ND_MSNAP_U; } }
+    pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits);
+    { char o[400]; int n = 0; for (unsigned i = 0; i < 34u; i++) if (mm_wc[i]) n += snprintf(o + n, sizeof o - (unsigned)n, " %u:%u", i, mm_wc[i]); pm_log_evt("mmemo why%s", o); }
+    pm_log_evt("mmemo store fail delta %u", mm_sf);
+    pm_log_evt("mmemo slots used %u ok %u of %u, hits per ok slot %u, delta words mean %u max %u, block words mean %u, ent %u B, table %u B", used, ok, MM_N, ok ? mm_hits / ok : 0u, ok ? nds / ok : 0u, ndmax, ok ? blkw / ok : 0u, (unsigned)sizeof(MmEnt), (unsigned)(MM_N * sizeof(MmEnt)));
+    pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs);
+}
 #define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
 #define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
 #define MM_L0 ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, ldrec)) / 4u))
 #define MM_L1E ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, blk) + sizeof(((NdTst*)0)->blk)) / 4u))
-static inline int mm_ringw(unsigned i) { return i == MM_I0 || i == MM_I1 || (i >= MM_L0 && i < MM_L1E); } /* words of nd_ds the delta leaves out: the rings and their counters (A holds them in logical order) */
-static void mm_ring_get(const NdDs* s, uint32_t* lr, uint32_t* br) { for (unsigned i = 0; i < 4u; i++) { memcpy(lr + i * MM_LW, &s->w.tst1.ldrec[(s->tm.ldrec_n + i) & 3u], 4u * MM_LW); memcpy(br + i * MM_BW, &s->w.tst1.blk[(s->tm.blk_n + i) & 3u], 4u * MM_BW); } }
-static void mm_ring_put(NdDs* s, const uint32_t* lr, const uint32_t* br) { for (unsigned i = 0; i < 4u; i++) { memcpy(&s->w.tst1.ldrec[(s->tm.ldrec_n + i) & 3u], lr + i * MM_LW, 4u * MM_LW); memcpy(&s->w.tst1.blk[(s->tm.blk_n + i) & 3u], br + i * MM_BW, 4u * MM_BW); } }
-static void mm_s_take(MmS* s) {
-    memset(s, 0, sizeof *s);
-    nd_msnap_take(&nd_ds, &s->m); nd_snap_sv(s->sv);
-    const uint32_t* d = (const uint32_t*)&nd_ds; unsigned n = 0;
-    for (unsigned i = (unsigned)(offsetof(NdDs, conv_k4) / 4u); i < (unsigned)(offsetof(NdDs, lt) / 4u); i++) s->rg[n++] = d[i];
-    s->rg[n++] = nd_ds.w.prim_z; s->rg[n++] = (uint32_t)nd_ds.w.tex_on; s->rg[n++] = nd_ds.w.fill; s->rg[n++] = nd_ds.lt_n;
-    mm_ring_get(&nd_ds, s->lr, s->br);
-    { uint32_t h0 = 2166136261u, h1 = 0x9e3779b9u; for (unsigned i = (unsigned)(offsetof(NdDs, lt) / 4u); i < (unsigned)(offsetof(NdDs, lt_n) / 4u); i++) { h0 = (h0 ^ d[i]) * 16777619u; h1 = (h1 + d[i]) * 2246822519u; h1 ^= h1 >> 15; } s->lth[0] = h0; s->lth[1] = h1; } /* the lights before: the model writes some slots, the delta keeps the others */
-}
-static void mm_lh(const uint32_t* r, uint32_t o[3]) { /* count and 2 lane hash of the unit list r[1] (to its END unit) */
-    const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; uint32_t h0 = 2166136261u, h1 = 0x9e3779b9u, n = 0;
-    for (; (u[0] >> 24) != ND_FS_END; u += 2, n++) { h0 = (h0 ^ u[0]) * 16777619u; h0 = (h0 ^ u[1]) * 16777619u; h1 = (h1 + u[0]) * 2246822519u; h1 ^= h1 >> 15; h1 = (h1 + u[1]) * 2246822519u; h1 ^= h1 >> 15; }
-    o[0] = n; o[1] = h0; o[2] = h1;
-}
+static inline int mm_ringw(unsigned i) { return i == MM_I0 || i == MM_I1 || (i >= MM_L0 && i < MM_L1E); } /* words of nd_ds the word delta leaves out: the rings and their counters */
+static void mm_ring_get(const NdDs* s, unsigned pl, unsigned pb, uint32_t* rw) { for (unsigned i = 0; i < 4u; i++) { memcpy(rw + i * MM_LW, &s->w.tst1.ldrec[(pl + i) & 3u], 4u * MM_LW); memcpy(rw + 4u * MM_LW + i * MM_BW, &s->w.tst1.blk[(pb + i) & 3u], 4u * MM_BW); } }
+static void mm_ring_put(NdDs* s, unsigned pl, unsigned pb, const uint32_t* rw) { for (unsigned i = 0; i < 4u; i++) { memcpy(&s->w.tst1.ldrec[(pl + i) & 3u], rw + i * MM_LW, 4u * MM_LW); memcpy(&s->w.tst1.blk[(pb + i) & 3u], rw + 4u * MM_LW + i * MM_BW, 4u * MM_BW); } }
+static inline void mm_mix(uint32_t* h, uint32_t v) { h[0] = (h[0] ^ v) * 16777619u; h[1] = (h[1] + v) * 2246822519u; h[1] ^= h[1] >> 15; }
+static void mm_mixn(uint32_t* h, const void* p, unsigned n) { const uint32_t* w = (const uint32_t*)p; for (unsigned i = 0; i < n; i++) mm_mix(h, w[i]); }
 static int mm_lights(const uint32_t* r) { return r[7] && r[4] <= 7u; }
-static int mm_list_eq(const MmEnt* e, const uint32_t* r) { /* the pointed words of the record that nd_ds_model reads */
-    if (mm_lights(r) && memcmp(&e->lt, (const void*)(uintptr_t)r[7], sizeof e->lt)) return 0;
-    if (r[9] && memcmp(e->c9, (const void*)(uintptr_t)r[9], 8u)) return 0;
-    if (!e->keep && r[1]) { uint32_t h[3]; mm_lh(r, h); if (h[0] != e->nl1 || h[1] != e->lh0 || h[2] != e->lh1) return 0; }
-    return 1;
+/* The 64 bit hash of every input of the record (mm_h). */
+static void mm_hash(const uint32_t* r, unsigned words, unsigned keep) {
+    uint32_t h[2] = { 2166136261u, 0x9e3779b9u }; static NdMSnap m;
+    mm_mix(h, keep);
+    for (unsigned k = 0; k < 2u * G_PM_REC_WORDS; k++) { if (k == 5u || k == 26u) continue; mm_mix(h, (k == 16u || k == 17u) ? (uint32_t)(r[k] != 0u) : r[k]); } /* R2 w1 and R8 point into the display context */
+    for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { mm_mix(h, r[2 * k]); mm_mix(h, r[2 * k + 1]); }
+    nd_msnap_take(&nd_ds, &m); mm_mixn(h, &m, (unsigned)(sizeof m / 4u));
+    { const uint32_t* d = (const uint32_t*)&nd_ds;
+      mm_mixn(h, d + offsetof(NdDs, conv_k4) / 4u, (unsigned)((offsetof(NdDs, lt) - offsetof(NdDs, conv_k4)) / 4u));
+      mm_mix(h, nd_ds.w.prim_z); mm_mix(h, (uint32_t)nd_ds.w.tex_on); mm_mix(h, nd_ds.w.fill); mm_mix(h, nd_ds.lt_n);
+      mm_mixn(h, d + offsetof(NdDs, lt) / 4u, (unsigned)((offsetof(NdDs, lt_n) - offsetof(NdDs, lt)) / 4u)); }
+    { uint32_t sv[4]; nd_snap_sv(sv); mm_mixn(h, sv, 4u); }
+    { uint32_t rw[MM_RW]; mm_ring_get(&nd_ds, nd_ds.tm.ldrec_n, nd_ds.tm.blk_n, rw); mm_mixn(h, rw, MM_RW); }
+    if (mm_lights(r)) mm_mixn(h, (const void*)(uintptr_t)r[7], (unsigned)(sizeof(Lightsn) / 4u));
+    if (r[9]) mm_mixn(h, (const void*)(uintptr_t)r[9], 2u);
+    if (!keep && r[1]) { const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; unsigned n = 0; for (; (u[0] >> 24) != ND_FS_END; u += 2, n++) { mm_mix(h, u[0]); mm_mix(h, u[1]); } mm_mix(h, n); }
+    mm_h[0] = h[0]; mm_h[1] = h[1];
 }
-static int mm_r13_eq(const MmEnt* e, const uint32_t* r, unsigned words);
-static int mm_match(const MmEnt* e, const uint32_t* r, unsigned words, unsigned keep, const MmS* s) {
-    if (!e->ok || e->cg != mm_cg[e->ctx] || (int)e->ctx == rec_ctx || e->keep != keep || e->kg != r[24] || e->k0 != r[0]) return 0;
-    const uint32_t* q = e->blk + 2;
-    for (unsigned k = 0; k < 2u * G_PM_REC_WORDS; k++) { if (k == 5u || k == 26u) continue; if (k == 16u || k == 17u) { if ((r[k] != 0u) != (q[k] != 0u)) return 0; continue; } if (r[k] != q[k]) return 0; }
-    return mm_r13_eq(e, r, words) && !memcmp(&e->s, s, sizeof *s) && mm_list_eq(e, r);
-}
-static int mm_r13_eq(const MmEnt* e, const uint32_t* r, unsigned words) { /* the kept R13 pairs of the record against the block */
-    const uint32_t* q = e->blk + 2 + 2u * G_PM_REC_WORDS; unsigned n = 0;
-    for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { if (q[2u * n] != r[2 * k] || q[2u * n + 1u] != r[2 * k + 1u]) return 0; n++; }
-    return n == e->keep;
-}
+/* The delta of nd_ds (mm_b before, nd_ds after) into the entry; a delta over MM_D words stores no entry. */
 static __attribute__((cold, noinline)) void mm_store(MmEnt* e, const uint32_t* r, unsigned keep, uint32_t* p) {
-    e->ok = 0; e->kg = r[24]; e->k0 = r[0]; e->keep = keep; e->blk = p; e->ctx = (uint32_t)rec_ctx; e->cg = mm_cg[rec_ctx]; e->s = mm_s;
-    if (mm_lights(r)) memcpy(&e->lt, (const void*)(uintptr_t)r[7], sizeof e->lt);
-    if (r[9]) memcpy(e->c9, (const void*)(uintptr_t)r[9], 8u);
-    e->nl1 = 0; e->lh0 = e->lh1 = 0; if (!keep && r[1]) { uint32_t h[3]; mm_lh(r, h); e->nl1 = h[0]; e->lh0 = h[1]; e->lh1 = h[2]; }
+    e->ok = 0; e->kg = r[24]; e->k0 = r[0]; e->h0 = mm_h[0]; e->h1 = mm_h[1]; e->keep = (uint16_t)keep; e->blk = p; e->ctx = (uint8_t)rec_ctx; e->cg = mm_cg[rec_ctx];
     const uint32_t* b = (const uint32_t*)&mm_b; const uint32_t* a = (const uint32_t*)&nd_ds; unsigned n = 0;
-    for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u); i++) if (!mm_ringw(i) && a[i] != b[i]) { if (n >= MM_D) { mm_sf[1]++; return; } e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
-    mm_dh[n < 4u ? 0u : n < 8u ? 1u : n < 12u ? 2u : 3u]++; e->nd = n; e->cl = nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n; e->cb = nd_ds.tm.blk_n - mm_b.tm.blk_n; mm_ring_get(&nd_ds, e->al, e->ab); e->ok = 1;
+    for (unsigned i = 0; i < MM_NDW; i++) if (!mm_ringw(i) && a[i] != b[i]) { if (n >= MM_D) { mm_sf++; return; } e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
+    { uint32_t rb[MM_RW], ra[MM_RW]; const unsigned pl = mm_b.tm.ldrec_n, pb = mm_b.tm.blk_n; mm_ring_get(&mm_b, pl, pb, rb); mm_ring_get(&nd_ds, pl, pb, ra);
+      for (unsigned i = 0; i < MM_RW; i++) if (ra[i] != rb[i]) { if (n >= MM_D) { mm_sf++; return; } e->di[n] = (uint16_t)(MM_NDW + i); e->dv[n] = ra[i]; n++; } }
+    e->nd = (uint16_t)n; e->cl = (int16_t)(nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n); e->cb = (int16_t)(nd_ds.tm.blk_n - mm_b.tm.blk_n); e->ok = 1;
+}
+/* A hit: the after state of the model from the entry into s (s is equal to the state before of the entry in every input). */
+static void mm_apply(NdDs* s, const MmEnt* e) {
+    uint32_t rw[MM_RW]; uint32_t* d = (uint32_t*)s; const unsigned pl = s->tm.ldrec_n, pb = s->tm.blk_n;
+    mm_ring_get(s, pl, pb, rw);
+    for (unsigned i = 0; i < e->nd; i++) { const unsigned x = e->di[i]; if (x < MM_NDW) d[x] = e->dv[i]; else rw[x - MM_NDW] = e->dv[i]; }
+    mm_ring_put(s, pl, pb, rw); s->tm.ldrec_n = pl + (unsigned)(int)e->cl; s->tm.blk_n = pb + (unsigned)(int)e->cb;
 }
 static __attribute__((cold, noinline)) void mm_diff(const char* what, unsigned at) { if (mm_diffs++ < 16u) pm_log_evt("mmemo f%u diff %s %u", pm_frame_count(), what, at); }
-static unsigned mm_nn; /* near misses: the same key and record, only S differs; counted by the part of S (m, sv, rg, lr, br) */
-static __attribute__((cold, noinline)) void mm_near(const MmEnt* e, const MmS* s) {
-    const uint32_t* x = (const uint32_t*)&e->s; const uint32_t* y = (const uint32_t*)s; unsigned i = 0; while (x[i] == y[i]) i++;
-    const unsigned o = i * 4u; const unsigned c = o < offsetof(MmS, sv) ? 0u : o < offsetof(MmS, rg) ? 1u : o < offsetof(MmS, lr) ? 2u : o < offsetof(MmS, br) ? 3u : 4u;
-    mm_nc[c]++; if (mm_nn < 24u && pm_frame_count() >= 150u) { mm_nn++; pm_log_evt("mmemo near part %u off %u", c, o); }
-}
-/* census: why an entry with the same key did not hit: 0 stale context, 1 keep, 2 + word k of the record (k < 28), 30 r13, 31 list, 32 S, 33 no entry of the key */
-static __attribute__((cold, noinline)) void mm_why(const MmEnt* e, const uint32_t* r, unsigned words, unsigned keep) {
-    unsigned c = 32u;
-    if (e->cg != mm_cg[e->ctx] || (int)e->ctx == rec_ctx) c = 0u; else if (e->keep != keep) c = 1u;
-    else { const uint32_t* q = e->blk + 2; c = 99u; for (unsigned k = 0; k < 2u * G_PM_REC_WORDS; k++) { if (k == 5u || k == 26u) continue; if (k == 16u || k == 17u) { if ((r[k] != 0u) != (q[k] != 0u)) { c = 2u + k; break; } continue; } if (r[k] != q[k]) { c = 2u + k; break; } }
-        if (c == 99u) c = !mm_r13_eq(e, r, words) ? 30u : !mm_list_eq(e, r) ? 31u : 32u; }
-    mm_wc[c]++;
-}
 static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned* hit) {
     *hit = 0;
     if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_N * sizeof *mm_t); }
     if (!mm_t) { if (mm_tried) return NULL; mm_tried = 1; mm_t = (MmEnt*)calloc(MM_N, sizeof *mm_t); if (!mm_t) return NULL; }
-    mm_s_take(&mm_s);
-    const unsigned h0 = (((r[24] * 2654435761u) ^ (r[0] * 2246822519u)) >> 24) & (MM_N - 1u); MmEnt* v = NULL; unsigned wk = 0; /* DO1: the key only; entries of one geometry with other states follow in the probe run */
+    mm_hash(r, words, keep);
+    const unsigned h0 = (((r[24] * 2654435761u) ^ (r[0] * 2246822519u)) >> 24) & (MM_N - 1u); MmEnt* v = NULL; unsigned wk = 0;
     for (unsigned k = 0; k < MM_PROBE; k++) {
         MmEnt* const e = &mm_t[(h0 + k) & (MM_N - 1u)];
         if (!e->blk) { if (!v) v = e; break; }
-        if (mm_match(e, r, words, keep, &mm_s)) { *hit = 1; return e; }
-        if (e->ok && e->kg == r[24] && e->k0 == r[0] && e->cg == mm_cg[e->ctx] && (int)e->ctx != rec_ctx && e->keep == keep && mm_r13_eq(e, r, words) && mm_list_eq(e, r)) mm_near(e, &mm_s); /* DO1 census: S is the only difference */
-        if (e->ok && e->kg == r[24] && e->k0 == r[0]) { mm_why(e, r, words, keep); wk = 1; }
+        if (e->ok && e->kg == r[24] && e->k0 == r[0]) {
+            if (e->cg != mm_cg[e->ctx] || (int)e->ctx == rec_ctx) { mm_wc[0]++; wk = 1; }
+            else if (e->h0 == mm_h[0] && e->h1 == mm_h[1] && e->keep == keep) { *hit = 1; return e; }
+            else { mm_wc[e->keep != keep ? 1u : 32u]++; wk = 1; }
+        }
         if (!v && (!e->ok || e->cg != mm_cg[e->ctx])) v = e; /* an entry whose block is gone (its context was built again) or that failed to store */
     }
     if (!wk) mm_wc[33]++;
     return v ? v : &mm_t[(h0 + (mm_tog++ & (MM_PROBE - 1u))) & (MM_N - 1u)];
 }
-/* The census of a hit (step 1): the copy of the last block and the nd_ds delta against the real ones. */
+/* The census of a hit: the copy of the last block and the nd_ds delta against the real ones. */
 static __attribute__((cold, noinline)) void mm_census(MmEnt* e, const uint32_t* r, unsigned keep, const uint32_t* p) {
     const unsigned nw = 2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U;
     memcpy(mm_scr, e->blk, nw * 4u); mm_scr[2 + 5] = r[5]; mm_scr[2 + 16] = r[16]; mm_scr[2 + 17] = r[17];
     mm_scr[1] = nd_mkey_a(mm_scr + 2); mm_scr[2u + 2u * (G_PM_REC_WORDS + keep) + 1u] = (uint32_t)(uintptr_t)(p + nw);
     for (unsigned i = 0; i < nw; i++) if (mm_scr[i] != p[i]) { mm_diff("blk", i); break; }
-    uint32_t* b = (uint32_t*)&mm_b; for (unsigned i = 0; i < e->nd; i++) b[e->di[i]] = e->dv[i]; mm_b.tm.ldrec_n += e->cl; mm_b.tm.blk_n += e->cb; mm_ring_put(&mm_b, e->al, e->ab);
-    const uint32_t* a = (const uint32_t*)&nd_ds; unsigned nb = 0; for (unsigned i = 0; i < (unsigned)(sizeof(NdDs) / 4u) && nb < 4u; i++) if (a[i] != b[i]) { mm_diff("ds", i * 4u); nb++; }
+    mm_apply(&mm_b, e);
+    const uint32_t* a = (const uint32_t*)&nd_ds; const uint32_t* b = (const uint32_t*)&mm_b; unsigned nb = 0; for (unsigned i = 0; i < MM_NDW && nb < 4u; i++) if (a[i] != b[i]) { mm_diff("ds", i * 4u); nb++; }
 }
 static void mm_done(MmEnt* e, const uint32_t* r, unsigned keep, uint32_t* p, unsigned hit) {
     mm_models++;
-    if (hit) { mm_hits++; mm_census(e, r, keep, p); e->blk = p; e->ctx = (uint32_t)rec_ctx; e->cg = mm_cg[rec_ctx]; }
+    if (hit) { mm_hits++; mm_census(e, r, keep, p); e->blk = p; e->ctx = (uint8_t)rec_ctx; e->cg = mm_cg[rec_ctx]; }
     else mm_store(e, r, keep, p);
 }
 void nd_rec_model(const void* rec, unsigned words) {
