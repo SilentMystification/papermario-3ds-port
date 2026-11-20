@@ -239,7 +239,6 @@ static void nr_call(unsigned dbg, const NdW2* at, u32 w0, u32 w1, const uint32_t
  * D10b: also the op executor of a flat op range (nd_nr_list): an RDP sync or G_SPNOOP is skipped before the prologue, a texture rectangle
  * takes its two RDPHALF units, G_ENDDL ends the range (the flat ranges hold no branch). */
 unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; static unsigned char ep_mark, ep_stream; /* NAT4A: epchk counters, a mark is pending, a stream run (nd_nr_run) runs */ static uint32_t ep_mw; /* NAT4B */ /* NAT6F */
-int pm_drec_now(void); extern int sc_ok; extern unsigned sc_sig, comb_gen, cmb_gen_seen; unsigned sc_sig_now(void); extern int box_folded;
 /* HC4d: one typed geometry or matrix op (nd_op_geo) with the walker's rules: no skip test but the light memory one (R5B), the prologue
  * (pm_gbi_cur_op; gv_epoch only for G_MOVEMEM, as the old prologue), the handler. at: the op's place in its list (logs). */
 static __attribute__((noinline)) void nr_geo(unsigned dbg, const uint32_t* u, const void* at) {
@@ -326,10 +325,10 @@ void nd_ctl_rec(const uint32_t* rec) { const unsigned dbg = pm_walk_dbg, n = (re
 void nd_txs_run(const uint32_t* r) { /* NAT6A: a stream texture unit with its mark: the mark (nr_ctl MISC_EP), then nr_set at ep_stream and ex_depth 0 */
     nd_epk_mk++; gv_epoch++; nd_epk_n++; ep_mark = 0; pm_gbi_cur_op = r[0] >> 24; ((NdNapiRun)(uintptr_t)r[1])(r + 2); } /* NSET1: r[1] the applier, r[2], r[3] its values (core 1) */
 void nd_oml_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0]); if ((r[1] & m) == (nd_ws.omode_l & m)) nd_ws.om_kl |= m; ep_mark = 0; } /* NAT6A: nd_unit_same OML, then nr_set returns */
-void nd_prim_run(const uint32_t* r) { if (nd_ws.prim == r[1] && (uint8_t)nd_ws.prim_lod == (uint8_t)r[0] && sc_ok) { pm_gpu_set_prim(nd_ws.prim, r[0]); nd_ws.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */
+void nd_prim_run(const uint32_t* r) { if (nd_ws.prim == r[1] && (uint8_t)nd_ws.prim_lod == (uint8_t)r[0]) { pm_gpu_set_prim(nd_ws.prim, r[0]); nd_ws.prim_lod = r[0]; } ep_mark = 0; } /* NAT6A: nd_unit_same PRIM */
 void nd_epm_run(const uint32_t* r) { pm_gbi_cur_op = ND_FS_MISC; ep_mark = 1; ep_mw = r[1]; nd_epk_mk++; gv_epoch++; } /* NAT6C: nr_ctl MISC_EP */
 void nd_cbd_run(const uint32_t* r) { (void)r; ep_mark = 0; } /* NAT6C: nr_set of a pure combine unit at ep_stream, ex_depth 0 */
-static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ws.omode_h & a) && sc_ok) nd_ws.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ws.omode_l & a)) nd_ws.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ws.prim == b && (uint8_t)nd_ws.prim_lod == (uint8_t)a && sc_ok) { pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */
+static void cp_vside(const uint32_t* u) { const unsigned id = u[0] & 0xffu; const uint32_t a = u[2], b = u[3]; if (id == ND_FS_OMH) { if (b == (nd_ws.omode_h & a)) nd_ws.om_kh |= a; } else if (id == ND_FS_OML) { if (b == (nd_ws.omode_l & a)) nd_ws.om_kl |= a; } else if (id == ND_FS_PRIM && nd_ws.prim == b && (uint8_t)nd_ws.prim_lod == (uint8_t)a) { pm_gpu_set_prim(nd_ws.prim, a); nd_ws.prim_lod = a; } } /* NSET2: cp_side on the values (OMH, OML: mask, masked bits; PRIM: LOD, colour) */
 static void cp_unit(unsigned dbg, const uint32_t* u, unsigned m, int mk) { const unsigned id = u[0] & 0xffu; const NdNapiRun f = (NdNapiRun)(uintptr_t)u[1]; int cut = 1; /* NSET2: u the slot, u + 2 the values */ /* NAT6D2: one copy state unit, nr_set and ls_run under NAT6D1 */
     if (m == 2u) { if (id == ND_FS_OML || (id >= ND_FS_PRIM && id <= ND_FS_BLEND) || id == ND_FS_RARE || id == ND_FS_COMB) return;
         if (id == ND_FS_OMH || id == ND_FS_TEXTURE) { f(u + 2); return; } if (id == ND_FS_GEOM) cut = 0; else cp_vside(u); } /* NSET2 */
@@ -379,9 +378,9 @@ static __attribute__((cold, noinline)) void pr_cen(void) {
     pm_log_evt("partsrun f%u v %u", f, pr_v);
 }
 void nd_pbeg_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); pr_v++; if (__builtin_expect(pm_frame_count() >= pr_next, 0)) pr_cen(); /* NAT5E: the start of the old parts runner */
-    pm_walk_side++; gv_epoch++; dlc_on = 1; gp_prev_op = -1; extern int pm_comb_vprim; pm_comb_vprim = 1; sc_ok = 0; }
+    pm_walk_side++; gv_epoch++; dlc_on = 1; gp_prev_op = -1; extern int pm_comb_vprim; pm_comb_vprim = 1; }
 void nd_pdraw_run(const uint32_t* r) { const NdNDev* t = (const NdNDev*)(uintptr_t)r[0]; if (!nd_part_draw(t)) { if (nd_ls_on) nd_lsr_geo(); nd_geo_units(t->u, t->nu); } } /* NAT5E: one instance list */ /* NATFB2: a refused particle list on the native geometry run */
-void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; nd_csync_note(); nd_sr_forget(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */ /* NCS3 */
+void nd_pend_run(const uint32_t* r) { (void)r; extern int pm_comb_vprim; pm_comb_vprim = 0; nd_sr_forget(); pm_walk_side--; gv_streak_flush(); tex_streak_flush(); } /* NAT5E */ /* NCS3 */
 /* ENTRYCAP: the device switch entcap (PMDL). A static list without a v2 table logs its walker entry description (nd_walker_desc) once per
  * distinct key: FNV-1a 32 over the list address, the call site (nd_rec_dl's return address) and the 44 bytes of the description. 4096 keys. */
 static uint32_t entcap_fnv(uint32_t h, const void* p, unsigned n) {
@@ -480,7 +479,7 @@ void nd_range_run(const uint32_t* a) {
     gv_streak_flush();
     tex_streak_flush();
 }
-void nd_mls_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; sc_ok = 0; sr_ok = 0; pm_walk_side++; ex_depth++; } /* NAT5B: nd_nr_list keep 0 start */
+void nd_mls_run(const uint32_t* r) { (void)r; PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; sr_ok = 0; pm_walk_side++; ex_depth++; } /* NAT5B: nd_nr_list keep 0 start */
 void nd_mle_run(const uint32_t* r) { (void)r; ex_depth--; pm_walk_side--; gv_streak_flush(); tex_streak_flush(); if (__builtin_expect(pm_walk_dbg & WD_CEN, 0) && ex_depth == 0) ops_cen_end(); } /* NAT5B: its end */
 void nd_alt_run_x(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5T: the fallback range of a record, as the static table ran it */
 void nd_mdl_alt(const uint32_t* ab) { const unsigned char m = alt_mode; alt_mode = 1u; nd_alt_run(ab); alt_mode = m; } /* NAT5B: a model alt range, as rec_top ran it */

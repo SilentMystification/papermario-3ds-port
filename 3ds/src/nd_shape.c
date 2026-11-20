@@ -868,7 +868,7 @@ static void __attribute__((noinline, cold)) dlc_try_slow(DlcEnt* e, const uint32
 static void __attribute__((noinline, cold)) dlc_group_slow(const uint32_t* l, const DlcGrp* g, int why) {
     if (why == 2) dlc_c.i_lit++; else if (why == 3) dlc_c.i_ring++; else if (why == 4) dlc_c.i_mat++;
     dlc_depth++;
-    PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; sc_ok = 0; sr_ok = 0; pm_walk_side++; /* NATFB: the list start of nd_nr_list keep 0 */
+    PM_WALK_OWN(); gv_epoch++; dlc_on = 1; gp_prev_op = -1; sr_ok = 0; pm_walk_side++; /* NATFB: the list start of nd_nr_list keep 0 */
     nd_geo_units(l + 2u * g->op0, g->op1 - g->op0); /* NATFB */
     pm_walk_side--; gv_streak_flush(); tex_streak_flush(); /* NATFB: its list end */
     dlc_depth--;

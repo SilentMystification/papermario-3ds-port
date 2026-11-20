@@ -93,13 +93,13 @@ void nd_mw_run(const uint32_t* r) { const unsigned k = (r[0] >> 16) & 0xffu, g =
     if (k == ND_FS_MW_NUMLIGHT) { lit_freeze(); lt_n = v; } else if (k == ND_FS_MW_LIGHTCOL && g < 9u) { lt[g].col[0] = (u8)(v >> 24); lt[g].col[1] = (u8)(v >> 16); lt[g].col[2] = (u8)(v >> 8); }
     else if (k == ND_FS_MW_FOG) { fog_fm = (s16)(v >> 16); fog_fo = (s16)v; } else if (k == ND_FS_MW_SEG && g < 16u) nd_ws.segbase[g] = v; }
 void nd_tex_run(const uint32_t* r) { const unsigned on = r[0] & 0xffffffu, ss = r[1] >> 16, ts = r[1] & 0xffffu; const int mk = (int)(r[0] >> 31); /* NAT4J: TEXTURE, nr_set + nd_unit_apply */
-    const int same = nd_ws.tex_on == (int)on && nd_ws.tex_ss == ss && nd_ws.tex_ts == ts && sc_ok && sc_sig_now() == sc_sig;
+    const int same = nd_ws.tex_on == (int)on && nd_ws.tex_ss == ss && nd_ws.tex_ts == ts; /* NWS1 */
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_TEXTURE; if (mk) gv_epoch++; if (same) return;
-    nd_ws.tex_on = (int)on; nd_ws.tex_ss = ss; nd_ws.tex_ts = ts; nd_comb_sync(); }
+    nd_ws.tex_on = (int)on; nd_ws.tex_ss = ss; nd_ws.tex_ts = ts; }
 void nd_omh_run(const uint32_t* r) { const uint32_t m = nd_op_om_mask(r[0] & 0xffffu), v = r[1]; const int mk = (int)(r[0] >> 31); /* NAT4J: OMH, nr_set + nd_unit_apply */
-    const int same = (v & m) == (nd_ws.omode_h & m) && sc_ok; if (same) nd_ws.om_kh |= m;
+    const int same = (v & m) == (nd_ws.omode_h & m); if (same) nd_ws.om_kh |= m;
     if (same && !mk) return; pm_gbi_cur_op = ND_FS_OMH; if (mk) gv_epoch++;
-    if (!same) { const uint32_t sv[2] = { m, v & m }; nd_sv_omh(sv); if (r[0] & 0x40000000u) nd_comb_sync(); } } /* NSET1: core 1 bit 30 is the cycle sync of set_om */
+    if (!same) { const uint32_t sv[2] = { m, v & m }; nd_sv_omh(sv); } } /* NSET1: core 1 bit 30 is the cycle sync of set_om */
 void nd_sv_nop(const uint32_t* r) { (void)r; } /* NSET1: LOADBLOCK, LOADTILE: no core 0 state */
 void nd_sv_omh(const uint32_t* r) { const uint32_t m = r[0], tf = nd_ws.omode_h & (3u << 12); nd_ws.omode_h = (nd_ws.omode_h & ~m) | r[1]; nd_ws.om_kh |= m; /* NSET1: set_om H without the sync */
     if ((nd_ws.omode_h & (3u << 12)) != tf) { pm_gpu_flush(); pm_tex_set_filter((nd_ws.omode_h & (3u << 12)) != 0); } }
@@ -110,4 +110,4 @@ void nd_sv_sci(const uint32_t* r) { sci_x0 = (int16_t)r[0]; sci_y0 = (int16_t)(r
 void nd_sv_nlt(const uint32_t* r) { lit_freeze(); lt_n = r[1]; } void nd_sv_lcol(const uint32_t* r) { lt[r[0]].col[0] = (u8)(r[1] >> 24); lt[r[0]].col[1] = (u8)(r[1] >> 16); lt[r[0]].col[2] = (u8)(r[1] >> 8); } void nd_sv_fogf(const uint32_t* r) { fog_fm = (s16)(r[1] >> 16); fog_fo = (s16)r[1]; }
 void nd_sv_seg(const uint32_t* r) { nd_ws.segbase[r[0]] = r[1]; } void nd_sv_conv(const uint32_t* r) { conv_k4 = r[1]; pm_comb_set_k4(conv_k4); } void nd_sv_keyr(const uint32_t* r) { keyc = (keyc & 0x00ffffffu) | r[0]; keys = (keys & 0x00ffffffu) | r[1]; }
 void nd_sv_keygb(const uint32_t* r) { keyc = (keyc & 0xff000000u) | r[0]; keys = (keys & 0xff000000u) | r[1]; } void nd_sv_comb(const uint32_t* r) { nd_comb_set(r[0], r[1]); } /* NSET2: the setters of nd_unit_apply without the sync, on the core 1 values */
-void nd_sv_apply(const uint32_t* s) { ((NdNapiRun)(uintptr_t)s[1])(s + 2); if (s[0] & ND_SV_SYNC) nd_comb_sync(); } /* NSET2: a marked copy unit: the applier, then the sync of the old setter */
+void nd_sv_apply(const uint32_t* s) { ((NdNapiRun)(uintptr_t)s[1])(s + 2); if (} /* NSET2: a marked copy unit: the applier, then the sync of the old setter */
