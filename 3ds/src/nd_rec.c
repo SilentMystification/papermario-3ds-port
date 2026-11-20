@@ -235,7 +235,7 @@ unsigned pm_frame_count(void);
 void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim */
 #define MM_N 256u /* slots: open addressing, linear probe of MM_PROBE */
 #define MM_PROBE 8u
-#define MM_D 24u /* changed words per entry (nd_ds words and ring words); above it the model stores no entry */
+#define MM_D 32u /* changed words per entry (nd_ds words and ring words); above it the model stores no entry */
 #define MM_LW ((unsigned)(sizeof(((NdTst*)0)->ldrec[0]) / 4u))
 #define MM_BW ((unsigned)(sizeof(((NdTst*)0)->blk[0]) / 4u))
 #define MM_RW (4u * MM_LW + 4u * MM_BW) /* the words of both load rings */
@@ -315,7 +315,7 @@ static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned
         MmEnt* const e = &mm_t[(h0 + k) & (MM_N - 1u)];
         if (!e->blk) { if (!v) v = e; break; }
         if (e->ok && e->kg == r[24] && e->k0 == r[0]) {
-            if (e->cg != mm_cg[e->ctx] || (int)e->ctx == rec_ctx) { mm_wc[0]++; wk = 1; }
+            if (e->cg != mm_cg[e->ctx]) { mm_wc[0]++; wk = 1; } /* a block of this step stays intact in its context: it is a valid source too */
             else if (e->h0 == mm_h[0] && e->h1 == mm_h[1] && e->keep == keep) { *hit = 1; return e; }
             else { mm_wc[e->keep != keep ? 1u : 32u]++; wk = 1; }
         }
