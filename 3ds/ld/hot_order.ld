@@ -159,7 +159,6 @@
 		*(.text.box_plane_out)  /* 606.7 calls/frame, 264 B */
 		*(.text.dlc_find)  /* 182.7 calls/frame, 180 B */
 		*(.text.dlc_box_out)  /* 121.3 calls/frame, 332 B */
-		*(.text.nd_nr_list)  /* 21.7 calls/frame, 296 B */
 		*(.text.dlc_gmi)  /* 17.0 calls/frame, 8 B */
 		*(.text.pm_gpu_grange)  /* 14.7 calls/frame, 888 B */
 		*(.text.grange_flush_if_new)  /* 14.3 calls/frame, 332 B */
