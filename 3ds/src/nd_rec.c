@@ -450,7 +450,9 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
 }
 /* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
  * The spare unit holds the range bounds (nd_alt_run). The units feed nd_ds (nd_rec_nr); the snap memo restarts at both ends. */
+unsigned nd_altu_n, nd_altr_n; /* NAT8A */ /* core 1 nd_alt_put and nd_rec_alt calls */
 void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost) {
+    nd_altr_n++; NDT_B(nt8); /* NAT8A */
     if (units + 1u > 255u) napi_bad(units + 1u); /* NAT5R */
     rec_open(); uint32_t* p = rec_take(4u + 2u * units); ndc_n[NDC_NAPI]++; if (s) ndc_snapc++; /* NAT5R */
     p[0] = NDC_HDR(NDC_NAPI, units + 1u, s ? 1u : 0u); p[1] = (uint32_t)(uintptr_t)run; memcpy(p + 2, rec, units * 8u); napi_last = p + 2u; /* NAT5R */
@@ -461,7 +463,7 @@ void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uin
         if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && k + 2u < an) { nd_rec_texrect(w0, w1 & ~ND_FS_RECT_TEX, au[2u * k + 3u], au[2u * k + 5u]); k += 2u; continue; } /* as nd_rec_list */
         nd_rec_nr(w0, w1); }
     st_hdr = NULL; sh_all(); nd_snap_task(); br[1] = (uint32_t)(uintptr_t)wp; ab[1] = (uint32_t)(uintptr_t)wp; /* NAT5R */
-    if (lost) nd_ds.sc_lost = 1; /* the old nd_ds_feed_dir */
+    if (lost) nd_ds.sc_lost = 1; /* the old nd_ds_feed_dir */ NDT_E(nt8, NDT_ALT); /* NAT8A */
 }
 /* NAT5T, core 1: as nd_rec_alt, the fallback units au copied raw (tile sizes of tile 0 and 1 carry their window); the units apply to a scratch copy of core 1 state, which stays as it was. */
 void nd_alt_put(uint32_t w0, uint32_t w1);
@@ -478,10 +480,10 @@ void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const
 }
 /* NAT5F, core 1: a raw alt range. The units are copied as they are (no mark, no shadow drop, no snap); core 0 runs them with its list executor.
  * A texture rectangle and its 2 RDPHALF units stay in one NRUN run (nr_ctl reads at[3], at[5]). */
-void nd_alt_put(uint32_t w0, uint32_t w1) {
+void nd_alt_put(uint32_t w0, uint32_t w1) { nd_altu_n++; NDT_B(nt8); /* NAT8A */
     if ((w0 >> 24) == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { w1 = txr_take(w0, w1); w0 = ND_FS_W0(ND_FS_TXR, 0); } /* NAT5T */
     if ((w0 >> 24) == ND_FS_RECT && (w1 & ND_FS_RECT_TEX) && st_hdr && (((st_hdr[0] >> 16) & 0xffu) > 252u || wp + 6u > wend)) st_hdr = NULL;
-    st_put(w0, w1); }
+    st_put(w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ }
 uint32_t* nd_alt_open(void) { rec_open(); uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
 void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }
 /* NAT5N, core 1: a call unit inside a raw alt range. A block {list word, a, b} in stream data, the unit CALL | 2 with w1 = the block,
@@ -660,6 +662,7 @@ __attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */
 __attribute__((weak)) void nd_snap_vprim(unsigned v) { (void)v; } __attribute__((weak)) void nd_pbeg_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_pdraw_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_pend_run(const uint32_t* r) { (void)r; } /* NAT5E */
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 unsigned char nd_snap_live __attribute__((weak)); /* NDR1C */
+__attribute__((weak)) int pm_ph_on; __attribute__((weak)) void pm_gpu_ndt_push(void) {} __attribute__((weak)) void pm_gpu_ndt_pop(int k) { (void)k; } /* NAT8A */ /* strong in pm_phase.c, pm_gpu.c */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
 /* POSTFAIL2: the context of the chain whose chunk holds p (*chunk: its index), else -1. Cold: the bad viewport log only. */
 int nd_rec_where(const void* p, unsigned* chunk) {

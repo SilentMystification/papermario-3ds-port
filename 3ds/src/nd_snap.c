@@ -27,6 +27,7 @@ void nd_snap_task(void) { sn_cmds = ~0u; } /* NAT2J: a task stream starts with i
 static NdTgt sn_tgt;
 static unsigned sn_vprim; /* NREC4: 1 while a particle table is taken */
 unsigned nd_snb, nd_snn, nd_snm; /* NAT1: core 1 snap_build calls, new snaps, table misses */
+unsigned nd_lsf_n, nd_lsb_n, nd_lse_n; /* NAT8A */ /* core 1 ls_find calls, new blocks, nd_lsc_end_at calls */
 /* the target record of set_cimg (nd_target.c:87-99) without the GPU calls */
 void nd_snap_tgt(uint32_t w0, uint32_t w1) {
     void* nc = (void*)(uintptr_t)w1;
@@ -37,7 +38,7 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1) {
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 
-static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle */
+static int snap_build0(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle */
     NdSnapChk r;
     NdCombOut o;
     memset(&r, 0, sizeof r);
@@ -65,19 +66,21 @@ static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { /* NDR0E2: the sna
     *rp = r;
     return 1;
 }
+static int snap_build(const NdDs* s, int zc, NdSnapChk* rp) { NDT_B(nt8); const int r = snap_build0(s, zc, rp); NDT_E(nt8, NDT_SNAP); return r; } /* NAT8A */
 static void snap_take(const NdDs* s, int zc) { NdSnapChk r; if (!snap_build(s, zc, &r)) return; nd_rec_st(nd_snapchk_run, &r, sizeof r / 8u); /* NDR0E2: a state op (no dschk record, shadow stays) */ sn_cmds = nd_rec_cmds(); }
 const NdCombOut* nd_snap_now(void) { NdSnapChk t; (void)snap_build(&nd_ds, 0, &t); sn_cmds = ~0u; return &sn_last.o; } /* NAT2K: the decision of nd_ds now; the next snap_take records again */
 #define LS_SMAX 256u /* NAT2D: unique snaps, each in its own stream block */
 #define LS_RMAX 256u /* NAT2D: ranges */
 static NdSnapChk ls_t; static const NdSnapChk* ls_p[LS_SMAX]; static uint32_t ls_h[LS_SMAX], ls_f[LS_RMAX]; static unsigned ls_n, ls_sn, ls_ord; static unsigned char ls_chg;
 _Static_assert(ND_LS_HDR(LS_RMAX + LS_SMAX) + ND_LS_DSB <= 32744u, "NAT2D: a table fits one nd_rec_data_st block");
-static unsigned ls_find(void) { /* NAT2D: the index of a snap equal to ls_t (FNV-1a 32 first), else a new stream block */
+static unsigned ls_find0(void) { /* NAT2D: the index of a snap equal to ls_t (FNV-1a 32 first), else a new stream block */
     const unsigned char* q = (const unsigned char*)&ls_t; uint32_t h = 2166136261u;
     for (unsigned i = 0; i < sizeof ls_t; i++) h = (h ^ q[i]) * 16777619u;
     for (unsigned i = 0; i < ls_sn; i++) if (ls_h[i] == h && !memcmp(ls_p[i], &ls_t, sizeof ls_t)) return i;
     if (ls_sn >= LS_SMAX) return ~0u;
-    NdSnapChk* p = (NdSnapChk*)nd_rec_data_st(sizeof ls_t); *p = ls_t; ls_p[ls_sn] = p; ls_h[ls_sn] = h; return ls_sn++;
+    nd_lsb_n++; NdSnapChk* p = (NdSnapChk*)nd_rec_data_st(sizeof ls_t); *p = ls_t; ls_p[ls_sn] = p; ls_h[ls_sn] = h; return ls_sn++;
 }
+static unsigned ls_find(void) { nd_lsf_n++; NDT_B(nt8); const unsigned r = ls_find0(); NDT_E(nt8, NDT_LSC); return r; } /* NAT8A */
 static unsigned char ls_ovl; /* NREC2: this list has more ranges than LS_MAX */
 static unsigned char ls_ep; void nd_lsc_ep(void) { ls_ep = 1; } /* NCONV2C */
 void nd_lsc_begin(void) { ls_n = 0; ls_sn = 0; ls_ord = 0; ls_chg = 1; ls_ovl = 0; ls_ep = 0; sn_cmds = ~0u; nd_lsc_on = 1; }
@@ -86,9 +89,10 @@ void nd_snap_vprim(unsigned v) { sn_vprim = v; sn_cmds = ~0u; } /* NAT5E: the pa
 void nd_lsc_unit(uint32_t w0) { const unsigned id = w0 >> 24; if (id == ND_FS_TRI1 || id == ND_FS_TRI2) { if (ls_chg) { ls_chg = 0; if (ls_n >= LS_RMAX || ls_ord > 0xffffu) ls_ovl = 1; else if (snap_build(&nd_ds, 0, &ls_t)) { const unsigned k = ls_find(); if (k == ~0u) ls_ovl = 1; else { ls_f[ls_n++] = ls_ord | k << 16 | (ls_ep ? ND_LS_EP : 0u); sn_cmds = nd_rec_cmds(); } } else if (ls_ep && ls_n) { ls_f[ls_n] = ls_ord | (ls_f[ls_n - 1u] & 0x3fff0000u) | ND_LS_EP | ND_LS_DUP; ls_n++; } ls_ep = 0; } ls_ord += id == ND_FS_TRI2 ? 2u : 1u; } else if (id != ND_FS_VTX && id != ND_FS_MTX && id != ND_FS_POPMTX && w0 != ND_FS_W0(ND_FS_MISC, ND_FS_MISC_NOP << 16)) ls_chg = 1; }
 void nd_lsc_tris(unsigned n) { if (!n) return; nd_lsc_unit(ND_FS_W0(ND_FS_TRI1, 0)); ls_ord += n - 1u; } /* NREC4: n list triangles, one snap test */
 unsigned pm_frame_count(void); static __attribute__((cold, noinline)) void ls_over_note(void) { static unsigned n; if (n++ < 16u) pm_log_evt("lsover f%u ranges %u ord %u", pm_frame_count(), ls_n, ls_ord); } /* NAT2G */
-void nd_lsc_end_at(uint32_t* dst) { if (ls_ovl) ls_over_note(); nd_lsc_on = 0; sn_cmds = ~0u; sn_vprim = 0; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
+static void lsc_end0(uint32_t* dst) { if (ls_ovl) ls_over_note(); nd_lsc_on = 0; sn_cmds = ~0u; sn_vprim = 0; if (!ls_n || ls_ovl) return; /* NREC2: dst is the record word of the table; an over list keeps the walker binds */
     const unsigned h = ND_LS_HDR(ls_n + ls_sn); uint32_t* b = (uint32_t*)nd_rec_data_st(h + ND_LS_DSB); b[0] = ls_n; b[1] = ls_sn; memcpy(b + 2, ls_f, 4u * ls_n);
     for (unsigned i = 0; i < ls_sn; i++) b[2u + ls_n + i] = (uint32_t)(uintptr_t)ls_p[i]; memcpy((char*)b + h, &nd_ds, sizeof nd_ds); /* NCONV2D: the end state */ *dst = (uint32_t)(uintptr_t)b; } /* NAT2D */
+void nd_lsc_end_at(uint32_t* dst) { nd_lse_n++; NDT_B(nt8); lsc_end0(dst); NDT_E(nt8, NDT_LSC); } /* NAT8A */
 void nd_lsc_end(void) { nd_lsc_end_at(nd_rec_last_pay() + 4); }
 static NdDs sn_tmp; /* NDR2A, core 1: nd_ds with the pso words of a direct draw */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { /* NDR2A: the state words of nd_direct_bind, in its order */

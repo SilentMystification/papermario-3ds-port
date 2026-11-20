@@ -1,0 +1,2 @@
+#53 prof f390 w300 c1t snap 4.81 lsc 0.86 alt 5.14 cal 377
+#63 prof f390 w300 c1n n 0 snb 51279 snn 50382 snm 42010 lsf 8521 lsb 8521 lse 8521 altu 780413 altr 1873

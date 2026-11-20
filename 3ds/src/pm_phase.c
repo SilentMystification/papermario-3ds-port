@@ -481,7 +481,9 @@ static void pf_c1_now(unsigned* x) {
     pm_wq_pf(w);
     x[0] = w[0]; x[1] = w[1]; x[2] = pm_au_pf_lgj; x[3] = pm_au_pf_job; x[4] = pm_au2_pf_busy;
 }
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; }
+extern unsigned nd_snb, nd_snn, nd_snm, nd_lsf_n, nd_lsb_n, nd_lse_n, nd_altu_n, nd_altr_n; static unsigned lg0_c[8]; /* NAT8A */
+static void pf_c1n_now(unsigned* x) { x[0] = nd_snb; x[1] = nd_snn; x[2] = nd_snm; x[3] = nd_lsf_n; x[4] = nd_lsb_n; x[5] = nd_lse_n; x[6] = nd_altu_n; x[7] = nd_altr_n; } /* NAT8A */
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; } /* NAT8A */
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
@@ -603,7 +605,7 @@ static void pf_report(void) {
     { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); PERF2: the op classes split what was rest */
         uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
         unsigned cm[NDT_N], csum = 0;
-        for (int k = 0; k < NDT_N; k++) { cm[k] = pf_cs(ct[k], pf_s); csum += cm[k]; }
+        for (int k = 0; k < NDT_N; k++) { cm[k] = pf_cs(ct[k], pf_s); if (k <= NDT_LIST) csum += cm[k]; } /* NAT8A */
         /* PERF2 step 6: rest = the walk (nd: gbi_walk ticks) less the classes; task = gbi less the walk (the task start: the GPU tail wait outside its own phases, nd_frame_begin) */
         const unsigned ndw = pf_cs(pf_nd_t, pf_s);
         int rest = (int)ndw - (int)csum; unsigned ra = rest < 0 ? (unsigned)-rest : (unsigned)rest;
@@ -621,6 +623,12 @@ static void pf_report(void) {
         /* the counters on their own line: on the cls line they passed the 256-byte log slot */
         pm_log_prof_line("prof f%u w%u cnt prg %u.%u shr %u.%u upd %u.%u spl %u.%u smh %u.%u smm %u.%u esync %u.%u gdl %u.%u", pf_total, pf_w,
             C1(c10[0]), C1(c10[1]), C1(c10[2]), C1(c10[3]), C1(c10[4]), C1(c10[5]), C1(c10[6]), C1(c10[7]));
+        { /* NAT8A: core 1 recorder timers of the sampled step, ms x 100 per sampled frame; cal = ticks inside one empty timer pair */
+            for (int k = 0; k < 16; k++) { pm_gpu_ndt_push(); pm_gpu_ndt_pop(NDT_ALT); }
+            uint64_t c2[NDT_N]; pm_gpu_ndt_take(c2);
+            pm_log_prof_line("prof f%u w%u c1t snap %u.%02u lsc %u.%02u alt %u.%02u cal %u", pf_total, pf_w,
+                CS(cm[NDT_SNAP]), CS(cm[NDT_LSC]), CS(cm[NDT_ALT]), (unsigned)(c2[NDT_ALT] >> 4));
+        }
         { /* DIRECT: frame stream commands per drawn frame x 10 (nd_rec.c): model, sprite and entity records, ranges, compound texture loads, texture rectangles; kb = the stream high-water mark */
             unsigned nc[NDC_N], kb, n10[NDC_N], sw;
             nd_rec_cnt_take(nc, &sw, &kb);
@@ -684,6 +692,7 @@ static void pf_report(void) {
                 bw / 100u, bw % 100u, fw / 100u, fw % 100u, aj / 100u, aj % 100u, au / 100u, au % 100u, mx / 100u, mx % 100u);
             pm_log_prof_line("prof f%u w%u core2 drain dr %u.%02u drw %u.%02u wqf %u.%02u", pf_total, pf_w,
                 dr / 100u, dr % 100u, drw / 100u, drw % 100u, wqf / 100u, wqf % 100u);
+            { unsigned c[8]; pf_c1n_now(c); pm_log_prof_line("prof f%u w%u c1n n %u snb %u snn %u snm %u lsf %u lsb %u lse %u altu %u altr %u", pf_total, pf_w, dn, c[0] - lg0_c[0], c[1] - lg0_c[1], c[2] - lg0_c[2], c[3] - lg0_c[3], c[4] - lg0_c[4], c[5] - lg0_c[5], c[6] - lg0_c[6], c[7] - lg0_c[7]); } /* NAT8A */ /* window totals over n logic steps */
         }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
