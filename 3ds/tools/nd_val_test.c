@@ -84,6 +84,8 @@ typedef struct {
     NdDs ds; /* NAT4K: core 1 state after the shape (a dropped unit still changes it) */
 } Res;
 
+/* NAT5T: a ND_FS_TXR unit holds a pointer into the stream: made stream-relative so that two runs compare */
+static void txr_norm(uint32_t* w, unsigned n, const uint32_t* mk, const uint32_t* en) { for (unsigned i = 0; i + 1u < n; i++) if ((w[i] == ND_FS_W0(ND_FS_TXR, 0) || w[i] == NDC_HDR(NDC_JUMP, 0, 0)) && w[i + 1u] >= (uint32_t)(uintptr_t)mk && w[i + 1u] < (uint32_t)(uintptr_t)en) w[i + 1u] -= (uint32_t)(uintptr_t)mk; }
 static void run_one(void (*fn)(void*), void* arg, Res* out) {
     memset(out, 0, sizeof *out);
     { static NdDs d0; static int have; if (!have) { d0 = nd_ds; have = 1; } nd_ds = d0; } /* NAT4A: each run starts from the same core 1 state */
@@ -100,6 +102,7 @@ static void run_one(void (*fn)(void*), void* arg, Res* out) {
     nd_stream_run(mk);
     out->nu = nulog * 2u;
     memcpy(out->u, ulog, out->nu * sizeof(uint32_t));
+    txr_norm(out->w, out->nw, mk, en); txr_norm(out->u, out->nu, mk, en); /* NAT5T */
     const uint32_t* nr = 0;
     out->r = nd_r11_state((uint32_t)(uintptr_t)mk, &nr, out->cw, &out->hcb, out->mo, &out->nmo);
 }

@@ -177,8 +177,6 @@ void nd_unit_apply(const uint32_t* u) {
     case ND_FS_TIMG: nd_tx_timg(a, b); break; /* HC4c: the texture image, tile and load ops (nd_tex_set.c) */
     case ND_FS_TILE: nd_tx_tile(a, b); break;
     case ND_FS_TILESIZE: nd_tx_tsz(a, b); break;
-    case ND_FS_LOADBLOCK: nd_tx_ldblk(b); break;
-    case ND_FS_LOADTILE: nd_tx_ldtile(a, b); break;
     case ND_FS_LOADTLUT: nd_tx_ldtlut(b); break;
     default: break;
     }

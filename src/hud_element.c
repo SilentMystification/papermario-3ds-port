@@ -629,11 +629,8 @@ __attribute__((unused)) static void cplx_quad_run(const uint32_t* u) {
     }
     nd_dir_drop(); /* NDR2C */
     {
-        static uint32_t buf[64];
-        uint32_t* nrp = buf;
         nd_c0fb_note(2u, 0u); /* NAT5D */
-        cplx_quad_emit(r, &nrp);
-        nd_nr_exec(buf, (unsigned)(nrp - buf) / 2u);
+        nd_alt_run_x(u + 2u * (unsigned)(sizeof(NdCHudRec) / 8u)); /* NAT5T: the fallback units are the alt range after the record */
     }
 }
 
@@ -1920,7 +1917,7 @@ void render_complex_hud_element(HudElement* hudElement) {
                 rec.pad = 0;
                 rec.prim = ((u32)hudElement->tint.r << 24) | ((u32)hudElement->tint.g << 16) | ((u32)hudElement->tint.b << 8) |
                            (u32)hudElement->opacity;
-                { NdPsoN64 pd; cplx_quad_pso(&rec, &pd); nd_dir_rec(cplx_quad_run, &rec, sizeof rec / 8u, &pd, rec.prim); } /* NDR2C */
+                { NdPsoN64 pd; uint32_t au[64]; uint32_t* q = au; cplx_quad_pso(&rec, &pd); cplx_quad_emit(&rec, &q); nd_dir_rec_raw(cplx_quad_run, &rec, sizeof rec / 8u, &pd, rec.prim, au, (unsigned)(q - au) / 2u); } /* NDR2C; NAT5T */
                 cplx_quad_feed((const uint32_t*)&rec);
             } else
             {

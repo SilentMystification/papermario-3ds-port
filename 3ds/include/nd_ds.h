@@ -8,6 +8,8 @@
 #include "nd_int.h"
 #include "nd_fs.h"
 
+typedef struct NdTxR { uint32_t tile; int32_t uls, ult, lrs, lrt; const uint8_t* src; int32_t w, h, stride, x0; const void* pal; int32_t pal_n; const void* timg; uint32_t m1v; const uint8_t* m1src; int32_t m1stride, m1w, m1h, m1x0, m1y0; } NdTxR; /* NAT5T */
+
 typedef struct NdDs {
     NdWs w;
     unsigned conv_k4;              /* nd_comb.c */
@@ -22,6 +24,7 @@ typedef struct NdDs {
     float vp_sx, vp_sy, vp_sz, vp_tx, vp_ty, vp_tz;
     NdTexM tm;                     /* nd_tex_set.c nd_tm: the load side of the texture model */
     int m1v, m1w, m1h;             /* NST2F: the shaded sprite record of tile 1 (m1.valid, m1.w, m1.h) */
+    unsigned char zslot;           /* NAT5T: a zcol texrect was seen (nd_ws zslot_on) */
     uint8_t sc_lost, sc_dirty;     /* NST2J: core 1 view of !sc_ok and sc_sig != sc_sig_now() (nd_comb.c:342); not in ds_fields */
 } NdDs;
 extern NdDs nd_ds;
@@ -29,6 +32,8 @@ extern NdDs nd_ds;
 unsigned nd_ds_apply(NdDs* s, uint32_t k, uint32_t v);
 /* NST2A: applies the state units of a static list (depth 0 from nd_rec_dl, 1 from an ND_FS_CALL unit of nd_rec_nr); see nd_ds.c. */
 void nd_ds_list(NdDs* s, const void* l, int depth);
+struct NdNDev; NdDs* nd_alt_flat_save(const NdDs* s, unsigned d); void nd_alt_flat(NdDs* sv, const struct NdNDev* nt); void nd_ds_pairs0(NdDs* s, const uint32_t* u, unsigned n); /* NAT5T */
+struct NdNDev; void nd_ds_units(NdDs* s, const struct NdNDev* nt, const uint32_t* u, unsigned n); /* NAT5T */
 /* NST2b: applies one typed unit of a record (the ds_unit of nd_rec.c: nd_ds_apply, the ND_FS_CALL list, the ep rule). */
 typedef void (*NdDsUnitFn)(NdDs* s, uint32_t w0, uint32_t w1);
 /* NST2b: the state units of one model record q (the payload, pair Rk = q[2k], q[2k+1]), its R13 units and the render mode pairs rm (nrm). */

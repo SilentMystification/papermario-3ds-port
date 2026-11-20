@@ -100,7 +100,7 @@ void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { /* NDR2A: the
     snap_take(&sn_tmp, 0);
 }
 void nd_snap_mesh(void) { snap_take(&nd_ds, 0); }
-void nd_snap_rect(void) { snap_take(&nd_ds, sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL))); } /* NDR1C: zcol of nd_rect.c:236 */
+void nd_snap_rect(void) { const int zc = sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL)); nd_ds.zslot |= (unsigned char)(zc != 0); /* NAT5T */ snap_take(&nd_ds, zc); } /* NDR1C: zcol of nd_rect.c:236 */
 
 /* ---- core 0 ---- */
 unsigned char nd_snap_arm;

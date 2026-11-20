@@ -41,6 +41,7 @@ enum {
     ND_FS_MISC,       /* a = kind << 16 | arg: the list start of an in-line state list, the native-only payload
                        * (arg = kind << 8 | on), the vertex modify (arg = where << 8 | vertex, vertex 255 when above),
                        * the colour image (arg = siz << 12 | width - 1, b = image address), no work */
+    ND_FS_TXR,        /* NAT5T: the core 1 window of a tile size of tile 0 or 1: w1 = a const NdTxR* (nd_ds.h) */
     ND_FS_END_
 };
 enum { ND_FS_MW_NONE, ND_FS_MW_NUMLIGHT, ND_FS_MW_LIGHTCOL /* arg = light k */, ND_FS_MW_FOG, ND_FS_MW_SEG /* arg = segment */ };

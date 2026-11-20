@@ -19,7 +19,7 @@ static const uint8_t nd_op_n64[ND_FS_END_ - ND_FS_BASE] = {
     G_SETOTHERMODE_H, G_SETOTHERMODE_L, G_GEOMETRYMODE, G_SETPRIMCOLOR, G_SETENVCOLOR, G_SETFOGCOLOR, G_SETBLENDCOLOR,
     G_SETFILLCOLOR, G_SETPRIMDEPTH, G_SETSCISSOR, G_TEXTURE, G_MOVEWORD, 0 /* ND_FS_RARE: the sub-op names it */, G_SETCOMBINE,
     G_ENDDL /* ND_FS_END */, G_SPNOOP /* ND_FS_DROP */, G_SETTIMG, G_SETTILE, G_SETTILESIZE, G_LOADBLOCK, G_LOADTILE, G_LOADTLUT,
-    G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX, G_MOVEMEM, G_DL, G_FILLRECT, 0 /* ND_FS_MISC: the sub-op names it */
+    G_VTX, G_TRI1, G_TRI2, G_MTX, G_POPMTX, G_MOVEMEM, G_DL, G_FILLRECT, 0 /* ND_FS_MISC: the sub-op names it */, 0 /* ND_FS_TXR: NAT5T */
 };
 
 uint32_t f32tof24(float vf) {
@@ -69,7 +69,7 @@ static uint32_t nd_op_om_word(const uint32_t u[2]) {
 static void op_test(void) {
     for (unsigned id = ND_FS_BASE; id < ND_FS_END_; id++) {
         CHECK(!(id >= 0x01 && id <= 0x07) && !(id >= 0x0d && id <= 0x13) && id < 0xd7, "typed id %02x collides", id);
-        if (id != ND_FS_RARE && id != ND_FS_MISC) CHECK(nd_op_n64[id - ND_FS_BASE] >= 0xd7 || (nd_op_geo(id) && nd_op_n64[id - ND_FS_BASE] >= 0x01 && nd_op_n64[id - ND_FS_BASE] <= 0x07),
+        if (id != ND_FS_RARE && id != ND_FS_MISC && id != ND_FS_TXR) CHECK(nd_op_n64[id - ND_FS_BASE] >= 0xd7 || (nd_op_geo(id) && nd_op_n64[id - ND_FS_BASE] >= 0x01 && nd_op_n64[id - ND_FS_BASE] <= 0x07),
                                   "typed id %02x has no F3DEX2 op", id);
     }
     Gfx g[16]; uint32_t t[2];

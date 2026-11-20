@@ -98,6 +98,7 @@ unsigned char nd_snap_live; /* NDR2A */
 void nd_nr_exec(const uint32_t* q, unsigned n) { (void)q; n_walk += (int)n; }
 static int n_alt; void nd_alt_run(const uint32_t* ab) { (void)ab; n_alt++; } /* NAT5R */
 void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost) { (void)run; (void)rec; (void)units; (void)s; (void)au; (void)an; (void)lost; } /* NAT5R */
+void nd_rec_alt_raw(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an) { (void)run; (void)rec; (void)units; (void)s; (void)au; (void)an; } /* NAT5T */
 void gp3_t0_surv(void) {}
 unsigned pm_gbi_cur_op; /* NAPI3B: the glyph draw (nd_glyph_draw) is not run by this test, its callees are stubs */
 void nd_tex_bind_glyph(uint32_t r, uint32_t p, int t, int w, int h) { (void)r; (void)p; (void)t; (void)w; (void)h; }

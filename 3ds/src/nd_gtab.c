@@ -146,5 +146,9 @@ void nd_rec_ntab(const void* list) {
 }
 void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_ntab(list); dl_ent = NULL; }
 void nd_rec_dl_key(const void* list, unsigned k) { dl_site = (uint32_t)(uintptr_t)__builtin_return_address(0) | ((k & 15u) + 1u) << 28; nd_rec_ntab(list); dl_site = 0; }
-void nd_rec_ndev(const NdNDev* e) { uint32_t rec[2u * ND_NDEV_REC_UNITS]; nd_ndev_pack(rec, e, (uint32_t)(uintptr_t)__builtin_return_address(0)); nd_rec_napi(nd_ndev_rec, rec, ND_NDEV_REC_UNITS); } /* NTABFIND: a copy (nd_gtab.h) */
+void nd_rec_ndev(const NdNDev* e) { /* NTABFIND: a copy (nd_gtab.h); NAT5T: its units as a raw alt range at rec[10], rec[11] */
+    uint32_t rec[2u * ND_NDEV_REC_UNITS]; nd_ndev_pack(rec, e, (uint32_t)(uintptr_t)__builtin_return_address(0)); nd_rec_napi(nd_ndev_rec, rec, ND_NDEV_REC_UNITS);
+    uint32_t* const pay = nd_rec_last_pay(); uint32_t* const br = nd_alt_open(); nd_alt_raw_on = 1;
+    nd_ds_units(nd_alt_scr_on(), e, e->u, e->nu);
+    nd_alt_raw_on = 0; nd_alt_scr_off(); nd_alt_close(br, pay + 10); pay[9] = (uint32_t)(uintptr_t)nd_alt_et_end(pay[11]); /* NAT5T: the entity copy, as nd_rec_ntab pay[5] */ }
 #endif
