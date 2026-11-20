@@ -84,7 +84,24 @@ static const NdSnapChk* snap_build(const NdDs* s, int zc) { NDT_B(nt8); const Nd
 void nd_snapcp_run(const uint32_t* rec);
 static void snap_take_r(const NdDs* s, int zc, NdNapiRun run) { const NdSnapChk* const p = snap_build(s, zc); if (!p) return; const uint32_t u[2] = { (uint32_t)(uintptr_t)p, 0u }; nd_rec_st(run, u, 1u); /* NDR0E2: a state op (no dschk record, shadow stays); NWS4A: run */ sn_cmds = nd_rec_cmds(); }
 static void snap_take(const NdDs* s, int zc) { snap_take_r(s, zc, nd_snapchk_run); } /* NWS4A */
-const NdCombOut* nd_snap_now(void) { (void)snap_build(&nd_ds, 0); sn_cmds = ~0u; return &sn_lp->o; } /* NAT2K: the decision of nd_ds now; the next snap_take records again */
+static NdCombOut sd_now; /* MSNAP2: the decision of the last nd_snap_dec */
+const NdCombOut* nd_snap_dec(void) { /* MSNAP2: the decision of nd_ds now (the SD part of snap_build0, no snap built); the next snap_take records again */
+    NdCombIn in; nd_snap_in(&nd_ds, sn_leg, sn_pat, &in);
+    const int m5 = sn_mode5; const uint32_t hi = si_hw(2166136261u ^ (uint32_t)m5 ^ sn_vprim << 8, &in, sizeof in);
+    if (!sd_t && !sd_tried) { sd_tried = 1; sd_t = (SdEnt*)calloc(SD_N, sizeof *sd_t); if (sd_t) for (unsigned q = 0; q < SD_N; q++) sd_t[q].m5 = INT32_MIN; }
+    SdEnt* const de = sd_t ? &sd_t[hi & (SD_N - 1u)] : NULL;
+    int key;
+    if (de && de->h == hi && de->m5 == m5 && de->vp == sn_vprim && !memcmp(&de->in, &in, sizeof in)) { nd_sd_hit++; key = de->key; sd_now = de->o; }
+    else {
+        key = nd_pso_find_i(&in, sn_vprim, &sd_now);
+        if (key >= 0) nd_pso_fix(&sd_now, &in, sn_mode5);
+        else { nd_snm++; nd_comb_core1(&in, sn_vprim, sn_mode5, &sd_now); }
+        if (sd_now.plan_on) pm_comb_colours_k(&sd_now.plan, in.prim, in.env, in.prim_lo8 & 0xffu, in.key_c, in.key_s, in.conv_k4 & 255u);
+        nd_sd_new++; if (de) { de->h = hi; de->m5 = m5; de->vp = sn_vprim; de->key = key; de->in = in; de->o = sd_now; }
+    }
+    sn_leg = sd_now.leg; sn_mode5 = sd_now.mode5; sn_pat = sd_now.pat;
+    sn_cmds = ~0u; return &sd_now;
+}
 #define LS_SMAX 256u /* NAT2D: unique snaps, each in its own stream block */
 #define LS_RMAX 256u /* NAT2D: ranges */
 static const NdSnapChk* ls_np; static const NdSnapChk* ls_p[LS_SMAX]; static uint32_t ls_f[LS_RMAX]; static unsigned ls_n, ls_sn, ls_ord; static unsigned char ls_chg;

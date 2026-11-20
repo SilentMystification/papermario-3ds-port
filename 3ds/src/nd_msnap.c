@@ -10,7 +10,7 @@
 #include "nd_msnap.h"
 #include "nd_msnapw.h"
 #include "pm_port.h"
-extern int plan_active, comb_mode5; extern PmPlan cur_plan; const NdCombOut* nd_snap_now(void); /* NAT2K */
+extern int plan_active, comb_mode5; extern PmPlan cur_plan; const NdCombOut* nd_snap_dec(void); /* MSNAP2: the decision without a snap */
 
 extern unsigned pm_frame_n;
 static uint32_t ms_pre[5]; void nd_msnap_pre(const NdDs* s) { ms_pre[0] = s->w.omode_h; ms_pre[1] = s->w.omode_l; ms_pre[2] = s->w.om_kh; ms_pre[3] = s->w.om_kl; ms_pre[4] = s->w.geom; } /* NAT2C */
@@ -19,7 +19,7 @@ static uint32_t ms_pre[5]; void nd_msnap_pre(const NdDs* s) { ms_pre[0] = s->w.o
 void nd_msnap_rec(uint32_t* p, unsigned units) {
     NdMSnap* m = (NdMSnap*)(p + 2u + 2u * units + 2u);
     nd_msnap_take(&nd_ds, m);
-    { const NdCombOut* o = nd_snap_now(); m->d_plan = (uint32_t)o->plan_on; m->d_mode5 = (uint32_t)o->mode5; m->d_vtx = o->plan.vtx; m->d_vtxname = o->plan.vtxname; m->d_t1 = o->plan.uses_tex1; } /* NAT2K */
+    { const NdCombOut* o = nd_snap_dec(); m->d_plan = (uint32_t)o->plan_on; m->d_mode5 = (uint32_t)o->mode5; m->d_vtx = o->plan.vtx; m->d_vtxname = o->plan.vtxname; m->d_t1 = o->plan.uses_tex1; } /* NAT2K */
     m->d_primz = nd_ds.w.prim_z; /* NAT4H */ m->d_fogf = ND_FOGPK(nd_ds.fog_fm, nd_ds.fog_fo); m->d_texon = (uint32_t)nd_ds.w.tex_on; /* NC0V */
     m->k_omh = ms_pre[0]; m->k_oml = ms_pre[1]; m->k_kh = ms_pre[2]; m->k_kl = ms_pre[3]; m->k_geom = ms_pre[4]; /* NAT2C */
     p[0] |= 1u; /* NREC1B: nd_rec_model reserved the room */
