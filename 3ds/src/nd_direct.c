@@ -51,7 +51,7 @@ int nd_direct_bind(NdPso id, uint32_t prim, uint32_t env) { /* NWS4B */
     const uint32_t mh = (nd_ap->in.omode_h & ~p->omh_m) | (p->omh & p->omh_m); /* NWS4B */
     const uint32_t ml = (nd_ap->oml & 7u) | (p->oml & ~7u); /* NWS4B */
     if (((mh >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* COPY and FILL rectangles have their own span rules */
-    if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_c0.geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
+    if ((ml & (1u << G_MDSFT_ZSRCSEL)) && (ml & 0x10u) && (nd_ap->geom & G_ZBUFFER)) return 0; /* G_ZS_PRIM rectangle: its own depth test */
     {   /* the other mode and combine words the stream would have set, in its order (filter, render mode, combine, primitive colour) */
         const unsigned old_tf = nd_ap->in.omode_h & (3u << 12); /* NWS4B */
         nd_c0.omode_h = mh;
@@ -153,7 +153,7 @@ int nd_glyph_can(int texW) { /* NWS4B */
     if (texW < 16 || (texW & 15)) return 0;
     if (nd_direct_ready() != 1) return 0;
     if (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3u) >= 2u) return 0; /* NWS4B */
-    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_c0.geom & G_ZBUFFER)) return 0; /* NWS4B */
+    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_ap->geom & G_ZBUFFER)) return 0; /* NWS4B */
     if (nd_ap->in.use_t1 || nd_ap->in.dual_on || nd_cw_box_prod(nd_ap->in.w0, nd_ap->in.w1) || box_pat) return 0; /* NWS2 */ /* NWS4B */
     return 1;
 }
@@ -334,7 +334,7 @@ void nd_direct_quad(uint32_t mtx, const void* vtx4) {
     pm_gbi_cur_op = ND_FS_MTX;
     nd_xf_load(wm, mtx, 0);
     pm_gbi_cur_op = ND_FS_VTX;
-    nd_geom_vtx(wv, (u32)(uintptr_t)vtx4, NULL);
+    nd_geom_vtx(wv, (u32)(uintptr_t)vtx4, NULL, nd_ap->geom, nd_ap->tss);
     pm_gbi_cur_op = ND_FS_TRI1;
     tri_prep_ok = 0;
     draw_tri(t0);

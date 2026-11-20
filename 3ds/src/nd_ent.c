@@ -309,10 +309,10 @@ extern unsigned char pm_ent_decal_ok; /* pm_gpu.c: pm_gpu_grange takes a decal w
 unsigned ent_sw[16], ent_gw[8]; /* ent_gw: pm_gpu_grange_why of a grange refusal (1 gv or gpu off, 2 zmark, 3 decal and blend, 4 wide, 5 ring) */ /* segments the static path refused, by reason: 1 lit, 2 fog, 3 index room, 4 matrix table, 5 + dlc_seg code (1 + gv state why, 9 grange) */
 __attribute__((noinline)) int ent_seg_native(const EntKey* k, const EntSeg* s) {
     extern unsigned char pm_ent_decal_ok;
-    if (nd_c0.geom & G_LIGHTING) { ent_sw[1]++; return 0; }
-    if (fogmix_on && (nd_c0.geom & G_FOG) && !gv_fog_gpu_ok()) { ent_sw[2]++; return 0; }
+    if (ND_GEOM() & G_LIGHTING) { ent_sw[1]++; return 0; }
+    if (fogmix_on && (ND_GEOM() & G_FOG) && !gv_fog_gpu_ok()) { ent_sw[2]++; return 0; }
     if (!pm_gpu_gidx_room(3u * s->ntri)) { ent_sw[3]++; return 0; }
-    pm_gpu_set_mode((nd_c0.geom & G_ZBUFFER) != 0, (nd_c0.geom & G_LIGHTING) != 0);
+    pm_gpu_set_mode((ND_GEOM() & G_ZBUFFER) != 0, (ND_GEOM() & G_LIGHTING) != 0);
     unsigned gmi = dlc_gmi();
     if (gmi == GV_NONE) { ent_sw[4]++; return 0; }
     pm_ent_decal_ok = 1;

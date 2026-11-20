@@ -96,4 +96,9 @@ unsigned nd_snap_lsr(const uint32_t* b, unsigned ord);
 #define ND_LS_DSB 32u /* PERF1: 8 end words */
 void nd_lsr_geo(void);
 extern const NdSnapChk* nd_ap; void nd_snap_hold(void); void nd_snap_ctx(void); /* NWS4B; PERF1 */
+/* NC0B: the geometry mode, the texture scale word and the other mode words of a static call (core 1 writes them in an entry record). Core 0 reads the snap outside a static call. */
+typedef struct NdGs { uint32_t geom, tss, oml, omh; } NdGs;
+extern NdGs* nd_gs; extern NdGs nd_ew;
+#define ND_GEOM() (nd_gs ? nd_gs->geom : nd_ap->geom)
+#define ND_TSS() (nd_gs ? nd_gs->tss : nd_ap->tss)
 #endif

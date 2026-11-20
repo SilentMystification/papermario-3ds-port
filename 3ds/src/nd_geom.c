@@ -94,7 +94,7 @@ float cull_cross(const float* p1, const float* p2, const float* p3) {
 }
 
 int nd_spr_walk; /* WALLSHADE: 1 while nd_walk_spr runs the walker words of a sprite (the shaded sprite fallback) */
-void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(tss, nd_c0.geom, tw, th, o, &gc); /* NWS4C */ nd_bsrc = NULL; if (nd_ap->in.dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */ /* NWS4B */
+void gv_params_calc(unsigned tss, GvP* o) { int tw = 1, th = 1; pm_tex_size(&tw, &th); nd_bsrc = nd_ep_bs; NdGvC gc; nd_apw_gvc(&gc); pm_gbi_gv_at(tss, ND_GEOM(), tw, th, o, &gc); /* NWS4C */ nd_bsrc = NULL; if (nd_ap->in.dual_on && nd_spr_walk) for (int q = 0; q < 4; q++) { o->cm[q] *= dual_f[q]; o->ca[q] *= dual_f[q]; } } /* S3N-3b: not static, the ndmcheck compare calls it. KZN04: the shade colour of a shaded sprite, only for the sprite (WALLSHADE) */ /* NWS4B */
 
 /* S3N-3c: the draw parameters at geometry geo (the lighting, texgen and fog bits of the batch), the rest as the walker state */
 void pm_gbi_gv_at(unsigned tss, uint32_t geo, int tw, int th, GvP* o, const NdGvC* gc) { /* NWS4C */
@@ -127,9 +127,9 @@ unsigned tri_flags(void) { /* NWS4B */
     unsigned f = 0, bl = nd_ap->oml; /* NWS4B */
     int two = ((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 1; /* NWS4B */
     unsigned a1 = (bl >> 30) & 3, a2 = (bl >> 22) & 3, b1 = (bl >> 28) & 3, b2 = (bl >> 20) & 3;
-    if (nd_c0.geom & G_LIGHTING) f |= 1;
-    if (nd_c0.geom & G_FOG) f |= 2;
-    if (nd_c0.geom & G_TEXTURE_GEN) f |= 4;
+    if (ND_GEOM() & G_LIGHTING) f |= 1;
+    if (ND_GEOM() & G_FOG) f |= 2;
+    if (ND_GEOM() & G_TEXTURE_GEN) f |= 4;
     if (two ? (b1 == 3 || b2 == 3 || a1 == 3 || a2 == 3) : (a1 == 3 || a2 == 3)) f |= 8;
     if (two ? (b1 == 2 || b2 == 2 || a1 == 2 || a2 == 2) : (a1 == 2 || a2 == 2)) f |= 16;
     return f;
@@ -192,11 +192,11 @@ void ep_flush_stats(void) { if (ep_n) { tri_stats_add(ep_fl, ep_n); ep_n = 0; } 
 
 /* what the state alone says: a reason to leave the GPU path (or -1), the cull type, CULL_BOTH */
 int gv_state_why(int* ct, int* both) { /* NWS4B */
-    unsigned cg = nd_c0.geom & G_CULL_BOTH;
+    unsigned cg = ND_GEOM() & G_CULL_BOTH;
     *ct = cg == G_CULL_FRONT ? 1 : cg == G_CULL_BACK ? 2 : 0;
     *both = cg == G_CULL_BOTH;
-    if ((nd_c0.geom & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
-    if (fogmix_on && (nd_c0.geom & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
+    if ((ND_GEOM() & G_LIGHTING) && !gv_lit_ok()) return GVR_LIT;
+    if (fogmix_on && (ND_GEOM() & G_FOG) && !gv_fog_gpu_ok()) return GVR_FOG;
     if (nd_img_role(0) == ROLE_DEPTH && (nd_ap->oml & (1u << G_MDSFT_ZSRCSEL))) return GVR_ZMARK; /* MERLON: a depth-image draw with the primitive depth source stays refused; the pixel depth source is the zmark draw of gv_epoch_enter */ /* NWS4B */
     return -1;
 }
@@ -204,6 +204,7 @@ int gv_state_why(int* ct, int* both) { /* NWS4B */
 /* the first triangle (or DLC2 range) after a state change */
 extern int nd_dq_on; /* nd_direct.c */
 void gv_epoch_enter(void) { /* NWS4B */
+    if (ND_GEOM() != nd_c0.geom) nd_geo_note(1, ND_GEOM(), nd_c0.geom); /* NC0B step 1: the census */
     ep_flush_stats();
     ep_why = gv_state_why(&ep_ct, &ep_cullboth);
     ep_t1f = 0;
@@ -248,8 +249,8 @@ static int gv_tri_core(const int* idx) {
     }
     if (vert_scr[a] | vert_scr[b] | vert_scr[c]) why = GVR_SCR;
     else if (vert_tss[a] != vert_tss[b] || vert_tss[a] != vert_tss[c]) why = GVR_TSS;
-    else if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) || (nd_c0.geom & G_LIGHTING)) { /* GV5: the vertices were loaded with the lighting state of now, and the lights did not change since (the RSP lights at the load) */
-        unsigned want = (nd_c0.geom & G_LIGHTING) ? 1u | ((nd_c0.geom & G_TEXTURE_GEN) ? 2u : 0u) : 0u;
+    else if ((vert_litf[a] | vert_litf[b] | vert_litf[c]) || (ND_GEOM() & G_LIGHTING)) { /* GV5: the vertices were loaded with the lighting state of now, and the lights did not change since (the RSP lights at the load) */
+        unsigned want = (ND_GEOM() & G_LIGHTING) ? 1u | ((ND_GEOM() & G_TEXTURE_GEN) ? 2u : 0u) : 0u;
         if (((vert_litf[a] | vert_litf[b] | vert_litf[c]) & 4) || vert_litf[a] != want || vert_litf[b] != want || vert_litf[c] != want) why = GVR_LIT;
     }
     if (why < 0) {
@@ -370,11 +371,11 @@ int nd_part_draw(const NdNDev* t) {
     memset(vert_live, 0, sizeof vert_live);
     if (!pm_gpu_gv_room(tot + 64u)) { extern int ring_need(unsigned nv, unsigned ni); if (ring_need(tot + 64u, 384u)) memset(vert_ring, 0xff, sizeof vert_ring); } /* HUDRING, as nd_geom_vtx */
     if (!pm_gpu_gv_room(tot)) return 0; /* S4MULTI: every load of the list fits, so no later load fails after a draw */
-    if (nd_c0.geom & G_LIGHTING) return 0;
+    if (ND_GEOM() & G_LIGHTING) return 0;
     const unsigned gmi = gv_matrix_id(0);
     if (gmi == GV_NONE) return 0;
     unsigned short rs[64];
-    const unsigned tss = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu);
+    const unsigned tss = ND_TSS();
     for (unsigned q = 0; q < t->nu; q++) { /* DEL5B1: the entry units of the list */
         const uint32_t w0 = t->u[2u * q], w1 = t->u[2u * q + 1u];
         const unsigned id = w0 >> 24;
@@ -439,18 +440,23 @@ int nd_part_draw(const NdNDev* t) {
 }
 
 void nd_geo_units(const uint32_t* u, unsigned n) { /* NATFB: flat geometry units with the arms of nr_geo and the GEOM arm of nr_set (nd_walk.c) */
+    NdGs loc, * const s0 = nd_gs, * g = s0; if (!g) { loc = (NdGs){ nd_ap->geom, nd_ap->tss, nd_ap->oml, nd_ap->in.omode_h }; g = nd_gs = &loc; } /* NC0B */
     for (const uint32_t* q = u, *e = u + 2u * n; q < e; q += 2) {
         const unsigned id = q[0] >> 24; const u32 a = q[0] & 0xffffffu, b = q[1];
         if (q[0] == ND_NOP_A) continue;
         if (id == ND_FS_END) break;
-        if (id == ND_FS_GEOM) { const u32 g = (nd_c0.geom & a) | b; const int z = (g & G_ZBUFFER) != 0, l = (g & G_LIGHTING) != 0;
-            if (g == nd_c0.geom && pm_gpu_mode_is(z, l)) continue; /* nd_unit_same */
-            pm_gbi_cur_op = id; gv_epoch++; nd_c0.geom = g; pm_gpu_set_mode(z, l); continue; } /* nr_set cut, set_geom */
+        if (id == ND_FS_GEOM) { const u32 gm = (g->geom & a) | b; const int z = (gm & G_ZBUFFER) != 0, l = (gm & G_LIGHTING) != 0;
+            if (gm == g->geom && pm_gpu_mode_is(z, l)) continue; /* nd_unit_same */
+            pm_gbi_cur_op = id; gv_epoch++; g->geom = gm; nd_c0.geom = gm; pm_gpu_set_mode(z, l); continue; } /* nr_set cut, set_geom; NC0B step 1: nd_c0 for the census */
         pm_gbi_cur_op = id;
-        if (id == ND_FS_VTX) nd_geom_vtx(a, b, (const NdW2*)q);
+        if (id == ND_FS_VTX) nd_geom_vtx(a, b, (const NdW2*)q, g->geom, g->tss);
         else { tri_prep_ok = 0; draw_tri(a); if (id == ND_FS_TRI2) draw_tri(b); } }
+    nd_gs = s0; /* NC0B */
     if (__builtin_expect(pm_walk_dbg & WD_PH, 0)) pm_gpu_ndt_cls(-1); }
-void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2) */
+__attribute__((cold, noinline)) void nd_geo_note(unsigned site, uint32_t nw, uint32_t old) { static unsigned cnt[4]; if (cnt[site & 3u]++ < 8u) pm_log_evt("geodiff f%u s%u new %08x old %08x", pm_frame_count(), site, (unsigned)nw, (unsigned)old); } /* NC0B step 1: the census */
+void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list, uint32_t geom, uint32_t tss) { /* G_VTX: the vertex load (cut from nd_walk.c, GM-2); NC0B: geom and tss of the unit */
+    { const uint32_t ot = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu);
+        if (geom != nd_c0.geom) nd_geo_note(2, geom, nd_c0.geom); if (tss != ot) nd_geo_note(2, tss, ot); } /* NC0B step 1: the census */
     unsigned gv_t0 = gp_on() ? pm_ticks() : 0;
     ctr_live = 0; /* BTLUI3: a load ends the trace of the last one */
     unsigned n = (w0 >> 12) & 0xff;
@@ -477,7 +483,7 @@ void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list) { /* G_VTX: the vertex load (
         int gring0 = -1;
         unsigned gmi = GV_NONE;
         int gv = 0;
-        const int lit_ld = (nd_c0.geom & G_LIGHTING) != 0;
+        const int lit_ld = (geom & G_LIGHTING) != 0;
         if (n) { /* GV1: a load goes to the ring as it is (GV5: also a lit load, the GPU lights it). A full ring takes the old code. */
             if (lit_ld && !gv_lit_ok()) gv_fb[GVR_LITLOAD]++;
             else {
@@ -505,10 +511,10 @@ void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list) { /* G_VTX: the vertex load (
         for (unsigned i = 0; i < n; i++) {
             vert_ring[v0 + i] = gring0 >= 0 ? (unsigned short)(gring0 + (int)i) : GV_NONE;
             vert_gmi[v0 + i] = (unsigned short)gmi;
-            vert_tss[v0 + i] = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu);
+            vert_tss[v0 + i] = tss;
             vert_live[v0 + i] = 1;
             vert_scr[v0 + i] = 0;
-            vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((nd_c0.geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
+            vert_litf[v0 + i] = (u8)(gv && lit_ld ? 1 | ((geom & G_TEXTURE_GEN) ? 2 : 0) : 0);
             if (gv && lit_ld) lit_pending = 1;
             if (gv && gp1_cls == GP1_IN) {
                 vert_cb[v0 + i] = 0;

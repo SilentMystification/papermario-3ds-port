@@ -260,6 +260,7 @@ static uint32_t* ent_m1(const NdDs* s0, const NdNDev* nt, const void* list) { /*
     nd_alt_close(br, ab); nd_altw[1] += nd_wdiff(ab[0], ab[1]); nd_alt_raw_on = sr; alt_s = sa; nd_lsc_on = sl; return br; }
 void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned form) {
     NDT_B(tq); /* PROF2 */
+    nd_rec_ew(&nd_ds); /* NC0B */
     NdW2 r[G_PM_ENT_WORDS + 1];
     gPmEntDrawRecord(r, list, segid, varray);
     r[2].words.w0 = form;
@@ -280,6 +281,7 @@ void nd_rec_ent_draw(const void* list, unsigned segid, unsigned varray, unsigned
     nd_lsc_end_at(p + 1); /* NST2C: the entity's list state on core 1 (core 0 runs it at nd_eg_run or walk_call) NREC2: the list snap table in header word 1 */
 }
 void nd_rec_ent(const void* rec) {
+    nd_rec_ew(&nd_ds); /* NC0B */
     rec_open();
     uint32_t* p = rec_take(2u + 2u * G_PM_ENT_WORDS);
     ndc_n[NDC_ENT]++;
@@ -401,14 +403,15 @@ static NdNapiRun cp_run(uint32_t w0, uint32_t w1) { switch (w0 >> 24) { case ND_
     case ND_FS_CALL: return nd_call_run; case ND_FS_TXR: return nd_txr_run; case ND_FS_RECT: return (w1 & ND_FS_RECT_TEX) ? nd_rtex_run : nd_frect_run;
     case ND_FS_MISC: switch ((w0 & 0xffffffu) >> 16) { case ND_FS_MISC_NOP: return nd_nop_run; case ND_FS_MISC_LST: return nd_lst_run; case ND_FS_MISC_ND: return nd_mnd_run; case ND_FS_MISC_MODVTX: return nd_mvx_run; case ND_FS_MISC_CIMG: return nd_cimg_run; default: return NULL; } default: return NULL; } }
 static unsigned char cp_half; /* NAT6G1: the half units still owed to a texture rectangle record */
-static void cp_put(uint32_t w0, uint32_t w1) { if (w0 == ND_NOP_A && cp_half) { cp_half--; xr_put(nd_rtex_run, w0, w1, 1u); return; } /* NAT6G1 */
+static void cp_put(const NdDs* s, uint32_t w0, uint32_t w1) { if (w0 == ND_NOP_A && cp_half) { cp_half--; xr_put(nd_rtex_run, w0, w1, 1u); return; } /* NAT6G1 */
+    if ((w0 >> 24) == ND_FS_VTX) { xr_put(nd_vtx_run, w0, w1, 2u); xr_put(nd_vtx_run, s->w.geom, (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu), 1u); return; } /* NC0B: the vertex load carries its geom and tss */
     const NdNapiRun r = cp_run(w0, w1); if (!r) { left_unit(w0); return; } cp_half = r == nd_rtex_run ? 2u : 0u; xr_put(r, w0, w1, r == nd_rtex_run ? 3u : 1u); } /* NAT6F fallback for END, DROP, untyped, MISC_EP */
 /* HC4d2: a typed op into the open state run (the shadow decides a drop). */
 static void rec_op_t(const uint32_t t[2]) {
     rec_open();
     ndc_sw++;
     if (sh_drop(t)) return; /* HC4b: a typed op the shadow drops is not written */
-    cp_put(t[0], t[1]);
+    cp_put(&nd_ds, t[0], t[1]);
 }
 static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
     static int k;
@@ -416,6 +419,7 @@ static __attribute__((cold, noinline)) void word_bad(uint32_t w0) {
 }
 #define ND_WK(f) __attribute__((weak)) void f(const uint32_t* r) { (void)r; } /* NAT6G1: strong in nd_walk.c */
 ND_WK(nd_vtx_run)
+ND_WK(nd_ew_run)
 ND_WK(nd_tri1_run)
 ND_WK(nd_tri2_run)
 ND_WK(nd_mtx_run)
@@ -456,6 +460,8 @@ static uint32_t txr_take(uint32_t a, uint32_t b) { /* NAT5T, core 1: the window 
         r->m1stride = t->timg_stride * 2; r->m1w = ((lrs - uls) >> 2) + 1; r->m1h = ((lrt - ult) >> 2) + 1; r->m1x0 = uls >> 2; r->m1y0 = ult >> 2; } /* tex_tile1 :457-466 */
     return (uint32_t)(uintptr_t)r; }
 static void rec_nat2(NdNapiRun run, uint32_t a, uint32_t b, uint32_t c, uint32_t d) { st_take = 1; uint32_t* p = rec_take(6); st_take = 0; ndc_n[NDC_NRUN]++; p[0] = NDC_HDR(NDC_NAPI, 2, 1); p[1] = (uint32_t)(uintptr_t)run; p[2] = a; p[3] = b; p[4] = c; p[5] = d; } /* NSET1: 2 units, flag 1 keeps the snap arm */
+static void rec_ew(const NdDs* s) { st_take = 1; uint32_t* p = rec_take(6); st_take = 0; ndc_n[NDC_NRUN]++; p[0] = NDC_HDR(NDC_NAPI, 2, 1); p[1] = (uint32_t)(uintptr_t)nd_ew_run; p[2] = s->w.geom; p[3] = (s->w.tex_ss << 16) | (s->w.tex_ts & 0xffffu); p[4] = s->w.omode_l; p[5] = s->w.omode_h; } /* NC0B: the entry record of a static call, as rec_nat2 (2 units, flag 1) */
+void nd_rec_ew(const NdDs* s) { rec_open(); rec_ew(s); }
 NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
 void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
 static unsigned char rnr_d; unsigned nd_rnr_n; /* PROF2: nd_rec_nr depth (the outer call times) and calls */
@@ -483,8 +489,8 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
     if (id == ND_FS_CALL) { /* NAT5T: the called static list as a raw alt range, its tile sizes carry the core 1 window; core 1 state keeps no nested state */
         NdDs* const sc = nd_alt_scr_on(); const unsigned char om = nd_alt_raw_on; nd_alt_raw_on = 1; uint32_t* const blk = nd_alt_call(w0, w1);
         nd_ds_list(sc, (const void*)(uintptr_t)w1, 1); nd_alt_call_end(blk); nd_altw[2] += nd_wdiff(blk[1], blk[2]); nd_alt_raw_on = om; nd_alt_scr_off(); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
-    if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { cp_put(ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } /* NAT5T */
-    cp_put(t[0], t[1]); /* NAT4A */
+    if (id == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { cp_put(&nd_ds, ND_FS_W0(ND_FS_TXR, 0), txr_take(w0, w1)); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } } /* NAT5T */
+    cp_put(&nd_ds, t[0], t[1]); /* NAT4A */
     rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR);
 }
 /* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
@@ -530,12 +536,13 @@ void nd_alt_put(uint32_t w0, uint32_t w1) { nd_altu_n++; NDT_B(nt8); /* NAT8A */
     if ((w0 >> 24) == ND_FS_TILESIZE && ((w1 >> 24) & 7u) < 2u) { w1 = txr_take(w0, w1); w0 = ND_FS_W0(ND_FS_TXR, 0); } /* NAT5T */
     else if ((id >= ND_FS_OMH && id <= ND_FS_COMB) || (id >= ND_FS_TIMG && id <= ND_FS_LOADTLUT)) { uint32_t* const h0 = st_hdr; xr_put(nd_cpy_run, ND_NOP_A | id, (uint32_t)(uintptr_t)nd_sv_nop, 2u); c6_slot = wp - 2; c6_w0 = w0; c6_w1 = w1; /* NSET2 */ xr_put(nd_cpy_run, w0, w1, 1u); c6_app = h0 != NULL && st_hdr == h0; /* ALTU: both units went into an open record */ NDT_E(nt8, NDT_ALT); return; } /* NAT6B: slot and unit in one record */
     if (dr && alt_sd && nd_alt_raw_on != 2u && !nd_lsc_on) { alt_sd = 0; nd_snap_alt(alt_s, id == ND_FS_RECT); } /* NWS4A */
-    cp_put(w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ } /* NAT5G: xr_put need 3 holds the NAT5F rectangle rule */
+    cp_put(alt_s, w0, w1); NDT_E(nt8, NDT_ALT); /* NAT8A */ } /* NAT5G: xr_put need 3 holds the NAT5F rectangle rule */
 uint32_t* nd_alt_open(void) { rec_open(); alt_sd = 1; /* NWS4A */ uint32_t* const br = rec_take(2); br[0] = NDC_HDR(NDC_JUMP, 0, 0); br[1] = 0u; st_hdr = NULL; sh_all(); return br; }
 void nd_alt_close(uint32_t* br, uint32_t* ab) { rec_open(); st_hdr = NULL; sh_all(); br[1] = (uint32_t)(uintptr_t)wp; ab[0] = (uint32_t)(uintptr_t)(br + 2); ab[1] = (uint32_t)(uintptr_t)wp; }
 /* NAT5N, core 1: a call unit inside a raw alt range. A block {list word, a, b} in stream data, the unit CALL | 2 with w1 = the block,
  * then a jump over the nested range that ds_pairs fills with the called list; nd_alt_call_end closes it (blk[3] keeps the jump). */
 uint32_t* nd_alt_call(uint32_t w0, uint32_t w1) {
+    nd_rec_ew(alt_s); /* NC0B */
     uint32_t* const blk = (uint32_t*)nd_rec_data_st(24u); blk[0] = w1; blk[1] = blk[2] = 0u; blk[4] = 0u; /* NAT5A */
     nd_alt_put(w0 | 2u, (uint32_t)(uintptr_t)blk); blk[3] = (uint32_t)(uintptr_t)nd_alt_open(); return blk; }
 void nd_alt_call_end(uint32_t* blk) { nd_alt_close((uint32_t*)(uintptr_t)blk[3], blk + 1); blk[4] = (uint32_t)(uintptr_t)nd_alt_et_end(blk[2]); } /* NAT5A */

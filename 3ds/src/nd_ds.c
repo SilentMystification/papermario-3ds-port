@@ -526,7 +526,7 @@ SV_W(nd_sv_nop) SV_W(nd_sv_omh) SV_W(nd_sv_oml) SV_W(nd_sv_geom) SV_W(nd_sv_prim
 NdNapiRun nd_sv_enc(const NdDs* s, uint32_t w0, uint32_t w1, uint32_t* v) { /* NSET1 */ const uint32_t a = w0 & 0xffffffu, b = w1; v[0] = a; v[1] = b; /* NSET1 */
     switch (w0 >> 24) { /* core 1: s is the state after nd_ds_apply of the unit */ /* NSET1 */
     case ND_FS_OMH: case ND_FS_OML: v[0] = nd_op_om_mask(a); v[1] = b & v[0]; return (w0 >> 24) == ND_FS_OMH ? nd_sv_omh : nd_sv_oml; /* NSET1 */
-    case ND_FS_GEOM: return nd_sv_geom; /* NSET1 */
+    case ND_FS_GEOM: v[0] = 0u; v[1] = s->w.geom; return nd_sv_geom; /* NC0B: absolute */
     case ND_FS_PRIM: v[0] = a & 0xffffu; return nd_sv_prim; /* NSET1 */
     case ND_FS_ENV: return nd_sv_env; /* NSET1 */
     case ND_FS_FOG: return nd_sv_fog; /* NSET1 */

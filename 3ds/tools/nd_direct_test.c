@@ -132,7 +132,7 @@ int tri_prep_ok;
 static u32 q_log[8][4];
 static int q_n, q_prep[8];
 void nd_xf_load(u32 w0, u32 w1, u32 hdr) { q_log[q_n][0] = 1; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_log[q_n][3] = hdr; q_n++; }
-void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list) { (void)list; q_log[q_n][0] = 2; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_n++; }
+void nd_geom_vtx(u32 w0, u32 w1, const NdW2* list, uint32_t geom, uint32_t tss) { (void)list; (void)geom; (void)tss; q_log[q_n][0] = 2; q_log[q_n][1] = w0; q_log[q_n][2] = w1; q_n++; }
 void draw_tri(unsigned w) { q_prep[q_n] = tri_prep_ok; q_log[q_n][0] = 3; q_log[q_n][1] = w; q_log[q_n][3] = pm_gbi_cur_op; q_n++; }
 void nd_xf_popb(u32 w1) { q_log[q_n][0] = 4; q_log[q_n][2] = w1; q_n++; }
 

@@ -277,7 +277,7 @@ __attribute__((noinline)) void nd_trect_draw(u32 w0, u32 w1, u32 hs, u32 hd) { /
         if (!copy) { ex -= 1; ey -= 1; }
         if (ex >= rx0 && ey >= ry0) {
             /* B3: the decal after a case 6 model (mac_01 crystal ball) is a G_ZS_PRIM texrect: it tests the primitive depth like the X01 fill */
-            if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_c0.geom & G_ZBUFFER)) { /* NWS4B */
+            if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_ap->geom & G_ZBUFFER)) { /* NWS4B */
                 nd_texrect_zprim(rx0, ry0, ex, ey, &s0, &t0, &s1, &t1, hs, ms, mt, tw, th, rtile);
                 goto rect_done; /* MERLON: the rectangle is drawn once, with its depth test. The fall-through drew it again with no depth (the crystal ball square through the walls) */
             }
@@ -336,7 +336,7 @@ __attribute__((noinline)) void nd_frect_draw(u32 w0, u32 w1) { /* NWS4B */
     nd_img_check();
     if (((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) != 3) { if (fsn) nd_snap_render(); } /* PT71: a 1-cycle fill carries the blender of its mode (the choice box fill fades with its prim alpha), not the state of the last draw */ /* NCS3 */ /* NWS4B */
     pm_gpu_set_replace(((nd_ap->in.omode_h >> G_MDSFT_CYCLETYPE) & 3) == 3); /* NWS4B */
-    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_c0.geom & G_ZBUFFER)) /* NWS4B */
+    if ((nd_ap->oml & (1u << G_MDSFT_ZSRCSEL)) && (nd_ap->oml & 0x10u) && (nd_ap->geom & G_ZBUFFER)) /* NWS4B */
         nd_fillrect_zs(ulx, uly, lrx, lry, color);
     else
         pm_gpu_fill_rect(ulx, uly, lrx, lry, color);

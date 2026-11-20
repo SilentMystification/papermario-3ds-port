@@ -205,7 +205,7 @@ unsigned pm_gbi_gvkey(uint32_t* o, unsigned max) { /* NWS4B */
 
 /* S3N-3d: the walker's sticky state at a draw (ndmcheck compare only: the native draw takes these as inputs): the TEXTURE scale word, the geometry mode and the combine words. */
 void pm_gbi_sticky(unsigned* tss, unsigned* geo, unsigned* cw0, unsigned* cw1) { /* NWS4B */
-    *tss = ((unsigned)nd_c0.tex_ss << 16) | ((unsigned)nd_c0.tex_ts & 0xffffu); *geo = nd_c0.geom; *cw0 = nd_ap->in.w0; *cw1 = nd_ap->in.w1; /* NWS4B */
+    *tss = ND_TSS(); *geo = ND_GEOM(); *cw0 = nd_ap->in.w0; *cw1 = nd_ap->in.w1; /* NWS4B */
 }
 
 /* S3N-3d: nd_comb_dec. The combine work on the inputs in (nd_comb_core, nd_decide.c, no walker global), then the plan colours of in->prim and in->env.
