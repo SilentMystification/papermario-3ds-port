@@ -19,10 +19,18 @@ Objective: walking steps without a drain per raster change. Counter: console ste
 4. src/101b90_len_8f0.c:361. Before: `    nuPiReadRom(SpriteDataHeader[0] + (playerRasterInfo & 0xFFFFF), cacheEntry->raster, (playerRasterInfo >> 0x10) & 0xFFF0);`
    After: `    { extern void nuPiReadRomOwn(u32 rom_addr, void* buf, u32 size); nuPiReadRomOwn(SpriteDataHeader[0] + (playerRasterInfo & 0xFFFFF), cacheEntry->raster, (playerRasterInfo >> 0x10) & 0xFFF0); } /* ROMDR */`
    Do not change the other nuPiReadRom calls (:296, :319, :323 run at a map load).
+5. Race census (the det benches run serial and cannot show a race). pm_os.c next to rom_read: `const void* pm_rr_ptr[18]; unsigned pm_rr_stamp[18], pm_rr_race;`
+   src/101b90_len_8f0.c, before the call of edit 4: `    { extern const void* pm_rr_ptr[18]; extern unsigned pm_rr_stamp[18], pm_frame_n; pm_rr_ptr[idx] = cacheEntry->raster; pm_rr_stamp[idx] = pm_frame_n; }`
+   3ds/src/pm_tex.c, first line inside `static int load_impl(` (:1380, the walker binds every texture here):
+   `    { extern int pm_pf_on; extern const void* pm_rr_ptr[18]; extern unsigned pm_rr_stamp[18], pm_rr_race, pm_walk_frame; if (pm_pf_on) for (unsigned i_ = 0; i_ < 18u; i_++) if (pm_rr_ptr[i_] == img && pm_rr_stamp[i_] > pm_walk_frame) pm_rr_race++; } /* ROMDR: a raster loaded after the frame being walked */`
+   3ds/src/pm_phase.c, after the `writer beats` print statement (:691-692): `        { extern unsigned pm_rr_race; pm_log_prof_line("prof f%u w%u romrace %u", pf_total, pf_w, pm_rr_race); } /* ROMDR: since boot, must stay 0 */`
+   (pm_frame_n, pm_main.c:318, numbers the step whose logic runs; pm_walk_frame, nd_wq.c:27, is the poster's pm_frame_n of the walked entry.)
 ## Tests (output to build3ds/out/, read the last 20 lines). 1 build, 2 Azahar runs.
 1. `sh 3ds/tools/nd_host_test.sh` (timeout 600000) PASS. `PM_LANE=ROMDR sh 3ds/build.sh`; `python 3ds/tools/c0gate.py <elf>`: 0 / 0 / 0.
 2. `python 3ds/tools/bench.py base spot_mac01_fps60_det --commit $(git merge-base HEAD main)`; run and cmp with `--row ROMDR`: byte-equal.
    Then the same 3 commands for spot_mac01_drec: byte-equal. (Det runs are serial: a drain waits for nothing there, so the bytes must not change.)
+3. `python 3ds/tools/capture_check.py --row ROMDR --proof "romrace 0" --profile prof fps60 warp=mac_01:0 pos=0:0:200 profdisk=1`: CAPTURE CHECK OK.
+   On the console a race shows as romrace above 0 (a wrong player sprite frame for one step); the console capture must print 0.
 Fix rights: compile errors, the declaration of rom_read above its first use. A DIFF or a base fault: stop, send the output path to oracle NATIVE19.
-Stop: commit `ROMDR 1: gate. <host> <c0gate> <2 cmp lines>` deletes this page. Hand-back: one SubagentHandback: commit hash, the results.
+Stop: commit `ROMDR 1: gate. <host> <c0gate> <2 cmp lines> <CAPTURE CHECK line>` deletes this page. Hand-back: one SubagentHandback: commit hash, the results.
 Risk (console only): a wrong player sprite frame for one step if a queued frame still drew the entry (the analysis above says no). Fallback: revert.

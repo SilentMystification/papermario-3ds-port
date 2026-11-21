@@ -10,7 +10,7 @@ Objective: per window `stepx n <idle> <walk> <spin> <other> ft <ms x100 x4> slow
      and in pm_os.c next to pm_rom_lg_n: `unsigned pm_rom_spr_n;`
    - 3ds/src/pm_tex.c: after `void pm_pipe_note(unsigned k); /* pm_gpu.c PIPE0 */` (:15) add `unsigned pm_tex_miss_n;`; after `    pm_pipe_note(2u); /* PIPE0: PP_TEX */` (:1417) add `    pm_tex_miss_n++;`
    - 3ds/src/nd_recs.c: above `static __attribute__((cold, noinline)) unsigned rec_miss(` (:184) add `unsigned pm_mdl_miss_n;`; first line inside rec_miss:
-     `    if (tried || (!mce && q[12].words.w0)) pm_mdl_miss_n++; /* STEPX: a geometry record without a cache hit */`
+     `    if (tried || !mce) pm_mdl_miss_n++; /* STEPX: no cache entry, or a failed hit (reads no record word: lkey census) */`
    - src/77480.c:1417, after `    playerStatus->animNotifyValue = spr_update_player_sprite(PLAYER_SPRITE_MAIN, playerStatus->trueAnimation, timescale);`:
      `    { extern volatile signed char pm_act_state; pm_act_state = playerStatus->actionState; }`
 2. pm_phase.c, above `static void pf_report(void) {` (:579; pf_report and pm_pf_frame both use these):

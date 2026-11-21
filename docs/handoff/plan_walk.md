@@ -30,9 +30,13 @@ No capture has walking or spin data (all at mac_01 0 0 200, player standing).
 | 5 | game logic when walking (collision, camera follow, partner) | c1s logic 2.47 at idle (FACT) | off the chain while core 1 has slack (fw); GUESS +0.5 to 1 ms; STEPX shows it |
 | 6 | fps60 interpolation and the K copy when things move | pm_interp.c lerp; kc_build pm_gpu.c:3128 | the K copy cost does not depend on motion (a buffer copy); GUESS under 0.2 ms |
 | 7 | FS1 frame skip (option fskip, default 1, pm_options.c:18) skips a draw when 2 vblanks have passed (pm_main.c:689-695) | ph line `st` against `w` | at idle st = w (no skip, FACT); walking OPEN |
+| 8 | particles while walking | no fx_ call in the player walk paths (FACT grep: src/world/action/walk.c, src/7BB60.c, src/77480.c); the spin makes one fx_effect_46 (spin.c:121) | walking makes no dust in the world; the spin makes more effect work, not less: no fit with "the spin runs faster"; STEPX2 e counts effects |
+| 9 | footstep sounds | try_player_footstep_sounds every 8 steps walking, 4 running (walk.c:64, :146; 7BB60.c:1118-1137); spin: one sound per spin (spin.c:111); VADPCM decode only at the first play of a sample (pm_dspaud.c:11) | GUESS small (a cached sample); no fit with "spin faster than standing"; STEPX2 a counts decodes; au, aj in the core2 wait line |
+- The spin draws the player twice (main sprite and blur, appendGfx_player_spin src/77480.c:1593-1652, chosen at :1516-1519): more draw work. Only the raster
+  cache (section 1) fits all 3 user facts (GUESS).
 
 ## 3. Capture plan (the user plays during one prof run)
-- Build: main with STEPX merged, ROMDR not merged (the run is the before). Words: `--profile prof warp=mac_01:0 pos=0:0:200 profdisk=1`, capture_check first.
+- Build: main with STEPX, STEPX2 and DRAINC merged; ROMDR and SLOTL not merged (the run is the before). Words: `--profile prof warp=mac_01:0 pos=0:0:200 profdisk=1`, capture_check first.
 - Push with -Seconds 150. The user: stand 30 s, walk in circles 30 s, spin with Z again and again 30 s, walk 30 s, stand 30 s.
   A window is 300 steps (about 10 s at 30 steps per second): each phase holds at least 2 pure windows. STEPX also buckets each step by the player action state.
 - Read per window: stepx (n, ft and slow steps per state; slow against normal: GPU waits, pace, logic-thread drain wait, ROM reads, raster reads, texture
@@ -44,8 +48,29 @@ No capture has walking or spin data (all at mac_01 0 0 200, player standing).
 |---|---|---|---|---|---|
 | 1 | STEPX | Haiku | per-step census: state bucket, ft, slow-step causes, the longest step (page ws_STEPX) | spot_mac01_fps60_det, capture_check | 0 (decides) |
 | 2 | ROMDR | Haiku | the player raster read skips the walker drain (page ws_ROMDR); merge after the STEPX capture | spot_mac01_fps60_det, spot_mac01_drec | walking: up to 1 vblank less per raster change; idle: about 12 slow steps less per window |
+| 1b | STEPX2 | Haiku | 4 more stepx fields: audio decodes, ROM bytes, Yay0 decodes, effect instances (page ws_STEPX2), before the capture | spot_mac01_fps60_det, capture_check | 0 |
+| 1c | DRAINC | Haiku | drains by caller: top 4 per window with count and ms (page ws_DRAINC), before the capture | spot_mac01_fps60_det, capture_check | 0 (picks the next drain row) |
+| 2b | SLOTL | Haiku | slot and depth 1 wait for the L walk only, not the key show (page ws_SLOTL; section 5 row 2) | fps60_det, fps60_stereo_det, capture_check race 0 | GUESS -1 to -1.7 when not pace bound |
 | 3 | TEXSPR | Sonnet | page after the capture if t is high in slow walk steps: the player raster texture upload outside the walk | - | GUESS 0.3 to 1 ms per change |
 | 4 | MCAM | Sonnet | page after the capture if m is high in walk steps | - | OPEN |
 - Det benches run serial (pm_logic.c:135-140): a drain there waits for nothing. So ROMDR is byte-equal by construction on Azahar; the console capture decides.
 - PIPE status (plan_pipe.md 5): at idle c0i gx 1.44 is under 2 ms and pace 6.09 is over 1 ms, so PIPE3 does not pay at idle. PIPE0 (Azahar f390):
   `ring 0/394`: the first draw of every frame is a ring draw, so PIPE3 needs PIPE2 first. PIPE2 and PIPE3 wait for the walking data.
+
+## 5. Every drain, fence and wait between core 1, core 0, the walker queue and the GPU queue (ranked by ms; user rule: wait only for the true dependency)
+| # | wait | file:line | protects | true dependency | cost per step | targeted form | row |
+|---|---|---|---|---|---|---|---|
+| 1 | logic-thread drain before a ROM read | pm_os.c:492-495 -> nd_walk.c:469-476 -> nd_wq.c:173-180 | RAM a queued walk may read | none for a free raster entry (section 1); else the frames that read the target | idle dr 0.04, drw 0.04 (FACT); GUESS 8 to 15 ms each; walking OPEN | no wait (ROMDR); others by caller (DRAINC) | ROMDR, DRAINC |
+| 2 | slot before the lerp and depth 1 before the push | nd_wq.c:165, :152 | rtab, repl (pm_interp.c:127-131); the context chain | the L walk of the frame before only (rtab read only with pm_interp_repl, nd_mtx.c:48, nd_mtx_set.c:115); the key frame is a copy | the key show sits on the chain: c0i idle 1.70 (FACT capture 3) | count L frames only | SLOTL |
+| 3 | L begin C3D_FrameBegin | pm_gpu.c:2998 | command buffer, ring chunk 0, citro3d frame state | the GPU end of K for chunk 0 and the queue | gx 1.44, pace 6.09 (FACT capture 3; the pace is the 30 step grid, intended) | PIPE1 (done), PIPE2, PIPE3 | plan_pipe.md |
+| 4 | key show C3D_FrameBegin | pm_gpu.c key show (:3156-3185) | citro3d one frame in flight | the GPU end of L | kgx OPEN in capture 3 (gpul 2.63 is its ceiling, FACT) | PIPE4 | plan_pipe.md |
+| 5 | game thread waits for the logic (draw flag, show, show keys, hand) | pm_logic.c:153, :166, :173, :142 | the D flag, posted step ends and key frames | the next posted entry | c0i idle 1.70 (FACT capture 3) | shrinks with row 2 | SLOTL |
+| 6 | sampled step quiesce (prof only) | pm_phase.c pf_arm -> pm_logic.c:111-116 | the serial timers | none in normal play | 10 serial steps per window at about 64 ms (FACT s10 fts 64.39): they fall in the iv 4+ bucket | none (a measurement cost); STEPX skips them | - |
+| 7 | pm_gx_room, pm_gx_drain, depth read after a kick | pm_gpu.c:2642, :2659, the depth read (pm_gx_drain when kick_done) | the 32-entry GX queue; GPU writes the CPU reads | real (the GPU must have run) | PIPE0 room 0 of 394 frames (FACT Azahar) | - | - |
+| 8 | full walker queue, audio join, logic ring | nd_wq.c:118; core2 aj; pm_logic.c:142 | the 64-entry queue; the audio buffers; the 4-entry ring | real | wqf 0.00, aj 0.00 (FACT cap2) | - | - |
+| 9 | ring chunk reuse, glyph cell reuse, texture staging free | pm_gpu_rect.c:41 (stamp < ring_done), pm_tex.c:322 (cell_fr + 2), pm_tex.c:795 (pm_tex_gate) | GPU reads of old frames | already frame stamps: the model of the targeted wait | 0 (no wait, FACT code) | - | - |
+- A general frame-id wait (wait until the walker has passed frame F) needs F, the last frame that reads the target. The game code gives F only where it
+  keeps use stamps (player rasters: lazyDeleteTime; chunks and cells: stamps above). So it does not replace ROMDR: for a free raster F is already passed,
+  and no wait is the same result with less code. DRAINC names the other drain callers; each one gets its own narrow row from its own stamp or none.
+- Race checks (det benches run serial and show no race): ROMDR counts romrace (a raster loaded after the walked frame); SLOTL counts slotl race (a lerp during
+  an L walk). Both print in prof windows and must stay 0 in the console capture.
