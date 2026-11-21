@@ -125,10 +125,11 @@ void pm_fprof_thread(int k) {
     fp_clear(s, 0);
     fp_clear(s, 1);
     fp_cnt = pm_debug_value("fprofn", v, sizeof v) ? 1u : 0u; /* PROF4B: fprofn=<arm>:<end>, after the calibration (it runs the timed path) */
-    if (pm_debug_value("fprofw", v, sizeof v)) { /* PROF4B: timed frame window fprofw=<arm>:<end> */
-        const char* c = strchr(v, ':');
+    char w[16];
+    if (pm_debug_value("fprofw", w, sizeof w)) { /* PROF4B: timed frame window fprofw=<arm>:<end> */
+        const char* c = strchr(w, ':');
         fp_win = 1u;
-        fp_arm = (unsigned)atoi(v);
+        fp_arm = (unsigned)atoi(w);
         fp_end = c ? (unsigned)atoi(c + 1) : fp_arm + 80u;
     }
     if (fp_cnt) {
