@@ -169,7 +169,7 @@ static Vtx sTidalGrid[TIDAL_COLS * TIDAL_ROWS] __attribute__((aligned(16)));
 static int tidal_logged;
 
 void pm_log(const char* fmt, ...);
-extern int pm_wide; /* WAVEWIDE: pm_gpu.c */
+extern int pm_wout; /* WAVEWIDE: pm_gpu.c */
 
 static void tidal_grid_fill(UnderwaterFXData* data) {
     s32 a, b, xs, ys;
@@ -191,9 +191,9 @@ static void tidal_grid_fill(UnderwaterFXData* data) {
             }
             /* WAVEWIDE: in wide the end columns reach the screen edges: game x -40 and 360 (screen 0 and 400, ui ortho 40 + x). The texel is the
              * same column: the grab slot holds all 400 columns. No vertex sits on the game edge, so the wide edge rule (pm_gpu.c wide_on_edge) moves none. */
-            if (pm_wide && a == 0) {
+            if (pm_wout && a == 0) {
                 xs = -40;
-            } else if (pm_wide && a == TIDAL_COLS - 1) {
+            } else if (pm_wout && a == TIDAL_COLS - 1) {
                 xs = SCREEN_WIDTH + 40;
             }
             v->v.ob[0] = (s16) (xs * 4);

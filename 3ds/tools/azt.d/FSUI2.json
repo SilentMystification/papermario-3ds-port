@@ -1,0 +1,33 @@
+{
+  "scenarios": [
+    {
+      "name": "shop_full_drec",
+      "status": "unverified",
+      "subject": "Toad Town mac_00 entry 0, Fullscreen (debug word fullscr), shop opened (uishow=shop), cold det start with drec of frame 270.",
+      "proves": "FSUI2: the shop price x of frame 270 in Fullscreen: the price is placed at pm_wide_draw_x (1.25 x - 40); gpu: wide=0 stretch=1.",
+      "debug": "warp=mac_00:0 story=ch0_toad_town fullscr nowide uishow=shop loglevel=debug det drec=270:1",
+      "extra": [],
+      "until": "drec f270 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 0"
+        },
+        {
+          "name": "uishow",
+          "regex": "debug uishow: shop items f200"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f270 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "FSUI2 shop price census: Fullscreen shop, frame 270. Cap 25 s.",
+      "first_marker": "warp: mac_00 entry 0",
+      "expects": "warp"
+    }
+  ]
+}

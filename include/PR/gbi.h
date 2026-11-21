@@ -2508,10 +2508,11 @@ typedef struct {
 
 
 
-extern int pm_wide; /* WIDEHUD: with wide a rect left of x 0 is drawn in the gutter. Clipping it to 0 made the port extend the rect to the screen edge and repeat its texture. */
-#define PM_SCIS_XL(v) (pm_wide ? (s16)(v) : MAX((s16)(v), 0))
-#define PM_SCIS_XH(v) (pm_wide ? (s16)(v) : MAX((s16)(v), 0)) /* WIDE4: the right edge too: a rect wholly left of x 0 (battle wheel option at x -27) kept xl and clamped xh to 0, so it stretched to x 0 and repeated its texture (two flags) */
-#define PM_SCIS_CLIP(v) (!pm_wide && (s16)(v) < 0)
+extern int pm_wide; /* WIDEHUD: pm_warp.c reads pm_wide through this header (FSUI2 fix) */
+extern int pm_wout; /* WIDEHUD: with wide a rect left of x 0 is drawn in the gutter. Clipping it to 0 made the port extend the rect to the screen edge and repeat its texture. */
+#define PM_SCIS_XL(v) (pm_wout ? (s16)(v) : MAX((s16)(v), 0))
+#define PM_SCIS_XH(v) (pm_wout ? (s16)(v) : MAX((s16)(v), 0)) /* WIDE4: the right edge too: a rect wholly left of x 0 (battle wheel option at x -27) kept xl and clamped xh to 0, so it stretched to x 0 and repeated its texture (two flags) */
+#define PM_SCIS_CLIP(v) (!pm_wout && (s16)(v) < 0)
 /* like gSPTextureRectangle but accepts negative position arguments */
 
 
