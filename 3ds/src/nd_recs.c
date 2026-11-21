@@ -185,6 +185,7 @@ void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls); /* KEYMISS censu
  * warm budget skip, a failed hit (tried: the matrix ran and pm_gpu_model_hit said no) and the debug switches that need the full key (full0). */
 unsigned pm_mdl_miss_n; /* STEPX */
 static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* mkp, NdMEnt* mce, int full0, int tried, unsigned mi0) {
+    pm_mq_cut(2u); /* L1C0A: a miss */
     if (tried || !mce) pm_mdl_miss_n++; /* STEPX: no cache entry, or a failed hit */
     int cached = mce != NULL;
     int full = full0;
@@ -259,6 +260,7 @@ static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* 
         nd_sr_forget(); /* NWS1 */
     }
     }
+    pm_mq_cut(2u); /* L1C0A: a miss */
     if (q[12].words.w0 == 0 && PMDL("waterlog") && pm_frame_count() >= 200u && pm_frame_count() <= 201u) { /* POND-M1: copy record with no geometry; hit taken or not, the combine after the decision */
         unsigned tss_, geo_, cw0_, cw1_; pm_gbi_sticky(&tss_, &geo_, &cw0_, &cw1_);
         pm_log("wrec f%u copy hit %d nat %d cw %08x %08x", pm_frame_count(), hit, nat, cw0_, cw1_);
@@ -295,7 +297,7 @@ unsigned rec_run(const NdW2* q) {
     gv_epoch++;
     NDT_B(tha); hit_apply(q, mce); NDT_E(tha, NDT_MHIT); /* PROF2 */
     nd_sr_forget(); /* NWS1 */
-    if (q[11].words.w1) rec_range((const uint32_t*)(uintptr_t)q[11].words.w1, 2u); /* S3G-1: custom gfx post (D10a: a stream range) NATRS */
+    if (q[11].words.w1) { pm_mq_cut(3u); rec_range((const uint32_t*)(uintptr_t)q[11].words.w1, 2u); } /* S3G-1: custom gfx post (D10a: a stream range) NATRS; L1C0A */
     if (q[12].words.w1) nd_xf_popb(64u);            /* S3G-1: gSPPopMatrix(G_MTX_MODELVIEW), one matrix */
     rec_nat_last = 1;
     return G_PM_REC_WORDS - 1 + q[13].words.w0;

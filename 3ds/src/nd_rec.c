@@ -866,6 +866,7 @@ __attribute__((weak)) void nd_snap_vprim(unsigned v) { (void)v; } __attribute__(
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 unsigned char nd_snap_live __attribute__((weak)); /* NDR1C */
 __attribute__((weak)) int pm_ph_on; __attribute__((weak)) void pm_gpu_ndt_push(void) {} __attribute__((weak)) void pm_gpu_ndt_pop(int k) { (void)k; } /* NAT8A */ /* strong in pm_phase.c, pm_gpu.c */
+unsigned pm_mq_run __attribute__((weak)); __attribute__((weak)) void pm_mq_cut_do(unsigned r) { (void)r; } /* L1C0A: strong in pm_gpu.c */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
 /* POSTFAIL2: the context of the chain whose chunk holds p (*chunk: its index), else -1. Cold: the bad viewport log only. */
 int nd_rec_where(const void* p, unsigned* chunk) {
@@ -878,8 +879,9 @@ int nd_rec_ctx(void) { return rec_ctx; } /* POSTFAIL2: the chain core 1 records 
 static void stream_run(const uint32_t* p, const uint32_t* stop) {
     for (;;) {
         __builtin_prefetch(p + 16); /* HC9B: the stream 64 B ahead (no hardware prefetcher on the ARM11) */
-        if (p == stop) return;
+        if (p == stop) { pm_mq_cut(1u); return; } /* L1C0A */
         const uint32_t h = p[0];
+        if ((h >> 24) != NDC_MODEL && (h >> 24) != NDC_JUMP) pm_mq_cut(0u); /* L1C0A: any command but a model record ends the run */
         nd_stream_cur = p;
         { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && op != NDC_SPR && (op != NDC_NAPI || !(h & 1u))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */ /* NAT6F: no NRUN record */
         switch (h >> 24) {
