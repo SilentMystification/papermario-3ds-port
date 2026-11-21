@@ -367,7 +367,12 @@ s16 pm_warp_hook(s16 mode);
 void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
 void pm_tex_scene_begin(const char* name); /* ROOMTEX: pm_tex.c */
 void __wrap_set_game_mode(s16 mode) {
-    pm_walk_read("mode", pm_walk_stamp()); /* MTX1 */ /* a mode change loads and frees scene data */
+    { /* MTX8: CHANGE_MAP and WORLD free no scene data (state_init_change_map, state_init_world, set_game_mode_slot); the wait stays when the aspect
+       * flags that the walker reads (pm_wide, pm_stretch) change: for these two modes they follow the chapter map only (game_modes.c set_game_mode) */
+        extern int pm_wide, pm_wide_cfg, pm_stretch, pm_stretch_cfg; const s32 a_ = gGameStatusPtr->areaID, m_ = gGameStatusPtr->mapID;
+        const int ch_ = a_ >= 0 && a_ < (s32)ARRAY_COUNT(gAreas) && m_ >= 0 && m_ < gAreas[a_].mapCount && strcmp(gAreas[a_].maps[m_].id, "kmr_22") == 0;
+        const int w_ = pm_wide_cfg && !ch_, s_ = pm_stretch_cfg && !w_ && !ch_;
+        if (!((mode == GAME_MODE_CHANGE_MAP || mode == GAME_MODE_WORLD) && w_ == pm_wide && s_ == pm_stretch)) pm_walk_read("mode", pm_walk_stamp()); } /* MTX1 */ /* a mode change loads and frees scene data */
     mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
     if (mode == GAME_MODE_ENTER_WORLD) pm_cheat_enter_world(); /* CHEATSAVE: the slot's cheat file (pm_cheatsave.c) */
     {
