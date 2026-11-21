@@ -13,7 +13,7 @@
 4. On the answer yes run the command below at once. Nothing else first. Never push without that word: the auto-mode classifier denies it.
 
 ## Commands (PowerShell, from the repo root, run in the background)
-- A push starts detached (`PUSH STARTED pid`): no harness notice fires when it ends. At once start `py -3 -u 3ds/tools/livelog.py <ip> 100 build3ds/out/live_<name>.txt --idle 40` as a harness background job (its end is the notice), then read the last complete window (the lines between the last two `fps` lines). Never end a turn with only `waiting for push`.
+- A push starts detached (`PUSH STARTED pid N`) and reads the game log itself for -Seconds s. The game serves ONE log client: never start a second reader (livelog.py) while the push reads, the two kick each other off. At once start the harness background job `powershell -NoProfile -Command "Wait-Process -Id N -ErrorAction SilentlyContinue"`: its end is the notice. Then read the last complete window (the lines from the second to last `fps` line) in build3ds/out/push_o_<stamp>.txt. Perf runs use -Seconds 150 (about 3 windows after the boot window). Never end a turn with only `waiting for push`.
 - Default push, game defaults, 75 s of live log: `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.170 -NoBuild -Seconds 75`
 - Other consoles: `push n -NoBuild` (N3DS), `push o -ip 192.168.1.131 -NoBuild` (XL).
 - Fault finding (debug log, bottom screen shows info): add `-Profile log`.
