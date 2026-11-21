@@ -598,7 +598,7 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
  * ring put the draw. kind 1, n = the index count. The template id is not written (an LRU slot). */
 #include "nd_drec.h"
 static int drec_win = -2; static unsigned drec_first, drec_count, drec_step = 1u;
-static int drec_on;
+static int drec_on; static int drec_vx; /* CRK2: the drecvx switch (vx and ix lines) */
 int pm_drec_now(void) { return drec_on; } /* NDR0G2 */
 static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
 unsigned char nd_c0w; static unsigned c0_d, c0_m, c0_c, c0_r, c0_b; extern unsigned nd_snb, nd_snn, nd_snm; /* NAT1 */ static unsigned char c0_spr; /* NAT2J: a native sprite submit */
@@ -653,6 +653,7 @@ static __attribute__((cold, noinline)) void gst_draw(u32* cb, u32 end) { /* DO0:
 typedef struct { int gx0, gx1, top, bot; unsigned n, out; int lo, hi; } ClipG; static ClipG clipg[8]; static unsigned clipg_n, clipg_over; /* WCLIP0 */
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
+        drec_vx = PMDL("drecvx"); /* CRK2 */
         char v[24]; drec_win = -1;
         if (pm_debug_value("drec", v, sizeof v)) { char* e; char* e2; drec_first = (unsigned)strtoul(v, &e, 10); e2 = e; drec_count = 1u; if (*e == ':') { drec_count = (unsigned)strtoul(e + 1, &e2, 10); if (*e2 == ':') drec_step = (unsigned)strtoul(e2 + 1, NULL, 10); } if (!drec_step) drec_step = 1u; if (drec_count) drec_win = 1; }
     }
@@ -737,7 +738,7 @@ static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat)
     if (d->use5 && d->p5) for (unsigned i = 0; i < sizeof(NdPm5) / 4u && n < DREC_REGS; i++) { r[n].reg = (uint16_t)(0x1300u + i); r[n].mask = 0xF; memcpy(&r[n++].val, (const uint32_t*)(const void*)d->p5 + i, 4); }
     #undef DREC_F
     NdDrec rec; memset(&rec, 0, sizeof rec);
-    rec.seq = drec_seq++; rec.kind = 1; rec.n = d->nidx; rec.regs = r; rec.nregs = n;
+    rec.seq = drec_seq++; rec.kind = 1; rec.n = d->nidx; rec.regs = r; rec.nregs = n; rec.vx = (uint8_t)drec_vx; /* CRK2 */
     const uint8_t* vb = (const uint8_t*)(stat ? (const void*)nb.rchunk[0].vtx : (const void*)nb.gring);
     const uint32_t dl = (uint32_t)osConvertVirtToPhys(vb) - (uint32_t)(uintptr_t)vb;
     for (unsigned u = 0; u < 3; u++) if (d->u[u].dim) {

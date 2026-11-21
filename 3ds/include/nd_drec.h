@@ -16,6 +16,7 @@ typedef struct NdDrec {
     uint8_t tex_gpu[3]; /* 1: GPU-written texels: the t line says h gpu */
     NdDrecBlob vtx, idx;
     const float (*mtx)[16]; uint32_t nmtx; /* palette matrices, memory order */
+    uint8_t vx; /* CRK2: 1 writes the vx and ix lines (switch drecvx) */
 } NdDrec;
 uint64_t nd_drec_fnv(const void* p, uint32_t n);
 void nd_drec_write(FILE* f, const NdDrec* r);
