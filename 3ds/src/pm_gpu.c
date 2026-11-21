@@ -656,7 +656,8 @@ static __attribute__((cold, noinline)) void gst_draw(u32* cb, u32 end) { /* DO0:
 typedef struct { int gx0, gx1, top, bot; unsigned n, out; int lo, hi; } ClipG; static ClipG clipg[8]; static unsigned clipg_n, clipg_over; /* WCLIP0 */
 unsigned pm_mq_run; static unsigned mq_b[5], mq_why[8], mq_hits, mq_draws, mq_bad; static u32* mq_cb; static u32 mq_off; /* L1C0A: ws_L1C0A; mq_b hits by run length 1, 2-3, 4-7, 8-15, 16+ */
 static int mq_moved(void) { u32 *cb, sz, off; GPUCMD_GetBuffer(&cb, &sz, &off); return cb != mq_cb || off != mq_off; } /* L1C0A: words since the last hit */ static void mq_mark(void) { u32 sz; GPUCMD_GetBuffer(&mq_cb, &sz, &mq_off); }
-void pm_mq_cut_do(unsigned r) { if (mq_moved()) mq_bad++; const unsigned b = 31u - (unsigned)__builtin_clz(pm_mq_run); mq_b[b < 4u ? b : 4u] += pm_mq_run; mq_why[r & 7u]++; pm_mq_run = 0; }
+static void mq_drain(void); /* L1C0B */
+void pm_mq_cut_do(unsigned r) { if (mq_moved()) mq_bad++; const unsigned b = 31u - (unsigned)__builtin_clz(pm_mq_run); mq_b[b < 4u ? b : 4u] += pm_mq_run; mq_why[r & 7u]++; mq_drain(); } /* L1C0B */
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
         char v[24]; drec_win = -1;
@@ -693,7 +694,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; /* DO0 */
     pm_log_evt("c0src f%u draws %u mdl %u wcomb %u wrnd %u wbind %u snb %u snn %u snm %u", pm_frame_count(), c0_d, c0_m, c0_c, c0_r, c0_b, nd_snb, nd_snn, nd_snm); /* NAT1 */
     pm_log_evt("mqr f%u hits %u draws %u r %u %u %u %u %u", pm_frame_count(), mq_hits, mq_draws, mq_b[0], mq_b[1], mq_b[2], mq_b[3], mq_b[4]); /* L1C0A */
-    pm_log_evt("mqw f%u bad %u why %u %u %u %u %u %u %u", pm_frame_count(), mq_bad, mq_why[0], mq_why[1], mq_why[2], mq_why[3], mq_why[4], mq_why[5], mq_why[6]); /* L1C0A */
+    pm_log_evt("mqw f%u bad %u why %u %u %u %u %u %u %u %u", pm_frame_count(), mq_bad, mq_why[0], mq_why[1], mq_why[2], mq_why[3], mq_why[4], mq_why[5], mq_why[6], mq_why[7]); /* L1C0A */
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     { extern void nd_mmemo_log(void); nd_mmemo_log(); } /* DO1 */
@@ -4361,6 +4362,27 @@ static __attribute__((cold, noinline)) void ffog_note(const NdMKey* k, const NdM
     if (!vm) vmz_++;
     if (!e->n) { emp_++; empig_ += (unsigned)ig; }
 }
+/* L1C0B: the model hit queue (ws_L1C0B): a hit stores what it resolved; mq_drain runs the old submit loop of each item in record order at the next cut. */
+#define PM_MQ_N 8u
+typedef struct { NdMEnt* e; NdUnit u; uint32_t shc; int shr; float pal[16], palk[16]; } PmMq; /* entry, unit 0 words, shroud colour, palette 0 of this view, its K twin */
+static PmMq mq_q[PM_MQ_N]; static float mq_zpal[16], mq_zpalk[16]; /* PERF2 step 3, INTERPB2: the zmark pass 2 palette of the draw that goes out now, its K twin */
+static void mq_drain(void) {
+    const unsigned n = pm_mq_run; pm_mq_run = 0;
+    for (unsigned i = 0; i < n; i++) {
+        const PmMq* const m = &mq_q[i]; NdMEnt* const e = m->e;
+        if (pm_tw_on) memcpy(mq_zpalk, m->palk, sizeof mq_zpalk);
+        for (unsigned j = 0; j < e->n; j++) {
+            NdNatC* q = nd_mc_nat(e, j);
+            if (m->shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = m->shc;
+            if (q->zp) { memcpy(mq_zpal, m->pal, sizeof mq_zpal); for (int k = 0; k < 4; k++) mq_zpal[8 + k] = q->zn * m->pal[12 + k]; q->d.pal = (const float(*)[16])mq_zpal; for (int k = 0; k < 4; k++) mq_zpalk[8 + k] = q->zn * m->palk[12 + k]; } /* S5-2: zmark pass 2 */
+            else q->d.pal = (const float(*)[16])m->pal;
+            q->d.pal_k = pm_tw_on ? (const float(*)[16])(q->zp ? mq_zpalk : m->palk) : NULL; q->d.nrm_k = NULL; /* INTERPB2 */
+            if (e->tex) q->d.u[0] = m->u;
+            pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
+            mfr_idx += q->nidx;
+        }
+    }
+}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (PMDL("ffog")) ffog_note(k, e);
@@ -4396,28 +4418,19 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
         e->tgen = nd_tmpl_gen();
     } else for (unsigned j = 0; j < e->n; j++) nd_tmpl_touch(nd_mc_nat(e, j)->d.tmpl);
-    static float pal0[16], zpal[16]; /* PERF2 step 3: palette 0 of this view and the zmark pass 2 row, shared by the draws (the cache entry keeps no palette) */
+    if (pm_mq_run == PM_MQ_N) pm_mq_cut_do(7u); /* L1C0B: a full queue drains */
+    PmMq* const m = &mq_q[pm_mq_run]; /* L1C0B: the item of this hit */
     float comb[4][4];
     nd_mtx_combine(comb);
-    pm_gpu_pcomp_native(pal0, comb);
-    static float pal0k[16], zpalk[16]; /* INTERPB2: the K twins of pal0 and zpal (K = L outside the t = 0.5 walk: pal_k stays NULL) */
-    if (pm_tw_on) { memcpy(pal0k, pm_pal0_k, sizeof pal0k); memcpy(zpalk, pal0k, sizeof zpalk); }
+    pm_gpu_pcomp_native(m->pal, comb);
+    if (pm_tw_on) memcpy(m->palk, pm_pal0_k, sizeof m->palk); /* INTERPB2: the K twin of palette 0 */
     pm_gpu_flush();
     const uint32_t* rw = (const uint32_t*)(uintptr_t)k->rp; /* MERLEE: the shroud mix colour of this frame (the key leaves it out): blend colour RGB, fog colour alpha, as rec_apply sets them */
     const int shr = rw && (rw[6] & 32u);
     const uint32_t* const msr_ = rw ? nd_msnap_rw(rw) : NULL; const uint32_t shc_bc = (msr_ ? msr_ : nd_msnap_w())[MSW_BLENDC]; /* PERF3: this record's snap (a hit runs no nd_msnap_use) */
     const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : shc_bc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u; /* NWS4C */
     if (pm_mq_run && mq_moved()) mq_bad++; /* L1C0A */
-    for (unsigned j = 0; j < e->n; j++) {
-        NdNatC* q = nd_mc_nat(e, j);
-        if (shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = shc;
-        if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; for (int i = 0; i < 4; i++) zpalk[8 + i] = q->zn * pal0k[12 + i]; } /* S5-2: zmark pass 2 */
-        else q->d.pal = (const float(*)[16])pal0;
-        q->d.pal_k = pm_tw_on ? (const float(*)[16])(q->zp ? zpalk : pal0k) : NULL; q->d.nrm_k = NULL; /* INTERPB2 */
-        if (e->tex) q->d.u[0] = u;
-        pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
-        mfr_idx += q->nidx;
-    }
+    m->e = e; m->u = u; m->shc = shc; m->shr = shr; /* L1C0B: mq_drain submits its draws */
     mq_mark(); pm_mq_run++; mq_hits++; mq_draws += e->n; /* L1C0A */
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
     return 1;
