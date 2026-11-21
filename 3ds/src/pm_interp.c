@@ -133,6 +133,8 @@ const float (*pm_interp_find(const void* m))[4] {
     return 0;
 }
 
+static unsigned ik_lv, ik_pr, ik_st, ik_rn, ik_rl; /* IK0 */
+void pm_interp_ik(unsigned o[5]) { o[0] = ik_lv; o[1] = ik_pr; o[2] = ik_st; o[3] = ik_rn; o[4] = ik_rl; } /* IK0 */
 void pm_interp_lerp(float t) {
     int paired = 0;
     memset(rtab, 0, RT_SIZE * sizeof(RT));
@@ -155,11 +157,13 @@ void pm_interp_lerp(float t) {
         unsigned h = l->node & (NT_SIZE - 1);
         for (; ntab[h]; h = (h + 1) & (NT_SIZE - 1))
             if (pnodes[ntab[h] - 1].id == l->node) { ok = pnodes[ntab[h] - 1].nleaves == nodes[l->ni].nleaves; break; }
-        if (!ok) continue;
+        if (!ok) { ik_rn++; continue; } /* IK0 */
+        int hit = 0; /* IK0 */
         h = hash4(l->node, l->idx, 0, 0) & (PT_SIZE - 1);
         for (; ptab[h]; h = (h + 1) & (PT_SIZE - 1)) {
             Leaf* o = &pleaves[ptab[h] - 1];
             if (o->node != l->node || o->idx != l->idx) continue;
+            hit = 1; if (!memcmp(o->mf, l->mf, sizeof o->mf)) ik_st++; /* IK0 */
             float (*r)[4] = repl[paired];
             for (j = 0; j < 16; j++) r[j >> 2][j & 3] = (1.f - t) * o->mf[j >> 2][j & 3] + t * l->mf[j >> 2][j & 3];
             unsigned k = ((unsigned)l->dest >> 3) * 2654435761u >> (32 - RT_BITS);
@@ -170,8 +174,10 @@ void pm_interp_lerp(float t) {
             rtab[k].idx = paired - 1;
             break;
         }
+        if (!hit) ik_rl++; /* IK0 */
     }
     pair_leaves += paired;
+    ik_lv += nleaf; ik_pr += paired; /* IK0 */
     pair_total += nleaf;
 }
 

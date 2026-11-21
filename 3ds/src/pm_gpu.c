@@ -1291,6 +1291,7 @@ void pm_gpu_ndt_take_g(uint64_t o[NDT_GC], unsigned u[NDT_GC], unsigned a[NDT_GC
 }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
+unsigned long long pm_ik[10]; /* IK0: 0 kc_build ticks, 1 patches of valid copies, 2 max patches (window), 3 copies with 0 patches, 4 valid copies, 5 key show ticks, 6 patched draws, 7 twin loads replaced, 8 plain */
 static unsigned ndn_tgen;
 /* INTERPB2: the words C3Di_UpdateContext wrote at [from, to) of the command buffer (cold, only with nd_kp_on): a float uniform vector with a staged K (u5kpv) gets a patch. */
 static __attribute__((cold, noinline)) void kp_scan(const u32* cb, unsigned from, unsigned to) {
@@ -1404,6 +1405,7 @@ static __attribute__((cold, noinline)) void c0_count(const NdDraw* d) { /* NAT1:
     c0_d++; c0_c += nd_c0w & 1u; c0_r += (nd_c0w >> 1) & 1u; if (d->u[0].dim) c0_b += (nd_c0w >> 2) & 1u; } /* NAT1 */
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
+    const unsigned kp0_ = nd_kp_n; /* IK0 */
     PH_ADD(C_NDRAW, 1); PH_ADD(C_NIDX, dp->nidx); /* FXCEN1 */
     { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
@@ -1452,6 +1454,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         else { if (nb.rect_y0 < grab_dy0) grab_dy0 = nb.rect_y0; if (nb.rect_y1 > grab_dy1) grab_dy1 = nb.rect_y1; }
     }
     if (__builtin_expect(t1l_on | rp_on_ | (d->use5 & d->has_uvx), 0)) submit_dbg(d, tex); /* PERF1: the debug logs are tested here (cached switches, the draw flags), not called per draw */
+    if (nd_kp_n != kp0_) pm_ik[6]++; /* IK0 */
     dc_kick();
     NDT_E(tsub, NDT_SUB);
 }
@@ -3212,6 +3215,7 @@ static __attribute__((noinline)) void kc_build(void) {
     kc_fl = (*(volatile unsigned*)(__C3D_Context + 32) & 2u) != 0u; /* FPS60FL */
     GSPGPU_FlushDataCache(kc_buf, coff * 4u);
     kc_valid = 1; kc_ok_gen = kc_gen;
+    if (pm_pf_on) { pm_ik[4]++; pm_ik[1] += np; if (np > pm_ik[2]) pm_ik[2] = np; if (!np) pm_ik[3]++; } /* IK0 */
     kc_plain_shown = !armed;
     if (!armed) pm_kc_plain++;
 }
@@ -3226,6 +3230,7 @@ void pm_gpu_key_show(void) {
     if (pm_pf_on) { const unsigned n_ = (unsigned)svcGetSystemTick(); pm_c0k[0] += n_ - k0_; k0_ = n_; }
     if (!C3D_FrameBegin(0)) { pm_kc_why[4]++; return; } /* FPS60W2: a frame already begun: nothing is queued into a frame citro3d did not open */
     if (pm_pf_on) { pm_c0k[1] += (unsigned)svcGetSystemTick() - k0_; pm_c0k[2] += (unsigned)(C3D_GetDrawingTime() * 1000.f); pm_c0k[4]++; } /* CPT0: the key wait; the GPU tail of the L frame */
+    const unsigned ks0_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; /* IK0 */
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; }
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: the sequence of a frame begin */
     pm_ph_gpu_note();
@@ -3247,6 +3252,7 @@ void pm_gpu_key_show(void) {
     C3D_FrameDrawOn(target);
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     c0k_kf = 1; /* CPT0 */
+    if (pm_pf_on) pm_ik[5] += (unsigned)svcGetSystemTick() - ks0_; /* IK0 */
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; }
 }
 /* FRAMEHASH3: the fhash switch (fhash fhwin=<first>:<count>). At the frame end of a window frame the GX lists of the frame are hashed (nd_fh_frame) and
@@ -3361,7 +3367,7 @@ static void pm_gpu_end_w(void) {
     if (sr_on) sr_replay(); /* STEREO: the right eye */
     if (__builtin_expect(fh_on(), 0)) fh_frame(); /* FRAMEHASH3: before kc_build, which takes the same entries */
     pp_frame_end(); /* PIPE0 */
-    kc_build(); /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
+    { const unsigned kb0_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; kc_build(); if (pm_pf_on) pm_ik[0] += (unsigned)svcGetSystemTick() - kb0_; } /* IK0 */ /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (__builtin_expect(pm_ff_on(), 0)) pm_ff_end(pm_frame_count(), pm_ticks(), off_used, off_sused, grab_split + kick_done, OFF_N); /* FLIPLOG: the counts of this frame */
