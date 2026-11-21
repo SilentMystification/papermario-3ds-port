@@ -278,10 +278,12 @@ void set_game_mode(s16 mode) {
     chapter = is_chapter_map();
     /* F07-5: logos, title and file select keep 4:3 */
     /* WIDE3: the chapter screen keeps 4:3 like the intro */
-    pm_wide = pm_wide_cfg && !(mode == GAME_MODE_LOGOS || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_LANGUAGE_SELECT ||
-        mode == GAME_MODE_END_LANGUAGE_SELECT || mode == GAME_MODE_FILE_SELECT || mode == GAME_MODE_END_FILE_SELECT ||
-        mode == GAME_MODE_INTRO || chapter);
-    { extern int pm_stretch_cfg, pm_stretch; pm_stretch = pm_stretch_cfg && !pm_wide; } /* MENUGEN part 3: Fullscreen only with pm_wide 0 */
+    {   /* FSUI1: logos, title, file select, intro and the chapter screen keep the Native picture in Widescreen and in Fullscreen */
+        const s32 n43 = mode == GAME_MODE_LOGOS || mode == GAME_MODE_TITLE_SCREEN || mode == GAME_MODE_LANGUAGE_SELECT || mode == GAME_MODE_END_LANGUAGE_SELECT ||
+            mode == GAME_MODE_FILE_SELECT || mode == GAME_MODE_END_FILE_SELECT || mode == GAME_MODE_INTRO || chapter;
+        extern int pm_stretch_cfg, pm_stretch, pm_wout;
+        pm_wide = pm_wide_cfg && !n43; pm_stretch = pm_stretch_cfg && !pm_wide && !n43; pm_wout = pm_wide || pm_stretch;
+    }
     if (pm_wide != prevWide) { /* INTROSNAP debug: the aspect changes with this mode */
         pm_log_d("aspect: wide %d -> %d mode %d", prevWide, pm_wide, mode);
     }

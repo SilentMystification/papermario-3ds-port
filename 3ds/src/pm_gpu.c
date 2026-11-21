@@ -216,7 +216,8 @@ static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
 int pm_stretch_cfg; /* MENUGEN part 3: the Fullscreen option (options wide=2); pm_stretch = pm_stretch_cfg && !pm_wide, set here, in game_modes.c and in pm_options.c flip */
-int pm_stretch; /* MENUGEN: 1 = Fullscreen: the Native picture (pm_wide 0) stretched 1.25x in X over 400 px, HUD included. Only the final viewport (rebuild_3d) and scissor (stage_scissor) and the grab columns read it. Set in pm_gpu_init and by the options flip. */
+int pm_stretch; /* MENUGEN: 1 = Fullscreen: the Native picture (pm_wide 0) with the 3D picture 1.25x in X over 400 px; UI and HUD 1:1 as Widescreen (pm_wout, FSUI1). Set in pm_gpu_init and by the options flip. */
+int pm_wout; /* FSUI1: 1 = the 400 px output of Widescreen and Fullscreen (pm_wide || pm_stretch) */
 static void mfr_init(void); extern int mfr_on; /* TIK19 debug (switch mfr) */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
 unsigned char pm_gv_rejm = 0x2f; /* WIDE4: the clip bits nd_gv_tri rejects on (x planes off for a wide orthographic draw) */
@@ -235,8 +236,8 @@ static void rebuild_3d(void) {
     C3D_Mtx view;
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = (pm_stretch && !gs.off_active) ? gs.vp_sx * 1.25f : (pm_wide && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge. MENUGEN: Fullscreen scales every draw */
-    view.r[0].w = gs.off_active ? gs.vp_tx : pm_stretch ? gs.vp_tx * 1.25f : (pm_wide && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
+    view.r[0].x = (pm_wout && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge. FSUI1: Fullscreen as Widescreen */
+    view.r[0].w = gs.off_active ? gs.vp_tx : (pm_wout && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
     view.r[1].y = gs.off_active ? -gs.vp_sy : gs.vp_sy;
     view.r[1].w = gs.off_active ? gs.vp_ty : 240.f - gs.vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
@@ -670,7 +671,7 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
     pm_log_evt("drecsc f%u", pm_frame_count()); /* WCLIP0 */
-    if (pm_stretch) pm_log_evt("wclip2 f%u", pm_frame_count()); /* WCLIP2: expected-diff marker */
+    if (pm_stretch) pm_log_evt("fsui f%u", pm_frame_count()); /* FSUI1: expected-diff marker */
     gst_fp = fopen("sdmc:/3ds/PaperMario/shots/gst.txt", "wb"); gst_vb = (char*)malloc(64u << 10); /* DO0 */
     if (gst_fp && gst_vb) setvbuf(gst_fp, gst_vb, _IOFBF, 64u << 10); else { if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; }
     gst_cb = NULL; gst_off = gst_fvec = gst_fcomp = 0; gst_fn = 4u; memset(gst_r, 0, sizeof gst_r); memset(gst_f, 0, sizeof gst_f); memset(gst_lut, 0, sizeof gst_lut);
@@ -1256,7 +1257,7 @@ static void stage_scissor(void) {
         int left = 240 - gsci_y1;
         int right = 240 - gsci_y0;
         /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
-        int ui = pm_wide && (!nb.draw_3d || ui_ortho);
+        int ui = pm_wout && (!nb.draw_3d || ui_ortho);
         /* WCLIP1: one x rule for every mode (nd_sci.c). Native uses the clamped edges; wide and Fullscreen use the raw edges. */
         const int mode = pm_stretch ? 2 : pm_wide ? 1 : 0; int top, bottom;
         nd_sci_x(mode ? gsci_wx0 : gsci_x0, gsci_y0, mode ? gsci_wx1 : gsci_x1, gsci_y1, mode, ui, &top, &bottom);
@@ -1939,7 +1940,7 @@ static void pm_gpu_init_w(void) {
     jt_on = pm_debug_has("jumptest");
     mfr_init();
     pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide == 1) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
-    pm_stretch_cfg = pm_opt.wide == 2 || pm_debug_has("fullscr"); pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
+    pm_stretch_cfg = pm_opt.wide == 2 || pm_debug_has("fullscr"); pm_stretch = pm_stretch_cfg && !pm_wide; pm_wout = pm_wide || pm_stretch; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
     pm_log("gpu: wide=%d stretch=%d", pm_wide, pm_stretch);
     gfxInitDefault();
     gspSetEventCallback(GSPGPU_EVENT_VBlank0, gsp_adopt, NULL, true); /* LIBTHR: one shot, on the GSP event thread */
@@ -2398,7 +2399,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz, int band_h) {
         gs.offs[i].stride = (unsigned)stride;
         gs.offs[i].last = pm_frame_count();
         /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
-        pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
+        pm_tex_set_offscreen(i, (pm_wout && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
     }
     if (i < OFF_N) off_mask_f |= 1u << i; /* VRAM3 trace: which full images a frame uses */
     gs.off_cur = i;
@@ -3457,7 +3458,7 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
     if (nb.draw_3d && nb.gni > 0) flush();
     ui_ortho = ortho;
-    pm_gv_rejm = (pm_wide && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c nd_gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
+    pm_gv_rejm = (pm_wout && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c nd_gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
     memcpy(game_mvp, m, sizeof(game_mvp));
     gs.vp_sx = sx;
     gs.vp_sy = sy;
@@ -3476,7 +3477,7 @@ int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned 
     if (nb.gni == 0 || nb.gidx_n + 3 > GRING_IDX || !nb.g_pal) return 0;
     if (nb.ring_cur && nb.gi_kind != 0) return 0; /* FB-1: a static batch on chunk k takes no ring triangles */
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
-    if (pm_wide && !gs.off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides (once per triangle) */
+    if (pm_wout && !gs.off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides (once per triangle) */
         unsigned short t3[3] = { (unsigned short)i0, (unsigned short)i1, (unsigned short)i2 };
         if (g1 != g0 || g2 != g0 || i0 > 0xffffu || i1 > 0xffffu || i2 > 0xffffu || wide_edge_k(pal_tab[g0], t3, 3) != 0) return 0;
     }
@@ -3676,7 +3677,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (mv) *mv = 0;
     if (gs.r_zmark && use5) return 0; /* B3b depth pass: pm4 batches draw it natively in two passes (nd_raw_native, raw_zmark_pass); pm5 has no zmark pass */
     if (gs.r_decal && gs.r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
-    if (pm_wide && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
+    if (pm_wout && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
     if (nb.gidx_n + 3 > GRING_IDX) return 0;
     if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
     unsigned kf[3]; /* one palette search per vertex: the fit test and the index assignment below use it */
@@ -3820,7 +3821,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (use5 && !gv5_on) return 0;
     if (gs.r_zmark) return 0;
     if (gs.r_decal && gs.r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
-    if (pm_wide && !gs.off_active && !wedge_x) { int wr = grange_wide(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, &idx, nidx); if (wr < 2) return wr; } /* PERF2: the wide edge path out of line */
+    if (pm_wout && !gs.off_active && !wedge_x) { int wr = grange_wide(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, &idx, nidx); if (wr < 2) return wr; } /* PERF2: the wide edge path out of line */
     if (nb.gidx_n + nidx > GRING_IDX) return 0;
     if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
     gi_kind_set(1); /* FB-1: static indices name chunk 0 vertices */
@@ -3846,20 +3847,20 @@ int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* 
     if (!gs.gv4_on || !gs.gpu_ok) return 1;
     if (gs.r_zmark) return 2;
     if (gs.r_decal && gs.r_blend && !pm_ent_decal_ok) return 3;
-    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 4;
+    if (pm_wout && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 4;
     return nb.gidx_n + nidx <= GRING_IDX ? 0 : 5;
 }
 /* S5-1 (b): the native range check. The walker's decal with blend (decal2) is a native two-pass draw (nd_model_draw), so that refusal is not kept here. */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
-    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
+    if (pm_wout && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return nb.gidx_n + nidx <= GRING_IDX;
 }
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
     if (gs.r_zmark) return 0;
     if (gs.r_decal && gs.r_blend) return 0;
-    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
+    if (pm_wout && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return nb.gidx_n + nidx <= GRING_IDX;
 }
 
@@ -3998,7 +3999,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { /* NWS4C */
     s[i++] = nd_apw(NDAPW_PRIM); s[i++] = nd_apw(NDAPW_PLOD); s[i++] = aux_hash(rec); /* NWS4C */ /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
     s[i++] = (uint32_t)dview; s[i++] = gs.r_mix == 2 ? 2u : 0u; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
     { float zb_ = gs.r_zmark ? gs.r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = gs.r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
-    s[i++] = (uint32_t)gs.r_decal; s[i++] = (uint32_t)gs.r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)gs.off_active; s[i++] = (uint32_t)ui_ortho;
+    s[i++] = (uint32_t)gs.r_decal; s[i++] = (uint32_t)gs.r_blend; s[i++] = (uint32_t)pm_wout; s[i++] = (uint32_t)gs.off_active; s[i++] = (uint32_t)ui_ortho;
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;

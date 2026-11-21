@@ -15,4 +15,5 @@ seed 's#(x1 == 319 || x1 == 320)#x1 >= 320#' || exit 1
 seed 's#x0 == 0 ? 0#x0 <= 0 ? 0#' || exit 1
 seed 's#x0 == 12 && y0 == 20#x0 == 13 \&\& y0 == 20#' || exit 1
 seed 's#s ? ci(40 + x0#s ? ci(x0#' || exit 1
-echo "wclip1 seeds: 4 FAIL"
+seed 's#const int s = ui;#const int s = mode == 1 \&\& ui;#' || exit 1
+echo "wclip1 seeds: 5 FAIL"

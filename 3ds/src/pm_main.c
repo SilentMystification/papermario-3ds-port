@@ -265,10 +265,10 @@ static int in_buf(const void* p, const unsigned short* b) {
  * per load) and read as native u16 pixels instead of its own bytes. */
 int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1); }
 /* B2: the frame buffer the game draws into now (the T2 grab source). Any other frame buffer holds an older frame (T3). */
-extern int pm_wide;
+extern int pm_wout;
 /* F07-7: with wide a window may start up to 40 pixels before the buffer (game x -40 of row 0, effects in the gutters) */
 void* pm_walk_cfb; /* CORE2C-2: set by pm_frame_walk from the frame (the walker reads this, the game side nuGfxCfb_ptr) */
-int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wide && in_buf((const u8*)p + 80, c))); }
+int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wout && in_buf((const u8*)p + 80, c))); }
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
 int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)); }

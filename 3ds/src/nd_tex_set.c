@@ -218,7 +218,7 @@ const NdSnapBind* nd_bsrc;
 const u8* fb_prev_base(int n) {
     const u8* base;
     unsigned i;
-    if (pm_wide || !ND_BTD(n)->valid || ND_BTD(n)->fmt != 0 || ND_BTD(n)->siz != 2 || ND_BTD(n)->stride != 320) return NULL;
+    if (pm_wout || !ND_BTD(n)->valid || ND_BTD(n)->fmt != 0 || ND_BTD(n)->siz != 2 || ND_BTD(n)->stride != 320) return NULL;
     if (ND_BWR(n)[2] || ND_BWR(n)[3]) return NULL;
     base = (const u8*)ND_BTD(n)->src - ((size_t)ND_BTD(n)->y0 * 320u + (size_t)ND_BTD(n)->x0) * 2u;
     for (i = 0; i < nuGfxCfbNum; i++)
