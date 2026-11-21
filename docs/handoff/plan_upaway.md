@@ -27,8 +27,8 @@ Tags: FACT (file:line, main 67b6f47608), GUESS, OPEN. User report 21 Nov (fact):
 ## 3. Measurement row
 - SPM0 (Haiku): page ws_SPM0.md. Scenarios spm_uaa (spmove=7), spm_sbeam (8), spm_pbeam (9). Counts are Azahar facts. Milliseconds need the console.
 - Console capture after SPM0 merges (orchestrator asks the user first). One push runs all three moves in one battle (order 8, 9, 7: Up and Away last, its blur stays on):
-  capture_check: `python 3ds/tools/capture_check.py --row SPM1 --profile prof --proof "spmove: start,spm k1,spmove: done" warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 spmove=8:9:7 fixedseed`
-  push: `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.170 -NoBuild -Seconds 150 -Profile prof -GameDebug "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 spmove=8:9:7 fixedseed"`
+  capture_check: `python 3ds/tools/capture_check.py --row SPM1 --profile prof --proof "spmove: start,spm k1,spmove: done" warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 spmove=8:9:7 fixedseed profdisk=1`
+  push: `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.170 -NoBuild -Seconds 150 -Profile prof -GameDebug "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 spmove=8:9:7 fixedseed profdisk=1"`
   Read: the spm lines per window, the prof `ft`, `cls`, `stepx max` lines of the windows inside each move. OPEN: the battle needs 3 player turns (Mario HP 10, one Goomba: GUESS it holds).
 
 ## 4. Decision rules (after SPM0; each a closed page)
