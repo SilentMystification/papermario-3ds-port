@@ -433,11 +433,11 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
             return true;
         }
 
-        if (posX >= pm_wide_right(SCREEN_WIDTH) || posY >= SCREEN_HEIGHT) {
+        if (posX >= pm_scr_right() || posY >= SCREEN_HEIGHT) {
             return true;
         }
 
-        if (posX + width >= 768 || posY + height >= 768 || posX + width <= pm_wide_left(0) || posY + height <= 0) {
+        if (posX + width >= 768 || posY + height >= 768 || posX + width <= pm_scr_left() || posY + height <= 0) {
             return true;
         }
 
@@ -466,7 +466,7 @@ s32 draw_box(s32 flags, WindowStyle windowStyle, s32 posX, s32 posY, s32 posZ, s
         if (quads != nullptr) {
             nd_xf_viewport(&gBoxViewport);
             /* UA7: the port scales perspective x by 1.25 with wide. A 4:3 box frustum of +-100 cancels it, so the box keeps its 4:3 shape (spin included). */
-            guFrustumF(mtx1, pm_wide ? -100.0f : -80.0f, pm_wide ? 100.0f : 80.0f, 60.0f, -60.0f, 160.0f, 480.0f, 1.0f);
+            guFrustumF(mtx1, pm_wout ? -100.0f : -80.0f, pm_wout ? 100.0f : 80.0f, 60.0f, -60.0f, 160.0f, 480.0f, 1.0f);
             guMtxF2L(mtx1, &gDisplayContext->matrixStack[gMatrixListPos]);
             sp154 = &gDisplayContext->matrixStack[gMatrixListPos];
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_NOPUSH | G_MTX_LOAD | G_MTX_PROJECTION);

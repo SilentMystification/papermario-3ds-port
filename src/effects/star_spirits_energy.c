@@ -388,8 +388,8 @@ void star_spirits_energy_appendGfx(void* effect) {
         if (alpha > 0) {
             nd_val_prim(0, 0, 208, 208, 208, alpha);
             {   /* F07-6: with wide the flash reaches both screen edges (NDN(D_09005440_4126D0) is 0 to 320) */
-                extern int pm_wide;
-                if (pm_wide) {
+                extern int pm_wout;
+                if (pm_wout) {
                     nd_pso_cyc(G_CYC_1CYCLE);
                     nd_pso_rm(G_RM_CLD_SURF, G_RM_CLD_SURF2);
                     nd_pso_persp(G_TP_NONE);

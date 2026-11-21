@@ -801,16 +801,16 @@ void hud_element_draw_rect(HudElement* hudElement, s16 texSizeX, s16 texSizeY, s
                 texStartX = 0;
             }
 
-            if (lrx < pm_wide_left(0)  || ulx > pm_wide_right(SCREEN_WIDTH)) {
+            if (lrx < pm_scr_left()  || ulx > pm_scr_right()) {
                 break;
             }
 
-            if (lrx >= pm_wide_right(SCREEN_WIDTH)) {
-                s32 temp = uls + pm_wide_right(SCREEN_WIDTH) + 63;
+            if (lrx >= pm_scr_right()) {
+                s32 temp = uls + pm_scr_right() + 63;
                 temp -= baseX + lrs;
                 lrs = temp - 1;
 
-                lrx = pm_wide_right(SCREEN_WIDTH);
+                lrx = pm_scr_right();
                 isLastTileX = true;
             }
 

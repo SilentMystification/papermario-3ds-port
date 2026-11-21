@@ -225,9 +225,9 @@ void appendGfx_darkness_stencil(bool isWorld, s32 posX, s32 posY, f32 alpha, f32
     /* F07-6: with wide the rect reaches both screen edges. s moves by 32 / texScale per pixel, so it shifts with the left edge. */
     rectLeft = camera->viewportStartX;
     rectRight = camera->viewportStartX + camera->viewportW;
-    if (pm_wide && (gCurrentCameraID == CAM_DEFAULT || gCurrentCameraID == CAM_BATTLE)) {
-        rectLeft = pm_wide_left(0);
-        rectRight = pm_wide_right(SCREEN_WIDTH);
+    if (pm_wout && (gCurrentCameraID == CAM_DEFAULT || gCurrentCameraID == CAM_BATTLE)) {
+        rectLeft = pm_scr_left();
+        rectRight = pm_scr_right();
     }
     sShift = (rectLeft - camera->viewportStartX) * 32.0f / texScale;
 
@@ -248,12 +248,12 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
         y1 = gCameras[camID].viewportStartY;
         x2 = gCameras[camID].viewportStartX + gCameras[camID].viewportW;
         y2 = gCameras[camID].viewportStartY + gCameras[camID].viewportH;
-        if (pm_wide && (camID == CAM_DEFAULT || camID == CAM_BATTLE)) {
+        if (pm_wout && (camID == CAM_DEFAULT || camID == CAM_BATTLE)) {
             x1 = 0;
             x2 = SCREEN_WIDTH;
         }
-        rectLeft = (pm_wide && (camID == CAM_DEFAULT || camID == CAM_BATTLE)) ? pm_wide_left(0) : x1;
-        rectRight = (pm_wide && (camID == CAM_DEFAULT || camID == CAM_BATTLE)) ? pm_wide_right(SCREEN_WIDTH) : x2;
+        rectLeft = (pm_wout && (camID == CAM_DEFAULT || camID == CAM_BATTLE)) ? pm_scr_left() : x1;
+        rectRight = (pm_wout && (camID == CAM_DEFAULT || camID == CAM_BATTLE)) ? pm_scr_right() : x2;
         t5 = rectLeft;
         t6 = y1;
     } else {
@@ -261,8 +261,8 @@ void appendGfx_screen_transition_stencil(s32 arg0, s32 arg1, f32 progress, s32 p
         y1 = 0;
         x2 = SCREEN_WIDTH;
         y2 = SCREEN_HEIGHT;
-        rectLeft = pm_wide_left(0);
-        rectRight = pm_wide_right(SCREEN_WIDTH);
+        rectLeft = pm_scr_left();
+        rectRight = pm_scr_right();
         t5 = rectLeft;
         t6 = 0;
     }
