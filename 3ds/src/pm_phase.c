@@ -590,6 +590,7 @@ static void sx_step(int have, unsigned long long w) { unsigned bw[2], v[SX_F]; p
         if (w > sx_max) { sx_max = w; sx_mb = b; for (int k = 0; k < SX_F; k++) sx_mv[k] = v[k] - sx_last[k]; } }
     memcpy(sx_last, v, sizeof v);
     const int a = pm_act_state; sx_b = a == 0 ? 0 : (a == 1 || a == 2) ? 1 : a == 0x1A ? 2 : 3; } /* include/enums.h:2415-2417, :2443 */
+typedef struct { const void* k; unsigned n, t; } DrcEnt; extern DrcEnt pm_drc[8]; /* DRAINC: nd_walk.c drain census */
 static void pf_report(void) {
 #ifdef PM_FPROF
     { extern void pm_fprof_window(unsigned total, unsigned steps); pm_fprof_window(pf_total, pf_w); } /* PROF4 lane only */
@@ -762,6 +763,21 @@ static void pf_report(void) {
             unsigned dr = pf_cnt100(pm_wq_dr - lg0_q[0], dn), drw = pf_cnt100(pm_wq_drw - lg0_q[1], dn), wqf = pf_cnt100(pm_wq_wqf - lg0_q[2], dn);
             pm_log_prof_line("prof f%u w%u core2 wait bw %u.%02u fw %u.%02u aj %u.%02u au %u.%02u mx %u.%02u", pf_total, pf_w,
                 bw / 100u, bw % 100u, fw / 100u, fw % 100u, aj / 100u, aj % 100u, au / 100u, au % 100u, mx / 100u, mx % 100u);
+            { /* DRAINC: the 4 logic-thread drain callers with the most wait ms this window (key, count, ms x100); then clear the table */
+                DrcEnt d_[8]; unsigned q_, r_, b_; const void* pk_[4] = { 0, 0, 0, 0 }; unsigned pn_[4] = { 0, 0, 0, 0 }, pt_[4] = { 0, 0, 0, 0 };
+                for (q_ = 0; q_ < 8u; q_++) { d_[q_] = pm_drc[q_]; pm_drc[q_].k = 0; pm_drc[q_].n = 0; pm_drc[q_].t = 0; }
+                for (r_ = 0; r_ < 4u; r_++) {
+                    b_ = 8u;
+                    for (q_ = 0; q_ < 8u; q_++) if (d_[q_].k && (b_ == 8u || d_[q_].t > d_[b_].t)) b_ = q_;
+                    if (b_ == 8u) break;
+                    pk_[r_] = d_[b_].k; pn_[r_] = d_[b_].n; pt_[r_] = d_[b_].t; d_[b_].k = 0;
+                }
+                pm_log_prof_line("prof f%u w%u drainc %08x %u %u %08x %u %u %08x %u %u %08x %u %u", pf_total, pf_w,
+                    (unsigned)(size_t)pk_[0], pn_[0], (unsigned)((unsigned long long)pt_[0] * 100ull / PF_TPM),
+                    (unsigned)(size_t)pk_[1], pn_[1], (unsigned)((unsigned long long)pt_[1] * 100ull / PF_TPM),
+                    (unsigned)(size_t)pk_[2], pn_[2], (unsigned)((unsigned long long)pt_[2] * 100ull / PF_TPM),
+                    (unsigned)(size_t)pk_[3], pn_[3], (unsigned)((unsigned long long)pt_[3] * 100ull / PF_TPM));
+            }
             pm_log_prof_line("prof f%u w%u core2 drain dr %u.%02u drw %u.%02u wqf %u.%02u", pf_total, pf_w,
                 dr / 100u, dr % 100u, drw / 100u, drw % 100u, wqf / 100u, wqf % 100u);
             { unsigned c[8]; pf_c1n_now(c); pm_log_prof_line("prof f%u w%u c1n n %u snb %u snn %u snm %u lsf %u lsb %u lse %u altu %u altr %u", pf_total, pf_w, dn, c[0] - lg0_c[0], c[1] - lg0_c[1], c[2] - lg0_c[2], c[3] - lg0_c[3], c[4] - lg0_c[4], c[5] - lg0_c[5], c[6] - lg0_c[6], c[7] - lg0_c[7]); } /* NAT8A */ /* window totals over n logic steps */ { const unsigned d1_ = dn ? dn : 1u, pw1_ = pf_w ? pf_w : 1u; unsigned g_[4]; unsigned long long s0_ = (c1s_t[0] - c1s_m[0]) * 100ull / PF_TPM / d1_, s1_ = (c1s_t[1] - c1s_m[1]) * 100ull / PF_TPM / d1_; pm_gpu_gw_now(g_); pm_log_prof_line("prof f%u w%u c1s logic %u.%02u dl %u.%02u", pf_total, pf_w, (unsigned)(s0_ / 100u), (unsigned)(s0_ % 100u), (unsigned)(s1_ / 100u), (unsigned)(s1_ % 100u)); pm_log_prof_line("prof f%u w%u c1a m %u e %u c %u o %u c0 %u m %u e %u gpu d %u w %u bd %u bw %u", pf_total, pf_w, (nd_altw[0] - aw_m[0]) / d1_, (nd_altw[1] - aw_m[1]) / d1_, (nd_altw[2] - aw_m[2]) / d1_, (nd_altw[3] - aw_m[3]) / d1_, (nd_altw[4] - aw_m[4]) / pw1_, (nd_altw[5] - aw_m[5]) / pw1_, (nd_altw[6] - aw_m[6]) / pw1_, (g_[0] - gw_m[0]) / pw1_, (g_[1] - gw_m[1]) / pw1_, (g_[2] - gw_m[2]) / pw1_, (g_[3] - gw_m[3]) / pw1_); } /* PERF0 */

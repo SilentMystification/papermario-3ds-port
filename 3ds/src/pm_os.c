@@ -490,7 +490,9 @@ static void tk_patch_apply(u32 rom_addr, u8* buf, u32 size) {
 unsigned pm_rom_lg_n; /* STEPX */
 unsigned pm_rom_lg_b; /* STEPX2 */
 unsigned pm_rom_spr_n; /* STEPX */
+void* pm_rom_caller; /* DRAINC: the caller of the last nuPiReadRom (the drain census key) */
 void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
+    pm_rom_caller = __builtin_return_address(0); /* DRAINC */
     static u32 table_bytes;
     if (!pm_on_audio()) { /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
         pm_rom_lg_n++; /* STEPX */
