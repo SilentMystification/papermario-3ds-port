@@ -2931,6 +2931,9 @@ static void off_dump(void) {
 /* SYNC60: with 60 FPS (interpolation) one frame begin per LCD period (1/59.83 s), paced by the tick: a sleep to 0.5 ms before the time,
  * then a short spin. Replaces C3D_FRAME_SYNCDRAW, which blocked the walker until the vblank. No division: 15/4 ns per tick (0.6 % long,
  * covered by the 0.5 ms margin and the spin). */
+unsigned long long pm_c0k[6]; /* CPT0: [0] key pace ticks, [1] key FrameBegin ticks, [2] L tail us, [3] K frame us, [4] key shows, [5] begins after a key (prof only) */
+static int c0k_kf; /* CPT0: the last C3D_FrameEnd was a key show */
+extern int pm_pf_on; /* pm_phase.c */
 static u64 s60_next;
 static void sync60_pace(void) {
     const u64 period = 4481228ull; /* SYSCLOCK_ARM11 (268111856) / 59.83 */
@@ -2993,6 +2996,8 @@ void pm_gpu_begin_wait(void) {
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
     if (pm_pf_on) pm_c0i_t[2] += (unsigned)svcGetSystemTick() - c0t_;
+    if (pm_pf_on && c0k_kf) { pm_c0k[3] += (unsigned)(C3D_GetDrawingTime() * 1000.f); pm_c0k[5]++; } /* CPT0: the GPU time of the K frame */
+    c0k_kf = 0;
     if (__builtin_expect(ff_on, 0)) pm_ff_wait(ff_t0, pm_ticks(), (unsigned)(C3D_GetDrawingTime() * 1000.f)); /* FLIPLOG: the wait and the GPU time of the last frame */
     nb.ring_done = nb.ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin is paced by time (SYNC60): two draws a step, one per LCD period */
@@ -3151,8 +3156,11 @@ void pm_gpu_key_show(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     kc_valid = 0;
     if (!gs.gpu_ok) return;
+    unsigned k0_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; /* CPT0 */
     if (pm_interp_on > 0 && !pm_wd_wake_frames) sync60_pace();
+    if (pm_pf_on) { const unsigned n_ = (unsigned)svcGetSystemTick(); pm_c0k[0] += n_ - k0_; k0_ = n_; }
     if (!C3D_FrameBegin(0)) { pm_kc_why[4]++; return; } /* FPS60W2: a frame already begun: nothing is queued into a frame citro3d did not open */
+    if (pm_pf_on) { pm_c0k[1] += (unsigned)svcGetSystemTick() - k0_; pm_c0k[2] += (unsigned)(C3D_GetDrawingTime() * 1000.f); pm_c0k[4]++; } /* CPT0: the key wait; the GPU tail of the L frame */
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; }
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: the sequence of a frame begin */
     pm_ph_gpu_note();
@@ -3173,6 +3181,7 @@ void pm_gpu_key_show(void) {
     if (stereo_frame) C3D_FrameDrawOn(targetR); /* the targets C3D_FrameEnd sends */
     C3D_FrameDrawOn(target);
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
+    c0k_kf = 1; /* CPT0 */
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; }
 }
 /* FRAMEHASH3: the fhash switch (fhash fhwin=<first>:<count>). At the frame end of a window frame the GX lists of the frame are hashed (nd_fh_frame) and
