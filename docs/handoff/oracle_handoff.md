@@ -17,11 +17,11 @@ State: main 3a29e12504. DGB01 (oracle DGB01): plan_dgb01.md (user: dgb_01 lags w
 2d. WIDEWIN: plan_widewin.md section 6 (user 21 Nov: Fullscreen UI at Native size). Fullscreen takes the Widescreen output path (pm_wout). Pages ws_FSUI1 (undo WCLIP2), then ws_FSUI2 and ws_FSUI3 (parallel). WALK: plan_walk.md (ROM read drain of player rasters, pm_os.c:492-495), pages ws_STEPX, ws_ROMDR (merge after the STEPX capture).
 2d. POND (oracle NATIVE21): plan_pond.md. mac_00 water solid blue: a DO1 memo hit inside the build_custom_gfx unit log (nd_rec.c:356, no lg_put) drops the copy record units. Pages ws_POND0 (benches, bisect), ws_POND1 (fix). drec frames hide DO1 faults (nd_rec.c:359): use pic benches.
 2h. SEAMS (oracle NATIVE24): plan_seams.md (path audit, ranked causes, rule N1 to N4). Gate pages ws_CRK0 to ws_CRK3 (Haiku). Fix pages CRK4 to CRK6 after the CRK1 numbers.
+2i. UPAWAY (oracle UPAWAY): plan_upaway.md. Star power lag (Up and Away, Star Beam, Peach Beam): 4 candidate paths, no proven cause. Page ws_SPM0 (Haiku: spmove switch, spm census). Fix pages after the SPM0 counts (plan_upaway.md section 4).
 2f. INTERP (oracle NATIVE23, PRES pass): plan_interp.md 6. FACT console: K finishes 8.26 ms after L (glk), drop 150 of 300 L pictures, K tears. Page ws_PRES1 (Haiku, gate before both FrameEnds). PRES2 (no 3-buffer scheduler): after PIPE3 the K FrameEnd moves into pm_pipe_open, if PRES1 gms 2+ and ft +1. Next: IMOV census, PRES3 sky lerp.
 2e. MAPTRANS (oracle NATIVE22): plan_maptrans.md. Load step 240-266 ms (console xfer). Mechanisms: blanket drain per ROM read (each read posts an invalidation:
   a round trip per read), romfs .seam/.dlc waits in the load, inline first sight. Pages ws_MTX0 (census, start now), ws_MTX1 (reader stamps), ws_MTX2 (file jobs): MTX1, MTX2 need the user's yes on section 7.
-2. DRAWOBJ (user yes 20 Nov): plan_drawobj.md, pages ws_DO0 (Haiku, gst.txt state hash tool) and ws_DO1 (Sonnet, model record memo).
-   The user reads plan_drawobj.md before a DO coder starts. DO2 to DO4 pages after DO0 merges (DO3 needs gst). DO5 needs the user.
+2. DRAWOBJ (user yes 20 Nov): plan_drawobj.md, pages ws_DO0 (Haiku, gst.txt state hash tool) and ws_DO1 (Sonnet, model record memo). The user reads plan_drawobj.md before a DO coder starts. DO2 to DO4 pages after DO0 merges (DO3 needs gst). DO5 needs the user.
 3. plan_perf.md section 11 rows C1, C3 (= DO1), C4 (= DO4), K1, K2 (= DO3): pick by the capture 1 numbers. Content cuts: none unless the user decides.
 ## Design facts (FACT code read)
 - Stream OML units never write nd_c0.omode_l (nd_rec.c:480 records nd_oml_run, nd_walk.c:258 is empty). nd_img_role read a stale word until NC0R.
