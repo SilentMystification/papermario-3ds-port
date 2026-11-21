@@ -270,9 +270,36 @@ void shockwave_render(EffectInstance* effect) {
     retTask->renderMode |= RENDER_TASK_FLAG_REFLECT_FLOOR;
 }
 
+/* TUB1: the ring parts. Each pass records them after its own prim, env and cull: a sub range keeps the state of nd_sub_open (plan_tubba.md). */
+static void shockwave_parts(ShockwaveFXData* data, s32 numParts, NdLst dlist) {
+    Matrix4f sp20, sp60;
+    s32 i;
+
+    data++;
+    for (i = 1; i < numParts; i++, data++) {
+        if (data->unk_4C >= 0) {
+            guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
+            guRotateF(sp60, data->unk_34, 0.0f, 0.0f, 1.0f);
+            guMtxCatF(sp60, sp20, sp20);
+            guScaleF(sp60, data->unk_1C * 0.3, data->unk_20 * 0.3, data->unk_24 * 0.3);
+            guMtxCatF(sp60, sp20, sp20);
+            guRotateF(sp60, data->unk_30, 0.0f, 1.0f, 0.0f);
+            guMtxCatF(sp60, sp20, sp20);
+            guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+
+            nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) data->unk_3C, 0x00FC, (s32) data->unk_3C + 0x7C);
+            nd_val_tile_size(1, 0, (s32) data->unk_44, 0x007C, (s32) data->unk_44 + 0x7C);
+
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_draw_list(dlist, pe_shockwave_339);
+            nd_xf_pop(G_MTX_MODELVIEW);
+        }
+    }
+}
+
 void shockwave_appendGfx(void* effect) {
     ShockwaveFXData* data = ((EffectInstance*) effect)->data.shockwave;
-    Matrix4f sp20, sp60;
+    Matrix4f sp20;
     NdLst dlist = NDN(D_09000940_359CF0);
     NdLst dlist2;
     s32 primA;
@@ -280,9 +307,7 @@ void shockwave_appendGfx(void* effect) {
     s32 envR, envG, envB;
     s32 primR2, primG2, primB2;
     s32 envR2, envG2, envB2;
-    NdSub sub;
     s32 temp_v0;
-    s32 i;
 
     primR = data->prim.r;
     primG = data->prim.g;
@@ -319,39 +344,16 @@ void shockwave_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
     primA = data->alpha;
 
-    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-
-    data++;
-    for (i = 1; i < ((EffectInstance*) effect)->numParts; i++, data++) {
-        if (data->unk_4C >= 0) {
-            guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
-            guRotateF(sp60, data->unk_34, 0.0f, 0.0f, 1.0f);
-            guMtxCatF(sp60, sp20, sp20);
-            guScaleF(sp60, data->unk_1C * 0.3, data->unk_20 * 0.3, data->unk_24 * 0.3);
-            guMtxCatF(sp60, sp20, sp20);
-            guRotateF(sp60, data->unk_30, 0.0f, 1.0f, 0.0f);
-            guMtxCatF(sp60, sp20, sp20);
-            guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-            nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) data->unk_3C, 0x00FC, (s32) data->unk_3C + 0x7C);
-            nd_val_tile_size(1, 0, (s32) data->unk_44, 0x007C, (s32) data->unk_44 + 0x7C);
-
-            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_draw_list(dlist, pe_shockwave_339);
-            nd_xf_pop(G_MTX_MODELVIEW);
-        }
-    }
-    nd_sub_close(&sub);
     nd_val_prim(0, 0, primR2, primG2, primB2, primA);
     nd_val_env(envR2, envG2, envB2, 0);
     nd_pso_geom_clr(G_CULL_BOTH);
     nd_pso_geom_set(G_CULL_FRONT);
-    nd_sub_call(&sub);
+    shockwave_parts(data, ((EffectInstance*) effect)->numParts, dlist);
     nd_val_prim(0, 0, primR, primG, primB, primA);
     nd_val_env(envR, envG, envB, 0);
     nd_pso_geom_clr(G_CULL_BOTH);
     nd_pso_geom_set(G_CULL_BACK);
-    nd_sub_call(&sub);
+    shockwave_parts(data, ((EffectInstance*) effect)->numParts, dlist);
     nd_pso_dither(G_CD_DISABLE);
     nd_pso_aldith(G_AD_DISABLE);
     nd_xf_pop(G_MTX_MODELVIEW);
