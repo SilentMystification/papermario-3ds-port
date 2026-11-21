@@ -1,0 +1,170 @@
+{
+ "benches": [
+  {
+   "name": "dgb01_broken_prof",
+   "kind": "azahar_stream",
+   "speed": "turbo",
+   "default": false,
+   "purpose": "DGB0: dgb_01 census with the broken bridges (story -28), 13 counts, prof window 2.",
+   "scenario": "dgb01_broken_prof",
+   "cap": 45,
+   "until": "prof f([6-9]\\d\\d|[1-9]\\d{3,}) w\\d+ at dgb_01 ",
+   "tags": [
+    "azahar",
+    "prof",
+    "dgb01"
+   ],
+   "log_metrics": [
+    {
+     "name": "ndc_model",
+     "regex": "prof f\\d+ w\\d+ ndc model ([0-9.]+) spr",
+     "pick": "last"
+    },
+    {
+     "name": "ndc_ent",
+     "regex": "prof f\\d+ w\\d+ ndc model [0-9.]+ spr [0-9.]+ ent ([0-9.]+) call",
+     "pick": "last"
+    },
+    {
+     "name": "pipe_draws",
+     "regex": "prof f\\d+ w\\d+ pipe fr \\d+ draws (\\d+) kick",
+     "pick": "last"
+    },
+    {
+     "name": "nd_dr",
+     "regex": "prof f\\d+ w\\d+ nd [0-9.]+ lg [0-9.]+ dr (\\d+) tc",
+     "pick": "last"
+    },
+    {
+     "name": "nd_tri",
+     "regex": "prof f\\d+ w\\d+ nd [0-9.]+ lg [0-9.]+ dr \\d+ tc \\d+ tw \\d+ tri (\\d+) leg",
+     "pick": "last"
+    },
+    {
+     "name": "nd_leg",
+     "regex": "prof f\\d+ w\\d+ nd .*? tri \\d+ leg (\\d+) gb",
+     "pick": "last"
+    },
+    {
+     "name": "sx_m",
+     "regex": "prof f\\d+ w\\d+ stepx norm n \\d+ g \\d+ p \\d+ d \\d+ r \\d+ s \\d+ t \\d+ m (\\d+) a",
+     "pick": "last"
+    },
+    {
+     "name": "sx_t",
+     "regex": "prof f\\d+ w\\d+ stepx norm n \\d+ g \\d+ p \\d+ d \\d+ r \\d+ s \\d+ t (\\d+) m",
+     "pick": "last"
+    },
+    {
+     "name": "cls_rec",
+     "regex": "prof f\\d+ w\\d+ cls rec ([0-9.]+) ent",
+     "pick": "last"
+    },
+    {
+     "name": "cls_sub",
+     "regex": "prof f\\d+ w\\d+ cls rec .*? sub ([0-9.]+) kick",
+     "pick": "last"
+    },
+    {
+     "name": "c0r_hit",
+     "regex": "prof f\\d+ w\\d+ c0r key [0-9.]+ mtx [0-9.]+ hit ([0-9.]+)",
+     "pick": "last"
+    },
+    {
+     "name": "c1d_rmdl",
+     "regex": "prof f\\d+ w\\d+ c1d rmdl ([0-9.]+) rent",
+     "pick": "last"
+    },
+    {
+     "name": "kc_walk",
+     "regex": "kcen f\\d+ steps 300 kcopy \\d+ kwalk (\\d+)",
+     "pick": "first"
+    }
+   ],
+   "gates": []
+  },
+  {
+   "name": "dgb01_whole_prof",
+   "kind": "azahar_stream",
+   "speed": "turbo",
+   "default": false,
+   "purpose": "DGB0: dgb_01 census with the bridges intact (story -16), 13 counts, prof window 2.",
+   "scenario": "dgb01_whole_prof",
+   "cap": 45,
+   "until": "prof f([6-9]\\d\\d|[1-9]\\d{3,}) w\\d+ at dgb_01 ",
+   "tags": [
+    "azahar",
+    "prof",
+    "dgb01"
+   ],
+   "log_metrics": [
+    {
+     "name": "ndc_model",
+     "regex": "prof f\\d+ w\\d+ ndc model ([0-9.]+) spr",
+     "pick": "last"
+    },
+    {
+     "name": "ndc_ent",
+     "regex": "prof f\\d+ w\\d+ ndc model [0-9.]+ spr [0-9.]+ ent ([0-9.]+) call",
+     "pick": "last"
+    },
+    {
+     "name": "pipe_draws",
+     "regex": "prof f\\d+ w\\d+ pipe fr \\d+ draws (\\d+) kick",
+     "pick": "last"
+    },
+    {
+     "name": "nd_dr",
+     "regex": "prof f\\d+ w\\d+ nd [0-9.]+ lg [0-9.]+ dr (\\d+) tc",
+     "pick": "last"
+    },
+    {
+     "name": "nd_tri",
+     "regex": "prof f\\d+ w\\d+ nd [0-9.]+ lg [0-9.]+ dr \\d+ tc \\d+ tw \\d+ tri (\\d+) leg",
+     "pick": "last"
+    },
+    {
+     "name": "nd_leg",
+     "regex": "prof f\\d+ w\\d+ nd .*? tri \\d+ leg (\\d+) gb",
+     "pick": "last"
+    },
+    {
+     "name": "sx_m",
+     "regex": "prof f\\d+ w\\d+ stepx norm n \\d+ g \\d+ p \\d+ d \\d+ r \\d+ s \\d+ t \\d+ m (\\d+) a",
+     "pick": "last"
+    },
+    {
+     "name": "sx_t",
+     "regex": "prof f\\d+ w\\d+ stepx norm n \\d+ g \\d+ p \\d+ d \\d+ r \\d+ s \\d+ t (\\d+) m",
+     "pick": "last"
+    },
+    {
+     "name": "cls_rec",
+     "regex": "prof f\\d+ w\\d+ cls rec ([0-9.]+) ent",
+     "pick": "last"
+    },
+    {
+     "name": "cls_sub",
+     "regex": "prof f\\d+ w\\d+ cls rec .*? sub ([0-9.]+) kick",
+     "pick": "last"
+    },
+    {
+     "name": "c0r_hit",
+     "regex": "prof f\\d+ w\\d+ c0r key [0-9.]+ mtx [0-9.]+ hit ([0-9.]+)",
+     "pick": "last"
+    },
+    {
+     "name": "c1d_rmdl",
+     "regex": "prof f\\d+ w\\d+ c1d rmdl ([0-9.]+) rent",
+     "pick": "last"
+    },
+    {
+     "name": "kc_walk",
+     "regex": "kcen f\\d+ steps 300 kcopy \\d+ kwalk (\\d+)",
+     "pick": "first"
+    }
+   ],
+   "gates": []
+  }
+ ]
+}
