@@ -183,7 +183,7 @@ void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls); /* KEYMISS censu
  * warm budget skip, a failed hit (tried: the matrix ran and pm_gpu_model_hit said no) and the debug switches that need the full key (full0). */
 unsigned pm_mdl_miss_n; /* STEPX */
 static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* mkp, NdMEnt* mce, int full0, int tried, unsigned mi0) {
-    if (tried || (!mce && q[12].words.w0)) pm_mdl_miss_n++; /* STEPX: a geometry record without a cache hit */
+    if (tried || !mce) pm_mdl_miss_n++; /* STEPX: no cache entry, or a failed hit */
     int cached = mce != NULL;
     int full = full0;
     if (!cached && !full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; full = 1; } /* HC6 step 2: the miss path reads the full key */
