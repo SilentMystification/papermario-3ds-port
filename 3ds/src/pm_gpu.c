@@ -654,6 +654,9 @@ static __attribute__((cold, noinline)) void gst_draw(u32* cb, u32 end) { /* DO0:
     fprintf(gst_fp, "d %u h %08x\n", drec_seq, h);
 }
 typedef struct { int gx0, gx1, top, bot; unsigned n, out; int lo, hi; } ClipG; static ClipG clipg[8]; static unsigned clipg_n, clipg_over; /* WCLIP0 */
+unsigned pm_mq_run; static unsigned mq_b[5], mq_why[8], mq_hits, mq_draws, mq_bad; static u32* mq_cb; static u32 mq_off; /* L1C0A: ws_L1C0A; mq_b hits by run length 1, 2-3, 4-7, 8-15, 16+ */
+static int mq_moved(void) { u32 *cb, sz, off; GPUCMD_GetBuffer(&cb, &sz, &off); return cb != mq_cb || off != mq_off; } /* L1C0A: words since the last hit */ static void mq_mark(void) { u32 sz; GPUCMD_GetBuffer(&mq_cb, &sz, &mq_off); }
+void pm_mq_cut_do(unsigned r) { if (mq_moved()) mq_bad++; const unsigned b = 31u - (unsigned)__builtin_clz(pm_mq_run); mq_b[b < 4u ? b : 4u] += pm_mq_run; mq_why[r & 7u]++; pm_mq_run = 0; }
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
         char v[24]; drec_win = -1;
@@ -676,6 +679,7 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     if (gst_fp && gst_vb) setvbuf(gst_fp, gst_vb, _IOFBF, 64u << 10); else { if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; }
     gst_cb = NULL; gst_off = gst_fvec = gst_fcomp = 0; gst_fn = 4u; memset(gst_r, 0, sizeof gst_r); memset(gst_f, 0, sizeof gst_f); memset(gst_lut, 0, sizeof gst_lut);
     drec_seq = drec_over = 0;
+    memset(mq_b, 0, sizeof mq_b); memset(mq_why, 0, sizeof mq_why); mq_hits = mq_draws = mq_bad = 0; /* L1C0A */
     drec_nspan = 0; /* DRECTEX: the spans the GPU writes */
     if (copy_blk) { drec_span[drec_nspan].lo = (uintptr_t)copy_blk; drec_span[drec_nspan++].n = BLK_FULL; }
     for (int i = 0; i < OFF_N; i++) if (full_blk[i]) { drec_span[drec_nspan].lo = (uintptr_t)full_blk[i]; drec_span[drec_nspan++].n = BLK_FULL16; }
@@ -688,6 +692,8 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     fclose(drec_f); free(drec_vb); free(drec_regs); free(drec_idx);
     if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; /* DO0 */
     pm_log_evt("c0src f%u draws %u mdl %u wcomb %u wrnd %u wbind %u snb %u snn %u snm %u", pm_frame_count(), c0_d, c0_m, c0_c, c0_r, c0_b, nd_snb, nd_snn, nd_snm); /* NAT1 */
+    pm_log_evt("mqr f%u hits %u draws %u r %u %u %u %u %u", pm_frame_count(), mq_hits, mq_draws, mq_b[0], mq_b[1], mq_b[2], mq_b[3], mq_b[4]); /* L1C0A */
+    pm_log_evt("mqw f%u bad %u why %u %u %u %u %u %u %u", pm_frame_count(), mq_bad, mq_why[0], mq_why[1], mq_why[2], mq_why[3], mq_why[4], mq_why[5], mq_why[6]); /* L1C0A */
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     { extern void nd_mmemo_log(void); nd_mmemo_log(); } /* DO1 */
@@ -3462,6 +3468,7 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
     int ortho = memcmp(m, id4, sizeof(id4)) == 0 ? ui_ortho : (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f);
     if (sx == gs.vp_sx && sy == gs.vp_sy && tx == gs.vp_tx && ty == gs.vp_ty && ortho == ui_ortho &&
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
+    pm_mq_cut(6u); /* L1C0A: a viewport or ortho change */
     if (nb.draw_3d && nb.gni > 0) flush();
     ui_ortho = ortho;
     pm_gv_rejm = (pm_wout && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c nd_gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
@@ -4368,9 +4375,12 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
          * nd_tex entry (32 x 64 on a shared-aux water) and its slot was sampled under uv scales built for the window rows, so every hit drew wrong (flicker) */
         NdTexDesc wd_;
         if (ds && e->ww) { wd_ = *ds; wd_.w = e->ww; wd_.h = e->wh; ds = &wd_; ndn_win++; }
-        int id = ds ? nd_tex_get(ds) : -1;
+        int id = ds ? nd_tex_have(ds) : -1;
+        if (ds && id < 0) { pm_mq_cut(4u); id = nd_tex_get(ds); } /* L1C0A: a table miss loads */
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
-        if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
+        int tok = id >= 0 && nd_tex_unit_fast(id, &e->hs, &e->hg, &u);
+        if (id >= 0 && !tok) { pm_mq_cut(4u); tok = nd_tex_unit_slow(id, &e->hs, &e->hg, &u); } /* L1C0A: the search may load */
+        if (!tok) { ndn_texf++; return 0; }
     }
     /* DOORHITCH: an entry with a unit 1 slot does not hit. Its tile 1 came from the live walker tile state (pm_gbi_bind_tile1), which the key
      * does not hold and a hit chain does not update (rec_apply is skipped). Before, such a record missed whenever the record before it changed
@@ -4381,6 +4391,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
     /* PERF1-4c: only when an eviction happened since the last build of these ids (nd_tmpl_gen); else the ids hold and only their LRU clock moves */
     if (e->tgen != nd_tmpl_gen()) {
+        pm_mq_cut(5u); /* L1C0A: an eviction */
         nd_tmpl_pin();
         for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
         e->tgen = nd_tmpl_gen();
@@ -4396,6 +4407,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     const int shr = rw && (rw[6] & 32u);
     const uint32_t* const msr_ = rw ? nd_msnap_rw(rw) : NULL; const uint32_t shc_bc = (msr_ ? msr_ : nd_msnap_w())[MSW_BLENDC]; /* PERF3: this record's snap (a hit runs no nd_msnap_use) */
     const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : shc_bc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u; /* NWS4C */
+    if (pm_mq_run && mq_moved()) mq_bad++; /* L1C0A */
     for (unsigned j = 0; j < e->n; j++) {
         NdNatC* q = nd_mc_nat(e, j);
         if (shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = shc;
@@ -4406,6 +4418,7 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
         pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
         mfr_idx += q->nidx;
     }
+    mq_mark(); pm_mq_run++; mq_hits++; mq_draws += e->n; /* L1C0A */
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
     return 1;
 }
