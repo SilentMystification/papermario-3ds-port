@@ -13,6 +13,8 @@ B = build3ds/out/live_play2_170.txt (main a05f62c545), C = build3ds/hw_tidal1_li
 
 5. MTX1 + MTX1K console result (FACT, build3ds/out/live_xfer_mtx1k4.txt, main 76e3f8448c, 6 warm transitions n2-n7 against 8 of build3ds/out/live_xfer3_170.txt): c max mean 177.8 -> 167.5 ms, rdw 234.7 -> 182.6 ms, biggest drain caller (20-23 calls) 154.9 -> 129.0 ms. The waits removed spread over steps: the load step drops about 10 ms, not the 60-115 ms guess. n1 (first load after boot) has tex 105.6 ms (cold). Next: MTX2.
 
+6. MTX6 step census (xfer8: logic busy, game wait, present gate, key walks per top step), console build3ds/out/live_mtx6b.txt (FACT): the load step varies 140 to 508 ms with xfer2 seam 0.3 to 342 ms, the wait in pm_pf_fopen for the file job posted only 4 idle steps before the load. MTX7 posts it at the fade start with the shape prefetch. s1 and s43 (visible) hold the mode wait of set_game_mode (one frame walk, 29 to 40 ms): MTX8 skips it for CHANGE_MAP and WORLD when the aspect flags stay. OPEN: visible fade steps of 76 to 85 ms with lg 0 and gw 0 (game thread work: walk, GPU wait, present); covered first-sight step 171 ms (158 to 234 model builds, 123 lists, one key walk).
+
 ## 1. Timeline of one map change (game code src/state_map_transitions.c. L = logic thread core 1, G = game thread core 0, P = prefetch thread core 1 prio 0x3F)
 | # | stage | code | thread | blocks | ms |
 |---|---|---|---|---|---|
