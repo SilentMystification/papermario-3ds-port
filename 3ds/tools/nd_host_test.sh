@@ -32,6 +32,8 @@ if [ -n "$direct" ]; then echo "FAIL direct linear call (use pm_linear_*):"; ech
 # threadCreate outside that helper fails the test.
 rawth=$(grep -nE '(^|[^_A-Za-z0-9])threadCreate[[:space:]]*\(' 3ds/src/*.c 2>/dev/null | grep -v '^3ds/src/pm_thread.c:')
 if [ -n "$rawth" ]; then echo "FAIL direct threadCreate (use pm_thread_create):"; echo "$rawth"; fail=1; fi
+sh 3ds/tools/seamlint.sh || fail=1 # SEAMLINT (plan_seams.md section 4): one f32 to f24 path, one palette product, one shader position block
+if sh 3ds/tools/seamlint.sh --seed > /dev/null 2>&1; then echo "FAIL seamlint: the seeded site passed"; fail=1; fi
 stage checks
 # outs_hash <entry dir>: content hash of every stored file except key.txt and outs.sha1.
 outs_hash() { (cd "$1" && find . -type f ! -name key.txt ! -name outs.sha1 | LC_ALL=C sort | xargs -r sha1sum) | sha1sum | cut -d' ' -f1; }
