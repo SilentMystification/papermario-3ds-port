@@ -692,6 +692,7 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     { extern void nd_mmemo_log(void); nd_mmemo_log(); } /* DO1 */
     pm_log_evt("clipc f%u groups %u over %u", pm_frame_count(), clipg_n, clipg_over); /* WCLIP0 */
+    { extern unsigned nd_scene2d_n; pm_log_evt("scn2d f%u opens %u", pm_frame_count(), nd_scene2d_n); } /* FSUI3: the census of the scene bracket */
     for (unsigned q = 0; q < clipg_n; q++) pm_log_evt("clipg f%u g %d %d c %d %d n %u out %u bb %d %d", pm_frame_count(), clipg[q].gx0, clipg[q].gx1, clipg[q].top, clipg[q].bot, clipg[q].n, clipg[q].out, clipg[q].out ? clipg[q].lo : 0, clipg[q].out ? clipg[q].hi : 0);
     clipg_n = clipg_over = 0;
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
