@@ -879,18 +879,29 @@ extern int pm_pf_on; /* pm_gpu.c below: pm_phase.c */
 static void (*pres_prev)(gxCmdQueue_s*);
 volatile unsigned pm_pres[14]; /* 0..3 gap after an L picture (0, 1, 2, 3+ vblanks), 4..7 after a K or plain one, 8 drop, 9 wob, 10 pictures, 11 L to K ticks, 12 part 1 ticks, 13 part 1 n */
 unsigned pm_pres_step; /* one per step, pm_main.c wq_step_end */
-static volatile unsigned pres_arm, pres_kind, pres_h, pres_vb0, pres_h0, pres_k0, pres_t0, pres_have, pres_kick;
+static volatile unsigned pres_arm, pres_kind, pres_h, pres_vb0, pres_h0, pres_k0, pres_t0, pres_have, pres_kick, pres_tx, pres_sw; /* PRES1: pres_tx pictures queued, pres_sw swaps done */
 static void pres_cb(gxCmdQueue_s* q) {
     const unsigned n = q->numEntries;
-    if (pres_arm && n && (q->entries[n - 1u].data[0] & 0xFFu) == 0x03u) { /* the finish of an armed picture: its last entry is the display transfer */
+    const int tx_ = n && (q->entries[n - 1u].data[0] & 0xFFu) == 0x03u; /* PRES1: a picture finish: its last entry is the display transfer */
+    if (pres_arm && tx_) { /* the finish of an armed picture */
         const unsigned vb = C3D_FrameCounter(0), t = (unsigned)svcGetSystemTick(), g = vb - pres_vb0, d = pres_h - pres_h0;
         pres_arm = 0; if (gspIsPresentPending(GSP_SCREEN_TOP)) pm_pres[8]++; /* the last picture is never shown (gspgpu.h:133) */
         if (pres_have) { pm_pres[(pres_k0 == 1u ? 0u : 4u) + (g > 3u ? 3u : g)]++; pm_pres[9] += d > g ? d - g : g - d; if (pres_k0 == 1u) pm_pres[11] += t - pres_t0; }
         pm_pres[10]++; pres_vb0 = vb; pres_h0 = pres_h; pres_k0 = pres_kind; pres_t0 = t; pres_have = 1;
     } else if (pres_kick) { pm_pres[12] += (unsigned)svcGetSystemTick() - pres_kick; pm_pres[13]++; pres_kick = 0; }
     if (pres_prev) pres_prev(q);
+    if (tx_) pres_sw = pres_tx; /* PRES1: citro3d's swap (pres_prev) of the last queued picture is done */
 }
 static void pres_arm_set(unsigned kind) { if (!pm_pf_on) return; pres_kind = kind; pres_h = 2u * pm_pres_step + (kind == 1u ? 1u : 2u); pres_kick = 0; pres_arm = 1; }
+volatile unsigned pm_pres_g[3]; /* PRES1: gate waits, wait ticks, timeouts */
+static void pres_gate(void) { /* PRES1 (plan_interp.md 6.8): the next transfer waits until the last picture is swapped and on screen */
+    if (pm_interp_on <= 0 || pm_wd_wake_frames) return;
+    if (pres_sw == pres_tx && !gspIsPresentPending(GSP_SCREEN_TOP)) return;
+    const unsigned t0 = (unsigned)svcGetSystemTick();
+    int i = 0;
+    while ((pres_sw != pres_tx || gspIsPresentPending(GSP_SCREEN_TOP)) && i++ < 200) svcSleepThread(200000ll); /* 0.2 ms steps, 40 ms cap as vblank_wait_timed (pm_main.c:446) */
+    pm_pres_g[0]++; pm_pres_g[1] += (unsigned)svcGetSystemTick() - t0; if (i > 200) pm_pres_g[2]++;
+}
 /* KICK1: citro3d holds the GX queue inside a frame and starts the PICA at C3D_FrameEnd, so the GPU idled for the whole CPU part of the frame. One
  * C3D_FrameSplit when about 55 percent of the draws of the last frame are queued starts the GPU on the first part while the CPU builds the rest.
  * Cost: one more cache flush and one more command list submit on the CPU. Only on the main target (an off-screen pass and a grab split on their own).
@@ -3295,11 +3306,13 @@ void pm_gpu_key_show(void) {
         pm_gx_room();
         gxCmdQueueAdd(q, &e);
     }
+    if (q->numEntries) gxCmdQueueRun(q); /* PRES1: the GPU draws the K entries while pres_gate waits (as KICK3 :914) */
     u32 *cb, csz, coff;
     GPUCMD_GetBuffer(&cb, &csz, &coff);
     if (kc_tail_n && coff + kc_tail_n < csz) { memcpy(cb + coff, kc_buf + kc_tail_w, kc_tail_n * 4u); GPUCMD_SetBufferOffset(coff + kc_tail_n); if (kc_fl) *(volatile unsigned*)(__C3D_Context + 32) |= 2u; } /* FPS60FL: C3D_FrameEnd adds the flush, as in the L frame */
     if (stereo_frame) C3D_FrameDrawOn(targetR); /* the targets C3D_FrameEnd sends */
     C3D_FrameDrawOn(target);
+    pres_gate(); pres_tx++; /* PRES1: pres_tx counts before C3D_FrameEnd runs the queue */
     pres_arm_set(2u); /* PRES0 */
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     c0k_kf = 1; /* CPT0 */
@@ -3421,6 +3434,7 @@ static void pm_gpu_end_w(void) {
     { const unsigned kb0_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; kc_build(); if (pm_pf_on) pm_ik[0] += (unsigned)svcGetSystemTick() - kb0_; } /* IK0 */ /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     pres_arm_set(pm_icmp_kind == 1 ? 1u : pm_icmp_kind == 2 ? 2u : 0u); /* PRES0 */
+    pres_gate(); pres_tx++; /* PRES1: pres_tx counts before C3D_FrameEnd runs the queue */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (__builtin_expect(pm_ff_on(), 0)) pm_ff_end(pm_frame_count(), pm_ticks(), off_used, off_sused, grab_split + kick_done, OFF_N); /* FLIPLOG: the counts of this frame */
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */
