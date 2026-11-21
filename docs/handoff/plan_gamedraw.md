@@ -1,5 +1,5 @@
 # plan_gamedraw.md: GAMEDRAW, less per-step work in the game's own draw code (oracle NATIVE18; user task 20 Nov: design, pages only)
-Tags: FACT (console capture, Azahar log or code read), GUESS, OPEN. Rows GD0 to GD8, GDW, DO3F. plan_drawobj.md (oracle NATIVE17) owns DO0 to DO4: this plan does not change them.
+Tags: FACT (console capture, Azahar log or code read), GUESS, OPEN. Rows GD0 to GD9, GDW, DO3F. plan_drawobj.md (oracle NATIVE17) owns DO0 to DO4: this plan does not change them.
 
 ## 0. Base numbers (FACT build3ds/out/live_cap1c_170.txt, O3DS .170, main 96307bf5fa, mac_01 0 0 200, prof, window f1589)
 - fps 47.4, ft 41.46. Core 1 busy 32.33 ms (lgms 40.06 - bw 7.73), logic 2.40. Timed recorder: snap 2.12, rmdl 5.22, rnr 3.70, alt 1.86, rent 1.02.
@@ -8,30 +8,11 @@ Tags: FACT (console capture, Azahar log or code read), GUESS, OPEN. Rows GD0 to 
 - fps60 is on (FACT `disp w1 s0 f60`, kf 300). Capture words: plan_60fps.md section 5 (prof mode, never phase=on: pm_phase.c:839).
 
 ## 1. What the game does per step (FACT code read)
-### 1.1 fps60 interpolation record (all classes)
-- Each FI_OPEN calls pm_interp_open (3ds/src/pm_interp.c:59-67). It scans all nodes of the step for the same (parent, a, b) (:63-64): O(n^2).
-  392 nodes per step mean, 448 peak (FACT Azahar mac_00, build3ds/azt/logs/mapchange_hud_after.txt). About 77K compares per step.
-- Callers: active models (model.c:2250), render tasks (model.c:4260), entities (entity.c:356), sprite components (sprite.c:510), effects (effects.c:128),
-  HUD elements (hud_element.c:2003). Cost GUESS 1.5 to 3.5 ms. GD1 (gated in its worktree, f12805d958).
-### 1.2 Models, entities, player, NPCs (c1g mdl 0.24, ent 0.10, ply 0, npc 0.02: FACT small)
-- A static model builds no matrix (model.c:2267-2268 finalMtx = savedMtx). Cull and depth per model: model.c:2390-2405, :2525. Entities: entity.c:326-412,
-  entity_model.c:517-553. Player: 77480.c:1530-1590. No row: GD3 (cull memo) and GD5 (sprite matrix memo) are dropped by these numbers.
-### 1.3 execute_render_tasks (c1g task 5.19 = exclusive: the time less rmdl, rent, rspr, rnr, snap, alt, lsc inside it)
-- Sort: 3 exchange sorts, O(n^2), n about 110 (model.c:4171-4222): GUESS 0.2 to 0.4. One FI_OPEN per task (:4260), each a full node scan: part of GD1.
-- appendGfx code: record fill (model.c:954-1508), group model copies (model.c:2611, :2622), entity setters (entity_model.c:356-465).
-- Untimed recorder in it: nd_xf_push and nd_xf_pop (nd_xf.c xf_rec: nd_ds_unit decode plus a record). GD0B times it (rxf).
-- Timer cost: a sampled step runs about 1385 child timer pairs (FACT counts: 693 rnr, 477 alt, 95 rmdl, 76 snap, 27 lsc, 17 rent and rspr). One pair
-  costs 1.15 us inside (cal 307 ticks); a similar part falls into the parent class. GUESS 0.7 to 1.5 ms of task is timer cost, not game work.
-- Rest GUESS 2 to 3 ms: game code plus I-cache refills after each recorder call (core2 ic1 67387 now, 33606 in the old build, FACT).
-### 1.4 ui (c1g ui 7.98): mostly not UI work
-- In a sampled step the logic runs inline (pm_phase.c:715 pm_lg_quiesce). nuGfxTaskStart (main_loop.c:291) is inside the ui region (:239-294). It pushes the
-  frame: pm_wq_frame (nd_wq.c:148) is not on the logic thread, so wq_main_direct (:155-156) walks the frame there. The walk's untimed part (cls rest 5.87)
-  lands in ui. UI work GUESS 7.98 - 5.87 = about 2.1 ms. In a normal step core 1 waits there instead (pm_wq_frame_slot, nd_wq.c:162-163; fw 6.99 ms).
-- UI work in mac_01 idle: the status bar. state_drawUI_world (state_world.c:21-25) -> draw_status_ui -> update_status_bar (inventory.c:571): 2 draw_box
-  windows (:756-757), about 12 hud_element_draw_next and 2 status_bar_draw_number (:782-901). Each HUD element: hud_element_draw_rect (hud_element.c:637):
-  tile loop with double math (:761, :796, :861, :870), hud_rect_direct (:472), hud_rect_emit (:285, a unit buffer), nd_snap_pso and nd_rec_alt (:873-879).
-  Messages and windows: none in mac_01 idle (GUESS). render_hud_elements_backUI and frontUI (:1454, :1578): a scan of all slots and a small sort.
-- Unchanged between steps while the bar stands: every NdHudRec (flags, image, palette, scales, pieces), the prim and env words, so every HUD rect record.
+### 1.1 fps60 record and small classes: GD1 (merged) removed the O(n^2) node scan (pm_interp.c:59-67). c1g mdl, ent, ply, npc are small (FACT).
+### 1.3 execute_render_tasks (c1g task 5.19, exclusive): sort O(n^2) (model.c:4171-4222, GUESS 0.2 to 0.4), appendGfx code, xf records (rxf), the
+  timer cost of sampled steps (about 1385 child pairs per step, GUESS 0.7 to 1.5 ms), I-cache refills (ic1 67387 now, 33606 old, FACT).
+### 1.4 ui (c1g ui 7.98): mostly the inline frame walk of sampled steps (nuGfxTaskStart inside the ui region, main_loop.c:291; nd_wq.c:155-156).
+  Real UI work is the status bar: update_status_bar (inventory.c:571): 2 draw_box (:756-757), about 12 HUD rects, 2 numbers (:782-901).
 
 ## 1.5 Capture 2 (FACT live_cap2_170.txt f11489, main 353b31c792 = capture 1 build + GD1, GD0B, DO3) and core 0
 - ft 41.21 (41.46), core 1 busy 28.59 (32.33: GD1), bw 11.22 (7.73), wk 38.00 (33.01). Pace iv 2/3/4+ vblanks: 178/96/26 (172/104/24). Walk (sampled) nd 23.42 (22.79).
@@ -44,13 +25,32 @@ Tags: FACT (console capture, Azahar log or code read), GUESS, OPEN. Rows GD0 to 
 - The step is a pipeline with a lock step: core 1 waits in pm_wq_frame_slot (nd_wq.c:162-163) until core 0 has walked the L and K frames of the step before,
   because pm_interp_lerp rewrites rtab and repl that the walker reads. So a faster core 1 (GD1) did not move ft; core 0 work and this lock set the period.
 
+## 1.6 Status bar on core 0 (FACT NATIVE20, live_play2_170.txt f10494 hidden against f11094 shown, build a05f62c545)
+- Shown bar: core 0 gbi +4.15 ms (rest +2.78, raw +0.85, sub +0.50), draws 95 -> 121 per frame (about 160 us per draw), c0i gx +2.14 ms (GPU), ft +1.23.
+- Same every step while it stands: the 2 draw_box windows, about 12 HUD rects and the digits. Dynamic: digits and icons when coins, HP, FP or star
+  points change; the slide position while it opens or closes (inventory.c:737-746); the matrices are per context (pointer) but equal in content.
+- GD9 = a retained core 0 command block (the model-cache-hit idea of DO1, one level up). GD9A (census): core 1 brackets draw_status_ui (state_world.c:22)
+  with 2 NAPI records; the end record carries a key = FNV of the recorder inputs inside the bracket (unit words; matrix and vertex contents, not their
+  pointers). Core 0 hashes its shadow before and the emitted words after (address registers out, as gst). Line `ublk`: key, st, w, bad.
+- GD9B (replay, after GD9A shows bad 0 and key near n): at the begin record, flush citro3d and reset the native shadow (both paths), so the block starts
+  from a known state. Miss: walk, then store the words, the vertex bytes (copied to a persistent linear buffer, attribute addresses patched), the shadow
+  after and the citro3d values the block changed (scissor, viewport: a census lists them). Hit: copy the words (no split inside: else miss), restore
+  the after state, skip to the end record. Invalidate: map load, texture cache eviction, pm_wide, stereo change. First step after a change: a miss
+  (the full walk, as today), so a coin count animation costs as today.
+- Memory (GUESS): words 26 draws x 60 to 100 = 6 to 10 KB heap, vertices 2 to 4 KB linear, one entry per site: under 32 KB, static 0 (margin 378 KB FACT).
+- Gain (GUESS): core 0 -3 to -4 ms per step with the bar standing; GPU gx unchanged (the same words); ft -1 ms when core 0 is the limit.
+- Not chosen: the bar drawn once to a texture and shown as one quad (GPU -2 ms too), because blending 26 layers in a texture first is not byte-exact
+  (user decision). GD7 (core 1 memo) moves ft by about 0: core 1 is off the critical chain (plan_critpath.md).
+
 ## 3. Rows, ranked (mac_01, fps60 on; all ms GUESS)
 | # | row | model | what | needs | gate | ms |
 |---|---|---|---|---|---|---|
 | 1 | GDW | Haiku | census c0i: idle, pace, gx waits of the game thread | none | spot_mac01_fps60_det, capture_check | 0 (core 0 work known) |
 | 2 | DO3F | Haiku | uni_native with the key patch: K values by nd_kp_vec as kp_scan, no early return | none | spot_mac01_fps60_stereo_det, spot_mac01_fps60_det | core 0 -0.6 to -0.9 |
 | 3 | GD8 | Sonnet | double buffer rtab and repl (pm_interp.c), so pm_wq_frame_slot need not wait for the walker | GDW (core 0 work under 33 ms) | 2 fps60 det benches | ft 0 to -5 |
-| 4 | GD7 | Sonnet | status bar draw memo: draw_box, HUD rect, number copy their last stream range | user, NATIVE17 | hudfb_drec, spot_mac01_drec | core 1 -2 to -4 |
+| 4 | GD9A | Haiku | status bar block census (key, state, words) | none | hudfb_drec (drec, gst), capture_check | 0 |
+| 4b | GD9B | Sonnet | status bar core 0 block replay | GD9A bad 0 | hudfb_drec, spot_mac01_drec; drec-frame compare `ublk diff 0` | core 0 -3 to -4 |
+| 4c | GD7 | Sonnet | status bar draw memo (core 1): after GD9B | user, NATIVE17 | hudfb_drec, spot_mac01_drec | core 1 -2 to -4 |
 | 5 | GD6 | Sonnet | setter blocks (camera, entity, sprite setup) replayed by the recorder | c1u (NATIVE17: 4 conditions) | 4 drec benches | core 1 -1 to -2.5 |
 | 6 | GD2 | Haiku | render task sort on a key array, memo of the order | none | 2 drec benches, `gdsort bad 0` | core 1 -0.2 to -0.4 |
 | 7 | GD4 | Haiku | group model child table | task split | 2 drec benches | core 1 0 to -0.3 |
@@ -69,16 +69,15 @@ Done: GD1 (core 1 -3.7 FACT), GD0, GD0B. Dropped: GD3, GD5 (c1g mdl, ply, npc sm
 - GD6 conditions (oracle NATIVE17, plan_drawobj.md section 6): (1) same stream bytes and nd_ds after the block as the unit path (`gdblk diff 0`);
   (2) state setters only, no TRI or RECT unit; (3) the entry compare holds sc_lost, sc_dirty and the stream shadow; (4) no CALL or model record inside;
   (5) no nd_rec_model edit. A HUD rect holds a RECT, so it is GD7, not GD6.
-- DO5 (skip the model record fill): dropped by NATIVE17 (0b7a5aea85).
 
 ## 5. Memory and cache
-- Static margin 402 KB (FACT `mem boot` line). Heap free 3080 KB after the pause picture (FACT live_cap1_170.txt:5). Every GD table is heap: 0 static.
-- Heap: GD1 +6 KB, GD2 +2 KB, GD4 +4 KB, GD6 50 to 100 KB, GD7 about 80 KB, GD8 +80 KB (GUESS). Total under 280 KB heap.
+- Static margin 378 KB (FACT, coordinator 20 Nov; was 402 KB). Heap free 3080 KB after the pause picture (FACT live_cap1_170.txt:5). Every GD table is heap: 0 static.
+- Heap: GD1 +6 KB, GD2 +2 KB, GD4 +4 KB, GD6 50 to 100 KB, GD7 about 80 KB, GD8 +80 KB, GD9 under 32 KB (GUESS). Total under 280 KB heap.
 - L1: GD1 replaces a 7.8 KB scan per open by 1 to 2 lines. GD2 compares a 1 KB key array. GD7 reads one key and copies one block per hit (sequential).
 
 ## 6. Order and dependencies
-1. GDW and DO3F now (Haiku, disjoint files: nd_wq.c, pm_gpu.c frame begin, pm_phase.c; pm_gpu.c uni_native). Then a capture (plan_60fps.md section 5 words).
-2. GD8 page when the GDW line shows core 0 work under 33 ms per step. GD7 on the user's Sonnet yes and NATIVE17's yes. GD2 any time (model.c only).
+1. GD9A now (Haiku). GDW and DO3F are merged. GD8 page when the GDW line shows core 0 work under 33 ms per step.
+2. GD9B page after the GD9A line (bad 0, key near n). GD7 and GD6 after GD9B (core 1 rows), on the user's Sonnet yes and NATIVE17's yes.
 
 ## 7. Risks and fallbacks
 - GD1: the iocc host test checks ids against the old scan (both caps in). Fallback: a per-parent chain, about half the gain.
