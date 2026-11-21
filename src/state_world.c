@@ -1,6 +1,7 @@
 #include "functions.h"
 #include "npc.h"
 #include "game_modes.h"
+#include "nd_api.h"
 
 void state_world_draw_aux_ui(void);
 
@@ -19,7 +20,7 @@ void state_step_world(void) {
 }
 
 void state_drawUI_world(void) {
-    draw_status_ui();
+    nd_ublk_begin(1); draw_status_ui(); nd_ublk_end(); /* GD9A */
     draw_encounter_ui();
     imgfx_update_cache();
 }

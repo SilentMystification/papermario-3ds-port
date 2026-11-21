@@ -117,6 +117,12 @@ void nd_ds_feed(const uint32_t* u, unsigned n); /* nd_rec.c, core 1 (NST2E) */
 void nd_ds_feed_dir(const uint32_t* u, unsigned n); /* nd_rec.c, NST2J: nd_ds_feed for a direct draw (sc_lost 1) */
 void nd_lsc_begin(void); void nd_lsc_begin_v(unsigned vprim); /* NREC4 */ void nd_lsc_end_at(uint32_t* dst); /* NREC2 */ uint32_t* nd_rec_last_pay(void); void* nd_rec_data_st(unsigned bytes); /* NCONV1D1, nd_rec.c, nd_snap.c */
 
+/* GD9A (nd_ublk.c): the status bar block census. Core 1 brackets the block (nd_ublk_begin, nd_ublk_end); core 0 runs the records
+ * (nd_ublk_run) and the prof line takes the window counts (nd_ublk_take). nd_ub_on is the bracket flag (nd_rec.c). */
+void nd_ublk_begin(unsigned site); void nd_ublk_end(void); void nd_ublk_run(const uint32_t* rec);
+void nd_ublk_take(unsigned o[8], unsigned long long* tk); void nd_ublk_unit(uint32_t w0, uint32_t w1);
+void nd_ublk_napi(NdNapiRun run, const void* rec, unsigned units); extern int nd_ub_on;
+
 #endif
 
 /* S5CHUDA (NATIVEAPI E1): one transformed textured quad of a complex HUD element, between nd_direct_bind/nd_direct_tex and nd_direct_end. nd_direct_quad

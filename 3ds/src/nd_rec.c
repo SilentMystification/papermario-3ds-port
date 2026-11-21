@@ -440,13 +440,17 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
     p[5] = hd;
     NDT_E(tq, NDT_RSPR);
 }
+/* GD9A: the bracket flag and the weak no-ops (nd_ublk.c, strong) for the units that link nd_rec.c alone */
+int nd_ub_on;
+__attribute__((weak)) void nd_ublk_unit(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; }
+__attribute__((weak)) void nd_ublk_napi(NdNapiRun run, const void* rec, unsigned units) { (void)run; (void)rec; (void)units; }
 /* NATIVEAPI: a native draw record (nd_api.h). units 1 to 255. */
 static __attribute__((cold, noinline)) void napi_bad(unsigned units) {
     pm_log_e("ndc: native draw record of %u units (1 to 255)", units);
     pm_fatal_stop("ndc: bad native draw record");
 }
 static uint32_t* napi_last; /* NCONV1D1: the data of the last nd_rec_napi record (nd_rec_last_pay) */
-void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
+void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) { if (__builtin_expect(nd_ub_on, 0)) nd_ublk_napi(run, rec, units); /* GD9A */
     if (units == 0u || units > 255u) napi_bad(units);
     rec_open();
     uint32_t* p = rec_take(2u + 2u * units);
@@ -457,7 +461,7 @@ void nd_rec_napi(NdNapiRun run, const void* rec, unsigned units) {
     napi_last = p + 2u;
 }
 static unsigned ndc_snapc; /* NDR3: the records of nd_rec_napi_s (not a command of the snap memo) */
-void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { /* NDR3: as nd_rec_napi; the runner takes the armed snap */
+void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { if (__builtin_expect(nd_ub_on, 0)) nd_ublk_napi(run, rec, units); /* GD9A */ /* NDR3: as nd_rec_napi; the runner takes the armed snap */
     if (units == 0u || units > 255u) napi_bad(units);
     rec_open();
     uint32_t* p = rec_take(2u + 2u * units);
@@ -601,7 +605,7 @@ void nd_rec_ew(const NdDs* s) { rec_open(); rec_ew(s); }
 NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
 void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
 static unsigned char rnr_d; unsigned nd_rnr_n; /* PROF2: nd_rec_nr depth (the outer call times) and calls */
-void nd_rec_nr(uint32_t w0, uint32_t w1) {
+void nd_rec_nr(uint32_t w0, uint32_t w1) { if (__builtin_expect(nd_ub_on, 0)) nd_ublk_unit(w0, w1); /* GD9A */
     const uint32_t t[2] = { w0, w1 };
     const int tq = pm_ph_on && !rnr_d; if (__builtin_expect(tq, 0)) pm_gpu_ndt_push(); rnr_d++; nd_rnr_n++; /* PROF2 */
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
@@ -632,7 +636,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) {
 /* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
  * The spare unit holds the range bounds (nd_alt_run). The units feed nd_ds (nd_rec_nr); the snap memo restarts at both ends. */
 unsigned nd_altu_n, nd_altr_n; /* NAT8A */ /* core 1 nd_alt_put and nd_rec_alt calls */
-void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost) {
+void nd_rec_alt(NdNapiRun run, const void* rec, unsigned units, int s, const uint32_t* au, unsigned an, int lost) { if (__builtin_expect(nd_ub_on, 0)) nd_ublk_napi(run, rec, units); /* GD9A */
     nd_altr_n++; NDT_B(nt8); /* NAT8A */
     if (units + 1u > 255u) napi_bad(units + 1u); /* NAT5R */
     rec_open(); uint32_t* p = rec_take(4u + 2u * units); ndc_n[NDC_NAPI]++; if (s) ndc_snapc++; /* NAT5R */

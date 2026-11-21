@@ -1547,6 +1547,28 @@ static __attribute__((noinline)) void pm5_upload(void) {
 }
 static unsigned cmd_split_n;
 unsigned pm_gpu_cmd_split_n(void) { return cmd_split_n; }
+/* GD9A (nd_ublk.c): the frame draw count, the state hash (the shadow bytes and the citro3d context word 32) and the FNV of the emitted words
+ * [from, to) of the current buffer (the PICA format of gst_scan; the values of the gst_skip registers count as 0). */
+unsigned pm_gpu_draws_frame(void) { return draws_frame; }
+static u32 wh_mix(u32 h, u32 x) { for (int i = 0; i < 4; i++) { h ^= (x >> (8 * i)) & 0xffu; h *= 16777619u; } return h; }
+u32 pm_gpu_state_hash(void) { const unsigned char* p = (const unsigned char*)&ndn_sh; u32 h = 0x811c9dc5u; for (unsigned i = 0; i < sizeof ndn_sh; i++) { h ^= p[i]; h *= 16777619u; } return wh_mix(h, *(volatile unsigned*)(__C3D_Context + 32)); }
+u32 pm_gpu_word_hash(unsigned from, unsigned to) {
+    u32 *cb, csz, coff; GPUCMD_GetBuffer(&cb, &csz, &coff);
+    u32 h = 0x811c9dc5u;
+    const u32* a = cb + from; const u32* b = cb + to;
+    while (a < b) {
+        if (a + 2 > b) { h = wh_mix(h, *a++); continue; }
+        const unsigned reg = a[1] & 0xffffu, n = ((a[1] >> 20) & 0xffu) + 1u, len = n + 1u + ((n & 1u) == 0u ? 1u : 0u);
+        const int consec = (int)(a[1] >> 31);
+        if (a + len > b) { while (a < b) h = wh_mix(h, *a++); break; }
+        h = wh_mix(h, a[1]);
+        h = wh_mix(h, gst_skip(reg) ? 0u : a[0]);
+        for (unsigned i = 1; i < n; i++) h = wh_mix(h, gst_skip(consec ? reg + i : reg) ? 0u : a[i + 1]);
+        if (len > n + 1u) h = wh_mix(h, a[len - 1]);
+        a += len;
+    }
+    return h;
+}
 void pm_gpu_fb2_stat(unsigned* o) { o[0] = nd_tmpl_hi(); o[1] = nd_tmpl_gen(); o[2] = cmd_split_n; }
 /* FB-2: the forced split of nd_raw_native (kick_check's split without its draw threshold, run inside a raw close: the open batch's ring words stay in place).
  * The split adds a GX entry, so the queue room comes first (HANG1a: the GX queue of 32 entries overflowed at 30k forced splits, svcBreak in gxCmdQueueAdd). */
