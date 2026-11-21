@@ -1,5 +1,5 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
-State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs; ALT2C gated 0464762731) plus pages of oracle NATIVE17, 2026-11-20.
+State: main 3a29e12504. DGB01 (oracle DGB01): plan_dgb01.md (user: dgb_01 lags with the broken bridges; g240 = 84 models, +68 records per frame), page ws_DGB0 (Haiku, start now); rules D1 to D4 pick DGB1.
 ## Goal
 - User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
 - The 60 fps overview: docs/handoff/plan_60fps.md (budget, hot areas, order of attack). The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, section 6a MCOPY, section 7 nd_c0 fields left, section 10 questions).
@@ -17,7 +17,7 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 2d. WIDEWIN: plan_widewin.md section 6 (user 21 Nov: Fullscreen UI at Native size). Fullscreen takes the Widescreen output path (pm_wout). Pages ws_FSUI1 (undo WCLIP2), then ws_FSUI2 and ws_FSUI3 (parallel). WALK: plan_walk.md (ROM read drain of player rasters, pm_os.c:492-495), pages ws_STEPX, ws_ROMDR (merge after the STEPX capture).
 2d. POND (oracle NATIVE21): plan_pond.md. mac_00 water solid blue: a DO1 memo hit inside the build_custom_gfx unit log (nd_rec.c:356, no lg_put) drops the copy record units. Pages ws_POND0 (benches, bisect), ws_POND1 (fix). drec frames hide DO1 faults (nd_rec.c:359): use pic benches.
 2h. SEAMS (oracle NATIVE24): plan_seams.md (path audit, ranked causes, rule N1 to N4). Gate pages ws_CRK0 to ws_CRK3 (Haiku). Fix pages CRK4 to CRK6 after the CRK1 numbers.
-2f. INTERP (oracle NATIVE23): plan_interp.md. K = L words + patches, GPU K = L (gpuk 7.73). L and K swaps about 8 ms apart, no vblank wait (dropped L, tear). Sky scroll not lerped. Pages ws_IK0, then ws_PRES0.
+2f. INTERP (oracle NATIVE23, PRES pass): plan_interp.md 6. FACT console: K finishes 8.26 ms after L (glk), drop 150 of 300 L pictures, K tears. Page ws_PRES1 (Haiku, gate before both FrameEnds). PRES2 (no 3-buffer scheduler): after PIPE3 the K FrameEnd moves into pm_pipe_open, if PRES1 gms 2+ and ft +1. Next: IMOV census, PRES3 sky lerp.
 2e. MAPTRANS (oracle NATIVE22): plan_maptrans.md. Load step 240-266 ms (console xfer). Mechanisms: blanket drain per ROM read (each read posts an invalidation:
   a round trip per read), romfs .seam/.dlc waits in the load, inline first sight. Pages ws_MTX0 (census, start now), ws_MTX1 (reader stamps), ws_MTX2 (file jobs): MTX1, MTX2 need the user's yes on section 7.
 2. DRAWOBJ (user yes 20 Nov): plan_drawobj.md, pages ws_DO0 (Haiku, gst.txt state hash tool) and ws_DO1 (Sonnet, model record memo).
