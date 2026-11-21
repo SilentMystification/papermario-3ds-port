@@ -1,0 +1,68 @@
+{
+  "benches": [
+    {
+      "name": "msgw_wide_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCLIP0: clip census (clipg lines) of frame 330, Widescreen tattle bubble.",
+      "scenario": "msgw_wide_drec",
+      "cap": 30,
+      "until": "drec f330 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "msgw_full_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCLIP0: clip census (clipg lines) of frame 330, Fullscreen tattle bubble.",
+      "scenario": "msgw_full_drec",
+      "cap": 30,
+      "until": "drec f330 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pause_wide_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCLIP0: clip census of the Widescreen pause menu, frame 116.",
+      "scenario": "pause_wide_drec",
+      "cap": 25,
+      "until": "drec f116 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    },
+    {
+      "name": "battle_wide_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "WCLIP0: clip census of the Widescreen battle, frame 530.",
+      "scenario": "battle_wide_drec",
+      "cap": 45,
+      "until": "drec f530 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}

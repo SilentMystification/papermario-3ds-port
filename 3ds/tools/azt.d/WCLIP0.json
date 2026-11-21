@@ -1,0 +1,104 @@
+{
+  "scenarios": [
+    {
+      "name": "msgw_wide_drec",
+      "status": "unverified",
+      "subject": "Mario's yard (preset yard), Widescreen, tattle bubble opened at frame 200 (uishow=tatr), cold det start with drec of frame 330.",
+      "proves": "WCLIP0: the clip census of frame 330 logs clipg lines for the message scissor (0..319), with out 1 or more where the bubble passes column 359.",
+      "debug": "preset=yard wide uishow=tatr loglevel=debug det drec=330:1",
+      "extra": [],
+      "until": "drec f330 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f330 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "WCLIP0 census: wide tattle bubble. Cap 30 s.",
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp"
+    },
+    {
+      "name": "msgw_full_drec",
+      "status": "unverified",
+      "subject": "Mario's yard (preset yard), Fullscreen (debug word fullscr), tattle bubble opened at frame 200 (uishow=tatr), cold det start with drec of frame 330.",
+      "proves": "WCLIP0: the clip census of frame 330 in Fullscreen: the message scissor maps to 1.25 x in the census.",
+      "debug": "preset=yard fullscr uishow=tatr loglevel=debug det drec=330:1",
+      "extra": [],
+      "until": "drec f330 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_20 entry 4"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f330 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "WCLIP0 census: Fullscreen tattle bubble. Cap 30 s.",
+      "first_marker": "warp: kmr_20 entry 4",
+      "expects": "warp"
+    },
+    {
+      "name": "pause_wide_drec",
+      "status": "unverified",
+      "subject": "Toad Town (preset toad), Widescreen, pause menu opened by START three times, cold det start with drec of frame 116.",
+      "proves": "WCLIP0: the clip census of the pause menu draws of frame 116 in Widescreen.",
+      "debug": "preset=toad padscript=wait80,START*3 wide loglevel=debug det drec=116:1",
+      "extra": [],
+      "until": "drec f116 draws [1-9]\\d* bytes \\d+",
+      "cap": 25,
+      "deadline": 20,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_00 entry 4"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f116 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "WCLIP0 census: Widescreen pause menu. Cap 25 s.",
+      "first_marker": "warp: mac_00 entry 4",
+      "expects": "warp"
+    },
+    {
+      "name": "battle_wide_drec",
+      "status": "unverified",
+      "subject": "Battle from kmr_03 (debug battle, battlef=100), Widescreen, cold det start with drec of frames 380 to 530 (step 30).",
+      "proves": "WCLIP0: the clip census of the battle draw records of frame 530 in Widescreen.",
+      "debug": "warp=kmr_03:0 story=ch0_toad_town spmax=1 hammer=0 battle battlef=100 wide det loglevel=debug padscript=wait362,right*4,wait30 drec=380:6:30",
+      "extra": [],
+      "until": "drec f530 draws [1-9]\\d* bytes \\d+",
+      "cap": 45,
+      "deadline": 40,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_03 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f530 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "needs_picture": false,
+      "reason": "WCLIP0 census: Widescreen battle records. Cap 45 s.",
+      "first_marker": "warp: kmr_03 entry 0",
+      "expects": "warp"
+    }
+  ]
+}
