@@ -124,8 +124,8 @@ __attribute__((cold, noinline)) static void xf_print(void) {
     for (unsigned i = 0; i < xr_n; i++) { const XfRow* r = &xr_top[i]; const unsigned* v = r->v;
         pm_log_prof_line("xfer5 %s t%u s%u %c w %s dr %u/%u/%s au %s dec %u/%u rst %u", kn, i, r->s, r->ph, msf(m[0], r->w), v[XV_DRN], v[XV_DRW], msf(m[1], v[XV_DRT]), msf(m[2], v[XV_AU]), v[XV_DCN], v[XV_DCU] / 1000u, v[XV_RST] >> 10);
         pm_log_prof_line("xfer6 %s t%u rom %u/%u yay %u tex %u mdl %u dlc %u hp %u/%u", kn, i, v[XV_ROM], v[XV_ROMB] >> 10, v[XV_YAY], v[XV_TEX], v[XV_MDL], v[XV_DLC], v[XV_HPA], v[XV_HPF]); }
-    pm_log_prof_line("xfer4 %s n%u | o %u/%s/%u c %u/%s/%u n %u/%s/%u t %u/%s/%u", kn, xf_seq, xp_n[0], msf(m[0], xp_max[0]), xp_o34[0], xp_n[1], msf(m[1], xp_max[1]), xp_o34[1],
-                     xp_n[2], msf(m[2], xp_max[2]), xp_o34[2], xp_n[3], msf(m[3], xp_max[3]), xp_o34[3]);
+    pm_log_prof_line("xfer4 %s n%u | o %u/%s/%u c %u/%s/%u n %u/%s/%u t %u/%s/%u pf %u", kn, xf_seq, xp_n[0], msf(m[0], xp_max[0]), xp_o34[0], xp_n[1], msf(m[1], xp_max[1]), xp_o34[1],
+                     xp_n[2], msf(m[2], xp_max[2]), xp_o34[2], xp_n[3], msf(m[3], xp_max[3]), xp_o34[3], pm_xf.pff_n); /* MTX2 */
     pm_log_prof_line("xfer7 %s n%u drc %08x %u %s %08x %u %s %08x %u %s %08x %u %s", kn, xf_seq, (unsigned)(size_t)pm_xf.dc[0].k, pm_xf.dc[0].n, msf(m[0], pm_xf.dc[0].t),
                      (unsigned)(size_t)pm_xf.dc[1].k, pm_xf.dc[1].n, msf(m[1], pm_xf.dc[1].t), (unsigned)(size_t)pm_xf.dc[2].k, pm_xf.dc[2].n, msf(m[2], pm_xf.dc[2].t),
                      (unsigned)(size_t)pm_xf.dc[3].k, pm_xf.dc[3].n, msf(m[3], pm_xf.dc[3].t));
