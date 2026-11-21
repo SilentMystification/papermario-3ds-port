@@ -1,0 +1,37 @@
+{
+  "benches": [
+    {
+      "name": "pond_mac00_det",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "POND0: shots of the mac_00 pond frames 200 to 205 (cold det start). Bisect bench for the DO1 water fault (plan_pond.md).",
+      "scenario": "pond_mac00_det",
+      "cap": 35,
+      "until": "prof f\\d+ w\\d+ at ",
+      "tags": [
+        "azahar",
+        "det",
+        "cold"
+      ],
+      "gates": []
+    },
+    {
+      "name": "pond_mac00_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "POND0: drec.txt of the mac_00 pond frames 200 and 201 (cold det start). A head equals the base unless a draw changes.",
+      "scenario": "pond_mac00_drec",
+      "cap": 35,
+      "until": "drec f201 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
