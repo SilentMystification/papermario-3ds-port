@@ -181,13 +181,31 @@ void stop_watch_render(EffectInstance* effect) {
 void func_E00C4300(void) {
 }
 
+/* TUB2: one pass. Each call records it after its own prim and env: a sub range keeps the state of nd_sub_open (plan_tubba.md). */
+static void stop_watch_body(Vtx_t* vtxBuffer) {
+    Matrix4f sp20;
+    s32 i;
+
+    guScaleF(sp20, 0.01f, 0.01f, 0.01f);
+    guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_mesh_vtx(vtxBuffer, 32, 0);
+
+    for (i = 0; i < 15; i++) {
+        s32 i2 = i * 2;
+        nd_mesh_tri2(i2, i2 + 2, i2 + 1, i2, i2 + 1, i2 + 2, i2 + 3, i2);
+    }
+
+    nd_xf_pop(G_MTX_MODELVIEW);
+}
+
 void stop_watch_appendGfx(void* effect) {
     StopWatchFXData* data = ((EffectInstance*)effect)->data.stopWatch;
     Camera* camera = &gCameras[gCurrentCameraID];
     s32 unk_14 = data->unk_14;
     s32 unk_24 = data->unk_24;
     Vtx_t* vtxBuffer;
-    NdSub sub;
     Matrix4f sp20;
     Matrix4f sp60;
     s32 i;
@@ -230,29 +248,13 @@ void stop_watch_appendGfx(void* effect) {
         vtx->cn[0] = vtx->cn[1] = vtx->cn[2] = vtx->cn[3] = 0;
     }
 
-    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-
-    guScaleF(sp20, 0.01f, 0.01f, 0.01f);
-    guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_mesh_vtx(vtxBuffer, 32, 0);
-
-    for (i = 0; i < 15; i++) {
-        s32 i2 = i * 2;
-        nd_mesh_tri2(i2, i2 + 2, i2 + 1, i2, i2 + 1, i2 + 2, i2 + 3, i2);
-    }
-
-    nd_xf_pop(G_MTX_MODELVIEW);
-    nd_sub_close(&sub);
-
     for (i = 0; i < 10; i++) {
         guPositionF(sp20, data->unk_AC[i], data->unk_D4[i], data->unk_FC[i], D_E00C49D0[i % 4] * 0.01, data->unk_34[i], data->unk_5C[i], data->unk_84[i]);
         guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_val_prim(0, 0, D_E00C49D4[i], D_E00C49E8[i], D_E00C49FC[i], unk_24 * data->unk_124[i] / 255);
-        nd_sub_call(&sub);
+        stop_watch_body(vtxBuffer);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
