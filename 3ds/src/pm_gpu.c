@@ -2986,9 +2986,12 @@ void pm_gpu_begin_wait(void) {
      * unsignalled (not verified); the wait then may never return, and the game thread would not reach aptMainLoop. The flag is set in wake_hook (pm_log.c). */
     const int ff_on = pm_ff_on(); const unsigned ff_t0 = ff_on ? pm_ticks() : 0u; /* FLIPLOG: the wait for the GPU of the last frame starts here */
     unsigned fb_flags = 0; /* SYNC60: the begin waits only for the GX queue; 60 FPS is paced by time */
+    extern unsigned long long pm_c0i_t[3]; extern int pm_pf_on; unsigned c0t_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; /* GDW */
     if (pm_interp_on > 0 && !pm_wd_wake_frames) sync60_pace();
+    if (pm_pf_on) { const unsigned n_ = (unsigned)svcGetSystemTick(); pm_c0i_t[1] += n_ - c0t_; c0t_ = n_; }
     if (pm_wd_wake_frames) pm_wd_wake_frames--;
     raw1_reset(); sh_clear(); C3D_FrameBegin(fb_flags);
+    if (pm_pf_on) pm_c0i_t[2] += (unsigned)svcGetSystemTick() - c0t_;
     if (__builtin_expect(ff_on, 0)) pm_ff_wait(ff_t0, pm_ticks(), (unsigned)(C3D_GetDrawingTime() * 1000.f)); /* FLIPLOG: the wait and the GPU time of the last frame */
     nb.ring_done = nb.ring_fr; /* FB-1: C3D_FrameBegin waits for the GX queue (C3Di_WaitAndClearQueue) with or without SYNCDRAW: every chunk used before this frame is finished */
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; } /* S0-6: the sync of the previous frame returned. PROF2-1: this read belongs to the sample (ssvc), it lands in the next frame */ /* PT88: at 30 steps the loop paces itself by time and the frame begin waits only for the GPU (the previous frame, so the buffers are free); with fps60 the begin is paced by time (SYNC60): two draws a step, one per LCD period */
