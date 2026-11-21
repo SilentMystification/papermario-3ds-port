@@ -1,0 +1,29 @@
+{
+  "scenarios": [
+    {
+      "name": "kmr11_drec",
+      "status": "unverified",
+      "subject": "Koopa Village (kmr_11) entry 0, cold det start with the drec switch: the draw records of frames 221 to 261 (step 3) go to shots/drec.txt. The castle window draws (madotif, CI4 16x32) are alpha-test draws.",
+      "proves": "DEC0: the draw record of kmr_11 is a function of the build (det). drec_state census lists the window draws (td 00100020, at 00003061) and tdiff compares the base and row state.",
+      "debug": "warp=kmr_11:0 story=-120 det drec=221:3:20 loglevel=debug",
+      "extra": [],
+      "until": "drec f261 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 25,
+      "first_marker": "warp: kmr_11 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: kmr_11 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f261 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "DEC0: copy of spot_mac01_drec (HOSTCORE2) on kmr_11 with drec=221:3:20 (the KMR11W window shots are in frames 221 to 261). Cap 30 s, deadline 25 s. The drec f261 log line is the until. First marker and warp event as DRECSTEP."
+    }
+  ]
+}
