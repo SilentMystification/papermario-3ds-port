@@ -797,6 +797,11 @@ static void pf_report(void) {
             pm_log_prof_line("prof f%u w%u core2 drain dr %u.%02u drw %u.%02u wqf %u.%02u", pf_total, pf_w,
                 dr / 100u, dr % 100u, drw / 100u, drw % 100u, wqf / 100u, wqf % 100u);
             { extern unsigned pm_slot_race; pm_log_prof_line("prof f%u w%u slotl race %u", pf_total, pf_w, pm_slot_race); } /* SLOTL: since boot, must stay 0 */
+            { extern volatile unsigned pm_pres[14]; static unsigned m_[14]; unsigned d_[14]; /* PRES0 */
+              for (int k = 0; k < 14; k++) { const unsigned v_ = pm_pres[k]; d_[k] = v_ - m_[k]; m_[k] = v_; }
+              const unsigned nl_ = d_[0] + d_[1] + d_[2] + d_[3], gl_ = nl_ ? (unsigned)(d_[11] * 100ull / PF_TPM / nl_) : 0u, g1_ = d_[13] ? (unsigned)(d_[12] * 100ull / PF_TPM / d_[13]) : 0u;
+              pm_log_prof_line("prof f%u w%u pres lk %u %u %u %u kl %u %u %u %u drop %u wob %u glk %u.%02u", pf_total, pf_w, d_[0], d_[1], d_[2], d_[3], d_[4], d_[5], d_[6], d_[7], d_[8], d_[9], gl_ / 100u, gl_ % 100u);
+              pm_log_prof_line("prof f%u w%u pres1 n %u gpu1 %u.%02u n1 %u", pf_total, pf_w, d_[10], g1_ / 100u, g1_ % 100u, d_[13]); }
             { unsigned c[8]; pf_c1n_now(c); pm_log_prof_line("prof f%u w%u c1n n %u snb %u snn %u snm %u lsf %u lsb %u lse %u altu %u altr %u", pf_total, pf_w, dn, c[0] - lg0_c[0], c[1] - lg0_c[1], c[2] - lg0_c[2], c[3] - lg0_c[3], c[4] - lg0_c[4], c[5] - lg0_c[5], c[6] - lg0_c[6], c[7] - lg0_c[7]); } /* NAT8A */ /* window totals over n logic steps */ { const unsigned d1_ = dn ? dn : 1u, pw1_ = pf_w ? pf_w : 1u; unsigned g_[4]; unsigned long long s0_ = (c1s_t[0] - c1s_m[0]) * 100ull / PF_TPM / d1_, s1_ = (c1s_t[1] - c1s_m[1]) * 100ull / PF_TPM / d1_; pm_gpu_gw_now(g_); pm_log_prof_line("prof f%u w%u c1s logic %u.%02u dl %u.%02u", pf_total, pf_w, (unsigned)(s0_ / 100u), (unsigned)(s0_ % 100u), (unsigned)(s1_ / 100u), (unsigned)(s1_ % 100u)); pm_log_prof_line("prof f%u w%u c1a m %u e %u c %u o %u c0 %u m %u e %u gpu d %u w %u bd %u bw %u", pf_total, pf_w, (nd_altw[0] - aw_m[0]) / d1_, (nd_altw[1] - aw_m[1]) / d1_, (nd_altw[2] - aw_m[2]) / d1_, (nd_altw[3] - aw_m[3]) / d1_, (nd_altw[4] - aw_m[4]) / pw1_, (nd_altw[5] - aw_m[5]) / pw1_, (nd_altw[6] - aw_m[6]) / pw1_, (g_[0] - gw_m[0]) / pw1_, (g_[1] - gw_m[1]) / pw1_, (g_[2] - gw_m[2]) / pw1_, (g_[3] - gw_m[3]) / pw1_); } /* PERF0 */
         }
     }

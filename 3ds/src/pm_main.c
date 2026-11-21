@@ -472,7 +472,8 @@ static void wq_frame_end(void) {
 void pm_lg_end_walked(void);
 void pm_lg_key_due(void);
 typedef struct { int drew, key; } StepEnd;
-static void wq_step_end(void* a) { const StepEnd* e = (const StepEnd*)a; if (e->drew) { pm_gpu_kc_want(e->key); wq_frame_end(); } if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
+extern unsigned pm_pres_step; /* PRES0: pm_gpu.c */
+static void wq_step_end(void* a) { pm_pres_step++; /* PRES0 */ const StepEnd* e = (const StepEnd*)a; if (e->drew) { pm_gpu_kc_want(e->key); wq_frame_end(); } if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
 void pm_fxtest_tick(unsigned);
 /* CORE2C-3: the body of one frame loop command (pm_logic.c), on the logic thread or inline. LG_IDLE: the retrace call of an idle pass.
  * LG_STEP: frame begin, the step (step_game_loop, list build, frame push), the audio ticks, the step end; LG_SKIP: the FS1 step with no
