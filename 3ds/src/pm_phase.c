@@ -786,6 +786,9 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
     pf_w++;
     if (pf_tour) return; /* TOUR1: the tour opens and closes the window */
     if (!pf_scene_seen) { pf_scene_seen = 1; pf_scene_note(); } /* PROF2-6: only after a scene event (pm_ph_scene_map, pm_ph_scene_mode, pf_reset), one flag test per frame */
+#ifdef PM_FPROF
+    { extern void pm_fprof_frame(unsigned f); pm_fprof_frame(pf_total); } /* PROF4B: census frames */
+#endif
     if (pf_w >= 300) pf_report();
 }
 void pm_ph_window_open(const char* label) {
