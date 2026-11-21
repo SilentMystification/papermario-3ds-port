@@ -7,7 +7,7 @@ Counters: none move (census). Endgame C1-C12: none. The hand-back decides the ne
    name `dgb01_whole_prof`, `story=-16` in debug, `sp-16` in the scene line regex, subject and reason say story -16 (STORY_CH3_DEFEATED_TUBBA_BLUBBA, bridges intact).
 ```
 {"name": "dgb01_broken_prof", "status": "unverified",
- "reason": "DGB0 census (plan_dgb01.md): dgb_01 with the broken bridges. Pair with dgb01_whole_prof. Counts only; the console decides the ms.",
+ "reason": "DGB0 census (plan_dgb01.md): dgb_01 with the broken bridges. Pair with dgb01_whole_prof. Counts only. The console decides the ms.",
  "subject": "dgb_01 Great Hall, entry 1, Mario placed at pos 80 0 144, story -28 (STORY_CH3_TUBBA_SMASHED_THE_BRIDGES: g240 shown, g340 hidden), fps60, prof=30, det. Prof window 2.",
  "proves": "DGB0: model records, PICA draws, triangles, legacy records, model and texture misses per step, key walks of the broken state.",
  "debug": "warp=dgb_01:1 story=-28 pos=80:0:144 fps60 prof=30 det", "extra": ["-Turbo"],

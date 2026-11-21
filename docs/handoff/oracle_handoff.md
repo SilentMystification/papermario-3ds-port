@@ -1,5 +1,5 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
-State: main 3a29e12504. DGB01 (oracle DGB01): plan_dgb01.md (user: dgb_01 lags with the broken bridges; g240 = 84 models, +68 records per frame), page ws_DGB0 (Haiku, start now); rules D1 to D4 pick DGB1.
+State: main 3a29e12504. DGB01 (oracle DGB01): plan_dgb01.md (user: dgb_01 lags with the broken bridges, g240 = 84 models, +68 records per frame), page ws_DGB0 (Haiku, start now). Rules D1 to D4 pick DGB1.
 ## Goal
 - User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
 - The 60 fps overview: docs/handoff/plan_60fps.md (budget, hot areas, order of attack). The plan: docs/handoff/plan_perf.md (findings with file:line, ranked rows, section 6a MCOPY, section 7 nd_c0 fields left, section 10 questions).

@@ -1,4 +1,4 @@
-# plan_dgb01.md: dgb_01 lag with the broken bridges (oracle DGB01; code and asset read; edit in place)
+# plan_dgb01.md: dgb_01 lag with the broken bridges (oracle DGB01, code and asset read, edit in place)
 User report (FACT, 21 Nov): "DGB_01 area 15 map 1 is super laggy when the bridge is broken". Area 15 is AREA_DGB (include/enums.h:3012), map 1 is dgb_01 (src/world/world.c:707).
 Tags: FACT (file:line or asset parse), GUESS (estimate), OPEN (not measured). Line numbers: main 3a29e12504.
 
@@ -10,7 +10,7 @@ Tags: FACT (file:line or asset parse), GUESS (estimate), OPEN (not measured). Li
 | collision | COLLIDER_after ignored | COLLIDER_before ignored | bridges.c:184, :191 |
 | music | SONG_TUBBAS_MANOR | SONG_TUBBA_ESCAPE | music.c:6, :8 |
 | NPCs at entry 0, 1, 3, 5 | 4 Sentinels (story < -29), none (story >= -16) | none | main.c:180-193 |
-| NPCs at entry 2, 4, 6 | as above | 4 Sentinels (static) and Tubba; entry 4 adds an endless ShakeCam thread while GB_ARN_Tubba_MapID is 1 and story is -28 | main.c:185-192, npc.c:94-117 |
+| NPCs at entry 2, 4, 6 | as above | 4 Sentinels (static) and Tubba. Entry 4 adds an endless ShakeCam thread while GB_ARN_Tubba_MapID is 1 and story is -28 | main.c:185-192, npc.c:94-117 |
 - Story -29 (TUBBA_WOKE_UP) runs the collapse scene (bridges.c:185-188): an animated model of the bridges (bridges.c:74) until bridges.c:153. This is a cutscene only (OPEN cost).
 - Asset parse (FACT: tree walk of assets/us/mapfs/geom/dgb_01_shape.bin, the method of 3ds/tools/tour_spots.py read_shape, node id = post-order index = MODEL_ value):
   g240 has 84 leaf models, 2000 triangles, 2783 vertices, 7 textures, render mode 1 (66 models) and 13 ALPHATEST (18 models). 20 models of g333 have 2 triangles each.
@@ -29,7 +29,7 @@ Tags: FACT (file:line or asset parse), GUESS (estimate), OPEN (not measured). Li
 ## 3. Ranked causes and the counter that decides
 | # | cause | proof now | decides |
 |---|---|---|---|
-| 1 | +68 model records and draws per frame: linear core 0 cost (record, hit, submit), core 1 cost (rmdl, snap, game draw code) | FACT model counts (1), FACT path (2) | Azahar ndc model and pipe draws pair delta; console cls rec, sub, c0r hit, c1d rmdl, ft pair delta |
+| 1 | +68 model records and draws per frame: linear core 0 cost (record, hit, submit), core 1 cost (rmdl, snap, game draw code) | FACT model counts (1), FACT path (2) | Azahar ndc model and pipe draws pair delta. Console: cls rec, sub, c0r hit, c1d rmdl, ft pair delta |
 | 2 | a broken model that does not hit (refusal or key change each step): miss path every frame | OPEN | Azahar stepx norm m and nd leg (pair) |
 | 3 | K copy refused (kwalk): core 0 walks K again | OPEN (pm_gpu.c:3225-3236 causes) | Azahar kcen kwalk (pair) |
 | 4 | music SONG_TUBBA_ESCAPE on core 1 (audio threads) | OPEN | console core2 lgms, wait au, mx (pair) |
@@ -47,7 +47,7 @@ Rules after DGB0 (oracle):
 - D4: none of D1 to D3, and ndc_model delta 30 or more: cause 1. The orchestrator asks the user for the console pair (section 5). The fix is per-model cost:
   L1C0B (core 0 hit queue, oracle L1: dgb_01 has long hit runs of static models) and the static-batch design (many small static models with one
   texture and no matrix in one draw: design pass, Opus, needs the user's yes). Add dgb01_broken_prof to the L1C0B gate as a count bench.
-## 5. Console capture (orchestrator, on the user's word only; capture_check first, in DGB0)
+## 5. Console capture (orchestrator, on the user's word only, after the capture_check of DGB0)
 - Broken: `powershell -NoProfile -File 3ds/go.ps1 push o -ip <addr> -NoBuild -Seconds 150 -Profile prof -GameDebug "warp=dgb_01:1 story=-28 pos=80:0:144 profdisk=1"`
 - Intact: the same words with `story=-16`. Proof lines: `at dgb_01 15:1`, `sp-28` (or `sp-16`), `ndc model`, `stepx norm`.
 - Entry 1 is the west door. Entry 0 is not used: its first visit sets the story to -32 (main.c:120-122). pos 80 0 144 is the tour spot (3ds/tours/spots.txt:290).
