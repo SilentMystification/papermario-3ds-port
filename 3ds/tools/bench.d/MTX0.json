@@ -1,0 +1,26 @@
+{
+  "benches": [
+    {
+      "name": "xfer_map_steps",
+      "kind": "azahar_stream",
+      "speed": "normal",
+      "default": false,
+      "purpose": "MTX0: mac_01 -> mac_02 loading zone walk, det; the xfer4 phase line (covered phase max) and the top steps xfer5, xfer6.",
+      "scenario": "xfer_map_steps",
+      "cap": 35,
+      "until": "xfer4 map n1 \\|",
+      "tags": [
+        "azahar",
+        "xfer"
+      ],
+      "log_metrics": [
+        {
+          "name": "xf4_c_max",
+          "regex": "xfer4 map n\\d+ \\| o \\d+/[\\d.]+/\\d+ c \\d+/([\\d.]+)",
+          "pick": "last"
+        }
+      ],
+      "gates": []
+    }
+  ]
+}

@@ -22,6 +22,7 @@
 unsigned pm_frame_count(void);
 
 PmXf pm_xf;
+unsigned pm_hp_a, pm_hp_f; extern unsigned pm_wq_drw; /* MTX0 */
 unsigned nd_mc_clears(void); /* nd_model.c */
 unsigned nd_mc_reps(void); /* nd_model.c, MAPX-2 */
 unsigned nd_mc_trims(void); /* nd_model.c, MAPX-2 */
@@ -59,6 +60,27 @@ static const char* msf(char* o, unsigned t) {
     snprintf(o, 12, "%u.%u", v / 10u, v % 10u);
     return o;
 }
+
+/* MTX0: census of the longest steps (xfer5, xfer6), the phase counts (xfer4), the drain callers (xfer7). A step ends in phase o (fade out),
+ * c (covered), n (fade in) or t (tail). xr_top: the 10 longest steps, sorted by w. xr_p: the counters at the end of the step before. */
+enum { XV_DRN, XV_DRW, XV_DRT, XV_AU, XV_DCN, XV_DCU, XV_RST, XV_ROM, XV_ROMB, XV_YAY, XV_TEX, XV_MDL, XV_DLC, XV_HPA, XV_HPF, XV_N };
+typedef struct { unsigned s, w, v[XV_N]; char ph; } XfRow;
+static XfRow xr_top[10], xr_p;
+static unsigned xr_n, xp_n[4], xp_max[4], xp_o34[4];
+static void xr_snap(XfRow* c) { unsigned n, us, mx; pm_dspa_dec_read(&n, &us, &mx);
+    const unsigned v[XV_N] = { pm_xf.dr_n, pm_wq_drw, pm_xf.dr_t, pm_xf.au_t, n, us, pm_xf.rst_b, pm_xf.rom_n, pm_xf.rom_b, pm_xf.yay_n, pm_xf.tex_n, pm_xf.mdl_miss, pm_xf.dlc_n, pm_hp_a, pm_hp_f };
+    memcpy(c->v, v, sizeof v); }
+static void xr_step(unsigned w, int ld) { /* MTX0: the phase and the deltas of one step, the 10 longest steps */
+    u8 t; f32 z; get_screen_overlay_params(SCREEN_LAYER_FRONT, &t, &z);
+    const int cov = (t == OVERLAY_SCREEN_COLOR || t == OVERLAY_VIEWPORT_COLOR) && z >= 255.0f;
+    const int p = (ld || cov || (gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME)) ? 1 : !xf_loaded ? 0 : get_game_mode() == GAME_MODE_CHANGE_MAP ? 2 : 3;
+    XfRow c, d; xr_snap(&c); for (unsigned k = 0; k < XV_N; k++) d.v[k] = c.v[k] - xr_p.v[k];
+    xr_p = c; d.s = xf_steps; d.w = w; d.ph = "ocnt"[p];
+    xp_n[p]++; if (w > xp_max[p]) xp_max[p] = w; if (w > T34) xp_o34[p]++;
+    unsigned i = xr_n < 10u ? xr_n++ : 10u;
+    if (i == 10u) { if (w <= xr_top[9].w) return; i = 9u; }
+    while (i > 0u && xr_top[i - 1u].w < w) { xr_top[i] = xr_top[i - 1u]; i--; }
+    xr_top[i] = d; }
 
 __attribute__((cold, noinline)) static void xf_print(void) {
     unsigned clr = nd_mc_clears() - xf_clr0;
@@ -98,6 +120,15 @@ __attribute__((cold, noinline)) static void xf_print(void) {
 #define XF_L3 " n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u"
     if (xf_kind != XF_BTL) pm_log_prof_line(xf_kind == XF_MAP ? "xfer3 map" XF_L3 : "xfer3 door n%u | maxstep mdl %u rng %u tex %s dlc %s rom %u smp %u | rng %u trim %u phi %u ehi %u rdw %s hid %u",
                      xf_seq, xs_m.mdl, xs_m.rng, msf(m[6], xs_m.tex_t), msf(m[7], xs_m.dlc_t), xs_m.rom, xs_m.smp, pm_xf.mdl_rng, nd_mc_trims() - xf_trim0, xs_phi, xs_ehi, msf(m[8], pm_xf.rdw_t), pm_xf.hid_d);
+    /* MTX0: xfer5 and xfer6 per top step (t is the rank, 0 the longest), xfer4 phase counts, xfer7 drain callers */
+    for (unsigned i = 0; i < xr_n; i++) { const XfRow* r = &xr_top[i]; const unsigned* v = r->v;
+        pm_log_prof_line("xfer5 %s t%u s%u %c w %s dr %u/%u/%s au %s dec %u/%u rst %u", kn, i, r->s, r->ph, msf(m[0], r->w), v[XV_DRN], v[XV_DRW], msf(m[1], v[XV_DRT]), msf(m[2], v[XV_AU]), v[XV_DCN], v[XV_DCU] / 1000u, v[XV_RST] >> 10);
+        pm_log_prof_line("xfer6 %s t%u rom %u/%u yay %u tex %u mdl %u dlc %u hp %u/%u", kn, i, v[XV_ROM], v[XV_ROMB] >> 10, v[XV_YAY], v[XV_TEX], v[XV_MDL], v[XV_DLC], v[XV_HPA], v[XV_HPF]); }
+    pm_log_prof_line("xfer4 %s n%u | o %u/%s/%u c %u/%s/%u n %u/%s/%u t %u/%s/%u", kn, xf_seq, xp_n[0], msf(m[0], xp_max[0]), xp_o34[0], xp_n[1], msf(m[1], xp_max[1]), xp_o34[1],
+                     xp_n[2], msf(m[2], xp_max[2]), xp_o34[2], xp_n[3], msf(m[3], xp_max[3]), xp_o34[3]);
+    pm_log_prof_line("xfer7 %s n%u drc %08x %u %s %08x %u %s %08x %u %s %08x %u %s", kn, xf_seq, (unsigned)(size_t)pm_xf.dc[0].k, pm_xf.dc[0].n, msf(m[0], pm_xf.dc[0].t),
+                     (unsigned)(size_t)pm_xf.dc[1].k, pm_xf.dc[1].n, msf(m[1], pm_xf.dc[1].t), (unsigned)(size_t)pm_xf.dc[2].k, pm_xf.dc[2].n, msf(m[2], pm_xf.dc[2].t),
+                     (unsigned)(size_t)pm_xf.dc[3].k, pm_xf.dc[3].n, msf(m[3], pm_xf.dc[3].t));
     xf_kind = XF_NONE;
     pm_xf.on = 0;
 }
@@ -113,6 +144,7 @@ __attribute__((cold, noinline)) static void xf_begin(int kind) {
     pm_dspa_pre_read(&xf_pre0[0], &xf_pre0[1], &xf_pre0[2]);
     xf_clr0 = nd_mc_clears(); xf_rep0 = nd_mc_reps(); xf_trim0 = nd_mc_trims();
     memset(&xs_p, 0, sizeof xs_p); memset(&xs_m, 0, sizeof xs_m); xs_ehi = xs_phi = 0;
+    memset(xr_top, 0, sizeof xr_top); xr_n = 0; memset(xp_n, 0, sizeof xp_n); memset(xp_max, 0, sizeof xp_max); memset(xp_o34, 0, sizeof xp_o34); xr_snap(&xr_p); /* MTX0 */
 }
 void pm_xfer_map_begin(void) {
     xf_begin(XF_MAP);
@@ -200,6 +232,7 @@ void pm_xfer_step(unsigned long long t0, unsigned long long t1) {
     }
     if (!ld && w > T34) xf_o34++;
     if (!ld && !init && w > xf_fade) xf_fade = w;
+    xr_step(w, ld); /* MTX0 */
     if ((xf_tail && --xf_tail == 0) || xf_steps >= XF_LIMIT) xf_print();
 }
 /* DOORHITCH step 3: the first entry of a room. Its models (the house interior on kmr_20) are hidden by the room scripts after the load and first

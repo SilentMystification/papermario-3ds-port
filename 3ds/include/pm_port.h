@@ -397,6 +397,7 @@ typedef struct {
     unsigned bk_n, bk_t;          /* BTLWIPE: au_load_BK_to_bank calls, ticks (its render sync and reads) */
     unsigned dr_n, dr_t;          /* BTLWIPE: pm_walk_drain calls that waited for the walk, ticks */
     unsigned cap_cpu;             /* BTLWIPE: CPU reads of the colour buffer (cfb_capture_prev path cpu) */
+    unsigned rst_b; struct { const void* k; unsigned n, t; } dc[4]; /* MTX0 */
 } PmXf;
 extern PmXf pm_xf;
 void pm_xfer_map_begin(void);                     /* set_game_mode(GAME_MODE_CHANGE_MAP) */
