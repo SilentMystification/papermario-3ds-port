@@ -219,7 +219,7 @@ def main():
                     last_seq = seq
                 emit(line + b"\n")
                 last_line = time.time()
-                if ended is None:
+                if ended is None and m:  # a game end line is a numbered log line: the #PMFILE crash.txt dump holds old watchdog text that is no end
                     for pat, label in END_LINES:
                         if pat.search(line):
                             ended = label
