@@ -1,0 +1,15 @@
+LOGDIET census (rates from build3ds/out/live_xfer3_170.txt, build d3641712cc, 10361 lines)
+word      file:line            rate/run      readers                                   action
+gstex     nd_set.c:106         6539          bench.py expect_check (--expect gstex)     drec frames only
+mmiss     nd_recs.c:56         2384          bench.py expect_check/selftest, plan_perf  drec frames only
+t1fix     nd_recs.c:61         0 (this run)  plan_perf T1FIX row, --expect t1fix       drec frames only
+prof      pm_log.c prof windows 1000         plan pages, capture_check                 keep
+snapi     nd_snap.c:32         86 (per 100f) plan_perf:143 count source                keep
+xfer*     seam/transition      ~180+36       transition data                           keep
+dlcpre    nd_shape.c:378       51            none (plan_maptrans names another dlcpre)  keep (small; per map frames)
+gtabrun   nd_gtab.c:105        29            none                                      keep (small, per window)
+ntabrun   nd_gtab.c:106        29            bench.d/CONV2D2.json purpose text         keep
+seamfix   nd_shape.c:186-392   9             azt_scenarios.json regex (2 scenarios)    keep
+c0src/epchk/c0fb/clipc/altw  pm_gpu.c:688-699  once per drec run  plan_native, oracle_handoff  keep (drec end only)
+ndmdiff   pm_gpu.c:4262        4             none                                      keep (rare)
+Total after: 10361 - 6539 - 2384 = 1438 lines (-86.1%).
