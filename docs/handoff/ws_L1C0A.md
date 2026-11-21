@@ -1,5 +1,5 @@
 # ws_L1C0A (Haiku): model hit run census and the cut points of the core 0 hit queue (design: oracle L1C0)
-Worktree build3ds/wt/L1C0A, branch L1C0A. PM_ROW=L1C0A PM_LANE=L1C0A. Start: main 475dff963b or later. Line numbers are main 475dff963b: grep each anchor again. Edit with the Edit tool (CRLF sources).
+Worktree build3ds/wt/L1C0A, branch L1C0A. PM_ROW=L1C0A PM_LANE=L1C0A. Start: main 9e01a84888 or later. Line numbers are main 9e01a84888: grep each anchor again. Edit with the Edit tool (CRLF sources).
 Objective: count the model hits that a queue can batch, and prove that the cut list is complete. No draw changes. Counters: none move (debug lines). Endgame C1-C12: none. The hand-back decides ws_L1C0B (its rule Q0). Terms: a run = the hits with draws between two cuts. A cut = a point where the L1C0B queue must drain (reason 0-6). bad = command words written inside a run (a missed cut).
 ## Steps (one commit per step, in this order)
 1. `L1C0A 1: cut hooks`. 3ds/include/nd.h after the `}` of nd_kp_vec (:296) add 2 lines:
@@ -25,12 +25,12 @@ Objective: count the model hits that a queue can batch, and prove that the cut l
    :678 after `drec_seq = drec_over = 0;` add `memset(mq_b, 0, sizeof mq_b); memset(mq_why, 0, sizeof mq_why); mq_hits = mq_draws = mq_bad = 0; /* L1C0A */`.
    After :690 (the c0src line) add `pm_log_evt("mqr f%u hits %u draws %u r %u %u %u %u %u", pm_frame_count(), mq_hits, mq_draws, mq_b[0], mq_b[1], mq_b[2], mq_b[3], mq_b[4]); /* L1C0A */` and
    `pm_log_evt("mqw f%u bad %u why %u %u %u %u %u %u %u", pm_frame_count(), mq_bad, mq_why[0], mq_why[1], mq_why[2], mq_why[3], mq_why[4], mq_why[5], mq_why[6]); /* L1C0A */`.
-   pm_gpu_set_mvp: before :3464 `if (nb.draw_3d && nb.gni > 0) flush();` add `    pm_mq_cut(6u); /* L1C0A: a viewport or ortho change */`.
-   pm_gpu_model_hit :4370 Before `int id = ds ? nd_tex_get(ds) : -1;` After `int id = ds ? nd_tex_have(ds) : -1;` and the new line `if (ds && id < 0) { pm_mq_cut(4u); id = nd_tex_get(ds); } /* L1C0A: a table miss loads */`.
-   :4372 Before `if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }` After 3 lines:
+   pm_gpu_set_mvp: before :3465 `if (nb.draw_3d && nb.gni > 0) flush();` add `    pm_mq_cut(6u); /* L1C0A: a viewport or ortho change */`.
+   pm_gpu_model_hit :4371 Before `int id = ds ? nd_tex_get(ds) : -1;` After `int id = ds ? nd_tex_have(ds) : -1;` and the new line `if (ds && id < 0) { pm_mq_cut(4u); id = nd_tex_get(ds); } /* L1C0A: a table miss loads */`.
+   :4373 Before `if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }` After 3 lines:
    `int tok = id >= 0 && nd_tex_unit_fast(id, &e->hs, &e->hg, &u);` / `if (id >= 0 && !tok) { pm_mq_cut(4u); tok = nd_tex_unit_slow(id, &e->hs, &e->hg, &u); } /* L1C0A: the search may load */` / `if (!tok) { ndn_texf++; return 0; }`.
-   After :4382 `if (e->tgen != nd_tmpl_gen()) {` add `        pm_mq_cut(5u); /* L1C0A: an eviction */`. After :4397 (`const uint32_t shc = ...`) add `    if (pm_mq_run && mq_moved()) mq_bad++; /* L1C0A */`.
-   Before :4408 `ndn_rec++; ndn_draws += e->n; ndn_hit++;` add `    mq_mark(); pm_mq_run++; mq_hits++; mq_draws += e->n; /* L1C0A */`.
+   After :4383 `if (e->tgen != nd_tmpl_gen()) {` add `        pm_mq_cut(5u); /* L1C0A: an eviction */`. After :4398 (`const uint32_t shc = ...`) add `    if (pm_mq_run && mq_moved()) mq_bad++; /* L1C0A */`.
+   Before :4409 `ndn_rec++; ndn_draws += e->n; ndn_hit++;` add `    mq_mark(); pm_mq_run++; mq_hits++; mq_draws += e->n; /* L1C0A */`.
 ## Tests (output to build3ds/out/, read the last 20 lines). Budget 8 Azahar starts (this page uses 5).
 1. Every commit: `PM_LANE=L1C0A sh 3ds/build.sh` (memcheck OK), `sh 3ds/tools/nd_host_test.sh` (timeout 600000) PASS, `python 3ds/tools/c0gate.py <elf>` 0 / 0 / 0.
 2. Gate: `bench.py base spot_mac01_drec --commit $(git merge-base HEAD main)`, `bench.py run spot_mac01_drec --row L1C0A --why "L1C0A gate"`, `bench.py cmp spot_mac01_drec --row L1C0A`: byte-equal. The log has `mqr f201` and `mqw f201 bad 0`.

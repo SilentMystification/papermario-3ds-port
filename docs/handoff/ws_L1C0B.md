@@ -1,5 +1,5 @@
 # ws_L1C0B (Haiku): core 0 model hit queue: resolve now, submit at the next cut (design: oracle L1C0)
-Worktree build3ds/wt/L1C0B, branch L1C0B. PM_ROW=L1C0B PM_LANE=L1C0B. Start: main after `Merge L1C0A`. Line numbers are main 475dff963b plus the L1C0A lines: grep each anchor again (CRLF: Edit tool).
+Worktree build3ds/wt/L1C0B, branch L1C0B. PM_ROW=L1C0B PM_LANE=L1C0B. Start: main after `Merge L1C0A`. Line numbers are main 9e01a84888 plus the L1C0A lines: grep each anchor again (CRLF: Edit tool).
 WAIT: start only when both rules hold. Q0 (Azahar, L1C0A hand-back): mqw bad 0 on both benches, and r2 + r3 + r4 >= hits / 2 in the spot_mac01_drec mqr line. C0 (console, the L1PH0 capture, plan_l1.md 5): l1m e0 of mkey + mmtx + mhit + sub + supd + semit >= 50% of the l1t e0. A rule fails: do not start (the oracle writes L1C0D, submit diet).
 Objective: pm_gpu_model_hit keeps up to 8 resolved hits in a queue. pm_mq_cut_do (every L1C0A cut) submits them in record order. The command words stay byte-equal. Why exact (FACT code read): inside a run the resolve writes no command word (L1C0A bad 0), and the submit reads only the entry, the queue item and serial GPU shadows. Every load, eviction, viewport change, miss and other command is a cut.
 Counters (GUESS, console capture after the merge; scale by (r2 + r3 + r4) / hits): core 0 pmu m -8000 to -30000 per clean frame (FACT now 72384), I misses per draw -60 to -225 (FACT now 544), core 0 -1.2 to -4.5 ms per clean frame. Endgame C1-C12: none.
@@ -29,9 +29,9 @@ static void mq_drain(void) {
     }
 }
 ```
-3. pm_gpu_model_hit: replace the lines from `static float pal0[16], zpal[16];` (:4387) through `pm_gpu_flush();` (:4393) with these 7 lines: `if (pm_mq_run == PM_MQ_N) pm_mq_cut_do(7u); /* L1C0B: a full queue drains */` / `PmMq* const m = &mq_q[pm_mq_run]; /* L1C0B: the item of this hit */` /
+3. pm_gpu_model_hit: replace the lines from `static float pal0[16], zpal[16];` (:4388) through `pm_gpu_flush();` (:4394) with these 7 lines: `if (pm_mq_run == PM_MQ_N) pm_mq_cut_do(7u); /* L1C0B: a full queue drains */` / `PmMq* const m = &mq_q[pm_mq_run]; /* L1C0B: the item of this hit */` /
    `float comb[4][4];` / `nd_mtx_combine(comb);` / `pm_gpu_pcomp_native(m->pal, comb);` / `if (pm_tw_on) memcpy(m->palk, pm_pal0_k, sizeof m->palk); /* INTERPB2: the K twin of palette 0 */` / `pm_gpu_flush();`
-4. Keep the 4 lines `const uint32_t* rw` to `const uint32_t shc` and the L1C0A bad line. Replace the submit loop (`for (unsigned j = 0; j < e->n; j++) {` to its `}`, old :4398-:4407) with `    m->e = e; m->u = u; m->shc = shc; m->shr = shr; /* L1C0B: mq_drain submits its draws */`. The L1C0A mq_mark line, `ndn_rec++; ...` and `return 1;` follow, in this order.
+4. Keep the 4 lines `const uint32_t* rw` to `const uint32_t shc` and the L1C0A bad line. Replace the submit loop (`for (unsigned j = 0; j < e->n; j++) {` to its `}`, old :4399-:4408) with `    m->e = e; m->u = u; m->shc = shc; m->shr = shr; /* L1C0B: mq_drain submits its draws */`. The L1C0A mq_mark line, `ndn_rec++; ...` and `return 1;` follow, in this order.
 ## Tests (output to build3ds/out/, read the last 20 lines). Gate: 1 build, 2 benches. Budget 8 Azahar starts.
 1. `PM_LANE=L1C0B sh 3ds/build.sh` (memcheck OK; .bss +1184 B FACT arithmetic: 8 x 164 B queue - 128 B of statics), `sh 3ds/tools/nd_host_test.sh` (timeout 600000) PASS, `python 3ds/tools/c0gate.py <elf>` 0 / 0 / 0.
 2. For spot_mac01_drec and entcape_kmr03_drec: `bench.py base <bench> --commit $(git merge-base HEAD main)`, `bench.py run <bench> --row L1C0B --why "L1C0B gate"`, `bench.py cmp <bench> --row L1C0B`. Pass: both byte-equal, `mqw f201 bad 0` in both logs.
