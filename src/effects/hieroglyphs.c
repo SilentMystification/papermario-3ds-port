@@ -116,29 +116,11 @@ void hieroglyphs_render(EffectInstance* effect) {
 void func_E00E2210(void) {
 }
 
-void hieroglyphs_appendGfx(void* effect) {
-    HieroglyphsFXData* data = ((EffectInstance*)effect)->data.hieroglyphs;
-    Camera* camera = &gCameras[gCurrentCameraID];
-    s32 lifeTime = data->lifeTime;
-    s32 unk_24 = data->unk_24;
-    NdSub sub;
-    Matrix4f sp20;
-    Matrix4f sp60;
+/* TUB2: one pass. Each call records it after its own prim and env: a sub range keeps the state of nd_sub_open (plan_tubba.md). */
+static void hieroglyphs_body(s32 lifeTime) {
+    Matrix4f sp20, sp60;
     s32 i;
 
-    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-
-    guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
-    guScaleF(sp60, data->unk_38, data->unk_38, data->unk_38);
-    guMtxCatF(sp60, sp20, sp20);
-    guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
-    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-    nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
-    nd_val_env(data->unk_28, data->unk_2C, data->unk_30, data->unk_34);
-    nd_draw_list(D_E00E29F0[0], ND_SELF);
-    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
     nd_val_tile_size(G_TX_RENDERTILE, (lifeTime * 2      ) * 4, 0, (lifeTime * 2 + 127) * 4, 31 * 4);
 
     guRotateF(sp20, 20.0f, 1.0f, 0.0f, 0.0f);
@@ -164,8 +146,29 @@ void hieroglyphs_appendGfx(void* effect) {
     }
 
     nd_xf_pop(G_MTX_MODELVIEW);
-    nd_sub_close(&sub);
+}
 
+void hieroglyphs_appendGfx(void* effect) {
+    HieroglyphsFXData* data = ((EffectInstance*)effect)->data.hieroglyphs;
+    Camera* camera = &gCameras[gCurrentCameraID];
+    s32 lifeTime = data->lifeTime;
+    s32 unk_24 = data->unk_24;
+    Matrix4f sp20;
+    Matrix4f sp60;
+    s32 i;
+
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+
+    guTranslateF(sp20, data->pos.x, data->pos.y, data->pos.z);
+    guScaleF(sp60, data->unk_38, data->unk_38, data->unk_38);
+    guMtxCatF(sp60, sp20, sp20);
+    guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
+    nd_xf_push(camera->mtxBillboard, G_MTX_NOPUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+    nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
+    nd_val_env(data->unk_28, data->unk_2C, data->unk_30, data->unk_34);
+    nd_draw_list(D_E00E29F0[0], ND_SELF);
     for (i = 0; i < 2; i++) {
         s32 idx = (lifeTime + i * 4) % 17;
 
@@ -175,7 +178,7 @@ void hieroglyphs_appendGfx(void* effect) {
         nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
         nd_val_prim(0, 0, D_E00E29F4[idx], D_E00E2A08[idx], D_E00E2A1C[idx], data->unk_24);
         nd_val_env(255, 255, 255, 0);
-        nd_sub_call(&sub);
+        hieroglyphs_body(lifeTime);
         nd_xf_pop(G_MTX_MODELVIEW);
     }
 
