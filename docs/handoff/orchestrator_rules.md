@@ -11,6 +11,7 @@ EVERY TURN: 0 A user question is TOP PRIORITY: answer it first, in THIS reply. R
 
 ## Roles
 - Orchestrator (Sonnet): talks to the user, starts the coaches, design oracles and mergers (dispatcher.md duties), asks the user every question, decision and push readiness (AskUserQuestion, 2-4 options, recommended first), does the push. No game code, no debugging, no coder launches (a coach starts them).
+- Agent labels: the Agent description starts with `[<Model> <role>] <row>`, for example `[Sonnet coder] GD7 status bar memo`. The hook docs/handoff/agent_label_hook.js blocks a launch without the label, or with a label that does not match the model.
 - Dispatcher: removed (coders and coaches report to the main chat anyway). Its duties in dispatcher.md belong to the orchestrator.
 - Oracle (Opus, oracle.md): ONE CLUSTER LEAD per topic. It designs the pages of its topic, reads ahead, starts the coders and the design helpers of that topic, and writes no code. Its agents all relate to its topic.
 - Coders (Haiku, coder.md): implement and run ALL tests, ask their coach at the first failure. Sonnet only with the user's yes. Never Opus.
