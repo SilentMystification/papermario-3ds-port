@@ -857,6 +857,7 @@ static __attribute__((noinline)) void kick_split(void) {
     PH_PUSH(PH_GPU);
     { unsigned k0 = pm_ph_cen ? pm_ticks() : 0; /* PI4: the split is timed on its own (phase mode only) */
       ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
+      gxCmdQueueRun((gxCmdQueue_s*)&__C3D_Context); /* KICK3: C3D_FrameBegin stopped the queue (citro3d renderqueue.c:97): run it, so the GPU draws part 1 now */
       if (pm_ph_cen) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
     PH_POP();
     kick_n++;
