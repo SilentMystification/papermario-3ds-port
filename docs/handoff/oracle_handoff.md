@@ -1,5 +1,4 @@
 # Oracle handoff (edit in place; a fresh oracle reads this, then CLAUDE.md and .claude/agents/oracle.md)
-
 State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs; ALT2C gated 0464762731) plus pages of oracle NATIVE17, 2026-11-20.
 ## Goal
 - User: better frame time on the O3DS, work spread about evenly over core 0 and core 1, core 0 decides nothing, good ARM11 code, good PICA use.
@@ -17,6 +16,7 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 2c. CRITPATH (oracle NATIVE19): plan_critpath.md. ft = core 0 work 25.2 (pmu cyc) + GPU waits about 15; core 1 off the chain (fw 9.88). CPT0, KICK3 merged. PIPE design: plan_pipe.md (rows PIPE0 to PIPE4), pages ws_PIPE0 (fence census), ws_PIPE1 (L lists at word PIPE_H). PIPE0, PIPE1 merged. IDLE (oracle NATIVE20): no merge regressed idle (FACT equal ndc windows: 353b31c792 ft 41.21, a05f62c545 ft 38.98). The 3 ms was the status bar (inventory.c:737-746): core 0 gbi +4.15, gx +2.14 (live_play2_170.txt f10494 vs f11094). GD7 cuts core 1 only. Page ws_CAPCMP (compare tool).
 2d. WIDEWIN (oracle NATIVE20): plan_widewin.md (clip audit, 3 modes). Rows in order: ws_WCLIP0 (census, drec scissor regs 0x065-0x067: every drec base changes once), ws_WCLIP1 (nd_sci.c rule), ws_WCLIP2 (Fullscreen rects 1.25 x). WALK: plan_walk.md (ROM read drain of player rasters, pm_os.c:492-495), pages ws_STEPX, ws_ROMDR (merge after the STEPX capture).
 2d. POND (oracle NATIVE21): plan_pond.md. mac_00 water solid blue: a DO1 memo hit inside the build_custom_gfx unit log (nd_rec.c:356, no lg_put) drops the copy record units. Pages ws_POND0 (benches, bisect), ws_POND1 (fix). drec frames hide DO1 faults (nd_rec.c:359): use pic benches.
+2h. SEAMS (oracle NATIVE24): plan_seams.md (path audit, ranked causes, rule N1 to N4). Gate pages ws_CRK0 to ws_CRK3 (Haiku). Fix pages CRK4 to CRK6 after the CRK1 numbers.
 2f. INTERP (oracle NATIVE23): plan_interp.md. K = L words + patches, GPU K = L (gpuk 7.73). L and K swaps about 8 ms apart, no vblank wait (dropped L, tear). Sky scroll not lerped. Pages ws_IK0, then ws_PRES0.
 2e. MAPTRANS (oracle NATIVE22): plan_maptrans.md. Load step 240-266 ms (console xfer). Mechanisms: blanket drain per ROM read (each read posts an invalidation:
   a round trip per read), romfs .seam/.dlc waits in the load, inline first sight. Pages ws_MTX0 (census, start now), ws_MTX1 (reader stamps), ws_MTX2 (file jobs): MTX1, MTX2 need the user's yes on section 7.
