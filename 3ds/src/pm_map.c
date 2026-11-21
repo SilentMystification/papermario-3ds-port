@@ -332,12 +332,9 @@ static void map_prefetch(void) {
         dec[i] = dl; clen[i] = cl;
     }
     pm_prefetch_post(sn, src[0], clen[0], dec[0], hn, src[1], clen[1], dec[1]);
+    { extern void pm_prefetch_files(const char* shape); pm_prefetch_files(sn); } /* MTX2; MTX7: the .nds header, .seam and .dlc reads are posted with the shape at the fade start, not at the first covered step:
+     * 4 idle steps were too short for the lowest-priority prefetch thread, and the load waited up to 342 ms in pm_pf_fopen (xfer2 seam) */
 }
-void pm_map_cover_post(void) { /* MTX2: the first covered step of a map change posts the file reads of the target shape (logic thread) */
-    static int posted; s32 a = gGameStatusPtr->areaID, m = gGameStatusPtr->mapID; char sn[24];
-    if (get_game_mode() != GAME_MODE_CHANGE_MAP || !(gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME)) { posted = 0; return; }
-    if (posted || a < 0 || a >= (s32)ARRAY_COUNT(gAreas) || m < 0 || m >= gAreas[a].mapCount) return;
-    posted = 1; snprintf(sn, sizeof sn, "%s_shape", gAreas[a].maps[m].id); { extern void pm_prefetch_files(const char* shape); pm_prefetch_files(sn); } }
 /* BTLWIPE F5: post the Yay0 decode of the battle stage's shape and hit when the star wipe has closed (PRE_BATTLE_LOAD, encounter.c, the
  * first step with the screen black), about 16 steps before BTL_SUBSTATE_NORMAL_START_INIT decodes them (btl_states_actions.c). Not at the
  * start of the wipe: the decode is one long call without a system call, and Azahar did not switch core 1 back to the logic thread inside
@@ -370,7 +367,12 @@ s16 pm_warp_hook(s16 mode);
 void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
 void pm_tex_scene_begin(const char* name); /* ROOMTEX: pm_tex.c */
 void __wrap_set_game_mode(s16 mode) {
-    pm_walk_read("mode", pm_walk_stamp()); /* MTX1 */ /* a mode change loads and frees scene data */
+    { /* MTX8: CHANGE_MAP and WORLD free no scene data (state_init_change_map, state_init_world, set_game_mode_slot); the wait stays when the aspect
+       * flags that the walker reads (pm_wide, pm_stretch) change: for these two modes they follow the chapter map only (game_modes.c set_game_mode) */
+        extern int pm_wide, pm_wide_cfg, pm_stretch, pm_stretch_cfg; const s32 a_ = gGameStatusPtr->areaID, m_ = gGameStatusPtr->mapID;
+        const int ch_ = a_ >= 0 && a_ < (s32)ARRAY_COUNT(gAreas) && m_ >= 0 && m_ < gAreas[a_].mapCount && strcmp(gAreas[a_].maps[m_].id, "kmr_22") == 0;
+        const int w_ = pm_wide_cfg && !ch_, s_ = pm_stretch_cfg && !w_ && !ch_;
+        if (!((mode == GAME_MODE_CHANGE_MAP || mode == GAME_MODE_WORLD) && w_ == pm_wide && s_ == pm_stretch)) pm_walk_read("mode", pm_walk_stamp()); } /* MTX1 */ /* a mode change loads and frees scene data */
     mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
     if (mode == GAME_MODE_ENTER_WORLD) pm_cheat_enter_world(); /* CHEATSAVE: the slot's cheat file (pm_cheatsave.c) */
     {
