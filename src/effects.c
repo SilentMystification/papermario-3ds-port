@@ -198,6 +198,7 @@ EffectInstance* create_effect_instance(EffectBlueprint* effectBp) {
     EffectInstance* newEffectInst;
     EffectSharedData* sharedData;
     s32 i;
+    { extern unsigned pm_fx_new_n; pm_fx_new_n++; } /* STEPX2 */
 
     // Search for an unused instance
     for (i = 0; i < ARRAY_COUNT(gEffectInstances); i++) {

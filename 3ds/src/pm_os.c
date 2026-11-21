@@ -488,11 +488,13 @@ static void tk_patch_apply(u32 rom_addr, u8* buf, u32 size) {
     }
 }
 unsigned pm_rom_lg_n; /* STEPX */
+unsigned pm_rom_lg_b; /* STEPX2 */
 unsigned pm_rom_spr_n; /* STEPX */
 void nuPiReadRom(u32 rom_addr, void* buf, u32 size) {
     static u32 table_bytes;
     if (!pm_on_audio()) { /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
         pm_rom_lg_n++; /* STEPX */
+        pm_rom_lg_b += size; /* STEPX2 */
         unsigned dt0 = pm_xf.on ? pm_ticks() : 0u;
         pm_walk_drain("rom");
         if (pm_xf.on) pm_xf.rdw_t += pm_ticks() - dt0; /* DOORHITCH */

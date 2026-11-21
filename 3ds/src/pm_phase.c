@@ -578,11 +578,13 @@ static void pf_pmxph_line(void) {
 }
 /* STEPX: per-step census by player action state (sx_b: 0 idle, 1 walk or run, 2 spin, 3 other) */
 volatile signed char pm_act_state; extern unsigned pm_rom_lg_n, pm_rom_spr_n, pm_tex_miss_n, pm_mdl_miss_n; extern unsigned long long pm_c0i_t[3], pm_c0k[6]; void pm_wq_pf(unsigned out[2]);
-enum { SX_G, SX_P, SX_D, SX_R, SX_S, SX_T, SX_M, SX_F }; /* GPU waits, pace, logic-thread waits less slot waits, ROM reads, raster reads, tex misses, model misses */
+unsigned pm_fx_new_n; /* STEPX2 */ extern unsigned pm_rom_lg_b, pm_yay0_n; /* STEPX2 */ void pm_dspa_dec_read(unsigned* n, unsigned* us, unsigned* max); /* STEPX2 */
+enum { SX_G, SX_P, SX_D, SX_R, SX_S, SX_T, SX_M, SX_A, SX_B, SX_Y, SX_E, SX_F }; /* STEPX2: SX_A audio decodes, SX_B ROM bytes, SX_Y Yay0 decodes, SX_E effect instances */ /* GPU waits, pace, logic-thread waits less slot waits, ROM reads, raster reads, tex misses, model misses */
 static unsigned sx_last[SX_F]; static int sx_b, sx_mb; static unsigned long long sx_n[4], sx_ft[4], sx_sl[4], sx_v[2][SX_F], sx_vn[2], sx_max, sx_mv[SX_F];
 static void sx_step(int have, unsigned long long w) { unsigned bw[2], v[SX_F]; pm_wq_pf(bw);
     v[SX_G] = (unsigned)(pm_c0i_t[2] + pm_c0k[1]); v[SX_P] = (unsigned)(pm_c0i_t[1] + pm_c0k[0]); v[SX_D] = bw[0] - bw[1];
     v[SX_R] = pm_rom_lg_n; v[SX_S] = pm_rom_spr_n; v[SX_T] = pm_tex_miss_n; v[SX_M] = pm_mdl_miss_n;
+    { unsigned an_, au_, am_; pm_dspa_dec_read(&an_, &au_, &am_); v[SX_A] = an_; } v[SX_B] = pm_rom_lg_b; v[SX_Y] = pm_yay0_n; v[SX_E] = pm_fx_new_n; /* STEPX2 */
     if (have) { const int b = sx_b, sl = w > PF_OVER_T; sx_n[b]++; sx_ft[b] += w; sx_sl[b] += (unsigned)sl; sx_vn[sl]++;
         for (int k = 0; k < SX_F; k++) sx_v[sl][k] += v[k] - sx_last[k];
         if (w > sx_max) { sx_max = w; sx_mb = b; for (int k = 0; k < SX_F; k++) sx_mv[k] = v[k] - sx_last[k]; } }
@@ -666,14 +668,16 @@ static void pf_report(void) {
                   (unsigned)sx_sl[0], (unsigned)sx_sl[1], (unsigned)sx_sl[2], (unsigned)sx_sl[3]);
               for (int s_ = 0; s_ < 2; s_++) {
                   const unsigned long long nn_ = sx_vn[s_] ? sx_vn[s_] : 1ull;
-                  pm_log_prof_line("prof f%u w%u stepx %s n %u g %u p %u d %u r %u s %u t %u m %u", pf_total, pf_w, s_ ? "slow" : "norm", (unsigned)sx_vn[s_],
+                  pm_log_prof_line("prof f%u w%u stepx %s n %u g %u p %u d %u r %u s %u t %u m %u a %u b %u y %u e %u", pf_total, pf_w, s_ ? "slow" : "norm", (unsigned)sx_vn[s_],
                       (unsigned)(sx_v[s_][SX_G] * 100ull / PF_TPM / nn_), (unsigned)(sx_v[s_][SX_P] * 100ull / PF_TPM / nn_), (unsigned)(sx_v[s_][SX_D] * 100ull / PF_TPM / nn_),
-                      (unsigned)(sx_v[s_][SX_R] * 100ull / nn_), (unsigned)(sx_v[s_][SX_S] * 100ull / nn_), (unsigned)(sx_v[s_][SX_T] * 100ull / nn_), (unsigned)(sx_v[s_][SX_M] * 100ull / nn_));
+                      (unsigned)(sx_v[s_][SX_R] * 100ull / nn_), (unsigned)(sx_v[s_][SX_S] * 100ull / nn_), (unsigned)(sx_v[s_][SX_T] * 100ull / nn_), (unsigned)(sx_v[s_][SX_M] * 100ull / nn_),
+                      (unsigned)(sx_v[s_][SX_A] * 100ull / nn_), (unsigned)(sx_v[s_][SX_B] / nn_), (unsigned)(sx_v[s_][SX_Y] * 100ull / nn_), (unsigned)(sx_v[s_][SX_E] * 100ull / nn_)); /* STEPX2 */
               }
-              pm_log_prof_line("prof f%u w%u stepx max ft %u b %d g %u p %u d %u r %u s %u t %u m %u", pf_total, pf_w,
+              pm_log_prof_line("prof f%u w%u stepx max ft %u b %d g %u p %u d %u r %u s %u t %u m %u a %u b %u y %u e %u", pf_total, pf_w,
                   (unsigned)(sx_max * 100ull / PF_TPM), sx_mb,
                   (unsigned)(sx_mv[SX_G] * 100ull / PF_TPM), (unsigned)(sx_mv[SX_P] * 100ull / PF_TPM), (unsigned)(sx_mv[SX_D] * 100ull / PF_TPM),
-                  (unsigned)sx_mv[SX_R], (unsigned)sx_mv[SX_S], (unsigned)sx_mv[SX_T], (unsigned)sx_mv[SX_M]);
+                  (unsigned)sx_mv[SX_R], (unsigned)sx_mv[SX_S], (unsigned)sx_mv[SX_T], (unsigned)sx_mv[SX_M],
+                  (unsigned)sx_mv[SX_A], (unsigned)sx_mv[SX_B], (unsigned)sx_mv[SX_Y], (unsigned)sx_mv[SX_E]); /* STEPX2 */
               memset(sx_n, 0, sizeof sx_n); memset(sx_ft, 0, sizeof sx_ft); memset(sx_sl, 0, sizeof sx_sl); memset(sx_v, 0, sizeof sx_v);
               memset(sx_vn, 0, sizeof sx_vn); sx_max = 0; memset(sx_mv, 0, sizeof sx_mv); } /* STEPX */
             pm_log_prof_line("prof f%u w%u c1g ent %u.%02u mdl %u.%02u ply %u.%02u npc %u.%02u wrk %u.%02u fx %u.%02u task %u.%02u thud %u.%02u ui %u.%02u", pf_total, pf_w,
