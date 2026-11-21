@@ -351,4 +351,5 @@ extern u8 gMapShapeData[], TextureHeap[], pm_world_entity_heap[], heap_generalHe
 extern unsigned short** nuGfxCfb;
 extern unsigned nuGfxCfbNum;
 extern int pm_wide;
+extern int pm_wout; /* FSUI1: pm_gpu.c */
 #endif

@@ -37,6 +37,12 @@ int main(void) {
     chk(12, 20, 308, 220, 2, 0, 0, 400);
     chk(100, 0, 200, 240, 2, 0, 125, 250);
     chk(-20, 0, 92, 240, 2, 0, 0, 115);
+    /* Fullscreen 2D or ortho (mode 2, ui 1): as Widescreen (FSUI1) */
+    chk(0, 0, 319, 239, 2, 1, 0, 400);
+    chk(12, 20, 308, 220, 2, 1, 0, 400);
+    chk(100, 0, 200, 240, 2, 1, 140, 240);
+    chk(-20, 0, 92, 240, 2, 1, 20, 132);
+    chk(250, 0, 340, 240, 2, 1, 290, 380);
 
     /* grid: bounds for every mode and ui; the Widescreen ui centred rule for 1..318 */
     {
@@ -48,7 +54,7 @@ int main(void) {
             nd_sci_x(xs[i], 0, xs[j], 240, mode, ui, &top, &bottom);
             if (top < 0 || top > bottom || bottom > 400) { bad++; printf("FAIL grid bounds x %d %d mode %d ui %d got %d %d\n", xs[i], xs[j], mode, ui, top, bottom); }
             if (mode == 0 && top != 40 + ci(lo, 0, 320)) { bad++; printf("FAIL grid native x %d %d got %d\n", xs[i], xs[j], top); }
-            if (mode == 1 && ui == 1 && lo >= 1 && lo <= 318 && hi >= 1 && hi <= 318) {
+            if (mode != 0 && ui == 1 && lo >= 1 && lo <= 318 && hi >= 1 && hi <= 318) {
                 if (top != 40 + lo || bottom != 40 + hi) { bad++; printf("FAIL grid wide ui x %d %d got %d %d\n", xs[i], xs[j], top, bottom); }
             }
         }
