@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <math.h>
 #include "nd.h"
 #include "ultra64.h"
 #include "gbi_custom.h"
@@ -373,6 +374,196 @@ static int ndref_camera(const char* path, float o[16]) {
     return 1;
 }
 
+typedef struct { int cls; int32_t t[3]; float f[4][4]; } SXf;
+
+/* ---- CRK0 step 5: world census of the points that 2 map lists share (plan_seams.md section 3) ----
+ * The shape tree walk of nd_seam.c (SXf, mtx_read, xf_cat, node_walk) again. c5_tab keeps the first transform of each list; multi flags a second
+ * transform with other f bits. Each corner of an ok table list goes to the world with the device model matrix c5m (guMtxF2L truncation, pm_gu.c:44;
+ * identity lists have no load, model.c:2137). A shared point is one world point (same bits) of 2 or more lists. split: 2 of its lists have other
+ * c5m bits. s[a][b]: the classes of the first list and of the first list with other bits (a <= b). gap: 2 points of other lists with
+ * 0 < d2 <= 2.25 (1.5 unit); gc2 when one side is cls 2, gint otherwise. */
+typedef struct { uint32_t addr; uint8_t multi; SXf x; } C5Ent;
+typedef struct { const uint8_t* buf; uint32_t base, size; } C5W;
+typedef struct { float w[3]; int16_t v[3]; uint16_t li; uint8_t cls; } C5V;
+static C5Ent c5_tab[1024]; static unsigned c5_nt;
+static float c5m[1024][4][4];
+static uint32_t c5_rd32(const uint8_t* p) { uint32_t v; memcpy(&v, p, 4); return v; }
+static const uint8_t* c5_at(const C5W* w, uint32_t a, uint32_t n) {
+    if (a < w->base || a - w->base > w->size || n > w->size - (a - w->base)) return NULL;
+    return w->buf + (a - w->base);
+}
+
+static void c5_mtx_read(const uint8_t* m, SXf* x) {
+    int32_t e[4][4];
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 2; j++) {
+            uint32_t ip = c5_rd32(m + 4 * (2 * i + j)), fp = c5_rd32(m + 32 + 4 * (2 * i + j));
+            e[i][2 * j] = (int32_t)((ip & 0xFFFF0000u) | (fp >> 16));
+            e[i][2 * j + 1] = (int32_t)((ip << 16) | (fp & 0xFFFFu));
+        }
+    int id = 1;
+    for (int i = 0; i < 3; i++)
+        for (int j = 0; j < 4; j++) if (e[i][j] != (i == j ? 65536 : 0)) id = 0;
+    if (e[3][3] != 65536) id = 0;
+    for (int j = 0; j < 3; j++) if (e[3][j] & 0xFFFF) id = 0;
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++) x->f[i][j] = (float)e[i][j] * (1.0f / 65536.0f);
+    x->t[0] = x->t[1] = x->t[2] = 0;
+    if (!id) { x->cls = 2; return; }
+    for (int j = 0; j < 3; j++) x->t[j] = e[3][j] >> 16;
+    x->cls = (x->t[0] | x->t[1] | x->t[2]) ? 1 : 0;
+}
+
+static void c5_xf_cat(const SXf* c, const SXf* p, SXf* o) {
+    SXf r;
+    for (int i = 0; i < 4; i++)
+        for (int j = 0; j < 4; j++) r.f[i][j] = c->f[i][0] * p->f[0][j] + c->f[i][1] * p->f[1][j] + c->f[i][2] * p->f[2][j] + c->f[i][3] * p->f[3][j];
+    if (c->cls < 2 && p->cls < 2) {
+        for (int j = 0; j < 3; j++) r.t[j] = c->t[j] + p->t[j];
+        r.cls = (r.t[0] | r.t[1] | r.t[2]) ? 1 : 0;
+    } else { r.cls = 2; r.t[0] = r.t[1] = r.t[2] = 0; }
+    *o = r;
+}
+
+static int c5_find(uint32_t addr) { for (unsigned i = 0; i < c5_nt; i++) if (c5_tab[i].addr == addr) return (int)i; return -1; }
+static void c5_add(uint32_t addr, const SXf* x) {
+    int k = c5_find(addr);
+    if (k >= 0) { if (memcmp(c5_tab[k].x.f, x->f, sizeof x->f)) c5_tab[k].multi = 1; return; }
+    if (c5_nt >= 1024) return;
+    c5_tab[c5_nt].addr = addr; c5_tab[c5_nt].multi = 0; c5_tab[c5_nt].x = *x; c5_nt++;
+}
+static void c5_node(C5W* w, uint32_t node, const SXf* x, int depth) {
+    const uint8_t* n = c5_at(w, node, 20);
+    if (!n || depth > 32) return;
+    uint32_t disp = c5_rd32(n + 4), group = c5_rd32(n + 16), nch = 0, ch = 0;
+    const uint8_t* g = group ? c5_at(w, group, 20) : NULL;
+    if (g) { nch = c5_rd32(g + 12); ch = c5_rd32(g + 16); }
+    if (g && nch && ch && nch <= 256u) {
+        SXf cx = *x;
+        uint32_t m = c5_rd32(g);
+        const uint8_t* mp = m ? c5_at(w, m, 64) : NULL;
+        if (mp) { SXf mx; c5_mtx_read(mp, &mx); c5_xf_cat(&mx, x, &cx); }
+        for (unsigned i = 0; i < nch; i++) {
+            const uint8_t* cp = c5_at(w, ch + 4u * i, 4);
+            if (cp) c5_node(w, c5_rd32(cp), &cx, depth + 1);
+        }
+        return; /* a node with children draws its children (load_model_transforms) */
+    }
+    const uint8_t* d = disp ? c5_at(w, disp, 4) : NULL;
+    if (d && c5_rd32(d)) c5_add(c5_rd32(d), x);
+}
+
+/* the device model matrix of a list: guMtxF2L truncation of the float form (pm_gu.c:44), then the exact unpack */
+static void c5_mv(const float f[4][4], float mv[4][4]) {
+    for (int i = 0; i < 4; i++) for (int j = 0; j < 4; j++) mv[i][j] = (float)(int32_t)(f[i][j] * 65536.f) * (1.f / 65536.f);
+}
+static void c5_put(C5V* r, const int16_t* v, unsigned li, int cls) { /* world point in float, the order of nd_seam.c:350 */
+    for (int q = 0; q < 3; q++) r->w[q] = (float)v[0] * c5m[li][0][q] + (float)v[1] * c5m[li][1][q] + (float)v[2] * c5m[li][2][q] + c5m[li][3][q];
+    memcpy(r->v, v, 6); r->li = (uint16_t)li; r->cls = (uint8_t)cls;
+}
+static int c5_cmp(const void* a, const void* b) { const C5V* x = a; const C5V* y = b; int c = memcmp(x->w, y->w, 12); return c ? c : (x->li > y->li) - (x->li < y->li); }
+static int c5_cmpx(const void* a, const void* b) { const C5V* x = a; const C5V* y = b; return (x->w[0] > y->w[0]) - (x->w[0] < y->w[0]); }
+
+/* the step 5 lines of the first run (map order of nd_host_test.sh:274) */
+static const char* const exp5[6] = {
+    "seam step 5: mac_01 lists 148 notx 0 multi 0 cmis 0 pts 1802 shared 529 split 15 s00 0 s01 4 s02 0 s11 9 s12 0 s22 2 gap 440 gc2 314 gint 126 gapmax 1.474",
+    "seam step 5: mac_00 lists 174 notx 0 multi 0 cmis 0 pts 2009 shared 663 split 19 s00 0 s01 12 s02 0 s11 7 s12 0 s22 0 gap 654 gc2 471 gint 183 gapmax 1.455",
+    "seam step 5: kkj_14 lists 103 notx 0 multi 0 cmis 0 pts 1447 shared 405 split 19 s00 0 s01 16 s02 0 s11 3 s12 0 s22 0 gap 88 gc2 24 gint 64 gapmax 1.414",
+    "seam step 5: iwa_10 lists 80 notx 0 multi 0 cmis 0 pts 1349 shared 325 split 0 s00 0 s01 0 s02 0 s11 0 s12 0 s22 0 gap 52 gc2 28 gint 24 gapmax 1.414",
+    "seam step 5: kmr_20 lists 204 notx 0 multi 0 cmis 0 pts 3018 shared 667 split 14 s00 0 s01 12 s02 2 s11 0 s12 0 s22 0 gap 199 gc2 72 gint 127 gapmax 1.414",
+    "seam step 5: nok_11 lists 71 notx 0 multi 0 cmis 0 pts 871 shared 83 split 0 s00 0 s01 0 s02 0 s11 0 s12 0 s22 0 gap 7 gc2 0 gint 7 gapmax 1.000"
+};
+static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const uint8_t* buf, uint32_t size) {
+    C5W w; SXf id; C5V* rv = NULL; C5V* u = NULL;
+    size_t nrv = 0, crv = 0, nu = 0, cu = 0, g0, g1, k, i, j;
+    unsigned lists = 0, notx = 0, multi = 0, cmis = 0, pts = 0, shared = 0, split = 0, s[3][3], gap = 0, gc2 = 0, gint = 0;
+    float gapmax2 = 0.f;
+    char line[512];
+    const char* seed = getenv("SEAM_SEED");
+    int seeded = seed && !strcmp(seed, "5") && !strncmp(nm, "mac_01", 6);
+    memset(s, 0, sizeof s);
+    memset(c5m, 0, sizeof c5m);
+    w.buf = buf; w.base = (uint32_t)(uintptr_t)buf; w.size = size;
+    memset(&id, 0, sizeof id);
+    for (int q = 0; q < 4; q++) id.f[q][q] = 1.f;
+    c5_nt = 0;
+    c5_node(&w, size >= 4 ? c5_rd32(buf) : 0, &id, 0);
+    for (unsigned li = 0; li < t->nlist; li++) {
+        const NdSeamList* L = &t->list[li];
+        int ci;
+        if (!L->ok) continue;
+        ci = c5_find(L->addr);
+        if (ci < 0) { notx++; continue; }
+        if (c5_tab[ci].multi) { multi++; continue; }
+        if (c5_tab[ci].x.cls != L->cls) cmis++;
+        c5_mv(c5_tab[ci].x.f, c5m[li]);
+        if (seeded && L->cls == 0 && (li & 1u)) c5m[li][3][0] = nextafterf(0.f, 1.f);
+        {
+            static uint32_t lw[2 * (ND_DLC_MAXOPS + 1)];
+            const uint8_t* p = (const uint8_t*)(uintptr_t)L->addr;
+            NdDlcEnv env; NdObj o;
+            unsigned ops;
+            for (ops = 0; ops < ND_DLC_MAXOPS; ops++) { memcpy(&lw[2 * ops], p + 8 * ops, 8); if ((lw[2 * ops] >> 24) == 0xDF || (lw[2 * ops] >> 24) == ND_FS_END) break; }
+            memset(&env, 0, sizeof env); env.vtx = c_vtx;
+            if (L->cnt) { env.tp = t->tp + L->first; env.ntp = L->cnt; }
+            if (nd_dlc_compile(&o, lw, &env)) continue;
+            lists++;
+            for (unsigned tr = 0; tr < o.nidx / 3u; tr++)
+                for (int c = 0; c < 3; c++) {
+                    const int16_t* v = (const int16_t*)(o.vtx + 16u * (o.idx[3 * tr + c] - o.vfirst));
+                    if (nrv >= crv) {
+                        crv = crv ? 2 * crv : 65536;
+                        rv = realloc(rv, crv * sizeof *rv);
+                        if (!rv) { printf("FAIL: %.6s step 5: no memory\n", nm); return 1; }
+                    }
+                    c5_put(&rv[nrv++], v, li, L->cls);
+                }
+            nd_dlc_free(&o);
+        }
+    }
+    if (nrv) qsort(rv, nrv, sizeof *rv, c5_cmp);
+    for (g0 = 0; g0 < nrv; g0 = g1) {
+        int hit = -1;
+        unsigned ndl = 1;
+        g1 = g0 + 1;
+        while (g1 < nrv && !memcmp(rv[g1].w, rv[g0].w, 12)) g1++;
+        pts++;
+        for (k = g0 + 1; k < g1; k++) if (rv[k].li != rv[k - 1].li) ndl++;
+        if (ndl >= 2) shared++;
+        for (k = g0; k < g1 && hit < 0; k++) if (rv[k].li != rv[g0].li && memcmp(c5m[rv[k].li], c5m[rv[g0].li], sizeof c5m[0])) hit = (int)k;
+        if (hit >= 0) {
+            unsigned a = rv[g0].cls, b = rv[hit].cls;
+            if (a > b) { unsigned tmp = a; a = b; b = tmp; }
+            split++; s[a][b]++;
+        }
+        for (k = g0; k < g1; k++) {
+            if (k > g0 && rv[k].li == rv[k - 1].li) continue;
+            if (nu >= cu) {
+                cu = cu ? 2 * cu : 65536;
+                u = realloc(u, cu * sizeof *u);
+                if (!u) { printf("FAIL: %.6s step 5: no memory\n", nm); return 1; }
+            }
+            u[nu++] = rv[k];
+        }
+    }
+    if (nu) qsort(u, nu, sizeof *u, c5_cmpx);
+    for (i = 0; i < nu; i++)
+        for (j = i + 1; j < nu && u[j].w[0] - u[i].w[0] <= 1.5f; j++) {
+            float dx = u[j].w[0] - u[i].w[0], dy = u[j].w[1] - u[i].w[1], dz = u[j].w[2] - u[i].w[2];
+            float d2 = dx * dx + dy * dy + dz * dz;
+            if (u[j].li == u[i].li || !(d2 > 0.f && d2 <= 2.25f)) continue;
+            gap++;
+            if (u[i].cls == 2 || u[j].cls == 2) gc2++; else gint++;
+            if (d2 > gapmax2) gapmax2 = d2;
+        }
+    snprintf(line, sizeof line, "seam step 5: %.6s lists %u notx %u multi %u cmis %u pts %u shared %u split %u s00 %u s01 %u s02 %u s11 %u s12 %u s22 %u gap %u gc2 %u gint %u gapmax %.3f",
+        nm, lists, notx, multi, cmis, pts, shared, split, s[0][0], s[0][1], s[0][2], s[1][1], s[1][2], s[2][2], gap, gc2, gint, sqrtf(gapmax2));
+    free(rv); free(u);
+    if (idx >= 6 || strcmp(line, exp5[idx])) { printf("FAIL: %.6s step 5\n", nm); puts(line); return 1; }
+    puts(line);
+    return 0;
+}
+
 static int seam_steps34(int nshape, char** shapes, const char* toad) {
     int fail = 0;
     for (int a = 0; a < nshape; a++) {
@@ -402,6 +593,7 @@ static int seam_steps34(int nshape, char** shapes, const char* toad) {
                 h0, ht0, h0 - ht0, h1, ht1, h1 - ht1, nctri, nskip, ntseg);
             if (h1 > h0 || ht1 * 2u > ht0) { printf("FAIL: mac_01 holes on T-point edges did not drop to half\n"); fail = 1; }
         }
+        if (seam_step5(&t, nm, (unsigned)a, buf, size)) fail = 1;
         nd_seam_free(&c1);
         nd_seam_free(&c0);
         nd_seam_free(&t);
