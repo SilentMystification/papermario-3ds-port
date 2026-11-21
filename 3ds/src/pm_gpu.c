@@ -2935,6 +2935,8 @@ static void off_dump(void) {
 unsigned long long pm_c0k[6]; /* CPT0: [0] key pace ticks, [1] key FrameBegin ticks, [2] L tail us, [3] K frame us, [4] key shows, [5] begins after a key (prof only) */
 static int c0k_kf; /* CPT0: the last C3D_FrameEnd was a key show */
 extern int pm_pf_on; /* pm_phase.c */
+#define PIPE_H 32768u /* PIPE1: the L frame lists start here (words); the K tail list of the key show stays at word 0 */
+static unsigned pipe_h_skip; /* PIPE1: frame begins that found words in the buffer (no offset then) */
 static u64 s60_next;
 static void sync60_pace(void) {
     const u64 period = 4481228ull; /* SYSCLOCK_ARM11 (268111856) / 59.83 */
@@ -3014,7 +3016,10 @@ void pm_gpu_begin_wait(void) {
     want_clear = begin_clear;
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: one new offset per drawn frame */
     prev_pre = 0;
-    { u32 *b_, sz_, of_; GPUCMD_GetBuffer(&b_, &sz_, &of_); kc_base = b_; }
+    { u32 *b_, sz_, of_; GPUCMD_GetBuffer(&b_, &sz_, &of_);
+      if (!of_ && sz_ > 2u * PIPE_H) { GPUCMD_SetBuffer(b_ + PIPE_H, sz_ - PIPE_H, 0); b_ += PIPE_H; } /* PIPE1 */
+      else if (!pipe_h_skip++) pm_log_w("pipe1: %u words at the frame begin, no offset (f%u)", (unsigned)of_, pm_frame_count());
+      kc_base = b_; }
     kc_rec = pm_interp_on > 0 || fh_on(); kc_arm = 0; kc_n = kc_from = kc_skip_n = 0; kc_over = 0; kc_split0 = cmd_split_n; /* INTERPB3: the record of this frame starts with the queue after C3D_FrameBegin */
     if (prev_hold) { prev_pre = grab_tex_init(); if (++hold_n == 30u) pm_log("pauseh f%u held 30 resets %u", pm_frame_count(), hold_rst); } /* PAUSEH: no new copy */
     else if (prev_want && grab_tex_init()) { hold_n = 0; grab_queue_copy(); prev_pre = 1; kc_skip_n = ((gxCmdQueue_s*)&__C3D_Context)->numEntries; } /* PT12: first entry of the queue, before the clear */
