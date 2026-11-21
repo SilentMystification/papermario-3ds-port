@@ -8,7 +8,9 @@ static uint32_t yay0_rbe(const uint8_t* p) {
     return ((uint32_t)p[0] << 24) | ((uint32_t)p[1] << 16) | ((uint32_t)p[2] << 8) | p[3];
 }
 
+unsigned pm_yay0_n; /* STEPX2 */
 int nd_yay0_raw(const uint8_t* src, uint32_t src_len, uint8_t* dst, uint32_t dst_len) {
+    pm_yay0_n++; /* STEPX2 */
     uint32_t dec_size, link, count, src_pos, dst_pos, bits, mask;
     if (src_len < 16 || src[0] != 'Y' || src[1] != 'a' || src[2] != 'y' || src[3] != '0') return 0;
     dec_size = yay0_rbe(src + 4);

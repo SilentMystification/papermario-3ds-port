@@ -466,12 +466,18 @@ void nd_modvtx(unsigned where, unsigned vi) { /* B5 (HC4d2: typed ND_FS_MISC fie
  * (nd_wq.c) is empty. Calls made on the
  * walker side (the walker's own reads) do nothing. */
 void pm_wq_idle(void); /* nd_wq.c: CORE2C-2, return when the walker queue is empty */
+typedef struct { const void* k; unsigned n, t; } DrcEnt; DrcEnt pm_drc[8]; extern void* pm_rom_caller; /* DRAINC: drain census by caller */
 void pm_walk_drain(const char* why) {
     /* PAUSEC: pm_walk_side is the game thread's count of the walk it runs. A logic thread drain must wait for that walk too (the
      * queue entry is popped after it runs), so only the walker's own calls return here. */
     if (pm_walk_side && !pm_wq_on_logic()) return;
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the dr stage of the xfer line */
+    const unsigned dt0_ = pm_wq_on_logic() ? pm_ticks() : 0u; /* DRAINC */
     pm_wq_idle();
+    if (pm_wq_on_logic()) { const void* k_ = (why[0] == 'r' && why[1] == 'o' && why[2] == 'm' && !why[3]) ? pm_rom_caller : (const void*)why; unsigned i_ = 0; /* DRAINC */
+        while (i_ < 7u && pm_drc[i_].k && pm_drc[i_].k != k_) i_++;
+        if (i_ == 7u) k_ = 0; /* DRAINC: slot 7 takes the rest (key 0), so no slot is relabelled */
+        pm_drc[i_].k = k_; pm_drc[i_].n++; pm_drc[i_].t += pm_ticks() - dt0_; }
     if (pm_xf.on) { pm_xf.dr_n++; pm_xf.dr_t += pm_ticks() - xt0; }
 }
 void pm_gbi_fallback(void) { /* NATFB2 (user yes): the boot picture is one native fill, as the old FILL rectangle; no test triangle */

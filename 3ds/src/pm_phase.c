@@ -576,6 +576,21 @@ static void pf_pmxph_line(void) {
             nm[0], e0[0], e1[0], nm[1], e0[1], e1[1], nm[2], e0[2], e1[2]);
     }
 }
+/* STEPX: per-step census by player action state (sx_b: 0 idle, 1 walk or run, 2 spin, 3 other) */
+volatile signed char pm_act_state; extern unsigned pm_rom_lg_n, pm_rom_spr_n, pm_tex_miss_n, pm_mdl_miss_n; extern unsigned long long pm_c0i_t[3], pm_c0k[6]; void pm_wq_pf(unsigned out[2]);
+unsigned pm_fx_new_n; /* STEPX2 */ extern unsigned pm_rom_lg_b, pm_yay0_n; /* STEPX2 */ void pm_dspa_dec_read(unsigned* n, unsigned* us, unsigned* max); /* STEPX2 */
+enum { SX_G, SX_P, SX_D, SX_R, SX_S, SX_T, SX_M, SX_A, SX_B, SX_Y, SX_E, SX_F }; /* STEPX2: SX_A audio decodes, SX_B ROM bytes, SX_Y Yay0 decodes, SX_E effect instances */ /* GPU waits, pace, logic-thread waits less slot waits, ROM reads, raster reads, tex misses, model misses */
+static unsigned sx_last[SX_F]; static int sx_b, sx_mb; static unsigned long long sx_n[4], sx_ft[4], sx_sl[4], sx_v[2][SX_F], sx_vn[2], sx_max, sx_mv[SX_F];
+static void sx_step(int have, unsigned long long w) { unsigned bw[2], v[SX_F]; pm_wq_pf(bw);
+    v[SX_G] = (unsigned)(pm_c0i_t[2] + pm_c0k[1]); v[SX_P] = (unsigned)(pm_c0i_t[1] + pm_c0k[0]); v[SX_D] = bw[0] - bw[1];
+    v[SX_R] = pm_rom_lg_n; v[SX_S] = pm_rom_spr_n; v[SX_T] = pm_tex_miss_n; v[SX_M] = pm_mdl_miss_n;
+    { unsigned an_, au_, am_; pm_dspa_dec_read(&an_, &au_, &am_); v[SX_A] = an_; } v[SX_B] = pm_rom_lg_b; v[SX_Y] = pm_yay0_n; v[SX_E] = pm_fx_new_n; /* STEPX2 */
+    if (have) { const int b = sx_b, sl = w > PF_OVER_T; sx_n[b]++; sx_ft[b] += w; sx_sl[b] += (unsigned)sl; sx_vn[sl]++;
+        for (int k = 0; k < SX_F; k++) sx_v[sl][k] += v[k] - sx_last[k];
+        if (w > sx_max) { sx_max = w; sx_mb = b; for (int k = 0; k < SX_F; k++) sx_mv[k] = v[k] - sx_last[k]; } }
+    memcpy(sx_last, v, sizeof v);
+    const int a = pm_act_state; sx_b = a == 0 ? 0 : (a == 1 || a == 2) ? 1 : a == 0x1A ? 2 : 3; } /* include/enums.h:2415-2417, :2443 */
+typedef struct { const void* k; unsigned n, t; } DrcEnt; extern DrcEnt pm_drc[8]; /* DRAINC: nd_walk.c drain census */
 static void pf_report(void) {
 #ifdef PM_FPROF
     { extern void pm_fprof_window(unsigned total, unsigned steps); pm_fprof_window(pf_total, pf_w); } /* PROF4 lane only */
@@ -645,6 +660,27 @@ static void pf_report(void) {
             { unsigned pp[14]; extern void pm_gpu_pipe_take(unsigned o[14]); pm_gpu_pipe_take(pp); const unsigned f_ = pp[13] ? pp[13] : 1u; /* PIPE0 */
               pm_log_prof_line("prof f%u w%u pipe fr %u draws %u kick %u/%u ring %u/%u tex %u/%u split %u/%u off %u/%u room %u/%u", pf_total, pf_w, pp[13], pp[12] / f_,
                   pp[0] / f_, pp[6], pp[1] / f_, pp[7], pp[2] / f_, pp[8], pp[3] / f_, pp[9], pp[4] / f_, pp[10], pp[5] / f_, pp[11]); }
+            { /* STEPX: per-step census of the window (sx_b buckets: idle, walk, spin, other) */
+              unsigned long long ftb_[4];
+              for (int b_ = 0; b_ < 4; b_++) ftb_[b_] = sx_n[b_] ? sx_ft[b_] * 100ull / PF_TPM / sx_n[b_] : 0ull;
+              pm_log_prof_line("prof f%u w%u stepx n %u %u %u %u ft %u %u %u %u slow %u %u %u %u", pf_total, pf_w,
+                  (unsigned)sx_n[0], (unsigned)sx_n[1], (unsigned)sx_n[2], (unsigned)sx_n[3],
+                  (unsigned)ftb_[0], (unsigned)ftb_[1], (unsigned)ftb_[2], (unsigned)ftb_[3],
+                  (unsigned)sx_sl[0], (unsigned)sx_sl[1], (unsigned)sx_sl[2], (unsigned)sx_sl[3]);
+              for (int s_ = 0; s_ < 2; s_++) {
+                  const unsigned long long nn_ = sx_vn[s_] ? sx_vn[s_] : 1ull;
+                  pm_log_prof_line("prof f%u w%u stepx %s n %u g %u p %u d %u r %u s %u t %u m %u a %u b %u y %u e %u", pf_total, pf_w, s_ ? "slow" : "norm", (unsigned)sx_vn[s_],
+                      (unsigned)(sx_v[s_][SX_G] * 100ull / PF_TPM / nn_), (unsigned)(sx_v[s_][SX_P] * 100ull / PF_TPM / nn_), (unsigned)(sx_v[s_][SX_D] * 100ull / PF_TPM / nn_),
+                      (unsigned)(sx_v[s_][SX_R] * 100ull / nn_), (unsigned)(sx_v[s_][SX_S] * 100ull / nn_), (unsigned)(sx_v[s_][SX_T] * 100ull / nn_), (unsigned)(sx_v[s_][SX_M] * 100ull / nn_),
+                      (unsigned)(sx_v[s_][SX_A] * 100ull / nn_), (unsigned)(sx_v[s_][SX_B] / nn_), (unsigned)(sx_v[s_][SX_Y] * 100ull / nn_), (unsigned)(sx_v[s_][SX_E] * 100ull / nn_)); /* STEPX2 */
+              }
+              pm_log_prof_line("prof f%u w%u stepx max ft %u b %d g %u p %u d %u r %u s %u t %u m %u a %u b %u y %u e %u", pf_total, pf_w,
+                  (unsigned)(sx_max * 100ull / PF_TPM), sx_mb,
+                  (unsigned)(sx_mv[SX_G] * 100ull / PF_TPM), (unsigned)(sx_mv[SX_P] * 100ull / PF_TPM), (unsigned)(sx_mv[SX_D] * 100ull / PF_TPM),
+                  (unsigned)sx_mv[SX_R], (unsigned)sx_mv[SX_S], (unsigned)sx_mv[SX_T], (unsigned)sx_mv[SX_M],
+                  (unsigned)sx_mv[SX_A], (unsigned)sx_mv[SX_B], (unsigned)sx_mv[SX_Y], (unsigned)sx_mv[SX_E]); /* STEPX2 */
+              memset(sx_n, 0, sizeof sx_n); memset(sx_ft, 0, sizeof sx_ft); memset(sx_sl, 0, sizeof sx_sl); memset(sx_v, 0, sizeof sx_v);
+              memset(sx_vn, 0, sizeof sx_vn); sx_max = 0; memset(sx_mv, 0, sizeof sx_mv); } /* STEPX */
             pm_log_prof_line("prof f%u w%u c1g ent %u.%02u mdl %u.%02u ply %u.%02u npc %u.%02u wrk %u.%02u fx %u.%02u task %u.%02u thud %u.%02u ui %u.%02u", pf_total, pf_w,
                 CS(cm[NDT_GENT]), CS(cm[NDT_GMDL]), CS(cm[NDT_GPLY]), CS(cm[NDT_GNPC]), CS(cm[NDT_GWRK]), CS(cm[NDT_GFX]), CS(cm[NDT_GTASK]),
                 CS(cm[NDT_GTHUD]), CS(cm[NDT_GUI])); /* PROF3 */
@@ -728,8 +764,24 @@ static void pf_report(void) {
             unsigned dr = pf_cnt100(pm_wq_dr - lg0_q[0], dn), drw = pf_cnt100(pm_wq_drw - lg0_q[1], dn), wqf = pf_cnt100(pm_wq_wqf - lg0_q[2], dn);
             pm_log_prof_line("prof f%u w%u core2 wait bw %u.%02u fw %u.%02u aj %u.%02u au %u.%02u mx %u.%02u", pf_total, pf_w,
                 bw / 100u, bw % 100u, fw / 100u, fw % 100u, aj / 100u, aj % 100u, au / 100u, au % 100u, mx / 100u, mx % 100u);
+            { /* DRAINC: the 4 logic-thread drain callers with the most wait ms this window (key, count, ms x100); then clear the table */
+                DrcEnt d_[8]; unsigned q_, r_, b_; const void* pk_[4] = { 0, 0, 0, 0 }; unsigned pn_[4] = { 0, 0, 0, 0 }, pt_[4] = { 0, 0, 0, 0 };
+                for (q_ = 0; q_ < 8u; q_++) { d_[q_] = pm_drc[q_]; pm_drc[q_].k = 0; pm_drc[q_].n = 0; pm_drc[q_].t = 0; }
+                for (r_ = 0; r_ < 4u; r_++) {
+                    b_ = 8u;
+                    for (q_ = 0; q_ < 8u; q_++) if (d_[q_].k && (b_ == 8u || d_[q_].t > d_[b_].t)) b_ = q_;
+                    if (b_ == 8u) break;
+                    pk_[r_] = d_[b_].k; pn_[r_] = d_[b_].n; pt_[r_] = d_[b_].t; d_[b_].k = 0;
+                }
+                pm_log_prof_line("prof f%u w%u drainc %08x %u %u %08x %u %u %08x %u %u %08x %u %u", pf_total, pf_w,
+                    (unsigned)(size_t)pk_[0], pn_[0], (unsigned)((unsigned long long)pt_[0] * 100ull / PF_TPM),
+                    (unsigned)(size_t)pk_[1], pn_[1], (unsigned)((unsigned long long)pt_[1] * 100ull / PF_TPM),
+                    (unsigned)(size_t)pk_[2], pn_[2], (unsigned)((unsigned long long)pt_[2] * 100ull / PF_TPM),
+                    (unsigned)(size_t)pk_[3], pn_[3], (unsigned)((unsigned long long)pt_[3] * 100ull / PF_TPM));
+            }
             pm_log_prof_line("prof f%u w%u core2 drain dr %u.%02u drw %u.%02u wqf %u.%02u", pf_total, pf_w,
                 dr / 100u, dr % 100u, drw / 100u, drw % 100u, wqf / 100u, wqf % 100u);
+            { extern unsigned pm_slot_race; pm_log_prof_line("prof f%u w%u slotl race %u", pf_total, pf_w, pm_slot_race); } /* SLOTL: since boot, must stay 0 */
             { unsigned c[8]; pf_c1n_now(c); pm_log_prof_line("prof f%u w%u c1n n %u snb %u snn %u snm %u lsf %u lsb %u lse %u altu %u altr %u", pf_total, pf_w, dn, c[0] - lg0_c[0], c[1] - lg0_c[1], c[2] - lg0_c[2], c[3] - lg0_c[3], c[4] - lg0_c[4], c[5] - lg0_c[5], c[6] - lg0_c[6], c[7] - lg0_c[7]); } /* NAT8A */ /* window totals over n logic steps */ { const unsigned d1_ = dn ? dn : 1u, pw1_ = pf_w ? pf_w : 1u; unsigned g_[4]; unsigned long long s0_ = (c1s_t[0] - c1s_m[0]) * 100ull / PF_TPM / d1_, s1_ = (c1s_t[1] - c1s_m[1]) * 100ull / PF_TPM / d1_; pm_gpu_gw_now(g_); pm_log_prof_line("prof f%u w%u c1s logic %u.%02u dl %u.%02u", pf_total, pf_w, (unsigned)(s0_ / 100u), (unsigned)(s0_ % 100u), (unsigned)(s1_ / 100u), (unsigned)(s1_ % 100u)); pm_log_prof_line("prof f%u w%u c1a m %u e %u c %u o %u c0 %u m %u e %u gpu d %u w %u bd %u bw %u", pf_total, pf_w, (nd_altw[0] - aw_m[0]) / d1_, (nd_altw[1] - aw_m[1]) / d1_, (nd_altw[2] - aw_m[2]) / d1_, (nd_altw[3] - aw_m[3]) / d1_, (nd_altw[4] - aw_m[4]) / pw1_, (nd_altw[5] - aw_m[5]) / pw1_, (nd_altw[6] - aw_m[6]) / pw1_, (g_[0] - gw_m[0]) / pw1_, (g_[1] - gw_m[1]) / pw1_, (g_[2] - gw_m[2]) / pw1_, (g_[3] - gw_m[3]) / pw1_); } /* PERF0 */
         }
     }
@@ -776,6 +828,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
         if (pf_prev_s) { pf_sw_fts += w; pf_sw_n++; }
         else { pf_wsum += w; pf_wn++; if (w > pf_wmax) pf_wmax = w; if (w > PF_OVER_T) pf_o34++; }
     }
+    sx_step(pf_last && !pf_prev_s, pf_last ? t0 - pf_last : 0ull); /* STEPX */
     pf_last = t0;
     pf_prev_s = cur_s;
     unsigned long long wk = t1 - t0;

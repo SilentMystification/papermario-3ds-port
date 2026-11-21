@@ -1415,6 +1415,7 @@ void player_update_sprite(void) {
         timescale = 0.0f;
     }
     playerStatus->animNotifyValue = spr_update_player_sprite(PLAYER_SPRITE_MAIN, playerStatus->trueAnimation, timescale);
+    { extern volatile signed char pm_act_state; pm_act_state = playerStatus->actionState; } /* STEPX */
     playerStatus->flags |= PS_FLAG_SPRITE_REDRAW;
 }
 

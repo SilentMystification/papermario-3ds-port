@@ -488,8 +488,13 @@ static void tk_patch_apply(u32 rom_addr, u8* buf, u32 size) {
     }
 }
 const void* pm_rr_ptr[18]; unsigned pm_rr_stamp[18], pm_rr_race; /* ROMDR race census: free-entry raster reads, see pm_tex.c load_impl */
+unsigned pm_rom_lg_n; /* STEPX */
+unsigned pm_rom_lg_b; /* STEPX2 */
+unsigned pm_rom_spr_n; /* STEPX */
+void* pm_rom_caller; /* DRAINC: the caller of the last nuPiReadRom (the drain census key) */
 static void rom_read(u32 rom_addr, void* buf, u32 size, int drain) { /* ROMDR: drain 0 only for a target the walker cannot read now */
     static u32 table_bytes;
+    if (!pm_on_audio()) { pm_rom_lg_n++; pm_rom_lg_b += size; } /* STEPX, STEPX2: every non-audio read, drain or not */
     if (drain && !pm_on_audio()) { /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
         unsigned dt0 = pm_xf.on ? pm_ticks() : 0u;
         pm_walk_drain("rom");
@@ -540,7 +545,7 @@ static void rom_read(u32 rom_addr, void* buf, u32 size, int drain) { /* ROMDR: d
         }
     }
 }
-void nuPiReadRom(u32 rom_addr, void* buf, u32 size) { rom_read(rom_addr, buf, size, 1); }
+void nuPiReadRom(u32 rom_addr, void* buf, u32 size) { pm_rom_caller = __builtin_return_address(0); /* DRAINC */ rom_read(rom_addr, buf, size, 1); }
 void nuPiReadRomOwn(u32 rom_addr, void* buf, u32 size) { rom_read(rom_addr, buf, size, 0); } /* ROMDR: a free player raster cache entry (101b90_len_8f0.c) */
 
 s32 osPiStartDma(OSIoMesg* mb, s32 priority, s32 direction, u32 devAddr, void* vAddr, u32 nbytes, OSMesgQueue* mq) {

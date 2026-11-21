@@ -359,6 +359,7 @@ IMG_PTR spr_get_player_raster(s32 rasterIndex, s32 playerSpriteID) {
     // upper three nibbles give size / 16, lower 5 give offset
     playerRasterInfo = PlayerRasterLoadDesc[PlayerRasterLoadDescBeginSpriteIndex[playerSpriteID] + rasterIndex];
     { extern const void* pm_rr_ptr[18]; extern unsigned pm_rr_stamp[18], pm_frame_n; pm_rr_ptr[idx] = cacheEntry->raster; pm_rr_stamp[idx] = pm_frame_n; }
+    { extern unsigned pm_rom_spr_n; pm_rom_spr_n++; } /* STEPX */
     { extern void nuPiReadRomOwn(u32 rom_addr, void* buf, u32 size); nuPiReadRomOwn(SpriteDataHeader[0] + (playerRasterInfo & 0xFFFFF), cacheEntry->raster, (playerRasterInfo >> 0x10) & 0xFFF0); } /* ROMDR */
     return cacheEntry->raster;
 }
