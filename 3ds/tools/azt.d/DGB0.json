@@ -1,0 +1,20 @@
+{"scenarios": [
+ {"name": "dgb01_broken_prof", "status": "unverified",
+  "reason": "DGB0 census (plan_dgb01.md): dgb_01 with the broken bridges. Pair with dgb01_whole_prof. Counts only. The console decides the ms.",
+  "subject": "dgb_01 Great Hall, entry 1, Mario placed at pos 80 0 144, story -28 (STORY_CH3_TUBBA_SMASHED_THE_BRIDGES: g240 shown, g340 hidden), fps60, prof=30, det. Prof window 2.",
+  "proves": "DGB0: model records, PICA draws, triangles, legacy records, model and texture misses per step, key walks of the broken state.",
+  "debug": "warp=dgb_01:1 story=-28 pos=80:0:144 fps60 prof=30 det", "extra": ["-Turbo"],
+  "until": "prof f([6-9]\\d\\d|[1-9]\\d{3,}) w\\d+ at \\w+ 15:1 ", "cap": 45, "deadline": 40,
+  "first_marker": "prof=1 log=off", "expects": "none", "needs_picture": false,
+  "expected_events": [{"name": "prof on", "regex": "prof=1 log=off"},
+                      {"name": "scene line", "regex": "prof f\\d+ w\\d+ at dgb_01 15:1 m\\d+ sp-28 "}]},
+ {"name": "dgb01_whole_prof", "status": "unverified",
+  "reason": "DGB0 census (plan_dgb01.md): dgb_01 with the bridges intact (story -16, STORY_CH3_DEFEATED_TUBBA_BLUBBA). Pair with dgb01_broken_prof. Counts only. The console decides the ms.",
+  "subject": "dgb_01 Great Hall, entry 1, Mario placed at pos 80 0 144, story -16 (STORY_CH3_DEFEATED_TUBBA_BLUBBA, bridges intact: g340 shown), fps60, prof=30, det. Prof window 2.",
+  "proves": "DGB0: model records, PICA draws, triangles, legacy records, model and texture misses per step, key walks of the intact state.",
+  "debug": "warp=dgb_01:1 story=-16 pos=80:0:144 fps60 prof=30 det", "extra": ["-Turbo"],
+  "until": "prof f([6-9]\\d\\d|[1-9]\\d{3,}) w\\d+ at \\w+ 15:1 ", "cap": 45, "deadline": 40,
+  "first_marker": "prof=1 log=off", "expects": "none", "needs_picture": false,
+  "expected_events": [{"name": "prof on", "regex": "prof=1 log=off"},
+                      {"name": "scene line", "regex": "prof f\\d+ w\\d+ at dgb_01 15:1 m\\d+ sp-16 "}]}
+]}
