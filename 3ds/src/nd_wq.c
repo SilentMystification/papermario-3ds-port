@@ -34,6 +34,7 @@ typedef struct { void (*fn)(void*); unsigned frame; unsigned long long arg[WQ_AR
 static WqEnt wq_ring[WQ_N];
 static volatile unsigned wq_head, wq_tail;
 static volatile unsigned wq_fr_push, wq_fr_walked; /* frames pushed and walked */
+static volatile unsigned wq_l_push, wq_l_walked; /* SLOTL: L and plain frames only: the walker reads rtab and the display context only in these */
 static volatile int wq_blocked; /* the logic thread waits for the walker: 0 no, WQB_ALL the queue is run whole, WQB_WALKED it is run up to the last frame */
 enum { WQB_ALL = 1, WQB_WALKED = 2 };
 static Thread wq_lg; /* the logic thread (NULL: serial only) */
@@ -79,7 +80,7 @@ static void wq_pump(void) { while (pm_wq_pump_one()) {} }
 void pm_wq_pump_blocked(void) {
     int b = wq_blocked;
     if (b == WQB_ALL) wq_pump();
-    else if (b == WQB_WALKED) { while (wq_fr_walked != wq_fr_push && pm_wq_pump_one()) {} } /* a whole pump would run the begin entry of the next step: one more vblank */
+    else if (b == WQB_WALKED) { while (wq_l_walked != wq_l_push && pm_wq_pump_one()) {} } /* a whole pump would run the begin entry of the next step: one more vblank */
 }
 
 /* C1WAIT: the logic thread's wait for the walker, in ticks of the prof window (pm_phase.c reads it per logic step). [0] every
@@ -90,6 +91,7 @@ static unsigned wq_bw[2];
  * queue non-empty (they wait), pm_wq_wqf: logic thread waits for a full queue (c_space). Modular 32 bit, a window reads differences. */
 unsigned pm_wq_dr, pm_wq_drw, pm_wq_wqf;
 static int c_walked(void* c);
+static int c_lwalked(void* c);
 /* Logic thread: wait until cond(). The walker runs the queue when it sees wq_blocked (flag, barrier, test on both sides). */
 static void wq_block(int (*cond)(void*), void* c, int kind) {
     int pf = pm_pf_on;
@@ -102,13 +104,14 @@ static void wq_block(int (*cond)(void*), void* c, int kind) {
     if (pf) {
         unsigned d = (unsigned)svcGetSystemTick() - t0;
         wq_bw[0] += d;
-        if (cond == c_walked) wq_bw[1] += d;
+        if (cond == c_walked || cond == c_lwalked) wq_bw[1] += d; /* SLOTL: fw keeps its meaning */
     }
 }
 void pm_wq_pf(unsigned out[2]) { out[0] = wq_bw[0]; out[1] = wq_bw[1]; }
 static int c_space(void* c) { (void)c; return wq_tail - wq_head < WQ_N; }
 static int c_empty(void* c) { (void)c; return wq_head == wq_tail; }
 static int c_walked(void* c) { (void)c; return wq_fr_walked == wq_fr_push; }
+static int c_lwalked(void* c) { (void)c; return wq_l_walked == wq_l_push; } /* SLOTL */
 static int c_done(void* c) { return *(volatile int*)c != 0; }
 
 static __attribute__((cold, noinline)) void wq_too_big(unsigned size) {
@@ -146,15 +149,15 @@ void pm_wq_post(void (*fn)(void*), void* arg, unsigned size) {
     wq_main_direct(fn, arg);
 }
 
-static void wq_frame_run(void* a) { pm_frame_walk((const PmFrame*)a); __sync_synchronize(); wq_fr_walked++; }
+static void wq_frame_run(void* a) { pm_frame_walk((const PmFrame*)a); __sync_synchronize(); wq_fr_walked++; wq_l_walked++; }
 void pm_wq_frame(const PmFrame* f) {
     if (pm_wq_on_logic()) {
-        if (wq_fr_walked != wq_fr_push) wq_block(c_walked, NULL, WQB_ALL); /* depth 1: the frame before is walked first */
-        wq_fr_push++;
+        if (wq_l_walked != wq_l_push) wq_block(c_lwalked, NULL, WQB_WALKED); /* depth 1, SLOTL: the frame before is walked; its key frame is a copy */
+        wq_fr_push++; wq_l_push++;
         wq_put(wq_frame_run, f, sizeof *f);
         return;
     }
-    wq_fr_push++;
+    wq_fr_push++; wq_l_push++;
     wq_main_direct(wq_frame_run, (void*)f);
 }
 
@@ -162,7 +165,7 @@ void pm_wq_frame(const PmFrame* f) {
  * (pm_interp_lerp: rtab and repl, read by the walker through pm_interp_find) it waits until both are walked; the wait runs the queue
  * up to them only (WQB_WALKED), not the begin entry of step N+1 behind them. A key frame is a frame in the count (wq_fr_push). */
 void pm_wq_frame_slot(void) {
-    if (pm_wq_on_logic() && wq_fr_walked != wq_fr_push) wq_block(c_walked, NULL, WQB_WALKED);
+    if (pm_wq_on_logic() && wq_l_walked != wq_l_push) wq_block(c_lwalked, NULL, WQB_WALKED);
 }
 static void wq_key_run(void* a) { pm_key_show((const PmKey*)a); __sync_synchronize(); wq_fr_walked++; }
 void pm_wq_key(const PmKey* k) {

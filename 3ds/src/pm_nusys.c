@@ -121,6 +121,7 @@ static __attribute__((cold, noinline)) void wide_walk_note(int built) {
 int pm_icmp_kind;
 int pm_tw_on; /* INTERPB1: 1 during the whole walk of an L frame (background and main task): twin matrices are made (nd_mtx_set.c) */
 void nd_twin_frame_begin(int kind);
+volatile int pm_lerp_busy; unsigned pm_slot_race; /* SLOTL: a lerp that overlaps an L walk (declared before its first use in pm_frame_walk) */
 void pm_frame_walk(const PmFrame* f) {
     pm_icmp_kind = (f->flags & PMF_REPL) ? 1 : 0; /* INTERP2M */
     pm_tw_on = pm_icmp_kind; /* INTERPB1 */
@@ -131,7 +132,9 @@ void pm_frame_walk(const PmFrame* f) {
     if (f->bg.ptr) stream_task((const uint32_t*)f->bg.ptr);
     if (f->main.ptr) {
         pm_interp_repl = (f->flags & PMF_REPL) != 0;
+        if (pm_lerp_busy) pm_slot_race++;
         stream_task((const uint32_t*)f->main.ptr);
+        if (pm_lerp_busy) pm_slot_race++;
         pm_interp_repl = 0;
     }
     pm_iw_us[(f->flags & PMF_REPL) ? 0 : 2] = (unsigned)(iw_tk / 268u); /* INTERP1 */
@@ -166,7 +169,7 @@ void nuGfxTaskStart(u32 ucode, u32 flag) {
         fr.main.ptr = (void*)st; fr.main.n = 0u;
         if (pm_interp_on > 0) {
             if (pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
-            else { pm_wq_frame_slot(); pm_interp_lerp(0.5f); fr.flags |= PMF_REPL; } /* the walker reads rtab: the frames before are walked first */
+            else { pm_wq_frame_slot(); pm_lerp_busy = 1; __sync_synchronize(); pm_interp_lerp(0.5f); __sync_synchronize(); pm_lerp_busy = 0; fr.flags |= PMF_REPL; } /* the walker reads rtab: the frames before are walked first */
         }
         fr_push();
     }
