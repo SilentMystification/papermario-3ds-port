@@ -230,6 +230,8 @@ unsigned pm_tex_slot_gen(int i) { (void)i; return 0; }\nint pm_tex_slot_unit(int
   gcc -m32 -Wall -Wextra -Werror -I 3ds/include -o /tmp/idxt 3ds/tools/pm_tex_idx_test.c
   stage L44
   /tmp/idxt
+  gcc -m32 -Wall -Wextra -Werror -I 3ds/src -o /tmp/tkd 3ds/tools/pm_tex_key_test.c
+  /tmp/tkd
   stage L45
   gcc -m32 -Wall -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -o /tmp/ndcm 3ds/tools/nd_cmd_test.c 3ds/tools/nd_op.c 3ds/src/nd_tmpl.c /tmp/ndcomb.o -lm
   stage L46

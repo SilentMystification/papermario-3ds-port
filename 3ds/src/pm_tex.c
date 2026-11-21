@@ -32,6 +32,8 @@ void pm_tex_unit_drop(const C3D_Tex* t) { /* before a C3D_Tex is zeroed or delet
 enum { FMT_RGBA, FMT_YUV, FMT_CI, FMT_IA, FMT_I };
 enum { SIZ_4, SIZ_8, SIZ_16, SIZ_32 };
 #include "pm_tex_tx1.h" /* TX1 */
+#include "pm_tex_key.h" /* DEC1 */
+static unsigned tk_said; /* DEC1: marker once */
 static unsigned tx1_miss, tx1_kb, tx1_ticks; /* per 300 frames, see tc_report */
 
 /* One frame can draw more distinct textures than the N64 TMEM suggests: a Bowser silhouette (many
@@ -1631,6 +1633,9 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
         }
         staged = (const u8*)upload;
     }
+    if (gf == GPU_RGBA5551 && !lut && !src_native && staged == scratch + TEX_SCRATCH_PLANE && (fmt != FMT_CI || tk_pal_a0((const u8*)tlut, tlut_n))) { /* DEC1 */
+        unsigned tkn = tk_fill5551((uint16_t*)(void*)(scratch + TEX_SCRATCH_PLANE), pw, ph, (uint32_t*)(void*)scratch); /* plane 0 is free here */
+        if (tkn && !tk_said++) pm_log_evt("tkd f%u n %u", pm_frame_count(), tkn); }
     if (s->vram_stage) { stage_probe(s); pf_add(s->vram_stage, 0, 0); }
     s->vram_stage = (u8*)pm_linear_alloc(gpu_size);
     sbit_set(att_bits, (int)(s - slots));
