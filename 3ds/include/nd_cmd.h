@@ -36,6 +36,8 @@ void nd_rec_ent(const void* rec);                   /* D3: an entity record with
 /* D4b-1, D5: the texture rectangle (the nd_gbi.h redirect records it). */
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd);
 void nd_rec_nr(uint32_t k, uint32_t v); /* NSTREAM: one native record (nd_nr.h) into the open run (a new run after any other command) */
+void nd_rec_q(uint32_t k, uint32_t v); /* L1Q1 */
+void nd_uq_sync(void); /* L1Q1: run the queued setter units now */
 const uint32_t* nd_rec_pos(void);                   /* D4b-2: the stream write position (no cut): moves when any command is recorded */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */

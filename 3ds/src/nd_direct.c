@@ -250,15 +250,15 @@ void nd_fill_run(const uint32_t* u) {
 }
 
 /* NDR2A, core 1: one direct record with its pso snap (nd_snap_pso), then the record (nd_rec_napi_s: the runner takes the snap). */
-void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_napi_s(run, rec, units); }
+void nd_dir_rec(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim) { nd_uq_sync(); /* L1Q1 */ nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_napi_s(run, rec, units); }
 /* NAT5T, core 1: as nd_dir_rec_alt, the units copied raw (nd_rec_alt_raw). */
-void nd_dir_rec_raw(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_alt_raw(run, rec, units, 1, au, an); }
+void nd_dir_rec_raw(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an) { nd_uq_sync(); /* L1Q1 */ nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_alt_raw(run, rec, units, 1, au, an); }
 /* NAT5R, core 1: as nd_dir_rec, with the fallback units au as an alt range of the record (nd_rec_alt). */
-void nd_dir_rec_alt(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an) { nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_alt(run, rec, units, 1, au, an, 1); } /* NAT5R */
+void nd_dir_rec_alt(NdNapiRun run, const void* rec, unsigned units, const NdPsoN64* pd, uint32_t prim, const uint32_t* au, unsigned an) { nd_uq_sync(); /* L1Q1 */ nd_snap_pso(pd, prim, nd_ds.w.envc); nd_rec_alt(run, rec, units, 1, au, an, 1); } /* NAT5R */
 /* NDR2A, core 1: a fill record: its pso snap and record, then the feed of nd_ds. */
 void nd_fill_rec(const NdFillRec* f) { NdPsoN64 d; uint32_t au[8]; uint32_t* q = au; fill_pso(f->kind & 3u, &d); nd_fill_emit(f, f->kind & 3u, &q); nd_dir_rec_alt(nd_fill_run, f, 3u, &d, f->rgba, au, (unsigned)(q - au) / 2u); } /* NAT5R */
 /* NDR2A, core 1: nd_direct_prim at record time (game files do not include nd_ds.h). */
-uint32_t nd_dir_prim1(void) { return nd_ds.w.prim; }
+uint32_t nd_dir_prim1(void) { nd_uq_sync(); return nd_ds.w.prim; } /* L1Q1 */
 /* NDR2A, core 0: a fallback walk never takes the pso snap (its tiles predate the record feed). */
 void nd_dir_drop(void) { nd_snap_arm = 0; nd_snap_live = 0; }
 
@@ -317,7 +317,7 @@ void nd_trect_run(const uint32_t* u) {
 }
 
 /* NDR2B, core 1: one texture rectangle: its pso snap and record (nd_dir_rec), then the feed of nd_ds. */
-void nd_trect_rec(const NdTRect* r) { NdPsoN64 pd; uint32_t au[32]; uint32_t* q = au; trect_pso(r, &pd); trect_emit(r, &q); /* NAT5R */
+void nd_trect_rec(const NdTRect* r) { nd_uq_sync(); /* L1Q1 */ NdPsoN64 pd; uint32_t au[32]; uint32_t* q = au; trect_pso(r, &pd); trect_emit(r, &q); /* NAT5R */
     nd_dir_rec_alt(nd_trect_run, r, sizeof *r / 8u, &pd, (r->pad & 1u) ? nd_ds.w.prim : r->prim, au, (unsigned)(q - au) / 2u); }
 
 /* S5CHUDA (NATIVEAPI E1): the geometry of one transformed HUD quad on the bound state. nd_dq_on is set for the length of the quad and cleared by

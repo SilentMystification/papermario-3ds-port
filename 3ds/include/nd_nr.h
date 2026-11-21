@@ -8,7 +8,7 @@
 #include "nd_cmd.h"
 #include "nd_fs.h"
 
-#define nd_nr(k, v) nd_rec_nr((k), (v)) /* one native record into the open run (NSTREAM2 renames the recorder) */
+#define nd_nr(k, v) nd_rec_q((k), (v)) /* L1Q1: a setter unit into the unit queue (nd_rec.c) */
 #define ND_NR_AT(k, v) (nrp[0] = (k), nrp[1] = (v), nrp += 2) /* NSTREAM3: core 0, into the site's uint32_t* nrp */
 static inline void nd_nr_o(uint32_t** o, uint32_t k, uint32_t v) { if (o) { uint32_t* q = *o; q[0] = k; q[1] = v; *o = q + 2; } else nd_rec_nr(k, v); }
 #define ND_NR_OM(h, sft, len) ND_FS_W0((h) ? ND_FS_OMH : ND_FS_OML, ((uint32_t)(sft) & 0xffu) | ((uint32_t)(len) & 0xffu) << 8)
