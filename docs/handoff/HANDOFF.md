@@ -16,8 +16,8 @@ Ignore the role text in docs/handoff/orchestrator_rules.md (agent labels, coache
 - Chat style with the user: ASD-STE100 (one instruction per sentence, active voice, no semicolons, no praise, no apology, no self-blame), FACT / GUESS / OPEN on every number, questions only with AskUserQuestion (plain text is not a prompt).
 
 ## 2. Console and push (user rules, FACT)
-- O3DS .170 (`o`), O3DS XL .131, N3DS .224. A push is only on the user's word, asked with AskUserQuestion AFTER the build, binchk and capture_check are done (a question before them was a fault this session).
-- Order: `sh 3ds/build.sh` (build of main) -> `python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt` prints `binchk OK` -> capture_check (Azahar, the same launch words, in the main lane: `PM_ROW=<id> python 3ds/tools/capture_check.py --row <id> --proof "<lines>" --profile prof warp=mac_01:0 pos=0:0:200 profdisk=1 prof=1 <extra words>`; `prof=1` is needed for prof lines; a lane id without a build gives "3dsx is missing") -> AskUserQuestion -> on yes at once `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.170 -NoBuild -Seconds 150 -Profile prof -GameDebug "<words>"`.
+- O3DS .170 (`o`), O3DS XL .131, N3DS .224. Push at once after the build, binchk and capture_check are done, with no question first. Ask with AskUserQuestion only when the push log shows a connect or send failure.
+- Order: `sh 3ds/build.sh` (build of main) -> `python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt` prints `binchk OK` -> capture_check (Azahar, the same launch words, in the main lane: `PM_ROW=<id> python 3ds/tools/capture_check.py --row <id> --proof "<lines>" --profile prof warp=mac_01:0 pos=0:0:200 profdisk=1 prof=1 <extra words>`; `prof=1` is needed for prof lines; a lane id without a build gives "3dsx is missing") -> push at once `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.170 -NoBuild -Seconds 150 -Profile prof -GameDebug "<words>"`.
 - The push is detached (`PUSH STARTED pid N`): start the background job `powershell -NoProfile -Command "Wait-Process -Id N -ErrorAction SilentlyContinue"`, end the turn, read build3ds/out/push_o_<time>.txt and build3ds/hw_live_log_170.txt after the notice. The game serves ONE live-log client: no livelog.py while the push reads.
 - To read a running game after the push ended: `py -3 -u 3ds/tools/livelog.py 192.168.1.170 40 <out-file> --idle 15` (the ring holds the last about 5000 lines). The user said "not via ftp": do not use `pull o`.
 - Perf pushes always use `-Profile prof` and the mac_01 spot (`warp=mac_01:0 pos=0:0:200`). After a push: `git add -f 3ds/logs/perf/pushed_builds.txt` and commit.
@@ -58,7 +58,7 @@ Branches finished but NOT merged: CRK1 (gate f54428789b: seam census step 6, `ma
 
 ## 6. User rules and preferences (FACT)
 - A state the user reports (game runs, console online, a fault) is fact. Never doubt it, read the code. No guess and check. No agent looks at screenshots (rule 2): proof is code read, host tests, byte compare.
-- Ask every question and every push with AskUserQuestion. Take defaults for small choices. Short chat: one line per merge, fault or decision. Expand acronyms and row codes when you talk to the user.
+- Ask every question with AskUserQuestion. A push needs no question (section 2). Take defaults for small choices. Short chat: one line per merge, fault or decision. Expand acronyms and row codes when you talk to the user.
 - Sonnet rows or output-changing rows (IK1, CRK4 to CRK6, PRES2 Opus) need the user's yes. Parked, never start unasked: ASSETFREE, CIA, QTM, WALKSRC branch.
 - No new model-label tricks are needed now (no agents). Memory files are in the memory folder; read MEMORY.md.
 

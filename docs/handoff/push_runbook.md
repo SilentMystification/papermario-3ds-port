@@ -9,7 +9,7 @@
 ## Order (the user's rule)
 1. Merge and build main (`sh 3ds/build.sh` as ONE background job, run directly, not in a subshell with `&`; wait for its notice). The 3dsx time and `build3ds/out/main_build*.done` show it.
 2. Gate: `python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt` prints `binchk OK`. Key check: `PM_LANE= PM_KEY_ONLY=1 sh 3ds/build.sh` equals `build3ds/build_key.txt`.
-3. Ask the user with AskUserQuestion: `Build <commit> ready. Is the netloader open on <console>?` (options: yes, push now / not yet). Plain text is not a prompt for the user. Never ask before steps 1 and 2 are done.
+3. Push at once (step 4), with no question first. Only when the push log shows a connect or send failure, ask the user with AskUserQuestion: `Build <commit> ready. Is the netloader open on <console>?` (options: yes, push now / not yet), and push again on yes. Plain text is not a prompt for the user.
 4. On the answer yes run the command below at once. Nothing else first. Never push without that word: the auto-mode classifier denies it.
 
 ## Commands (PowerShell, from the repo root, run in the background)
