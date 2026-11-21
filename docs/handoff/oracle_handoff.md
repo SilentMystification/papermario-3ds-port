@@ -14,7 +14,7 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 1. MSNAP2 and PROF3 merged (MSNAP2: snn 19572 to 3957, spot_mac01 f201). Capture 1 (plan_60fps.md section 5 words, prof mode, no phase=on) reads c1g.
    The first capture 1 ran with phase=on: s0, all timers 0.00 (live_cap1_170.txt). The push of the retry failed (cap1b is the same run).
 2b. GAMEDRAW (oracle NATIVE18): plan_gamedraw.md (ranked rows, section 3). GD1, GD0, GD0B merged. Pages: ws_GDW (core 0 wait census), ws_DO3F (uni_native with the key patch), ws_GD7 (status bar draw memo, Sonnet, WAIT user and NATIVE17). DO3 is inert with fps60 (nd_kp_on, pm_gpu.c:198). wk holds waits (pm_logic.c:166, :173; pm_gpu.c:2989-2991).
-2c. CRITPATH (oracle NATIVE19): plan_critpath.md. ft = core 0 work 25.2 (pmu cyc) + GPU waits about 15; core 1 off the chain (fw 9.88). CPT0, KICK3 merged. PIPE design: plan_pipe.md (rows PIPE0 to PIPE4), pages ws_PIPE0 (fence census), ws_PIPE1 (L lists at word PIPE_H). PIPE0, PIPE1 merged; idle capture 3: gx 1.44, pace 6.09: PIPE3 waits for walking data. WALK: plan_walk.md (ROM read drain of player rasters, pm_os.c:492-495), pages ws_STEPX, ws_ROMDR (merge after the STEPX capture).
+2c. CRITPATH (oracle NATIVE19): plan_critpath.md. ft = core 0 work 25.2 (pmu cyc) + GPU waits about 15; core 1 off the chain (fw 9.88). CPT0, KICK3 merged. PIPE design: plan_pipe.md (rows PIPE0 to PIPE4), pages ws_PIPE0 (fence census), ws_PIPE1 (L lists at word PIPE_H). PIPE0, PIPE1 merged. IDLE (oracle NATIVE20): no merge regressed idle (FACT equal ndc windows: 353b31c792 ft 41.21, a05f62c545 ft 38.98). The 3 ms was the status bar (inventory.c:737-746): core 0 gbi +4.15, gx +2.14 (live_play2_170.txt f10494 vs f11094). GD7 cuts core 1 only. Page ws_CAPCMP (compare tool). WALK: plan_walk.md (ROM read drain of player rasters, pm_os.c:492-495), pages ws_STEPX, ws_ROMDR (merge after the STEPX capture).
 2. DRAWOBJ (user yes 20 Nov): plan_drawobj.md, pages ws_DO0 (Haiku, gst.txt state hash tool) and ws_DO1 (Sonnet, model record memo).
    The user reads plan_drawobj.md before a DO coder starts. DO2 to DO4 pages after DO0 merges (DO3 needs gst). DO5 needs the user.
 3. plan_perf.md section 11 rows C1, C3 (= DO1), C4 (= DO4), K1, K2 (= DO3): pick by the capture 1 numbers. Content cuts: none unless the user decides.
@@ -28,6 +28,7 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 - nd_alt_open and nd_alt_close reset the core 1 stream shadow (nd_rec.c:534-535 sh_all): MCOPY2 must keep the resets.
 - Parsers of stream records by runner pointer: nd_model.c:288 nd_r11_state, nd_rec.c stream_run, host tests nd_alt_et_test.c, nd_geo_test.c, nd_st_test.c.
 ## Facts that cost time
+- Compare console windows only with an equal ndc line, nd dr tri and at pos (ws_CAPCMP). The status bar shows after 240 idle steps: the first window differs.
 - Sources are CRLF. Git Bash `sed -i` turns them into LF: pages say `sed -b -i` or the Edit tool.
 - Host -Werror units link some files: nd_rec.c with nd_ds.c (geounit, hunit, nat5a, nmdl0, ns3unit, stunit), nd_ds.c alone (nst1, nset1),
   nd_direct.c with 3ds/tools/nd_direct_test.c (it defines nd_ap). nd_snap.c, nd_walk.c, nd_geom.c, nd_comb.c, nd_tex_set.c are not host-linked.
