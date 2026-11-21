@@ -6,6 +6,8 @@
  * stream lives exactly as long as its context (the depth-1 frame push of nd_wq.c keeps it safe). */
 #include <stdlib.h>
 #include <string.h>
+#include <stddef.h>
+#include <stdio.h>
 #include "ultra64.h"
 #include "variables.h"
 #include "pm_port.h"
@@ -34,6 +36,7 @@ int is_host(u32 p);                             /* nd_walk.c: p is in host memor
 typedef struct { uint32_t* ch[CH_MAX]; unsigned nch, cur; } NdChain;
 static NdChain chain[2];
 static unsigned ch_wb[2][CH_MAX]; /* CNTFIX: the words written in the chain before chunk i (the tail a jump leaves is not counted) */
+static unsigned mm_cg[2]; /* DO1: the build count of each display context stream */
 static int rec_ctx = -1;   /* the context of the last record (-1: none yet) */
 static uint32_t* wp;       /* write position */
 static uint32_t* wend;     /* end of the current chunk, less room for one NDC_JUMP */
@@ -172,7 +175,7 @@ static NdSnapBind ew_lv[2]; static const NdSnapBind* ew_lb; /* NC0C: the last en
 static void rec_ctx_check(void) {
     int x = (int)(gCurrentDisplayContextIndex & 1);
     if (x == rec_ctx) return;
-    rec_ctx = x;
+    rec_ctx = x; mm_cg[x]++; /* DO1 */
     ch_enter(&chain[x], 0);
     task_head = NULL;
     st_hdr = NULL;
@@ -223,6 +226,126 @@ void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
     nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
 }
 void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak below */
+/* DO1: the model record memo (core 1). An unchanged model copies the stream block of its last step. Entry: the key (geometry R12 w0, R0 w0), a 64 bit hash of
+ * every input (the record words with the matrix pointers left out, the model snap before, the scalar region and the lights of nd_ds, the decision inputs,
+ * both load rings in logical order, the Lightsn bytes, the pointed words of R4 and the R0 unit list), the block pointer in the stream of the other display
+ * context (valid while that context is not built again: mm_cg), and the delta of nd_ds (changed words and ring words, ring counter steps). The census
+ * (drec frames) builds the copy on a hit and compares it with the real block and the real nd_ds (log `mmemo f<n> diff ...`). */
+unsigned pm_frame_count(void);
+void nd_snap_sv(uint32_t o[4]); /* nd_snap.c: sn_leg, sn_pat, sn_mode5, sn_vprim */
+#define MM_N 256u /* slots: open addressing, linear probe of MM_PROBE */
+#define MM_PROBE 8u
+#define MM_D 32u /* changed words per entry (nd_ds words and ring words); above it the model stores no entry */
+#define MM_LW ((unsigned)(sizeof(((NdTst*)0)->ldrec[0]) / 4u))
+#define MM_BW ((unsigned)(sizeof(((NdTst*)0)->blk[0]) / 4u))
+#define MM_RW (4u * MM_LW + 4u * MM_BW) /* the words of both load rings */
+#define MM_NDW ((unsigned)(sizeof(NdDs) / 4u))
+typedef struct MmEnt {
+    uint32_t kg, k0, h0, h1, cg; const uint32_t* blk;
+    uint16_t keep, nd; uint8_t ctx, ok; int16_t cl, cb;
+    uint16_t di[MM_D]; uint32_t dv[MM_D]; /* di < MM_NDW: a word of nd_ds; else a word of the rings (logical order of the phase before) */
+} MmEnt;
+static MmEnt* mm_t; static unsigned mm_tried, mm_tg, mm_tog, mm_models, mm_hits, mm_skip, mm_diffs, mm_wc[40], mm_sf;
+static NdDs mm_b; static uint32_t mm_h[2];
+#define MM_BLK (2u + 2u * (G_PM_REC_WORDS + ND_REC_AUX_MAX) + 2u + 2u * ND_MSNAP_U)
+static uint32_t mm_scr[MM_BLK];
+void nd_mmemo_log(void) {
+    unsigned used = 0, ok = 0, nds = 0, ndmax = 0, blkw = 0;
+    if (mm_t) for (unsigned i = 0; i < MM_N; i++) { const MmEnt* e = &mm_t[i]; if (!e->blk) continue; used++; if (e->ok) { ok++; nds += e->nd; if (e->nd > ndmax) ndmax = e->nd; blkw += 2u + 2u * (G_PM_REC_WORDS + e->keep) + 2u + 2u * ND_MSNAP_U; } }
+    pm_log_evt("mmemo f%u models %u hits %u", pm_frame_count(), mm_models, mm_hits);
+    { char o[400]; int n = 0; for (unsigned i = 0; i < 34u; i++) if (mm_wc[i]) n += snprintf(o + n, sizeof o - (unsigned)n, " %u:%u", i, mm_wc[i]); pm_log_evt("mmemo why%s", o); }
+    pm_log_evt("mmemo store fail delta %u", mm_sf);
+    pm_log_evt("mmemo offsets tst1 %u td %u conv_k4 %u fog_fm %u lt %u lt_n %u lk %u vp_sx %u tm %u m1v %u size %u", (unsigned)offsetof(NdDs, w.tst1), (unsigned)offsetof(NdDs, w.td), (unsigned)offsetof(NdDs, conv_k4), (unsigned)offsetof(NdDs, fog_fm), (unsigned)offsetof(NdDs, lt), (unsigned)offsetof(NdDs, lt_n), (unsigned)offsetof(NdDs, lk), (unsigned)offsetof(NdDs, vp_sx), (unsigned)offsetof(NdDs, tm), (unsigned)offsetof(NdDs, m1v), (unsigned)sizeof(NdDs));
+    pm_log_evt("mmemo slots used %u ok %u of %u, hits per ok slot %u, delta words mean %u max %u, block words mean %u, ent %u B, table %u B", used, ok, MM_N, ok ? mm_hits / ok : 0u, ok ? nds / ok : 0u, ndmax, ok ? blkw / ok : 0u, (unsigned)sizeof(MmEnt), (unsigned)(MM_N * sizeof(MmEnt)));
+    pm_log_evt("mmemo mem %u ent %u skip %u diff %u", (unsigned)(MM_N * sizeof(MmEnt)), (unsigned)sizeof(MmEnt), mm_skip, mm_diffs);
+}
+#define MM_I0 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, ldrec_n)) / 4u))
+#define MM_I1 ((unsigned)((offsetof(NdDs, tm) + offsetof(NdTexM, blk_n)) / 4u))
+#define MM_L0 ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, ldrec)) / 4u))
+#define MM_L1E ((unsigned)((offsetof(NdDs, w.tst1) + offsetof(NdTst, blk) + sizeof(((NdTst*)0)->blk)) / 4u))
+static inline int mm_ringw(unsigned i) { return i == MM_I0 || i == MM_I1 || (i >= MM_L0 && i < MM_L1E); } /* words of nd_ds the word delta leaves out: the rings and their counters */
+static void mm_ring_get(const NdDs* s, unsigned pl, unsigned pb, uint32_t* rw) { for (unsigned i = 0; i < 4u; i++) { memcpy(rw + i * MM_LW, &s->w.tst1.ldrec[(pl + i) & 3u], 4u * MM_LW); memcpy(rw + 4u * MM_LW + i * MM_BW, &s->w.tst1.blk[(pb + i) & 3u], 4u * MM_BW); } }
+static void mm_ring_put(NdDs* s, unsigned pl, unsigned pb, const uint32_t* rw) { for (unsigned i = 0; i < 4u; i++) { memcpy(&s->w.tst1.ldrec[(pl + i) & 3u], rw + i * MM_LW, 4u * MM_LW); memcpy(&s->w.tst1.blk[(pb + i) & 3u], rw + 4u * MM_LW + i * MM_BW, 4u * MM_BW); } }
+static inline void mm_mix(uint32_t* h, uint32_t v) { h[0] = (h[0] ^ v) * 16777619u; h[1] = (h[1] + v) * 2246822519u; h[1] ^= h[1] >> 15; }
+static void mm_mixn(uint32_t* h, const void* p, unsigned n) { const uint32_t* w = (const uint32_t*)p; for (unsigned i = 0; i < n; i++) mm_mix(h, w[i]); }
+static int mm_lights(const uint32_t* r) { return r[7] && r[4] <= 7u; }
+/* The 64 bit hash of every input of the record (mm_h). */
+static void mm_hash(const uint32_t* r, unsigned words, unsigned keep) {
+    uint32_t h[2] = { 2166136261u, 0x9e3779b9u }; static NdMSnap m;
+    mm_mix(h, keep);
+    for (unsigned k = 0; k < 2u * G_PM_REC_WORDS; k++) { if (k == 5u || k == 26u) continue; mm_mix(h, (k == 16u || k == 17u) ? (uint32_t)(r[k] != 0u) : r[k]); } /* R2 w1 and R8 point into the display context */
+    for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { mm_mix(h, r[2 * k]); mm_mix(h, r[2 * k + 1]); }
+    nd_msnap_take(&nd_ds, &m); mm_mixn(h, &m, (unsigned)(sizeof m / 4u));
+    { const uint32_t* d = (const uint32_t*)&nd_ds;
+      mm_mixn(h, d + offsetof(NdDs, conv_k4) / 4u, (unsigned)((offsetof(NdDs, lt) - offsetof(NdDs, conv_k4)) / 4u));
+      mm_mix(h, nd_ds.w.prim_z); mm_mix(h, (uint32_t)nd_ds.w.tex_on); mm_mix(h, nd_ds.w.fill); mm_mix(h, nd_ds.lt_n);
+      mm_mixn(h, d + offsetof(NdDs, lt) / 4u, (unsigned)((offsetof(NdDs, lt_n) - offsetof(NdDs, lt)) / 4u)); }
+    mm_mixn(h, (const uint32_t*)&nd_ds + offsetof(NdDs, m1v) / 4u, (unsigned)((sizeof(NdDs) - offsetof(NdDs, m1v)) / 4u)); /* m1v, m1w, m1h and the flag bytes (zslot, sc_lost, sc_dirty): the delta writes whole words */
+    { uint32_t sv[4]; nd_snap_sv(sv); mm_mixn(h, sv, 4u); }
+    { uint32_t rw[MM_RW]; mm_ring_get(&nd_ds, nd_ds.tm.ldrec_n, nd_ds.tm.blk_n, rw); mm_mixn(h, rw, MM_RW); }
+    if (mm_lights(r)) mm_mixn(h, (const void*)(uintptr_t)r[7], (unsigned)(sizeof(Lightsn) / 4u));
+    if (r[9]) mm_mixn(h, (const void*)(uintptr_t)r[9], 2u);
+    if (!keep && r[1]) { const uint32_t* u = (const uint32_t*)(uintptr_t)r[1]; unsigned n = 0; for (; (u[0] >> 24) != ND_FS_END; u += 2, n++) { mm_mix(h, u[0]); mm_mix(h, u[1]); } mm_mix(h, n); }
+    mm_h[0] = h[0]; mm_h[1] = h[1];
+}
+/* The delta of nd_ds (mm_b before, nd_ds after) into the entry; a delta over MM_D words stores no entry. */
+static __attribute__((cold, noinline)) void mm_store(MmEnt* e, const uint32_t* r, unsigned keep, uint32_t* p) {
+    e->ok = 0; e->kg = r[24]; e->k0 = r[0]; e->h0 = mm_h[0]; e->h1 = mm_h[1]; e->keep = (uint16_t)keep; e->blk = p; e->ctx = (uint8_t)rec_ctx; e->cg = mm_cg[rec_ctx];
+    const uint32_t* b = (const uint32_t*)&mm_b; const uint32_t* a = (const uint32_t*)&nd_ds; unsigned n = 0;
+    for (unsigned i = 0; i < MM_NDW; i++) if (!mm_ringw(i) && a[i] != b[i]) { if (n >= MM_D) { mm_sf++; return; } e->di[n] = (uint16_t)i; e->dv[n] = a[i]; n++; }
+    { uint32_t rb[MM_RW], ra[MM_RW]; const unsigned pl = mm_b.tm.ldrec_n, pb = mm_b.tm.blk_n; mm_ring_get(&mm_b, pl, pb, rb); mm_ring_get(&nd_ds, pl, pb, ra);
+      for (unsigned i = 0; i < MM_RW; i++) if (ra[i] != rb[i]) { if (n >= MM_D) { mm_sf++; return; } e->di[n] = (uint16_t)(MM_NDW + i); e->dv[n] = ra[i]; n++; } }
+    e->nd = (uint16_t)n; e->cl = (int16_t)(nd_ds.tm.ldrec_n - mm_b.tm.ldrec_n); e->cb = (int16_t)(nd_ds.tm.blk_n - mm_b.tm.blk_n); e->ok = 1;
+}
+/* A hit: the after state of the model from the entry into s (s is equal to the state before of the entry in every input). */
+static void mm_apply(NdDs* s, const MmEnt* e) {
+    uint32_t rw[MM_RW]; uint32_t* d = (uint32_t*)s; const unsigned pl = s->tm.ldrec_n, pb = s->tm.blk_n;
+    mm_ring_get(s, pl, pb, rw);
+    for (unsigned i = 0; i < e->nd; i++) { const unsigned x = e->di[i]; if (x < MM_NDW) d[x] = e->dv[i]; else rw[x - MM_NDW] = e->dv[i]; }
+    mm_ring_put(s, pl, pb, rw); s->tm.ldrec_n = pl + (unsigned)(int)e->cl; s->tm.blk_n = pb + (unsigned)(int)e->cb;
+}
+static __attribute__((cold, noinline)) void mm_diff(const char* what, unsigned at) { if (mm_diffs++ < 16u) pm_log_evt("mmemo f%u diff %s %u", pm_frame_count(), what, at); }
+static MmEnt* mm_find(const uint32_t* r, unsigned words, unsigned keep, unsigned* hit) {
+    *hit = 0;
+    if (mm_tg != nd_tex_gen()) { mm_tg = nd_tex_gen(); if (mm_t) memset(mm_t, 0, MM_N * sizeof *mm_t); }
+    if (!mm_t) { if (mm_tried) return NULL; mm_tried = 1; mm_t = (MmEnt*)calloc(MM_N, sizeof *mm_t); if (!mm_t) return NULL; }
+    mm_hash(r, words, keep);
+    const unsigned h0 = (((r[24] * 2654435761u) ^ (r[0] * 2246822519u)) >> 24) & (MM_N - 1u); MmEnt* v = NULL; unsigned wk = 0;
+    for (unsigned k = 0; k < MM_PROBE; k++) {
+        MmEnt* const e = &mm_t[(h0 + k) & (MM_N - 1u)];
+        if (!e->blk) { if (!v) v = e; break; }
+        if (e->ok && e->kg == r[24] && e->k0 == r[0]) {
+            if (e->cg != mm_cg[e->ctx]) { mm_wc[0]++; wk = 1; } /* a block of this step stays intact in its context: it is a valid source too */
+            else if (e->h0 == mm_h[0] && e->h1 == mm_h[1] && e->keep == keep) { *hit = 1; return e; }
+            else { mm_wc[e->keep != keep ? 1u : 32u]++; wk = 1; }
+        }
+        if (!v && (!e->ok || e->cg != mm_cg[e->ctx])) v = e; /* an entry whose block is gone (its context was built again) or that failed to store */
+    }
+    if (!wk) mm_wc[33]++;
+    return v ? v : &mm_t[(h0 + (mm_tog++ & (MM_PROBE - 1u))) & (MM_N - 1u)];
+}
+/* The census of a hit: the copy of the last block and the nd_ds delta against the real ones. */
+static __attribute__((cold, noinline)) void mm_census(MmEnt* e, const uint32_t* r, unsigned keep, const uint32_t* p) {
+    const unsigned nw = 2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U;
+    memcpy(mm_scr, e->blk, nw * 4u); mm_scr[2 + 5] = r[5]; mm_scr[2 + 16] = r[16]; mm_scr[2 + 17] = r[17];
+    mm_scr[1] = nd_mkey_a(mm_scr + 2); mm_scr[2u + 2u * (G_PM_REC_WORDS + keep) + 1u] = (uint32_t)(uintptr_t)(p + nw);
+    for (unsigned i = 0; i < nw; i++) if (mm_scr[i] != p[i]) { mm_diff("blk", i); break; }
+    mm_apply(&mm_b, e);
+    const uint32_t* a = (const uint32_t*)&nd_ds; const uint32_t* b = (const uint32_t*)&mm_b; unsigned nb = 0; for (unsigned i = 0; i < MM_NDW && nb < 4u; i++) if (a[i] != b[i]) { mm_diff("ds", i * 4u); nb++; }
+}
+void nd_snap_dec_only(void); int pm_drec_now(void);
+/* Step 2: the hit writes the copy of the last block (the record words R2 w1 and R8 from the new record) and the after state of nd_ds; the decision call stays. */
+static void mm_fast(const MmEnt* e, uint32_t* p, const uint32_t* r, unsigned keep) {
+    const unsigned nw = 2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U;
+    memcpy(p, e->blk, nw * 4u); p[2 + 5] = r[5]; p[2 + 16] = r[16]; p[2 + 17] = r[17];
+    p[1] = nd_mkey_a(p + 2); p[2u + 2u * (G_PM_REC_WORDS + keep) + 1u] = (uint32_t)(uintptr_t)(p + nw);
+    mm_apply(&nd_ds, e); nd_snap_dec_only();
+}
+static void mm_done(MmEnt* e, const uint32_t* r, unsigned keep, uint32_t* p, unsigned hit) {
+    mm_models++;
+    if (hit) { mm_hits++; mm_census(e, r, keep, p); e->blk = p; e->ctx = (uint8_t)rec_ctx; e->cg = mm_cg[rec_ctx]; }
+    else mm_store(e, r, keep, p);
+}
 void nd_rec_model(const void* rec, unsigned words) {
     NDT_B(tq); /* PROF2: core 1 model record class */
     if (words > G_PM_REC_WORDS + ND_REC_AUX_MAX) model_bad(words);
@@ -230,6 +353,15 @@ void nd_rec_model(const void* rec, unsigned words) {
     const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) keep++; /* R13NOP: a typed sync is not an R13 op */
     rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U); /* NREC1B: room for the jump and the model snap */ ndc_n[NDC_MODEL]++;
+    const int mmc = !r[22] && !r[23]; MmEnt* me = NULL; unsigned mh = 0; /* DO1: a record with a custom gfx range has no memo */
+    if (mmc) {
+        me = mm_find(r, words, keep, &mh);
+        if (me && mh && !(pm_drec_now() || (mm_hits & 63u) == 0u)) { /* a hit: the copy; the census (drec frames and 1 hit in 64) runs the full path and compares */
+            mm_fast(me, p, r, keep); mm_models++; mm_hits++; me->blk = p; me->ctx = (uint8_t)rec_ctx; me->cg = mm_cg[rec_ctx];
+            NDT_E(tq, NDT_RMDL); return;
+        }
+        if (me) memcpy(&mm_b, &nd_ds, sizeof mm_b);
+    } else mm_skip++;
     memcpy(p + 2, rec, G_PM_REC_WORDS * 8u); uint32_t* q = p + 2; uint32_t* o = q + 2 * G_PM_REC_WORDS;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) { o[0] = r[2 * k]; o[1] = r[2 * k + 1]; o += 2; }
     q[26] = keep; p[0] = NDC_HDR(NDC_MODEL, G_PM_REC_WORDS + keep, 0);
@@ -237,6 +369,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     nd_msnap_pre(&nd_ds); /* NAT2C: the state before the record */
     { const unsigned i = (q[0] >> 16) & 0xffu; nd_ds_model(&nd_ds, q, i < ND_RM_N ? nd_rm_tab[i] : NULL, i < ND_RM_N ? nd_rm_n[i] : 0u, nd_ds_unit); } /* NST2b: the model record feeds the core 1 state */ nd_msnap_rec(p, G_PM_REC_WORDS + keep); /* NREC1A: the model snap before the post range */ if (q[23]) nd_ds_range(&nd_ds, (const uint32_t*)(uintptr_t)q[23], NULL); /* NREC1A: custom gfx post, moved from nd_ds_model */
     p[1] = nd_mkey_a(q); /* HC6 step 2: key A of the model cache (the record part), hashed here on core 1 */
+    if (me) mm_done(me, r, keep, p, mh); /* DO1 */
     NDT_E(tq, NDT_RMDL);
 }
 void nd_snap_mesh(void); /* NDR4: strong in nd_snap.c */
@@ -716,6 +849,7 @@ __attribute__((weak)) void nd_snap_rect(void) {} /* NDR1C */
 __attribute__((weak)) void nd_snap_alt(const NdDs* s, int rect) { (void)s; (void)rect; } /* NWS4A: strong in nd_snap.c; the host units record no snap */
 __attribute__((weak)) void nd_msnap_rec(uint32_t* p, unsigned units) { (void)p; (void)units; } /* NREC1A */
 __attribute__((weak)) void nd_msnap_pre(const NdDs* s) { (void)s; } /* NAT2C */
+__attribute__((weak)) void nd_msnap_take(const NdDs* s, NdMSnap* m) { (void)s; memset(m, 0, sizeof *m); } __attribute__((weak)) void nd_snap_dec_only(void) {} __attribute__((weak)) int pm_drec_now(void) { return 0; } __attribute__((weak)) void nd_snap_sv(uint32_t o[4]) { memset(o, 0, 16u); } __attribute__((weak)) unsigned nd_tex_gen(void) { return 0u; } /* DO1: the host units link nd_rec.c without nd_snap.c and nd_tex.c */
 __attribute__((weak)) void nd_lsc_begin(void) {} /* NREC2 */
 __attribute__((weak)) void nd_lsc_end_at(uint32_t* dst) { (void)dst; } /* NREC2 */
 __attribute__((weak)) void nd_lsc_begin_v(unsigned v) { (void)v; } /* NREC4 */

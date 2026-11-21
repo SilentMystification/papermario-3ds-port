@@ -1,0 +1,28 @@
+DO1 step 1 census, spot_mac01_drec f201 (Azahar). All cmp 1/1 byte-equal (drec 170 draws equal).
+Round 0 (S = NdMSnap + 5 words + sv + scalar region; 2-way table by geometry q[24], q[0]): models 15710 hits 10388, ds diff 246.
+  diff offsets (first differing nd_ds byte): 216, 176, 196, 236 = NdWs.tst1.ldrec[k].img (ldrec[k] at 172+20k: tmem,img,stride,x,y) after state.
+  Cause: nd_ds_loadtile (nd_ds.c:253-262) chooses slot k from tm.ldrec_n&3 (round robin) and reads tst1.ldrec: before state not in S.
+Round 1 (S = 64 bit hash of whole nd_ds except lt[]): hits 0.
+  near-miss log (same key, last step): offsets 12 (prim), 128 (segbase[10]) in early frames; 172..236 (ldrec slots) at frames >= 150.
+Round 2 (counters tm.ldrec_n, tm.blk_n masked to &3, before state in the index): hits 0, diff 0.
+  Cause GUESS: tm.ldrec_n/blk_n advance by the number of texture loads per step; when that is not a multiple of 4 the ldrec slot layout is rotated
+  at the same model in the next step, so the before hash differs; the layout recurs every 2 or 4 steps, but the block of that step is gone (context rebuilt).
+Azahar budget: 8 of 8 starts used (2 base, 6 runs). Experiment (mask ldrec and blk in the hash) not run.
+Memory: entry 400 B x 256 = 102400 B with the hash S (928 B x 256 with the NdMSnap S).
+Round 3 (oracle design: S = NdMSnap + scalar region + 2 rings in logical order; A = ring counter steps + rings after; 16 sets x 8 ways, index = key + prim/envc/cw1):
+  spot_mac01_drec f201: models 15710, hits 613 (64 sets x 2 ways) / 215 (16 x 8); diff 0; cmp 1/1 byte-equal.
+  near-miss (same key, same record, only S differs): m 0 sv 0 rg 0 lr 0 br 0. So S is not the reason for the misses.
+  Not yet known why same-key entries miss (stale context, record word, r13, list, no entry). Census code `mmemo why` (counts by reason) is built
+  (commit on branch DO1) but its run did not happen: Azahar budget 8 of 8 used again (3 pairs of cold+warm runs, 2 runs after a failed build).
+Round 4 (256 slot open addressing, key q[24]+q[0]; why counters): spot_mac01_drec hits 1254 of 15710. why 0:372 32:29 33:14426 (no ok entry); store fail list 14248, delta 168.
+  Cause: R0 w1 unit list longer than 8 pairs failed the store. Fix: list compared by count + 64 bit hash, delta cap 48.
+Round 5: spot_mac01_drec models 15710 hits 14649, diff 0, cmp 1/1 byte-equal. why 0:6847 5:5 32:694 33:297; store fail delta 219; near m 699.
+  entcape_kmr03_drec: models 7172 hits 6721, cmp 1/1 byte-equal (drec 172), but 119 census diffs: `diff ds 1160` = NdDs.lt[8] (offset 964 + 196), frames 83..201.
+  Cause: lt[] not in S; the delta holds only words that changed against the before state of the store, a hit with other lights before keeps them.
+Round 6 (built, not run: budget 8 of 8): lt[] hash added to S. mem 282624 B (256 x 1104 B).
+Round 7 to 12 (compact entry: one 64 bit hash of all inputs, ring words in the delta, cap 24 words, 256 slots, ent 180 B, table 46080 B):
+  spot_mac01_drec: models 15710 hits 12561, diff 0, cmp byte-equal. why 0:5788 32:532 33:2364; store fail delta 2509; slots ok 163 of 256, delta words mean 7 max 22, block words mean 102.
+  entcape_kmr03_drec (final hash incl. tail words): models 7172 hits 5860, diff 0, cmp byte-equal. why 0:3386 32:130 33:945; store fail delta 1141; slots ok 75 of 256, delta mean 6 max 19, block words mean 112.
+  entcape diff at byte 1160 (before the fix) = NdDs tail word (zslot, sc_lost, sc_dirty), not lights; the offsets line printed it (m1v 1148, size 1164).
+Step 2 (the hit writes the copy; census in drec frames and 1 hit in 64) is committed and built, host PASS. Not run: Azahar budget 8 of 8 used (r10 4, r11 2, r12 2).
+Bases stored for fxparts_drec and hudfb_drec.

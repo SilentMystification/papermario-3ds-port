@@ -35,6 +35,7 @@ static unsigned sn_cmds = ~0u;
 void nd_snap_task(void) { sn_cmds = ~0u; } /* NAT2J: a task stream starts with its own snap */
 static NdTgt sn_tgt;
 static unsigned sn_vprim; /* NREC4: 1 while a particle table is taken */
+void nd_snap_sv(uint32_t o[4]) { o[0] = (uint32_t)sn_leg; o[1] = (uint32_t)sn_pat; o[2] = (uint32_t)sn_mode5; o[3] = sn_vprim; } /* DO1: the decision inputs of the model memo */
 unsigned nd_lsf_n, nd_lsb_n, nd_lse_n; /* NAT8A */ /* core 1 ls_find calls, new blocks, nd_lsc_end_at calls */
 /* the target record of set_cimg (nd_target.c:87-99) without the GPU calls */
 void nd_snap_tgt(uint32_t w0, uint32_t w1) {
@@ -102,6 +103,7 @@ const NdCombOut* nd_snap_dec(void) { /* MSNAP2: the decision of nd_ds now (the S
     sn_leg = sd_now.leg; sn_mode5 = sd_now.mode5; sn_pat = sd_now.pat;
     sn_cmds = ~0u; return &sd_now;
 }
+void nd_snap_dec_only(void) { (void)nd_snap_dec(); } /* DO1: the decision call of a model memo hit (sets sn_leg, sn_pat, sn_mode5, sn_cmds) */
 #define LS_SMAX 256u /* NAT2D: unique snaps, each in its own stream block */
 #define LS_RMAX 256u /* NAT2D: ranges */
 static const NdSnapChk* ls_np; static const NdSnapChk* ls_p[LS_SMAX]; static uint32_t ls_f[LS_RMAX]; static unsigned ls_n, ls_sn, ls_ord; static unsigned char ls_chg;
