@@ -50,6 +50,12 @@ Branches finished but NOT merged: CRK1 (gate f54428789b: seam census step 6, `ma
 - Fullscreen / widescreen scenarios need the debug word `nowide`, else a saved option runs Widescreen (pm_gpu.c:1941).
 - The 4 benches (CLAUDE.md rule 3) and bench bases: a drec bench base made before WCLIP0 (it changed drec.txt) is stale; make a new one with `bench.py base`.
 
+- CONSOLE RESULT of main cdc5cd815a (build with L1Q1, L1C0A/B, PRES1, FSUI, TUB, LOGDIET; O3DS .170, window f2189, same words as the build 7933 capture; log build3ds/hw_live_log_170.txt, push log build3ds/out/push_o_20261121-044951.txt, 990 lines):
+  - PRES1 works: `pres lk 0 300 1 0 kl 0 194 85 21 drop 0` (was `lk 150 150 0 0 kl 0 71 208 21 drop 150`): no L picture is dropped, every L to K gap is 1 vblank. `pres1 gw 237 gms 4.03 gto 0`. ft 39.64 ms (was 38.94, +0.7 ms, inside the predicted +0 to +2), fps 48.7 (was 49.7). The step is still 2.4 vblanks, so the K to L gap stays 1 vblank in 194 and 2 vblanks in 85 of 300 steps: uneven spacing remains until ft <= 33.4. The user must judge the wobble by eye.
+  - L1 rows show NO I-miss gain: core 1 `ic1 63724` (was 63861), `dc1 35222` (35702), `lgms 33.32` (33.46); core 0 walk I-misses `pmxph dl 53740` (53463). The oracle expected -5000 to -15000 (core 1) and -8000 to -30000 (core 0). Cause OPEN: read plan_l1.md rules and the `l1m` lines (class e0 values: mhit 7468, mkey 1874, mmtx 1582, sub 9407, semit 3679) and check that the queue is on in the console build (`l1q` and `mqr` lines, the 8-hit queue drain, the 128-unit setter queue) before more L1 rows.
+  - wk 28.69 ms (was 32.59, -3.9 ms) and `o34 120` (was 277): GUESS: the PRES1 gate replaces pace waits, so wk is not a work gain; do not count it.
+  - Windows f2489 (set s) and f2789 (set b) report other counters in `ic1`/`dc1`: read ic1 only in set m windows.
+
 ## 6. User rules and preferences (FACT)
 - A state the user reports (game runs, console online, a fault) is fact. Never doubt it, read the code. No guess and check. No agent looks at screenshots (rule 2): proof is code read, host tests, byte compare.
 - Ask every question and every push with AskUserQuestion. Take defaults for small choices. Short chat: one line per merge, fault or decision. Expand acronyms and row codes when you talk to the user.
