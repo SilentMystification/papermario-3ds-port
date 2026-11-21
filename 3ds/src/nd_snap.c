@@ -18,6 +18,7 @@
 
 extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
 extern int pm_nofog; /* NDR0F1: the option (pm_options.c), read only */
+extern unsigned nd_uq_n; extern unsigned char nd_uq_busy; void nd_uq_hole(unsigned w); void nd_uq_sync(void); /* L1Q1 */
 
 /* ---- core 1 ---- */
 static int sn_leg, sn_mode5, sn_pat;
@@ -47,7 +48,7 @@ void nd_snap_tgt(uint32_t w0, uint32_t w1) {
         (pm_fb_native(nc) ? NDK_NATIVE : 0u));
 }
 
-static const NdSnapChk* snap_build0(const NdDs* s, int zc) { /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle */
+static const NdSnapChk* snap_build0(const NdDs* s, int zc) { if (nd_uq_n && !nd_uq_busy) nd_uq_hole(2u); /* L1Q1 */ /* NDR0E2: the snap is taken at every mesh triangle and texture rectangle */
     NdSnapChk r;
     memset(&r, 0, sizeof r);
     nd_snb++; /* NAT1 */
@@ -86,7 +87,7 @@ void nd_snapcp_run(const uint32_t* rec);
 static void snap_take_r(const NdDs* s, int zc, NdNapiRun run) { const NdSnapChk* const p = snap_build(s, zc); if (!p) return; const uint32_t u[2] = { (uint32_t)(uintptr_t)p, 0u }; nd_rec_st(run, u, 1u); /* NDR0E2: a state op (no dschk record, shadow stays); NWS4A: run */ sn_cmds = nd_rec_cmds(); }
 static void snap_take(const NdDs* s, int zc) { snap_take_r(s, zc, nd_snapchk_run); } /* NWS4A */
 static NdCombOut sd_now; /* MSNAP2: the decision of the last nd_snap_dec */
-const NdCombOut* nd_snap_dec(void) { /* MSNAP2: the decision of nd_ds now (the SD part of snap_build0, no snap built); the next snap_take records again */
+const NdCombOut* nd_snap_dec(void) { if (nd_uq_n && !nd_uq_busy) nd_uq_hole(3u); /* L1Q1 */ /* MSNAP2: the decision of nd_ds now (the SD part of snap_build0, no snap built); the next snap_take records again */
     NdCombIn in; nd_snap_in(&nd_ds, sn_leg, sn_pat, &in);
     const int m5 = sn_mode5; const uint32_t hi = si_hw(2166136261u ^ (uint32_t)m5 ^ sn_vprim << 8, &in, sizeof in);
     if (!sd_t && !sd_tried) { sd_tried = 1; sd_t = (SdEnt*)calloc(SD_N, sizeof *sd_t); if (sd_t) for (unsigned q = 0; q < SD_N; q++) sd_t[q].m5 = INT32_MIN; }
@@ -131,8 +132,8 @@ void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { /* NDR2A: the
     sn_tmp.dual_on = 0; sn_tmp.w.prim = prim; sn_tmp.w.prim_lod = 0u; sn_tmp.w.envc = env;
     snap_take(&sn_tmp, 0);
 }
-void nd_snap_mesh(void) { snap_take(&nd_ds, 0); }
-void nd_snap_rect(void) { const int zc = sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL)); nd_ds.zslot |= (unsigned char)(zc != 0); /* NAT5T */ snap_take(&nd_ds, zc); } /* NDR1C: zcol of nd_rect.c:236 */
+void nd_snap_mesh(void) { nd_uq_sync(); snap_take(&nd_ds, 0); } /* L1Q1 */
+void nd_snap_rect(void) { nd_uq_sync(); /* L1Q1 */ const int zc = sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(nd_ds.w.omode_l & (1u << G_MDSFT_ZSRCSEL)); nd_ds.zslot |= (unsigned char)(zc != 0); /* NAT5T */ snap_take(&nd_ds, zc); } /* NDR1C: zcol of nd_rect.c:236 */
 void nd_snap_alt(const NdDs* s, int rect) { const int zc = rect && sn_tgt.siz == 2 && (sn_tgt.kind & (NDK_ZERO | NDK_INZ)) && !(s->w.omode_l & (1u << G_MDSFT_ZSRCSEL)); /* NWS4A, core 1: the snap of a copy draw */
     sn_cmds = ~0u; snap_take_r(s, zc, nd_snapcp_run); sn_cmds = ~0u; } /* the memo of the main stream never counts a copy snap */
 
