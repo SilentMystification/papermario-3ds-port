@@ -466,6 +466,7 @@ void pm_gpu_ndt_take_g(uint64_t o[13], unsigned u[13], unsigned a[13]); /* GD0: 
  * a sampled frame (pm_ph_on), orb = an orbdbg list is registered. */
 enum { WD_CEN = 1u, WD_FINE = 2u, WD_PH = 8u, WD_ORB = 16u };
 void pm_gpu_ndt_take(uint64_t o[NDT_N]); /* the ticks of the window, then reset (pm_phase.c prof report) */
+void pm_gpu_ndt_take_e(uint64_t o[NDT_N][2], unsigned n[NDT_N]); /* L1PH0: the exclusive PMN0, PMN1 and the calls of each class, then reset */
 unsigned pm_gbi_gvkey(uint32_t* o, unsigned max); /* S3N-6 (the former pm_gbi.c): the walker gv, tile, vp and plan state (pre-apply) */
 void pm_gpu_model_key(const uint32_t* rec, NdMKey* k); /* S3N-6 (pm_gpu.c) */
 void pm_gpu_model_keyb(const uint32_t* rec, NdMKey* k); /* HC6 step 2: kc only (key A from the payload, key B from the walker) */
