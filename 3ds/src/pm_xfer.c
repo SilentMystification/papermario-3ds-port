@@ -63,12 +63,16 @@ static const char* msf(char* o, unsigned t) {
 
 /* MTX0: census of the longest steps (xfer5, xfer6), the phase counts (xfer4), the drain callers (xfer7). A step ends in phase o (fade out),
  * c (covered), n (fade in) or t (tail). xr_top: the 10 longest steps, sorted by w. xr_p: the counters at the end of the step before. */
-enum { XV_DRN, XV_DRW, XV_DRT, XV_AU, XV_DCN, XV_DCU, XV_RST, XV_ROM, XV_ROMB, XV_YAY, XV_TEX, XV_MDL, XV_DLC, XV_HPA, XV_HPF, XV_N };
+enum { XV_DRN, XV_DRW, XV_DRT, XV_AU, XV_DCN, XV_DCU, XV_RST, XV_ROM, XV_ROMB, XV_YAY, XV_TEX, XV_MDL, XV_DLC, XV_HPA, XV_HPF, XV_LGT, XV_LGN, XV_LGW, XV_PRW, XV_KS, XV_KW, XV_N }; /* MTX6: logic busy ticks and steps, game wait for the logic, present gate wait, key copies shown, key walks */
 typedef struct { unsigned s, w, v[XV_N]; char ph; } XfRow;
 static XfRow xr_top[10], xr_p;
 static unsigned xr_n, xp_n[4], xp_max[4], xp_o34[4];
+void pm_lg_times(unsigned* lg_t, unsigned* lg_n, unsigned* wait_t); /* MTX6: pm_logic.c */
 static void xr_snap(XfRow* c) { unsigned n, us, mx; pm_dspa_dec_read(&n, &us, &mx);
-    const unsigned v[XV_N] = { pm_xf.dr_n, pm_wq_drw, pm_xf.dr_t, pm_xf.au_t, n, us, pm_xf.rst_b, pm_xf.rom_n, pm_xf.rom_b, pm_xf.yay_n, pm_xf.tex_n, pm_xf.mdl_miss, pm_xf.dlc_n, pm_hp_a, pm_hp_f };
+    unsigned lt_, ln_, lw_; pm_lg_times(&lt_, &ln_, &lw_); /* MTX6 */
+    extern volatile unsigned pm_pres_g[3]; extern unsigned pm_kc_n[2]; /* MTX6: pm_gpu.c PRES1, pm_nusys.c INTERPB3 */
+    const unsigned v[XV_N] = { pm_xf.dr_n, pm_wq_drw, pm_xf.dr_t, pm_xf.au_t, n, us, pm_xf.rst_b, pm_xf.rom_n, pm_xf.rom_b, pm_xf.yay_n, pm_xf.tex_n, pm_xf.mdl_miss, pm_xf.dlc_n, pm_hp_a, pm_hp_f,
+        lt_, ln_, lw_, pm_pres_g[1], pm_kc_n[0], pm_kc_n[1] };
     memcpy(c->v, v, sizeof v); }
 static void xr_step(unsigned w, int ld) { /* MTX0: the phase and the deltas of one step, the 10 longest steps */
     u8 t; f32 z; get_screen_overlay_params(SCREEN_LAYER_FRONT, &t, &z);
@@ -123,7 +127,8 @@ __attribute__((cold, noinline)) static void xf_print(void) {
     /* MTX0: xfer5 and xfer6 per top step (t is the rank, 0 the longest), xfer4 phase counts, xfer7 drain callers */
     for (unsigned i = 0; i < xr_n; i++) { const XfRow* r = &xr_top[i]; const unsigned* v = r->v;
         pm_log_prof_line("xfer5 %s t%u s%u %c w %s dr %u/%u/%s au %s dec %u/%u rst %u", kn, i, r->s, r->ph, msf(m[0], r->w), v[XV_DRN], v[XV_DRW], msf(m[1], v[XV_DRT]), msf(m[2], v[XV_AU]), v[XV_DCN], v[XV_DCU] / 1000u, v[XV_RST] >> 10);
-        pm_log_prof_line("xfer6 %s t%u rom %u/%u yay %u tex %u mdl %u dlc %u hp %u/%u", kn, i, v[XV_ROM], v[XV_ROMB] >> 10, v[XV_YAY], v[XV_TEX], v[XV_MDL], v[XV_DLC], v[XV_HPA], v[XV_HPF]); }
+        pm_log_prof_line("xfer6 %s t%u rom %u/%u yay %u tex %u mdl %u dlc %u hp %u/%u", kn, i, v[XV_ROM], v[XV_ROMB] >> 10, v[XV_YAY], v[XV_TEX], v[XV_MDL], v[XV_DLC], v[XV_HPA], v[XV_HPF]);
+        pm_log_prof_line("xfer8 %s t%u s%u lg %s/%u gw %s pres %s key %u/%u", kn, i, r->s, msf(m[3], v[XV_LGT]), v[XV_LGN], msf(m[4], v[XV_LGW]), msf(m[5], v[XV_PRW]), v[XV_KS], v[XV_KW]); } /* MTX6: lg = logic thread busy ms/steps, gw = game thread wait for the logic, pres = present gate wait, key = copies shown/key walks */
     pm_log_prof_line("xfer4 %s n%u | o %u/%s/%u c %u/%s/%u n %u/%s/%u t %u/%s/%u pf %u", kn, xf_seq, xp_n[0], msf(m[0], xp_max[0]), xp_o34[0], xp_n[1], msf(m[1], xp_max[1]), xp_o34[1],
                      xp_n[2], msf(m[2], xp_max[2]), xp_o34[2], xp_n[3], msf(m[3], xp_max[3]), xp_o34[3], pm_xf.pff_n); /* MTX2 */
     pm_log_prof_line("xfer7 %s n%u drc %08x %u %s %08x %u %s %08x %u %s %08x %u %s", kn, xf_seq, (unsigned)(size_t)pm_xf.dc[0].k, pm_xf.dc[0].n, msf(m[0], pm_xf.dc[0].t),

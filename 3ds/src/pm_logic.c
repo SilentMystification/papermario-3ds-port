@@ -202,6 +202,7 @@ void pm_lg_stop(void) {
     pm_wq_set_logic(NULL);
 }
 
+void pm_lg_times(unsigned* lg_t, unsigned* lg_n, unsigned* wait_t) { *lg_t = (unsigned)lg_pf_t; *lg_n = lg_pf_n; *wait_t = (unsigned)lg_pf_wait; } /* MTX6: the step census of pm_xfer.c (no stack scan), modular 32 bit */
 /* Prof (pm_phase.c): totals since boot; the window takes differences. */
 void pm_lg_pf(unsigned long long* lg_t, unsigned* lg_n, unsigned long long* wait_t, unsigned* ser_n, int* core, unsigned* stk_kb, unsigned long long* pe, unsigned* kf) {
     *kf = lg_kwalk;
