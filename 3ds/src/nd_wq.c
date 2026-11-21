@@ -151,11 +151,11 @@ static void wq_main_direct(void (*fn)(void*), void* arg) {
     fn(arg);
     pm_walk_side--;
 }
-static void wq_main_direct_r(void (*fn)(void*), void* arg, unsigned r) { pm_lg_quiesce(); wq_pump(); pm_walk_rseq = r; wq_main_direct(fn, arg); pm_walk_rseq = 0; wq_r_done = r; } /* MTX1 */
+static void wq_main_direct_r(void (*fn)(void*), void* arg) { pm_lg_quiesce(); wq_pump(); const unsigned r = ++wq_r_push; pm_walk_rseq = r; wq_main_direct(fn, arg); pm_walk_rseq = 0; wq_r_done = r; } /* MTX1; MTX1K: the number is taken after the quiesce (the logic thread also counts wq_r_push) */
 void pm_wq_post_reader(void (*fn)(void*), void* arg, unsigned size) { /* MTX1: an entry that reads game RAM */
     if (pm_wq_on_logic()) { wq_put_r(fn, arg, size, ++wq_r_push); return; }
     if (pm_walk_side) { pm_walk_side++; fn(arg); pm_walk_side--; return; }
-    wq_main_direct_r(fn, arg, ++wq_r_push); }
+    wq_main_direct_r(fn, arg); }
 unsigned pm_walk_stamp(void) { return wq_r_push; } /* MTX1: every reader entry posted so far */
 static int c_rdone(void* c) { (void)c; return pm_stamp_due(wq_r_done, wq_r_want); }
 void pm_walk_until(unsigned s) { /* MTX1: return when every reader entry up to s ran */
@@ -178,7 +178,7 @@ void pm_wq_frame(const PmFrame* f) {
         return;
     }
     wq_fr_push++; wq_l_push++;
-    wq_main_direct_r(wq_frame_run, (void*)f, ++wq_r_push); /* MTX1 */
+    wq_main_direct_r(wq_frame_run, (void*)f); /* MTX1 */
 }
 
 /* 60 fps: the logic of step N+1 runs while the walker draws frame N and key frame N. Before it writes the replacement table
@@ -190,8 +190,8 @@ void pm_wq_frame_slot(void) {
 static void wq_key_run(void* a) { pm_key_show((const PmKey*)a); __sync_synchronize(); wq_fr_walked++; }
 void pm_wq_key(const PmKey* k) {
     wq_fr_push++;
-    if (pm_wq_on_logic()) { wq_put(wq_key_run, k, sizeof *k); pm_wq_kick_walker(); return; }
-    wq_main_direct(wq_key_run, (void*)k);
+    if (pm_wq_on_logic()) { wq_put_r(wq_key_run, k, sizeof *k, ++wq_r_push); pm_wq_kick_walker(); return; } /* MTX1K: a key walk (pm_key_show without a K copy, pm_nusys.c:218) reads game RAM: a reader entry */
+    wq_main_direct_r(wq_key_run, (void*)k); /* MTX1K */
 }
 
 /* pm_walk_drain (nd_walk.c) calls this first: return when the queue is empty and no walk runs. */
