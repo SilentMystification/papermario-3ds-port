@@ -130,6 +130,7 @@ static __attribute__((cold, noinline)) void mtx_bad(u32 w0, u32 w1, u32 hdr, con
 void nd_xf_load(u32 w0, u32 w1, u32 hdr) {
     nd_mtx_static = (hdr & 0x100u) != 0;
     unsigned flags = (w0 & 0xff) ^ G_MTX_PUSH;
+    if (flags & G_MTX_PROJECTION) pm_mq_cut(6u); /* L1C0A: eyd_sync reads the projection */
     Mtx* src = (Mtx*)ptr_of(w1);
     if (!src) return;
     if (__builtin_expect(!is_host((u32)(uintptr_t)src), 0)) { mtx_bad(w0, w1, hdr, src, __builtin_return_address(0)); return; } /* LOADMTX */

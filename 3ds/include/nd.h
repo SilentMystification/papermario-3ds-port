@@ -104,6 +104,7 @@ void nd_tex_reset(void);
 unsigned nd_tex_gen(void);                   /* PERF2: the reset generation of the block ids */
 int nd_tex_get(const NdTexDesc* d);          /* block id, loading the image through pm_tex.c on a miss; -1 when it fails or the table is full */
 const uint32_t* nd_tex_block(int id);        /* dim, param, lodParam, data address >> 3 */
+int nd_tex_have(const NdTexDesc* d); /* L1C0A: the table lookup of nd_tex_get, no load; -1: not in the table */
 /* S3N-1 (B4): the texture descriptor of a map model handle, set once when load_texture_impl builds the handle (model.c, TARGET_3DS). S3L-2: the desc is the tile 0 facts for every
  * extra form (mipmaps, aux). Only a handle with no raster, zero size or a 32 bit format stays unset (nd_tex_handle_desc returns NULL: the walker draws them). masks and maskt are INTEGER_LOG2 of the size (the same macro as make_texture_gfx). */
 void nd_tex_handle_set(int index, const void* gfx, const void* raster, const void* palette, unsigned w, unsigned h, unsigned fmt, unsigned siz,
@@ -294,6 +295,10 @@ static inline void nd_kp_vec(uint32_t* base, unsigned first, const float* k) {
     if (nd_kp_n < nd_kp_cap) { NdKPatch* p = &nd_kp[nd_kp_n++]; p->base = base; p->first = first; p->k[0] = k[0]; p->k[1] = k[1]; p->k[2] = k[2]; p->k[3] = k[3]; }
     else nd_kp_lost++;
 }
+/* L1C0A: hits with draws in the open run; the cut (pm_gpu.c) */
+extern unsigned pm_mq_run; void pm_mq_cut_do(unsigned r);
+/* L1C0A: r 0 stream command, 1 range end, 2 miss, 3 post range, 4 texture load, 5 template rebuild, 6 viewport or projection */
+static inline void pm_mq_cut(unsigned r) { if (__builtin_expect(pm_mq_run != 0u, 0)) pm_mq_cut_do(r); }
 void nd_shadow_reset(NdShadow* s);
 unsigned nd_emit_draw(uint32_t* out, NdShadow* sh, const NdDraw* d); /* returns the number of words written (even) */
 
@@ -364,6 +369,7 @@ static inline uint32_t nd_abgr(uint32_t c) { return ((c & 255u) << 24) | (((c >>
 int nd_tex_unit(int id, NdUnit* u);
 /* S3N-6: nd_tex_unit with a slot hint (the slot and its generation, pm_tex.c pm_tex_slot_gen): a valid hint gives the words without the content search. hs < 0: none. */
 int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u);
+int nd_tex_unit_fast(int id, int* hs, unsigned* hg, NdUnit* u); int nd_tex_unit_slow(int id, int* hs, unsigned* hg, NdUnit* u); /* L1C0A: the 2 parts of nd_tex_unit_hint */
 unsigned pm_tex_slot_gen(int i); /* S3N-6 (pm_tex.c): the generation of a slot */
 typedef struct NdMCtx {
     int zmark; float zn;       /* S5-2 (a): walker r_zmark (the zmark pass: pass 1 model depth and stencil mark, pass 2 constant depth zn * w) and its depth zn */
