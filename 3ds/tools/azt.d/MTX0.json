@@ -1,0 +1,24 @@
+{
+  "scenarios": [
+    {
+      "name": "xfer_map_steps",
+      "status": "unverified",
+      "reason": "MTX0 census: the xfer_map_mac01 walk (same inputs) with the xfer4 phase line and the xfer5/xfer6 top steps. Ends at the xfer4 line.",
+      "subject": "Toad Town mac_01 at pos 0 0 200, Mario walks south into the mac_02 loading zone (as xfer_map_mac01), det. The xfer4 line of mac_01->mac_02: step counts, longest step and steps over 34 ms by phase (o, c, n, t).",
+      "proves": "MTX0: the xfer4 phase line (per phase: steps, longest step, steps over 34 ms) and the top steps xfer5 and xfer6.",
+      "debug": "warp=mac_01:0 story=ch0_toad_town pos=0:0:200 padscript=go_0_700_300,wait150 profdisk=1 loglevel=debug det",
+      "until": "xfer4 map n1 \\|",
+      "cap": 35,
+      "deadline": 30,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "phase line",
+          "regex": "xfer4 map n1 \\| o \\d+/[\\d.]+/\\d+ c \\d+/[\\d.]+/\\d+ n \\d+/[\\d.]+/\\d+ t \\d+/[\\d.]+/\\d+"
+        }
+      ]
+    }
+  ]
+}
