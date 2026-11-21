@@ -497,7 +497,7 @@ static void rom_read(u32 rom_addr, void* buf, u32 size, int drain) { /* ROMDR: d
     if (!pm_on_audio()) { pm_rom_lg_n++; pm_rom_lg_b += size; } /* STEPX, STEPX2: every non-audio read, drain or not */
     if (drain && !pm_on_audio()) { /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
         unsigned dt0 = pm_xf.on ? pm_ticks() : 0u;
-        pm_walk_drain("rom");
+        pm_walk_read("rom", pm_walk_stamp()); /* MTX1: the reader entries only */
         if (pm_xf.on) pm_xf.rdw_t += pm_ticks() - dt0; /* DOORHITCH */
     }
     pi_read_raw(rom_addr, buf, size);

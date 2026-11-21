@@ -1381,6 +1381,7 @@ void pm_tex_prof_report(unsigned frames) {
 static int load_impl(const void* img, unsigned fmt, unsigned siz, int width, int height,
                      const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                      unsigned dkey) {
+    { extern unsigned pm_walk_frame; if (!pm_walk_rseq && pm_mt_norseq++ == 0u) pm_log_e("mtx1: texture source read outside a reader entry f%u", pm_walk_frame); } /* MTX1: the first such read logs */
     { extern int pm_pf_on; extern const void* pm_rr_ptr[18]; extern unsigned pm_rr_stamp[18], pm_rr_race, pm_walk_frame; if (pm_pf_on) for (unsigned i_ = 0; i_ < 18u; i_++) if (pm_rr_ptr[i_] == img && pm_rr_stamp[i_] > pm_walk_frame) pm_rr_race++; } /* ROMDR: a raster loaded after the frame being walked */
     pm_gpu_rect_sync(); /* DR1 */
     pm_tex_epoch_v++;

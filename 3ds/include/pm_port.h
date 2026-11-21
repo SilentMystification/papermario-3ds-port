@@ -117,6 +117,11 @@ void pm_ph_gpu_note(void);       /* call right after C3D_FrameBegin returns */
 /* CORE2-3a: the walker side (nd_wq.c). */
 extern int pm_walk_side, pm_c2own;
 void pm_wq_post(void (*fn)(void*), void* arg, unsigned size);
+void pm_wq_post_reader(void (*fn)(void*), void* arg, unsigned size); /* MTX1: an entry that reads game RAM (a frame walk, a list prebuild) */
+unsigned pm_walk_stamp(void); /* MTX1: the stamp of now: every reader entry posted so far */
+void pm_walk_until(unsigned s); /* MTX1: return when every reader entry up to s ran */
+void pm_walk_read(const char* why, unsigned s); /* MTX1: pm_walk_drain for a write that only the reader entries up to s can conflict with */
+extern unsigned pm_walk_rseq, pm_mt_norseq; /* MTX1: the reader number the walker runs (0 none); texture source reads outside one */
 void pm_wq_call(void (*fn)(void*), void* arg, unsigned size);
 void pm_walk_drain(const char* why);
 /* CORE2C-2: one frame for the walker (nd_wq.c queue, depth 1). A task is the head of its frame stream (DIRECT, nd_cmd.h) and the byte
