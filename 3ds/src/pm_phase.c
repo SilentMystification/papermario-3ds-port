@@ -642,6 +642,9 @@ static void pf_report(void) {
             { unsigned ur[8], u10[8]; pm_gpu_updr_take(ur); for (int k = 0; k < 8; k++) u10[k] = (unsigned)((unsigned long long)ur[k] * 10u / pw); /* DO3 */
                 pm_log_prof_line("prof f%u w%u c0s upd %u.%02u emit %u.%02u r flg %u.%u lt %u.%u fa %u.%u gas %u.%u una %u.%u fv %u.%u iv %u.%u", pf_total, pf_w,
                     CS(cm[NDT_SUPD]), CS(cm[NDT_SEMIT]), C1(u10[0]), C1(u10[1]), C1(u10[2]), C1(u10[3]), C1(u10[4]), C1(u10[5]), C1(u10[6])); }
+            { unsigned pp[14]; extern void pm_gpu_pipe_take(unsigned o[14]); pm_gpu_pipe_take(pp); const unsigned f_ = pp[13] ? pp[13] : 1u; /* PIPE0 */
+              pm_log_prof_line("prof f%u w%u pipe fr %u draws %u kick %u/%u ring %u/%u tex %u/%u split %u/%u off %u/%u room %u/%u", pf_total, pf_w, pp[13], pp[12] / f_,
+                  pp[0] / f_, pp[6], pp[1] / f_, pp[7], pp[2] / f_, pp[8], pp[3] / f_, pp[9], pp[4] / f_, pp[10], pp[5] / f_, pp[11]); }
             pm_log_prof_line("prof f%u w%u c1g ent %u.%02u mdl %u.%02u ply %u.%02u npc %u.%02u wrk %u.%02u fx %u.%02u task %u.%02u thud %u.%02u ui %u.%02u", pf_total, pf_w,
                 CS(cm[NDT_GENT]), CS(cm[NDT_GMDL]), CS(cm[NDT_GPLY]), CS(cm[NDT_GNPC]), CS(cm[NDT_GWRK]), CS(cm[NDT_GFX]), CS(cm[NDT_GTASK]),
                 CS(cm[NDT_GTHUD]), CS(cm[NDT_GUI])); /* PROF3 */

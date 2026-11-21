@@ -101,6 +101,8 @@ static int u_eye = -1, u_eyd = -1; /* the same registers in pm4 and pm5 (checked
 #define PM_EYE_E 0.015f /* NDC shift per eye at slider 1 for a point at infinity (3 px of 400). The calibration knob. */
 /* H02 GPU limit stats, maxima since the last `mem` log line. Verts and command buffer overflow drop work without a message. */
 static unsigned draws_frame, draws_max, frames_seen;
+enum { PP_KICK, PP_RING, PP_TEX, PP_SPLIT, PP_OFF, PP_ROOM, PP_N }; /* PIPE0: fence kinds (plan_pipe.md 3) */
+void pm_pipe_note(unsigned k);
 static float cmd_max;
 static DVLB_s* dvlb;
 /* PO3b (switch gpuvtx): raw Vtx path. A ring of the 16 byte Vtx records of this frame and a u16 index ring. A batch is the triangles that share one
@@ -302,6 +304,7 @@ static void gpu_flush_written(void) {
 }
 /* B2: queue order is clear of the main target, then every part. The first split of a frame queues the clear first. */
 void split_frame(void) {
+    pm_pipe_note(PP_SPLIT); /* PIPE0 */
     gpu_flush_written(); /* GV0b: the GPU runs the first part now, its vertices must be in memory */
     if (!grab_split++ && want_clear) {
         C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0);
@@ -844,13 +847,17 @@ static int kick_done; /* PERF2: the one split of this frame is done (KICK2's sec
 extern int pm_ph_on;
 extern unsigned pm_ph_kick_n, pm_ph_kick_us, pm_ph_draws; /* PI4 */
 static void kick_split(void);
+static unsigned pp_first[PP_N] = { ~0u, ~0u, ~0u, ~0u, ~0u, ~0u }, pp_sum[PP_N + 1], pp_hit[PP_N], pp_fr;
+void pm_pipe_note(unsigned k) { if (k < PP_N && pp_first[k] == ~0u) pp_first[k] = draws_frame; } /* PIPE0 */
+static void pp_frame_end(void) { for (unsigned k = 0; k < PP_N; k++) { const int h = pp_first[k] != ~0u; pp_sum[k] += h ? pp_first[k] : draws_frame; pp_hit[k] += (unsigned)h; pp_first[k] = ~0u; } pp_sum[PP_N] += draws_frame; pp_fr++; }
+void pm_gpu_pipe_take(unsigned o[14]) { for (unsigned k = 0; k < PP_N; k++) { o[k] = pp_sum[k]; o[6 + k] = pp_hit[k]; pp_sum[k] = 0; pp_hit[k] = 0; } o[12] = pp_sum[PP_N]; o[13] = pp_fr; pp_sum[PP_N] = 0; pp_fr = 0; }
 static inline void kick_check(void) { /* PERF2 step 4: the test per draw inline, the split (once a frame) out of line */
     if (kick_done || gs.off_active || !kick_at || draws_frame < kick_at || nb.rect_open || nb.gni > 0) return;
     kick_split();
 }
 static __attribute__((noinline)) void kick_split(void) {
     NDT_B(tk); /* PERF2: the kick class (out of sub) */
-    kick_done = 1;
+    kick_done = 1; pm_pipe_note(PP_KICK);
     gpu_flush_written();
     if (want_clear) { C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; } /* queue order: the clear comes before the first part */
     sh_clear();
@@ -1383,6 +1390,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
     prog_use(d->use5 ? 4 : 3);
     { /* FB-1: a model draw indexes the static area (chunk 0), a walker draw the ring chunk in use */
         const void* bb = (ndt_mdl || nb.gi_kind == 1) ? (const void*)nb.rchunk[0].vtx : (const void*)nb.gring;
+        if (!(ndt_mdl || nb.gi_kind == 1)) pm_pipe_note(PP_RING); /* PIPE0: a walker ring draw */
         if (nb.buf_cur != 2 || buf_bp != bb) { C3D_BufInfo* gb = C3D_GetBufInfo(); BufInfo_Init(gb); BufInfo_Add(gb, bb, 16, 3, 0x210); nb.buf_cur = 2; buf_bp = bb; }
     }
     if (gs.off_active) scissor_off(); else stage_scissor(); /* OFF-1: an off-screen target has its own scissor (citro3d state, not in the template words) */
@@ -2227,6 +2235,7 @@ void pm_gpu_read_frame(unsigned short* dst) {
  * 8 rows x PM_OFF_W x 2 bytes, so the band is the last bytes of the slot. FSELLAG2: the other rows are never sampled. */
 extern int pm_is_cfb(const void* p);
 int pm_gpu_off_begin(const void* base, int stride, int siz, int band_h) {
+    pm_pipe_note(PP_OFF); /* PIPE0 */
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
     int i, w, h;
@@ -2519,6 +2528,7 @@ static void sr_frame_begin(void) {
 /* split_frame without its sh_clear (those dirty marks would go out in the bind lists, not in a recorded list). The clear of the main target goes
  * first only when the list holds draws: a frame with no draw keeps the last picture (X01), and the first draw split or the frame end clears. */
 static void sr_split(void) {
+    pm_pipe_note(PP_SPLIT); /* PIPE0 */
     gpu_flush_written();
     pm_gx_room();
     if (drew && want_clear && !grab_split) { grab_split++; C3D_RenderTargetClear(target, C3D_CLEAR_ALL, 0, 0); want_clear = 0; }
@@ -2643,6 +2653,7 @@ void pm_gx_room(void) {
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     sr_take(); /* STEREO: the record holds every entry before the queue is cleared (here, or by a citro3d texture load after this call) */
     if (q->numEntries < 24) return;
+    pm_pipe_note(PP_ROOM); /* PIPE0 */
     sr_from = 0; ic_from = 0; kc_from = 0; /* INTERP2M: the take above read the entries before this clear */
     gxCmdQueueRun(q);
     gxCmdQueueWait(q, -1);
@@ -2657,6 +2668,7 @@ int pm_gx_done(void) {
 }
 /* TEXF1: run the queue and wait for the GPU, as pm_gx_room does. Every entry added before the call is done after it. */
 void pm_gx_drain(void) {
+    pm_pipe_note(PP_ROOM); /* PIPE0 */
     gxCmdQueue_s* q = (gxCmdQueue_s*)&__C3D_Context;
     sr_take();
     if (sr_on) { if (sr_n < SR_MAX) { memset(&sr_ent[sr_n], 0, sizeof sr_ent[0]); sr_ent[sr_n++].data[0] = SR_DRAIN; } else sr_over = 1; } /* STEREO: the replay waits here too */
@@ -2830,6 +2842,7 @@ static void grab_ring_flush(void) {
     if (nb.gidx && nb.gidx_n > nb.gidx_fl) pm_fl_dc(nb.gidx + nb.gidx_fl, (nb.gidx_n - nb.gidx_fl) * 2);
 }
 static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
+    pm_pipe_note(PP_SPLIT); /* PIPE0 */
     pm_gpu_begin_wait();
     if (nb.rect_open) flush(); /* DR1 */
     int was_off = gs.off_active, prev = gs.off_cur;
@@ -3296,6 +3309,7 @@ static void pm_gpu_end_w(void) {
     PH_PUSH(PH_FEND);
     if (sr_on) sr_replay(); /* STEREO: the right eye */
     if (__builtin_expect(fh_on(), 0)) fh_frame(); /* FRAMEHASH3: before kc_build, which takes the same entries */
+    pp_frame_end(); /* PIPE0 */
     kc_build(); /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
