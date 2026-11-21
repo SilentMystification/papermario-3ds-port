@@ -14,6 +14,7 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 1. MSNAP2 and PROF3 merged (MSNAP2: snn 19572 to 3957, spot_mac01 f201). Capture 1 (plan_60fps.md section 5 words, prof mode, no phase=on) reads c1g.
    The first capture 1 ran with phase=on: s0, all timers 0.00 (live_cap1_170.txt). The push of the retry failed (cap1b is the same run).
 2b. GAMEDRAW (oracle NATIVE18): plan_gamedraw.md (ranked rows, section 3). GD1, GD0, GD0B merged. Pages: ws_GDW (core 0 wait census), ws_DO3F (uni_native with the key patch), ws_GD7 (status bar draw memo, Sonnet, WAIT user and NATIVE17). DO3 is inert with fps60 (nd_kp_on, pm_gpu.c:198). wk holds waits (pm_logic.c:166, :173; pm_gpu.c:2989-2991).
+2c. CRITPATH (oracle NATIVE19): plan_critpath.md. ft = core 0 work 25.2 (pmu cyc) + GPU waits about 15; core 1 off the chain (fw 9.88). Pages ws_CPT0 (c0k line), ws_KICK3. Next: one capture with profrot, then PIPE design (Opus, user yes).
 2. DRAWOBJ (user yes 20 Nov): plan_drawobj.md, pages ws_DO0 (Haiku, gst.txt state hash tool) and ws_DO1 (Sonnet, model record memo).
    The user reads plan_drawobj.md before a DO coder starts. DO2 to DO4 pages after DO0 merges (DO3 needs gst). DO5 needs the user.
 3. plan_perf.md section 11 rows C1, C3 (= DO1), C4 (= DO4), K1, K2 (= DO3): pick by the capture 1 numbers. Content cuts: none unless the user decides.
@@ -34,6 +35,7 @@ State: main abf33eaaf5 (T1FIX, NC0S, NC0V, NC0M, NC0T1, NC0F merged; NC0T2 runs;
 - The Bash default timeout is 120 s. nd_host_test.sh needs `timeout: 600000`. bench.py run does not build: `PM_LANE=<id> sh 3ds/build.sh` first.
 - The stream lives as long as its display context (2 chains, nd_rec.c:32-35). A core 0 pointer into the stream must not outlive the walk (nd_snap_hold).
 - The c1t timers run in sampled steps only. The alt timer is per unit: subtract altu x cal ticks (cal 303 ticks per pair) for real ms.
+- C3D_FrameBegin stops the GX queue (citro3d renderqueue.c:97); gxCmdQueueAdd does not run a stopped queue (libctru gxqueue.c:62-75): a C3D_FrameSplit alone starts no GPU work.
 - Model cache hit path (nd_recs.c:265-293) runs no rec_apply, no nd_msnap_use: core 0 state on a hit comes from hit_apply only.
 - State leaks out of a called list on core 0 (nd_c0) but not on core 1 (scratch copy nd_rec.c:466, CALL :491-492). A field that moves from nd_c0 to a snap needs a carry back after the scratch run (NC0V: tex_on, fog).
 - Gate rule seen this pass: a census line in a drec frame with a byte-equal cmp of that frame names words the draw does not read: accept it.
