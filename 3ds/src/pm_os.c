@@ -487,6 +487,7 @@ static void tk_patch_apply(u32 rom_addr, u8* buf, u32 size) {
         }
     }
 }
+const void* pm_rr_ptr[18]; unsigned pm_rr_stamp[18], pm_rr_race; /* ROMDR race census: free-entry raster reads, see pm_tex.c load_impl */
 static void rom_read(u32 rom_addr, void* buf, u32 size, int drain) { /* ROMDR: drain 0 only for a target the walker cannot read now */
     static u32 table_bytes;
     if (drain && !pm_on_audio()) { /* CORE2-3b: a ROM read writes RAM that the last walk may have read */
