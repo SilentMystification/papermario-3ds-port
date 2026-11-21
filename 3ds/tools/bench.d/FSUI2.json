@@ -1,0 +1,20 @@
+{
+  "benches": [
+    {
+      "name": "shop_full_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "FSUI2: Fullscreen shop price x, frame 270 (expected-diff at the price draw).",
+      "scenario": "shop_full_drec",
+      "cap": 25,
+      "until": "drec f270 draws [1-9]\\d* bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "drec"
+      ],
+      "gates": []
+    }
+  ]
+}
