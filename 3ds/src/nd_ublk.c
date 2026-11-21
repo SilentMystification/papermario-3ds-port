@@ -18,6 +18,7 @@ extern unsigned pm_gpu_draws_frame(void);                /* pm_gpu.c, GD9A */
 extern uint32_t pm_gpu_state_hash(void);                 /* pm_gpu.c, GD9A */
 extern uint32_t pm_gpu_word_hash(unsigned from, unsigned to); /* pm_gpu.c, GD9A */
 extern unsigned pm_walk_frame;                           /* nd_wq.c: the frame of the entry the walker runs */
+void pm_log_prof_line(const char* fmt, ...); /* pm_log.c: prof=4 level; plain pm_log is dropped in prof mode (GD9A2) */
 int is_host(unsigned int p);                             /* nd_walk.c: a pure range test */
 unsigned nd_ds_size(void); const void* nd_ds_addr(void); /* nd_rec.c, GD9A2: nd_ds without nd_ds.h */
 
@@ -110,11 +111,11 @@ static void ub_cmp(void) {
     if (ub_pset && ub_c1_sp && f >= ub_c1_f0 && f <= ub_c1_f1) {
         if (ub_key != ub_pkey) {
             if (ub_n != ub_pn) {
-                if (ub_nlog[1] < 8u) { ub_nlog[1]++; pm_log("ublk f%u kn %u was %u", f, ub_n, ub_pn); }
+                if (ub_nlog[1] < 8u) { ub_nlog[1]++; pm_log_prof_line("ublk f%u kn %u was %u", f, ub_n, ub_pn); }
             } else {
                 for (unsigned i = 0; i < nmax; i++) {
                     if (ub_cur[i].h == ub_prev[i].h) continue;
-                    if (ub_nlog[0] < 8u) { ub_nlog[0]++; pm_log("ublk f%u kdiff u%u w0 %08x w1 %08x was %08x %08x", f, i, ub_cur[i].a, ub_cur[i].b, ub_prev[i].a, ub_prev[i].b); }
+                    if (ub_nlog[0] < 8u) { ub_nlog[0]++; pm_log_prof_line("ublk f%u kdiff u%u w0 %08x w1 %08x was %08x %08x", f, i, ub_cur[i].a, ub_cur[i].b, ub_prev[i].a, ub_prev[i].b); }
                     break;
                 }
             }
@@ -122,7 +123,7 @@ static void ub_cmp(void) {
             const uint8_t* a = ub_ds_cur; const uint8_t* b = ub_ds_prev;
             unsigned off = 0u;
             while (off < ub_dsz && a[off] == b[off]) off++;
-            if (ub_nlog[2] < 8u && off < ub_dsz) { ub_nlog[2]++; pm_log("ublk f%u dsdiff off %u", f, off); }
+            if (ub_nlog[2] < 8u && off < ub_dsz) { ub_nlog[2]++; pm_log_prof_line("ublk f%u dsdiff off %u", f, off); }
         }
     }
     { UbE* t = ub_prev; ub_prev = ub_cur; ub_cur = t; }
