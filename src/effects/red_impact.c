@@ -145,51 +145,14 @@ void red_impact_render(EffectInstance* effect) {
     retTask->renderMode |= RENDER_TASK_FLAG_REFLECT_FLOOR;
 }
 
-void red_impact_appendGfx(void* effect) {
-    RedImpactFXData* part = ((EffectInstance*)effect)->data.redImpact;
-    NdLst dlist = D_E00D0B10[part->unk_00];
+/* TUB1: the ring parts. Each pass records them after its own prim, env and cull: a sub range keeps the state of nd_sub_open (plan_tubba.md). */
+static void red_impact_parts(RedImpactFXData* part, s32 numParts, f32 temp_1C, f32 temp_20, f32 temp_24) {
+    Matrix4f sp20, sp60;
     NdLst dlist2;
-    f32 temp_1C = part->unk_1C * 0.3;
-    f32 temp_20 = part->unk_20 * 0.3;
-    f32 temp_24 = part->unk_24 * 0.3;
-    s32 alpha;
-    s32 primR = part->unk_50.r;
-    s32 primG = part->unk_50.g;
-    s32 primB = part->unk_50.b;
-    s32 envR = part->unk_53.r;
-    s32 envG = part->unk_53.g;
-    s32 envB = part->unk_53.b;
-    s32 primR2;
-    s32 primG2;
-    s32 primB2;
-    s32 envR2;
-    s32 envG2;
-    s32 envB2;
-    NdSub sub;
-    Matrix4f sp20;
-    Matrix4f sp60;
     s32 i;
 
-    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
-    nd_draw_list(dlist, ND_SELF);
-
-    guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, part->unk_04, part->unk_08, part->unk_0C);
-    guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-
-    alpha = part->unk_38;
-    primR2 = primR;
-    primG2 = primG;
-    primB2 = primB;
-    envR2 = envR;
-    envG2 = envG;
-    envB2 = envB;
-
-    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-
     part++;
-    for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
+    for (i = 1; i < numParts; i++, part++) {
         if (part->unk_4C >= 0) {
             guTranslateF(sp20, part->unk_04, part->unk_08, part->unk_0C);
             guRotateF(sp60, part->unk_34, 0.0f, 0.0f, 1.0f);
@@ -209,20 +172,57 @@ void red_impact_appendGfx(void* effect) {
             nd_xf_pop(G_MTX_MODELVIEW);
         }
     }
+}
 
-    nd_sub_close(&sub);
+void red_impact_appendGfx(void* effect) {
+    RedImpactFXData* part = ((EffectInstance*)effect)->data.redImpact;
+    NdLst dlist = D_E00D0B10[part->unk_00];
+    f32 temp_1C = part->unk_1C * 0.3;
+    f32 temp_20 = part->unk_20 * 0.3;
+    f32 temp_24 = part->unk_24 * 0.3;
+    s32 alpha;
+    s32 primR = part->unk_50.r;
+    s32 primG = part->unk_50.g;
+    s32 primB = part->unk_50.b;
+    s32 envR = part->unk_53.r;
+    s32 envG = part->unk_53.g;
+    s32 envB = part->unk_53.b;
+    s32 primR2;
+    s32 primG2;
+    s32 primB2;
+    s32 envR2;
+    s32 envG2;
+    s32 envB2;
+    Matrix4f sp20;
+
+    nd_val_seg(0x09, VIRTUAL_TO_PHYSICAL(((EffectInstance*)effect)->shared->graphics));
+    nd_draw_list(dlist, ND_SELF);
+
+    guPositionF(sp20, 0.0f, -gCameras[gCurrentCameraID].curYaw, 0.0f, 1.0f, part->unk_04, part->unk_08, part->unk_0C);
+    guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+
+    nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+
+    alpha = part->unk_38;
+    primR2 = primR;
+    primG2 = primG;
+    primB2 = primB;
+    envR2 = envR;
+    envG2 = envG;
+    envB2 = envB;
+
 
     nd_val_prim(0, 0, primR2, primG2, primB2, alpha);
     nd_val_env(envR2, envG2, envB2, 0);
     nd_pso_geom_clr(G_CULL_BOTH);
     nd_pso_geom_set(G_CULL_FRONT);
-    nd_sub_call(&sub);
+    red_impact_parts(part, ((EffectInstance*)effect)->numParts, temp_1C, temp_20, temp_24);
 
     nd_val_prim(0, 0, primR, primG, primB, alpha);
     nd_val_env(envR, envG, envB, 0);
     nd_pso_geom_clr(G_CULL_BOTH);
     nd_pso_geom_set(G_CULL_BACK);
-    nd_sub_call(&sub);
+    red_impact_parts(part, ((EffectInstance*)effect)->numParts, temp_1C, temp_20, temp_24);
 
     nd_xf_pop(G_MTX_MODELVIEW);
 }
