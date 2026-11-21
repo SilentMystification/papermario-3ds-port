@@ -16,6 +16,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "nd_sprite.h"
 #include "nd_kccmd.h"
 #include "nd_drec.h"
+#include "nd_sci.h" /* WCLIP1 */
 #include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
@@ -64,6 +65,7 @@ static float game_mvp[4][4];
 static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
 static int gsci_x0, gsci_y0, gsci_x1 = 320, gsci_y1 = 240;
+static int gsci_wx0, gsci_wx1 = 320; /* WCLIP1: raw x edges for the wide and Fullscreen rule */
 static int gsci_r[4] = { 0, 0, 320, 240 }; /* NC0S: the raw words of the last scissor unit (before the clamp) */
 static C3D_Mtx projection;
 /* PT07: the RDP NOISE input. A 64 x 64 L8 texture of random bytes (fixed seed) on unit 2. The vertex shader gives it the screen position
@@ -214,7 +216,8 @@ static int gv_wind = 1;   /* GV1a: sign of the 3 x 3 determinant (x y w) of the 
 int pm_wide_cfg; /* F07-5: the user setting. pm_wide is 0 in 4:3 game modes (logos, title, file select). */
 int pm_wide; /* F07-1: 1 = the 320 px game picture is stretched over the 400 px screen (X scale 1.25). Read once in pm_gpu_init. */
 int pm_stretch_cfg; /* MENUGEN part 3: the Fullscreen option (options wide=2); pm_stretch = pm_stretch_cfg && !pm_wide, set here, in game_modes.c and in pm_options.c flip */
-int pm_stretch; /* MENUGEN: 1 = Fullscreen: the Native picture (pm_wide 0) stretched 1.25x in X over 400 px, HUD included. Only the final viewport (rebuild_3d) and scissor (stage_scissor) and the grab columns read it. Set in pm_gpu_init and by the options flip. */
+int pm_stretch; /* MENUGEN: 1 = Fullscreen: the Native picture (pm_wide 0) with the 3D picture 1.25x in X over 400 px; UI and HUD 1:1 as Widescreen (pm_wout, FSUI1). Set in pm_gpu_init and by the options flip. */
+int pm_wout; /* FSUI1: 1 = the 400 px output of Widescreen and Fullscreen (pm_wide || pm_stretch) */
 static void mfr_init(void); extern int mfr_on; /* TIK19 debug (switch mfr) */
 static int wedge_x; /* WIDE1-2: 1 while pm_gpu_grange draws an edge-only orthographic range with x scale 1.25 in the post matrix */
 unsigned char pm_gv_rejm = 0x2f; /* WIDE4: the clip bits nd_gv_tri rejects on (x planes off for a wide orthographic draw) */
@@ -233,8 +236,8 @@ static void rebuild_3d(void) {
     C3D_Mtx view;
     Mtx_Zeros(&view);
     /* V05: an off-screen pass is not rotated and has no 40 pixel margin: GPU y is the game y (y runs down) */
-    view.r[0].x = (pm_stretch && !gs.off_active) ? gs.vp_sx * 1.25f : (pm_wide && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge. MENUGEN: Fullscreen scales every draw */
-    view.r[0].w = gs.off_active ? gs.vp_tx : pm_stretch ? gs.vp_tx * 1.25f : (pm_wide && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
+    view.r[0].x = (pm_wout && !gs.off_active && (!ui_ortho || wedge_x)) ? gs.vp_sx * 1.25f : gs.vp_sx; /* WIDE1-2: wedge_x scales the x of an orthographic draw whose vertices all sit on the game edge. FSUI1: Fullscreen as Widescreen */
+    view.r[0].w = gs.off_active ? gs.vp_tx : (pm_wout && !ui_ortho) ? gs.vp_tx * 1.25f : 40.f + gs.vp_tx;
     view.r[1].y = gs.off_active ? -gs.vp_sy : gs.vp_sy;
     view.r[1].w = gs.off_active ? gs.vp_ty : 240.f - gs.vp_ty;
     /* Clip z/w is -1 at the near plane and +1 at the far plane. Citro's
@@ -598,7 +601,7 @@ static __attribute__((cold, noinline)) void ndref_end(void) { /* end of frame: w
  * ring put the draw. kind 1, n = the index count. The template id is not written (an LRU slot). */
 #include "nd_drec.h"
 static int drec_win = -2; static unsigned drec_first, drec_count, drec_step = 1u;
-static int drec_on;
+static int drec_on; static int drec_vx; /* CRK2: the drecvx switch (vx and ix lines) */
 int pm_drec_now(void) { return drec_on; } /* NDR0G2 */
 static FILE* drec_f; static char* drec_vb; static NdDrecReg* drec_regs; static uint16_t* drec_idx; static unsigned drec_idx_cap, drec_seq, drec_over;
 unsigned char nd_c0w; static unsigned c0_d, c0_m, c0_c, c0_r, c0_b; extern unsigned nd_snb, nd_snn, nd_snm; /* NAT1 */ static unsigned char c0_spr; /* NAT2J: a native sprite submit */
@@ -651,8 +654,13 @@ static __attribute__((cold, noinline)) void gst_draw(u32* cb, u32 end) { /* DO0:
     fprintf(gst_fp, "d %u h %08x\n", drec_seq, h);
 }
 typedef struct { int gx0, gx1, top, bot; unsigned n, out; int lo, hi; } ClipG; static ClipG clipg[8]; static unsigned clipg_n, clipg_over; /* WCLIP0 */
+unsigned pm_mq_run; static unsigned mq_b[5], mq_why[8], mq_hits, mq_draws, mq_bad; static u32* mq_cb; static u32 mq_off; /* L1C0A: ws_L1C0A; mq_b hits by run length 1, 2-3, 4-7, 8-15, 16+ */
+static int mq_moved(void) { u32 *cb, sz, off; GPUCMD_GetBuffer(&cb, &sz, &off); return cb != mq_cb || off != mq_off; } /* L1C0A: words since the last hit */ static void mq_mark(void) { u32 sz; GPUCMD_GetBuffer(&mq_cb, &sz, &mq_off); }
+static void mq_drain(void); /* L1C0B */
+void pm_mq_cut_do(unsigned r) { if (mq_moved()) mq_bad++; const unsigned b = 31u - (unsigned)__builtin_clz(pm_mq_run); mq_b[b < 4u ? b : 4u] += pm_mq_run; mq_why[r & 7u]++; mq_drain(); } /* L1C0B */
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
+        drec_vx = PMDL("drecvx"); /* CRK2 */
         char v[24]; drec_win = -1;
         if (pm_debug_value("drec", v, sizeof v)) { char* e; char* e2; drec_first = (unsigned)strtoul(v, &e, 10); e2 = e; drec_count = 1u; if (*e == ':') { drec_count = (unsigned)strtoul(e + 1, &e2, 10); if (*e2 == ':') drec_step = (unsigned)strtoul(e2 + 1, NULL, 10); } if (!drec_step) drec_step = 1u; if (drec_count) drec_win = 1; }
     }
@@ -668,10 +676,12 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
     pm_log_evt("drecsc f%u", pm_frame_count()); /* WCLIP0 */
+    if (pm_stretch) pm_log_evt("fsui f%u", pm_frame_count()); /* FSUI1: expected-diff marker */
     gst_fp = fopen("sdmc:/3ds/PaperMario/shots/gst.txt", "wb"); gst_vb = (char*)malloc(64u << 10); /* DO0 */
     if (gst_fp && gst_vb) setvbuf(gst_fp, gst_vb, _IOFBF, 64u << 10); else { if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; }
     gst_cb = NULL; gst_off = gst_fvec = gst_fcomp = 0; gst_fn = 4u; memset(gst_r, 0, sizeof gst_r); memset(gst_f, 0, sizeof gst_f); memset(gst_lut, 0, sizeof gst_lut);
     drec_seq = drec_over = 0;
+    memset(mq_b, 0, sizeof mq_b); memset(mq_why, 0, sizeof mq_why); mq_hits = mq_draws = mq_bad = 0; /* L1C0A */
     drec_nspan = 0; /* DRECTEX: the spans the GPU writes */
     if (copy_blk) { drec_span[drec_nspan].lo = (uintptr_t)copy_blk; drec_span[drec_nspan++].n = BLK_FULL; }
     for (int i = 0; i < OFF_N; i++) if (full_blk[i]) { drec_span[drec_nspan].lo = (uintptr_t)full_blk[i]; drec_span[drec_nspan++].n = BLK_FULL16; }
@@ -684,10 +694,13 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     fclose(drec_f); free(drec_vb); free(drec_regs); free(drec_idx);
     if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; /* DO0 */
     pm_log_evt("c0src f%u draws %u mdl %u wcomb %u wrnd %u wbind %u snb %u snn %u snm %u", pm_frame_count(), c0_d, c0_m, c0_c, c0_r, c0_b, nd_snb, nd_snn, nd_snm); /* NAT1 */
+    pm_log_evt("mqr f%u hits %u draws %u r %u %u %u %u %u", pm_frame_count(), mq_hits, mq_draws, mq_b[0], mq_b[1], mq_b[2], mq_b[3], mq_b[4]); /* L1C0A */
+    pm_log_evt("mqw f%u bad %u why %u %u %u %u %u %u %u %u", pm_frame_count(), mq_bad, mq_why[0], mq_why[1], mq_why[2], mq_why[3], mq_why[4], mq_why[5], mq_why[6], mq_why[7]); /* L1C0A */
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     { extern void nd_mmemo_log(void); nd_mmemo_log(); } /* DO1 */
     pm_log_evt("clipc f%u groups %u over %u", pm_frame_count(), clipg_n, clipg_over); /* WCLIP0 */
+    { extern unsigned nd_scene2d_n; pm_log_evt("scn2d f%u opens %u", pm_frame_count(), nd_scene2d_n); } /* FSUI3: the census of the scene bracket */
     for (unsigned q = 0; q < clipg_n; q++) pm_log_evt("clipg f%u g %d %d c %d %d n %u out %u bb %d %d", pm_frame_count(), clipg[q].gx0, clipg[q].gx1, clipg[q].top, clipg[q].bot, clipg[q].n, clipg[q].out, clipg[q].out ? clipg[q].lo : 0, clipg[q].out ? clipg[q].hi : 0);
     clipg_n = clipg_over = 0;
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
@@ -737,7 +750,7 @@ static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat)
     if (d->use5 && d->p5) for (unsigned i = 0; i < sizeof(NdPm5) / 4u && n < DREC_REGS; i++) { r[n].reg = (uint16_t)(0x1300u + i); r[n].mask = 0xF; memcpy(&r[n++].val, (const uint32_t*)(const void*)d->p5 + i, 4); }
     #undef DREC_F
     NdDrec rec; memset(&rec, 0, sizeof rec);
-    rec.seq = drec_seq++; rec.kind = 1; rec.n = d->nidx; rec.regs = r; rec.nregs = n;
+    rec.seq = drec_seq++; rec.kind = 1; rec.n = d->nidx; rec.regs = r; rec.nregs = n; rec.vx = (uint8_t)drec_vx; /* CRK2 */
     const uint8_t* vb = (const uint8_t*)(stat ? (const void*)nb.rchunk[0].vtx : (const void*)nb.gring);
     const uint32_t dl = (uint32_t)osConvertVirtToPhys(vb) - (uint32_t)(uintptr_t)vb;
     for (unsigned u = 0; u < 3; u++) if (d->u[u].dim) {
@@ -862,6 +875,34 @@ static void sh_user_clip(int on) {
 static void flush_tev_rebuild(C3D_TexEnv* env, int tex, int tex1, int i8_0, int i8_1, int noise, int* memb_out);
 static void flush_impl(void);
 #define flush() do { fl_fn = __func__; fl_line = __LINE__; flush_impl(); } while (0)
+/* PRES0: present census (plan_interp.md 6.9). This wrapper runs before citro3d's queue callback (onQueueFinish, the top swap). */
+extern int pm_pf_on; /* pm_gpu.c below: pm_phase.c */
+static void (*pres_prev)(gxCmdQueue_s*);
+volatile unsigned pm_pres[14]; /* 0..3 gap after an L picture (0, 1, 2, 3+ vblanks), 4..7 after a K or plain one, 8 drop, 9 wob, 10 pictures, 11 L to K ticks, 12 part 1 ticks, 13 part 1 n */
+unsigned pm_pres_step; /* one per step, pm_main.c wq_step_end */
+static volatile unsigned pres_arm, pres_kind, pres_h, pres_vb0, pres_h0, pres_k0, pres_t0, pres_have, pres_kick, pres_tx, pres_sw; /* PRES1: pres_tx pictures queued, pres_sw swaps done */
+static void pres_cb(gxCmdQueue_s* q) {
+    const unsigned n = q->numEntries;
+    const int tx_ = n && (q->entries[n - 1u].data[0] & 0xFFu) == 0x03u; /* PRES1: a picture finish: its last entry is the display transfer */
+    if (pres_arm && tx_) { /* the finish of an armed picture */
+        const unsigned vb = C3D_FrameCounter(0), t = (unsigned)svcGetSystemTick(), g = vb - pres_vb0, d = pres_h - pres_h0;
+        pres_arm = 0; if (gspIsPresentPending(GSP_SCREEN_TOP)) pm_pres[8]++; /* the last picture is never shown (gspgpu.h:133) */
+        if (pres_have) { pm_pres[(pres_k0 == 1u ? 0u : 4u) + (g > 3u ? 3u : g)]++; pm_pres[9] += d > g ? d - g : g - d; if (pres_k0 == 1u) pm_pres[11] += t - pres_t0; }
+        pm_pres[10]++; pres_vb0 = vb; pres_h0 = pres_h; pres_k0 = pres_kind; pres_t0 = t; pres_have = 1;
+    } else if (pres_kick) { pm_pres[12] += (unsigned)svcGetSystemTick() - pres_kick; pm_pres[13]++; pres_kick = 0; }
+    if (pres_prev) pres_prev(q);
+    if (tx_) pres_sw = pres_tx; /* PRES1: citro3d's swap (pres_prev) of the last queued picture is done */
+}
+static void pres_arm_set(unsigned kind) { if (!pm_pf_on) return; pres_kind = kind; pres_h = 2u * pm_pres_step + (kind == 1u ? 1u : 2u); pres_kick = 0; pres_arm = 1; }
+volatile unsigned pm_pres_g[3]; /* PRES1: gate waits, wait ticks, timeouts */
+static void pres_gate(void) { /* PRES1 (plan_interp.md 6.8): the next transfer waits until the last picture is swapped and on screen */
+    if (pm_interp_on <= 0 || pm_wd_wake_frames) return;
+    if (pres_sw == pres_tx && !gspIsPresentPending(GSP_SCREEN_TOP)) return;
+    const unsigned t0 = (unsigned)svcGetSystemTick();
+    int i = 0;
+    while ((pres_sw != pres_tx || gspIsPresentPending(GSP_SCREEN_TOP)) && i++ < 200) svcSleepThread(200000ll); /* 0.2 ms steps, 40 ms cap as vblank_wait_timed (pm_main.c:446) */
+    pm_pres_g[0]++; pm_pres_g[1] += (unsigned)svcGetSystemTick() - t0; if (i > 200) pm_pres_g[2]++;
+}
 /* KICK1: citro3d holds the GX queue inside a frame and starts the PICA at C3D_FrameEnd, so the GPU idled for the whole CPU part of the frame. One
  * C3D_FrameSplit when about 55 percent of the draws of the last frame are queued starts the GPU on the first part while the CPU builds the rest.
  * Cost: one more cache flush and one more command list submit on the CPU. Only on the main target (an off-screen pass and a grab split on their own).
@@ -888,6 +929,7 @@ static __attribute__((noinline)) void kick_split(void) {
     PH_PUSH(PH_GPU);
     { unsigned k0 = pm_ph_cen ? pm_ticks() : 0; /* PI4: the split is timed on its own (phase mode only) */
       ndunit_scan(); rd_sync(); C3D_FrameSplit(GX_CMDLIST_FLUSH); sc_spl++;
+      if (pm_pf_on) pres_kick = (unsigned)svcGetSystemTick(); /* PRES0 */
       gxCmdQueueRun((gxCmdQueue_s*)&__C3D_Context); /* KICK3: C3D_FrameBegin stopped the queue (citro3d renderqueue.c:97): run it, so the GPU draws part 1 now */
       if (pm_ph_cen) pm_ph_kick_us += (pm_ticks() - k0) / 268u; }
     PH_POP();
@@ -1218,15 +1260,28 @@ static __attribute__((cold, noinline)) void rp_draw(const char* path, int tex) {
           gs.env_col, cconst, r_mixcol, st_tss, st_geo, st_cw0, st_cw1, tw_, th_, plan_gen, gs.combine); }
 }
 
+/* WCLIP1: the old x pair (the rule before nd_sci_x) next to the new one. Cold, drec frames only, at most 4 lines per frame. */
+static __attribute__((cold, noinline)) void wclip_note(int top, int bottom, int ui) {
+    static unsigned wn_fr, wn_n;
+    const unsigned fr = pm_frame_count();
+    const int ot = pm_stretch ? gsci_x0 * 5 / 4 : !pm_wide ? 40 + gsci_x0 : ui ? (gsci_x0 <= 0 ? 0 : 40 + gsci_x0) : gsci_x0 * 5 / 4;
+    const int ob = pm_stretch ? gsci_x1 * 5 / 4 : !pm_wide ? 40 + gsci_x1 : ui ? (gsci_x1 >= 320 ? 400 : 40 + gsci_x1) : gsci_x1 * 5 / 4;
+    if (wn_fr != fr) { wn_fr = fr; wn_n = 0; }
+    if ((ot == top && ob == bottom) || wn_n >= 4u) return;
+    wn_n++;
+    pm_log_evt("wclip f%u g %d %d old %d %d new %d %d", fr, gsci_wx0, gsci_wx1, ot, ob, top, bottom);
+}
+
 /* the scissor of the main target (flush_draw and the native draw): the game scissor in the rotated 240 x 400 buffer */
 static void stage_scissor(void) {
         int left = 240 - gsci_y1;
         int right = 240 - gsci_y0;
         /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
-        int ui = pm_wide && (!nb.draw_3d || ui_ortho);
-        /* MENUGEN: Fullscreen (pm_stretch) scales every batch by 1.25 over the full 400 px, like a 3D batch */
-        int top = pm_stretch ? gsci_x0 * 5 / 4 : !pm_wide ? 40 + gsci_x0 : ui ? (gsci_x0 <= 0 ? 0 : 40 + gsci_x0) : gsci_x0 * 5 / 4;
-        int bottom = pm_stretch ? gsci_x1 * 5 / 4 : !pm_wide ? 40 + gsci_x1 : ui ? (gsci_x1 >= 320 ? 400 : 40 + gsci_x1) : gsci_x1 * 5 / 4;
+        int ui = pm_wout && (!nb.draw_3d || ui_ortho);
+        /* WCLIP1: one x rule for every mode (nd_sci.c). Native uses the clamped edges; wide and Fullscreen use the raw edges. */
+        const int mode = pm_stretch ? 2 : pm_wide ? 1 : 0; int top, bottom;
+        nd_sci_x(mode ? gsci_wx0 : gsci_x0, gsci_y0, mode ? gsci_wx1 : gsci_x1, gsci_y1, mode, ui, &top, &bottom);
+        if (__builtin_expect(drec_on, 0)) wclip_note(top, bottom, ui); /* marker: the old rule gives other columns */
         const int full = pm_wide || pm_stretch;
         if (left < 0) left = 0;
         if (right > 240) right = 240;
@@ -1264,8 +1319,11 @@ static uint64_t ndt_gi[NDT_GC]; static unsigned ndt_gu[NDT_GC], ndt_ga[NDT_GC], 
 static uint32_t ndt_top; /* PERF2: the ticks of the outer regions so far (the op class spans subtract them) */
 static int cls_cur = -1; static uint32_t cls_t, cls_top0; /* PERF2: the open op class span: its class, start tick, ndt_top at its start */
 static int ndt_mdl;
+int pm_ndt_pmu; /* L1PH0: switch profph; the class stack also sums PMN0, PMN1, exclusive as the ticks */
+static uint32_t ndt_e0[4][2], ndt_ei[4][2]; static uint64_t ndt_es[NDT_N][2]; static unsigned ndt_en[NDT_N];
+static __attribute__((cold, noinline)) void ndt_ev(uint32_t v[2]) { u64 a = 0, b = 0; svcControlPerformanceCounter(&a, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0); svcControlPerformanceCounter(&b, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0); v[0] = (uint32_t)a; v[1] = (uint32_t)b; }
 __attribute__((cold, noinline)) void pm_gpu_ndt_push(void) { /* sampled frames only: out of the hot callers */
-    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; ndt_u[ndt_sp] = nd_rnr_n; ndt_a[ndt_sp] = nd_altu_n; }
+    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; ndt_u[ndt_sp] = nd_rnr_n; ndt_a[ndt_sp] = nd_altu_n; if (pm_ndt_pmu) { ndt_ev(ndt_e0[ndt_sp]); ndt_ei[ndt_sp][0] = ndt_ei[ndt_sp][1] = 0u; } }
     ndt_sp++;
 }
 __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
@@ -1275,6 +1333,7 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
     uint32_t tot = (uint32_t)svcGetSystemTick() - ndt_t0[i], in = ndt_in[i];
     ndt_sum[k] += tot > in ? tot - in : 0u;
     if (k >= NDT_GENT && k <= NDT_GWIN) { ndt_gi[k - NDT_GENT] += tot; ndt_gu[k - NDT_GENT] += nd_rnr_n - ndt_u[i]; ndt_ga[k - NDT_GENT] += nd_altu_n - ndt_a[i]; } /* GD0, GD0B */
+    if (pm_ndt_pmu) { uint32_t v[2]; ndt_ev(v); ndt_en[k]++; for (int j = 0; j < 2; j++) { const uint32_t t = v[j] - ndt_e0[i][j], c = ndt_ei[i][j]; ndt_es[k][j] += t > c ? t - c : 0u; if (i) ndt_ei[i - 1][j] += t; } } /* L1PH0 */
     if (i) ndt_in[i - 1] += tot; else ndt_top += tot;
 }
 /* PERF2 step 6: the op class timer of the walk (sampled frames, walk_dbg_op with WD_PH). Outside the regions only (a region times its own ops); a span ends at
@@ -1286,6 +1345,7 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_cls(int k) {
     cls_cur = k; cls_t = now; cls_top0 = ndt_top;
 }
 void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
+void pm_gpu_ndt_take_e(uint64_t o[NDT_N][2], unsigned n[NDT_N]) { memcpy(o, ndt_es, sizeof ndt_es); memcpy(n, ndt_en, sizeof ndt_en); memset(ndt_es, 0, sizeof ndt_es); memset(ndt_en, 0, sizeof ndt_en); } /* L1PH0 */
 void pm_gpu_ndt_take_g(uint64_t o[NDT_GC], unsigned u[NDT_GC], unsigned a[NDT_GC]) { /* GD0: the core 1 class ticks (with their recorder regions) and nd_rec_nr calls, then reset; GD0B: and the alt units */
     for (int k = 0; k < NDT_GC; k++) { o[k] = ndt_gi[k]; u[k] = ndt_gu[k]; a[k] = ndt_ga[k]; ndt_gi[k] = 0; ndt_gu[k] = 0; ndt_ga[k] = 0; }
 }
@@ -1905,7 +1965,7 @@ static void pm_gpu_init_w(void) {
     jt_on = pm_debug_has("jumptest");
     mfr_init();
     pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide == 1) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
-    pm_stretch_cfg = pm_opt.wide == 2 || pm_debug_has("fullscr"); pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
+    pm_stretch_cfg = pm_opt.wide == 2 || pm_debug_has("fullscr"); pm_stretch = pm_stretch_cfg && !pm_wide; pm_wout = pm_wide || pm_stretch; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
     pm_log("gpu: wide=%d stretch=%d", pm_wide, pm_stretch);
     gfxInitDefault();
     gspSetEventCallback(GSPGPU_EVENT_VBlank0, gsp_adopt, NULL, true); /* LIBTHR: one shot, on the GSP event thread */
@@ -1917,6 +1977,7 @@ static void pm_gpu_init_w(void) {
         pm_log_e("C3D_Init failed (command buffer 1.5MB), no graphics");
         return;
     }
+    { gxCmdQueue_s* q_ = (gxCmdQueue_s*)&__C3D_Context; pres_prev = q_->callback; q_->callback = pres_cb; } /* PRES0 */
     /* Width 240, height 400: that is the top screen's rotated framebuffer.
      * A 320-tall target copied into it skews every scanline. */
     target = C3D_RenderTargetCreate(240, 400, GPU_RB_RGBA8, GPU_RB_DEPTH24_STENCIL8);
@@ -2363,7 +2424,7 @@ int pm_gpu_off_begin(const void* base, int stride, int siz, int band_h) {
         gs.offs[i].stride = (unsigned)stride;
         gs.offs[i].last = pm_frame_count();
         /* F07-7: the wide grab slot starts at screen column 0, game x 0 is column 40: a read at cfb + x finds column 40 + x */
-        pm_tex_set_offscreen(i, (pm_wide && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
+        pm_tex_set_offscreen(i, (pm_wout && siz == 2 && stride == 320 && pm_is_cfb(base)) ? (const u8*)base - 80 : base, (unsigned)stride, &gs.offs[i].tex, siz, gs.offs[i].w, gs.offs[i].h);
     }
     if (i < OFF_N) off_mask_f |= 1u << i; /* VRAM3 trace: which full images a frame uses */
     gs.off_cur = i;
@@ -2830,6 +2891,7 @@ void pm_gpu_pause_gutters(unsigned fade) {
     nb.rect_2d = s_2d;
     if (dbg) pm_log("GUTDBG flushed: gni %u", nb.gni);
 }
+unsigned pm_spm_t3; /* SPM0 */
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
     prev_want = 2; /* BTRANS: the request holds for 2 drawn frames */
@@ -2838,7 +2900,7 @@ int pm_gpu_grab_prev(const void* prev_cfb) {
     if (prev_done) return prev_done > 0 ? 2 : 0;
     if (!target || !gs.gpu_ok) return 0;
     const int r = grab_impl(prev_cfb, 0, 240, 1);
-    prev_done = r == 2 ? 1 : -1;
+    prev_done = r == 2 ? 1 : -1; if (r == 2) pm_spm_t3++; /* SPM0: old-frame grabs */
     return r;
 }
 /* BTRANS fix 3: an encounter start (pre-battle init) asks for the copy of the frame before the star wipe, at the next two begins. */
@@ -2925,10 +2987,10 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     if (!prev_frame) { grab_queue_copy(); if (prev_hold) { prev_hold = 0; hold_rst++; } } /* PT12; PAUSEH: a grab overwrote grab_tex: the next frame copies again */
     pm_gpu_off_begin(cfb, 320, 2, 0);
     {
-        int sc[4] = { gsci_x0, gsci_y0, gsci_x1, gsci_y1 };
+        int sc[6] = { gsci_x0, gsci_y0, gsci_x1, gsci_y1, gsci_wx0, gsci_wx1 };
         int s_comb = gs.combine, s_2d = nb.rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = gs.r_atest, s_nc = gs.r_nocol, s_mix = gs.r_mix,
             s_rs = rgb_scale, s_3d = nb.draw_3d;
-        gsci_x0 = 0; gsci_y0 = 0; gsci_x1 = x1; gsci_y1 = 240;
+        gsci_x0 = 0; gsci_y0 = 0; gsci_x1 = x1; gsci_y1 = 240; gsci_wx0 = 0; gsci_wx1 = x1; /* WCLIP1 */
         gs.combine = 3; nb.rect_2d = 1; batch_identity = 1; r_replace = 1; gs.r_atest = -1; gs.r_nocol = 0; gs.r_mix = 0; rgb_scale = 1; nb.draw_3d = 0;
         grab_bind = 1;
         /* FB-1 GRAB: the copy quad is a native raw batch (rect path at fill depth 0.5, combine 3, unit 0 = grab_tex). */
@@ -2937,7 +2999,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         grab_raw_quad(x1, mo);
         flush();
         grab_bind = 0;
-        gsci_x0 = sc[0]; gsci_y0 = sc[1]; gsci_x1 = sc[2]; gsci_y1 = sc[3];
+        gsci_x0 = sc[0]; gsci_y0 = sc[1]; gsci_x1 = sc[2]; gsci_y1 = sc[3]; gsci_wx0 = sc[4]; gsci_wx1 = sc[5];
         gs.combine = s_comb; nb.rect_2d = s_2d; batch_identity = s_bi; r_replace = s_rep; gs.r_atest = s_at; gs.r_nocol = s_nc; gs.r_mix = s_mix;
         rgb_scale = s_rs; nb.draw_3d = s_3d;
     }
@@ -3046,6 +3108,7 @@ void pm_gpu_begin_wait(void) {
     gsci_y0 = 0;
     gsci_x1 = 320;
     gsci_y1 = 240;
+    gsci_wx0 = 0; gsci_wx1 = 320; /* WCLIP1 */
     nb.draw_3d = 0;
     if (!gs.gpu_ok) return;
     pm_tex_upload_vram_before_frame();
@@ -3245,11 +3308,14 @@ void pm_gpu_key_show(void) {
         pm_gx_room();
         gxCmdQueueAdd(q, &e);
     }
+    if (q->numEntries) gxCmdQueueRun(q); /* PRES1: the GPU draws the K entries while pres_gate waits (as KICK3 :914) */
     u32 *cb, csz, coff;
     GPUCMD_GetBuffer(&cb, &csz, &coff);
     if (kc_tail_n && coff + kc_tail_n < csz) { memcpy(cb + coff, kc_buf + kc_tail_w, kc_tail_n * 4u); GPUCMD_SetBufferOffset(coff + kc_tail_n); if (kc_fl) *(volatile unsigned*)(__C3D_Context + 32) |= 2u; } /* FPS60FL: C3D_FrameEnd adds the flush, as in the L frame */
     if (stereo_frame) C3D_FrameDrawOn(targetR); /* the targets C3D_FrameEnd sends */
     C3D_FrameDrawOn(target);
+    pres_gate(); pres_tx++; /* PRES1: pres_tx counts before C3D_FrameEnd runs the queue */
+    pres_arm_set(2u); /* PRES0 */
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     c0k_kf = 1; /* CPT0 */
     if (pm_pf_on) pm_ik[5] += (unsigned)svcGetSystemTick() - ks0_; /* IK0 */
@@ -3369,6 +3435,8 @@ static void pm_gpu_end_w(void) {
     pp_frame_end(); /* PIPE0 */
     { const unsigned kb0_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; kc_build(); if (pm_pf_on) pm_ik[0] += (unsigned)svcGetSystemTick() - kb0_; } /* IK0 */ /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
+    pres_arm_set(pm_icmp_kind == 1 ? 1u : pm_icmp_kind == 2 ? 2u : 0u); /* PRES0 */
+    pres_gate(); pres_tx++; /* PRES1: pres_tx counts before C3D_FrameEnd runs the queue */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (__builtin_expect(pm_ff_on(), 0)) pm_ff_end(pm_frame_count(), pm_ticks(), off_used, off_sused, grab_split + kick_done, OFF_N); /* FLIPLOG: the counts of this frame */
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; } /* S0-6: submit tick of a sampled frame */
@@ -3417,9 +3485,10 @@ void pm_gpu_set_mvp(const float m[4][4], float sx, float sy, float tx, float ty)
     int ortho = memcmp(m, id4, sizeof(id4)) == 0 ? ui_ortho : (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f);
     if (sx == gs.vp_sx && sy == gs.vp_sy && tx == gs.vp_tx && ty == gs.vp_ty && ortho == ui_ortho &&
         memcmp(game_mvp, m, sizeof(game_mvp)) == 0) return;
+    pm_mq_cut(6u); /* L1C0A: a viewport or ortho change */
     if (nb.draw_3d && nb.gni > 0) flush();
     ui_ortho = ortho;
-    pm_gv_rejm = (pm_wide && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c nd_gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
+    pm_gv_rejm = (pm_wout && ortho) ? 0x2c : 0x2f; /* WIDE4: nd_geom.c nd_gv_tri trivial reject. A wide UI triangle wholly in the margin (game x -40..0, a battle wheel spot) lies outside clip x = -w but on screen */
     memcpy(game_mvp, m, sizeof(game_mvp));
     gs.vp_sx = sx;
     gs.vp_sy = sy;
@@ -3438,7 +3507,7 @@ int pm_gpu_gappend(unsigned i0, unsigned i1, unsigned i2, unsigned g0, unsigned 
     if (nb.gni == 0 || nb.gidx_n + 3 > GRING_IDX || !nb.g_pal) return 0;
     if (nb.ring_cur && nb.gi_kind != 0) return 0; /* FB-1: a static batch on chunk k takes no ring triangles */
     const unsigned r3[3] = { i0, i1, i2 }, g3[3] = { g0, g1, g2 };
-    if (pm_wide && !gs.off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides (once per triangle) */
+    if (pm_wout && !gs.off_active && ui_ortho) { /* WIDE1-3: the same edge test as pm_gpu_gtrip, the slow path decides (once per triangle) */
         unsigned short t3[3] = { (unsigned short)i0, (unsigned short)i1, (unsigned short)i2 };
         if (g1 != g0 || g2 != g0 || i0 > 0xffffu || i1 > 0xffffu || i2 > 0xffffu || wide_edge_k(pal_tab[g0], t3, 3) != 0) return 0;
     }
@@ -3638,7 +3707,7 @@ int pm_gpu_gtrip(const float (*tab)[4][4], const unsigned g[3], const float vp[4
     if (mv) *mv = 0;
     if (gs.r_zmark && use5) return 0; /* B3b depth pass: pm4 batches draw it natively in two passes (nd_raw_native, raw_zmark_pass); pm5 has no zmark pass */
     if (gs.r_decal && gs.r_blend) return 0; /* V16b: a decal is drawn in two passes from the CPU vertices */
-    if (pm_wide && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
+    if (pm_wout && !gs.off_active) { int w_ = gtrip_wide(tab, g, ri); if (w_ < 0) return 0; mvm = (unsigned)w_; } /* PERF2: the wide edge test out of line */
     if (nb.gidx_n + 3 > GRING_IDX) return 0;
     if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
     unsigned kf[3]; /* one palette search per vertex: the fit test and the index assignment below use it */
@@ -3782,7 +3851,7 @@ int pm_gpu_grange(const float (*tab)[4][4], unsigned gm, const float vp[4], cons
     if (use5 && !gv5_on) return 0;
     if (gs.r_zmark) return 0;
     if (gs.r_decal && gs.r_blend && !pm_ent_decal_ok) return 0; /* S6: the native raw close draws a decal with blend in two passes (nd_raw_native); the entity segment path allows it */
-    if (pm_wide && !gs.off_active && !wedge_x) { int wr = grange_wide(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, &idx, nidx); if (wr < 2) return wr; } /* PERF2: the wide edge path out of line */
+    if (pm_wout && !gs.off_active && !wedge_x) { int wr = grange_wide(tab, gm, vp, uvso, cmul, cadd, zmix, ct, fx, &idx, nidx); if (wr < 2) return wr; } /* PERF2: the wide edge path out of line */
     if (nb.gidx_n + nidx > GRING_IDX) return 0;
     if (!nb.draw_3d) { flush(); nb.draw_3d = 1; }
     gi_kind_set(1); /* FB-1: static indices name chunk 0 vertices */
@@ -3808,20 +3877,20 @@ int pm_gpu_grange_why(const float m[4][4], unsigned nidx, const unsigned short* 
     if (!gs.gv4_on || !gs.gpu_ok) return 1;
     if (gs.r_zmark) return 2;
     if (gs.r_decal && gs.r_blend && !pm_ent_decal_ok) return 3;
-    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 4;
+    if (pm_wout && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 4;
     return nb.gidx_n + nidx <= GRING_IDX ? 0 : 5;
 }
 /* S5-1 (b): the native range check. The walker's decal with blend (decal2) is a native two-pass draw (nd_model_draw), so that refusal is not kept here. */
 int pm_gpu_grange_native_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
-    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
+    if (pm_wout && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return nb.gidx_n + nidx <= GRING_IDX;
 }
 int pm_gpu_grange_would(const float m[4][4], unsigned nidx, const unsigned short* idx) {
     if (!gs.gv4_on || !gs.gpu_ok) return 0;
     if (gs.r_zmark) return 0;
     if (gs.r_decal && gs.r_blend) return 0;
-    if (pm_wide && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
+    if (pm_wout && !gs.off_active && (ui_ortho || (m[0][3] == 0.f && m[1][3] == 0.f && m[2][3] == 0.f)) && wide_edge(m, idx, nidx)) return 0;
     return nb.gidx_n + nidx <= GRING_IDX;
 }
 
@@ -3960,7 +4029,7 @@ void pm_gpu_model_key(const uint32_t* rec, NdMKey* k) { /* NWS4C */
     s[i++] = nd_apw(NDAPW_PRIM); s[i++] = nd_apw(NDAPW_PLOD); s[i++] = aux_hash(rec); /* NWS4C */ /* S3N-7: env_col is not in the key (it changes per draw order; the cached draws do not read it: ndmcheck diff 0). S3L-3: slot 10 = hash of the R13 words (compared) */ s[i++] = cconst; s[i++] = gs.r_mix == 2 ? r_mixcol : 0u; s[i++] = dbits; /* MERLEE: the walker's mix reaches the native draw only as the F08 fog mix (model_draw) */
     s[i++] = (uint32_t)dview; s[i++] = gs.r_mix == 2 ? 2u : 0u; s[i++] = (uint32_t)r_memblend; s[i++] = (uint32_t)r_replace; s[i++] = (uint32_t)gv_wind;
     { float zb_ = gs.r_zmark ? gs.r_zmark_zn : 0.f; uint32_t zu; memcpy(&zu, &zb_, 4); s[i++] = gs.r_zmark ? (zu | 1u) : 0u; } /* S5-2: zmark on and its depth (bit 0 set when on) */
-    s[i++] = (uint32_t)gs.r_decal; s[i++] = (uint32_t)gs.r_blend; s[i++] = (uint32_t)pm_wide; s[i++] = (uint32_t)gs.off_active; s[i++] = (uint32_t)ui_ortho;
+    s[i++] = (uint32_t)gs.r_decal; s[i++] = (uint32_t)gs.r_blend; s[i++] = (uint32_t)pm_wout; s[i++] = (uint32_t)gs.off_active; s[i++] = (uint32_t)ui_ortho;
     s[i++] = nd_handle_gen(); s[i++] = pm_dlc_gen;
     i += pm_gbi_gvkey(s + i, NDMC_SW - i);
     while (i < NDMC_SW) s[i++] = 0;
@@ -4309,6 +4378,27 @@ static __attribute__((cold, noinline)) void ffog_note(const NdMKey* k, const NdM
     if (!vm) vmz_++;
     if (!e->n) { emp_++; empig_ += (unsigned)ig; }
 }
+/* L1C0B: the model hit queue (ws_L1C0B): a hit stores what it resolved; mq_drain runs the old submit loop of each item in record order at the next cut. */
+#define PM_MQ_N 8u
+typedef struct { NdMEnt* e; NdUnit u; uint32_t shc; int shr; float pal[16], palk[16]; } PmMq; /* entry, unit 0 words, shroud colour, palette 0 of this view, its K twin */
+static PmMq mq_q[PM_MQ_N]; static float mq_zpal[16], mq_zpalk[16]; /* PERF2 step 3, INTERPB2: the zmark pass 2 palette of the draw that goes out now, its K twin */
+static void mq_drain(void) {
+    const unsigned n = pm_mq_run; pm_mq_run = 0;
+    for (unsigned i = 0; i < n; i++) {
+        const PmMq* const m = &mq_q[i]; NdMEnt* const e = m->e;
+        if (pm_tw_on) memcpy(mq_zpalk, m->palk, sizeof mq_zpalk);
+        for (unsigned j = 0; j < e->n; j++) {
+            NdNatC* q = nd_mc_nat(e, j);
+            if (m->shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = m->shc;
+            if (q->zp) { memcpy(mq_zpal, m->pal, sizeof mq_zpal); for (int k = 0; k < 4; k++) mq_zpal[8 + k] = q->zn * m->pal[12 + k]; q->d.pal = (const float(*)[16])mq_zpal; for (int k = 0; k < 4; k++) mq_zpalk[8 + k] = q->zn * m->palk[12 + k]; } /* S5-2: zmark pass 2 */
+            else q->d.pal = (const float(*)[16])m->pal;
+            q->d.pal_k = pm_tw_on ? (const float(*)[16])(q->zp ? mq_zpalk : m->palk) : NULL; q->d.nrm_k = NULL; /* INTERPB2 */
+            if (e->tex) q->d.u[0] = m->u;
+            pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
+            mfr_idx += q->nidx;
+        }
+    }
+}
 int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     if (!e) { ndn_nokey++; return 0; }
     if (PMDL("ffog")) ffog_note(k, e);
@@ -4323,9 +4413,12 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
          * nd_tex entry (32 x 64 on a shared-aux water) and its slot was sampled under uv scales built for the window rows, so every hit drew wrong (flicker) */
         NdTexDesc wd_;
         if (ds && e->ww) { wd_ = *ds; wd_.w = e->ww; wd_.h = e->wh; ds = &wd_; ndn_win++; }
-        int id = ds ? nd_tex_get(ds) : -1;
+        int id = ds ? nd_tex_have(ds) : -1;
+        if (ds && id < 0) { pm_mq_cut(4u); id = nd_tex_get(ds); } /* L1C0A: a table miss loads */
         { extern int pm_tex_tagi; pm_tex_tagi = 2; } /* STALE2 texsrc path tag: hit */
-        if (id < 0 || !nd_tex_unit_hint(id, &e->hs, &e->hg, &u)) { ndn_texf++; return 0; }
+        int tok = id >= 0 && nd_tex_unit_fast(id, &e->hs, &e->hg, &u);
+        if (id >= 0 && !tok) { pm_mq_cut(4u); tok = nd_tex_unit_slow(id, &e->hs, &e->hg, &u); } /* L1C0A: the search may load */
+        if (!tok) { ndn_texf++; return 0; }
     }
     /* DOORHITCH: an entry with a unit 1 slot does not hit. Its tile 1 came from the live walker tile state (pm_gbi_bind_tile1), which the key
      * does not hold and a hit chain does not update (rec_apply is skipped). Before, such a record missed whenever the record before it changed
@@ -4336,31 +4429,25 @@ int pm_gpu_model_hit(const NdMKey* k, NdMEnt* e) {
     /* FB-2: the template ids of the cached draws are built again before any draw goes out (the LRU may have taken an id over since the store): a full table falls back */
     /* PERF1-4c: only when an eviction happened since the last build of these ids (nd_tmpl_gen); else the ids hold and only their LRU clock moves */
     if (e->tgen != nd_tmpl_gen()) {
+        pm_mq_cut(5u); /* L1C0A: an eviction */
         nd_tmpl_pin();
         for (unsigned j = 0; j < e->n; j++) { int id = nd_tmpl_build(&nd_mc_nat(e, j)->tk); if (id < 0) return 0; nd_mc_nat(e, j)->d.tmpl = id; }
         e->tgen = nd_tmpl_gen();
     } else for (unsigned j = 0; j < e->n; j++) nd_tmpl_touch(nd_mc_nat(e, j)->d.tmpl);
-    static float pal0[16], zpal[16]; /* PERF2 step 3: palette 0 of this view and the zmark pass 2 row, shared by the draws (the cache entry keeps no palette) */
+    if (pm_mq_run == PM_MQ_N) pm_mq_cut_do(7u); /* L1C0B: a full queue drains */
+    PmMq* const m = &mq_q[pm_mq_run]; /* L1C0B: the item of this hit */
     float comb[4][4];
     nd_mtx_combine(comb);
-    pm_gpu_pcomp_native(pal0, comb);
-    static float pal0k[16], zpalk[16]; /* INTERPB2: the K twins of pal0 and zpal (K = L outside the t = 0.5 walk: pal_k stays NULL) */
-    if (pm_tw_on) { memcpy(pal0k, pm_pal0_k, sizeof pal0k); memcpy(zpalk, pal0k, sizeof zpalk); }
+    pm_gpu_pcomp_native(m->pal, comb);
+    if (pm_tw_on) memcpy(m->palk, pm_pal0_k, sizeof m->palk); /* INTERPB2: the K twin of palette 0 */
     pm_gpu_flush();
     const uint32_t* rw = (const uint32_t*)(uintptr_t)k->rp; /* MERLEE: the shroud mix colour of this frame (the key leaves it out): blend colour RGB, fog colour alpha, as rec_apply sets them */
     const int shr = rw && (rw[6] & 32u);
     const uint32_t* const msr_ = rw ? nd_msnap_rw(rw) : NULL; const uint32_t shc_bc = (msr_ ? msr_ : nd_msnap_w())[MSW_BLENDC]; /* PERF3: this record's snap (a hit runs no nd_msnap_use) */
     const uint32_t shc = shr ? nd_abgr((((rw[6] & 16u) ? rw[14] : shc_bc) & 0xffffff00u) | (rw[8] & 0xffu)) : 0u; /* NWS4C */
-    for (unsigned j = 0; j < e->n; j++) {
-        NdNatC* q = nd_mc_nat(e, j);
-        if (shr && q->tk.r_mix == 1 && q->mix_st >= 0) q->d.tev_col[q->mix_st] = shc;
-        if (q->zp) { memcpy(zpal, pal0, sizeof pal0); for (int i = 0; i < 4; i++) zpal[8 + i] = q->zn * pal0[12 + i]; q->d.pal = (const float(*)[16])zpal; for (int i = 0; i < 4; i++) zpalk[8 + i] = q->zn * pal0k[12 + i]; } /* S5-2: zmark pass 2 */
-        else q->d.pal = (const float(*)[16])pal0;
-        q->d.pal_k = pm_tw_on ? (const float(*)[16])(q->zp ? zpalk : pal0k) : NULL; q->d.nrm_k = NULL; /* INTERPB2 */
-        if (e->tex) q->d.u[0] = u;
-        pm_gpu_native_submit_draw(&q->d, q->sd, q->nidx, q->d.u[0].dim != 0);
-        mfr_idx += q->nidx;
-    }
+    if (pm_mq_run && mq_moved()) mq_bad++; /* L1C0A */
+    m->e = e; m->u = u; m->shc = shc; m->shr = shr; /* L1C0B: mq_drain submits its draws */
+    mq_mark(); pm_mq_run++; mq_hits++; mq_draws += e->n; /* L1C0A */
     ndn_rec++; ndn_draws += e->n; ndn_hit++;
     return 1;
 }
@@ -4848,6 +4935,7 @@ void pm_gpu_dcsum_frame(unsigned frame) {
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     gsci_r[0] = x0; gsci_r[1] = y0; gsci_r[2] = x1; gsci_r[3] = y1; /* NC0S */
+    const int rx0 = x0, rx1 = x1; /* WCLIP1: raw x edges */
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 > 320) x1 = 320;
@@ -4856,11 +4944,12 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
     /* V05: the batch in flight was drawn under the old scissor on the N64. Draw it before the scissor changes: the last
      * background piece of a window (its bottom right quarter) was cut by the next pass's scissor, a smaller one. */
-    if (x0 != gsci_x0 || y0 != gsci_y0 || x1 != gsci_x1 || y1 != gsci_y1) flush();
+    if (x0 != gsci_x0 || y0 != gsci_y0 || x1 != gsci_x1 || y1 != gsci_y1 || ((pm_wide || pm_stretch) && (rx0 != gsci_wx0 || rx1 != gsci_wx1))) flush();
     gsci_x0 = x0;
     gsci_y0 = y0;
     gsci_x1 = x1;
     gsci_y1 = y1;
+    gsci_wx0 = rx0; gsci_wx1 = rx1; /* WCLIP1 */
 }
 const int* pm_gpu_sci_raw(void) { return gsci_r; } /* NC0S */
 

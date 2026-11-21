@@ -265,10 +265,10 @@ static int in_buf(const void* p, const unsigned short* b) {
  * per load) and read as native u16 pixels instead of its own bytes. */
 int pm_is_cfb(const void* p) { return in_buf(p, gFrameBuf0) || in_buf(p, gFrameBuf1); }
 /* B2: the frame buffer the game draws into now (the T2 grab source). Any other frame buffer holds an older frame (T3). */
-extern int pm_wide;
+extern int pm_wout;
 /* F07-7: with wide a window may start up to 40 pixels before the buffer (game x -40 of row 0, effects in the gutters) */
 void* pm_walk_cfb; /* CORE2C-2: set by pm_frame_walk from the frame (the walker reads this, the game side nuGfxCfb_ptr) */
-int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wide && in_buf((const u8*)p + 80, c))); }
+int pm_is_cur_cfb(const void* p) { const void* c = pm_walk_cfb; return c && (in_buf(p, c) || (pm_wout && in_buf((const u8*)p + 80, c))); }
 /* Frame buffer and saved-frame memory hold native u16 pixels (the game code reads them as u16). Textures
  * from ROM data hold big-endian bytes. pm_tex reads these two kinds differently. */
 int pm_fb_native(const void* p) { return pm_is_cfb(p) || (nuGfxZBuffer && in_buf(p, nuGfxZBuffer)); }
@@ -346,6 +346,7 @@ static void cap_note(const char* path) {
 }
 /* PAUSEOPEN: the last frame for a texture read (set_timg). The GPU copy when this drawn frame has it, else the CPU readback of the frame buffer
  * that is not drawn now. The pause no longer reads the pixels on the CPU (ROLE_CPUFILL only writes the coverage). */
+unsigned pm_spm_cap; /* SPM0 */
 void pm_cfb_capture_prev(void) {
     static unsigned done = ~0u;
     unsigned i;
@@ -377,7 +378,7 @@ void pm_cfb_capture_prev(void) {
                 pm_gpu_cap_state(st);
                 if (st[2] || st[3]) { cap_note("skip"); return; }
             }
-            cap_note("cpu");
+            cap_note("cpu"); pm_spm_cap++; /* SPM0: CPU frame reads */
             if (pm_xf.on) pm_xf.cap_cpu++; /* BTLWIPE: the capcpu field of the xfer line */
             pm_gpu_read_frame(prev);
             if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
@@ -472,7 +473,8 @@ static void wq_frame_end(void) {
 void pm_lg_end_walked(void);
 void pm_lg_key_due(void);
 typedef struct { int drew, key; } StepEnd;
-static void wq_step_end(void* a) { const StepEnd* e = (const StepEnd*)a; if (e->drew) { pm_gpu_kc_want(e->key); wq_frame_end(); } if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
+extern unsigned pm_pres_step; /* PRES0: pm_gpu.c */
+static void wq_step_end(void* a) { pm_pres_step++; /* PRES0 */ const StepEnd* e = (const StepEnd*)a; if (e->drew) { pm_gpu_kc_want(e->key); wq_frame_end(); } if (e->key) pm_lg_key_due(); pm_lg_end_walked(); }
 void pm_fxtest_tick(unsigned);
 /* CORE2C-3: the body of one frame loop command (pm_logic.c), on the logic thread or inline. LG_IDLE: the retrace call of an idle pass.
  * LG_STEP: frame begin, the step (step_game_loop, list build, frame push), the audio ticks, the step end; LG_SKIP: the FS1 step with no

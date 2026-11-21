@@ -1,0 +1,52 @@
+{
+  "benches": [
+    {
+      "name": "spm_uaa",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "SPM0: star power census of Up and Away (spmove=7), log only; the spm lines are the counts for plan_upaway.md section 4.",
+      "scenario": "spm_uaa",
+      "cap": 45,
+      "until": "spmove: done",
+      "tags": [
+        "azahar",
+        "det",
+        "spm"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spm_sbeam",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "SPM0: star power census of Star Beam (spmove=8), log only; the spm lines are the counts for plan_upaway.md section 4.",
+      "scenario": "spm_sbeam",
+      "cap": 45,
+      "until": "spmove: done",
+      "tags": [
+        "azahar",
+        "det",
+        "spm"
+      ],
+      "gates": []
+    },
+    {
+      "name": "spm_pbeam",
+      "kind": "azahar_stream",
+      "speed": "turbo",
+      "default": false,
+      "purpose": "SPM0: star power census of Peach Beam (spmove=9), log only; the spm lines are the counts for plan_upaway.md section 4.",
+      "scenario": "spm_pbeam",
+      "cap": 45,
+      "until": "spmove: done",
+      "tags": [
+        "azahar",
+        "det",
+        "spm"
+      ],
+      "gates": []
+    }
+  ]
+}

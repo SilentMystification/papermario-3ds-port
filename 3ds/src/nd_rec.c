@@ -184,7 +184,8 @@ static void rec_ctx_check(void) {
 }
 /* Room for n words (header and payload): else the chunk ends with NDC_JUMP to the next one. */
 static int st_take; /* HC4b: rec_take of a state op (the shadow stays) */
-static uint32_t* rec_take(unsigned n) {
+extern unsigned nd_uq_n; extern unsigned char nd_uq_busy; void nd_uq_hole(unsigned w); /* L1Q1 */
+static uint32_t* rec_take(unsigned n) { if (nd_uq_n && !nd_uq_busy) nd_uq_hole(1u); /* L1Q1 */
     st_hdr = NULL; /* any record closes the open state run (nd_rec_nr reopens its own) */
     if (!st_take) sh_all(); /* HC4b: any other command resets the shadow */
     if (wp + n > wend) {
@@ -212,7 +213,15 @@ static void task_open(void) {
     rec_ctx_check();
     if (!task_head) { task_head = wp; sh_all(); nd_snap_task(); } /* NAT2J */
 }
-static void rec_open(void) { task_open(); } /* DEL3C1: no top-level packet on the device */
+static unsigned char rnr_d; unsigned nd_rnr_n; /* PROF2: nd_rec_nr depth and calls (L1PH0: moved up) */
+unsigned nd_uqr[7], nd_uqc; static unsigned uq_run; /* L1PH0: units of the runs by length 1, 2-3, 4-7, 8-15, 16-31, 32-63, 64+, and the run ends. A run = depth-0 nd_rec_nr calls between two depth-0 rec_open calls */
+static __attribute__((noinline)) void uq_cut(void) { const unsigned b = 31u - (unsigned)__builtin_clz(uq_run); nd_uqr[b < 6u ? b : 6u] += uq_run; nd_uqc++; uq_run = 0; }
+#define UQ_N 128u /* L1Q1: setter units held before the recorder runs them (1 KB) */
+static uint32_t uq[2u * UQ_N]; unsigned nd_uq_n, nd_uq_holes; unsigned char nd_uq_busy; static void rec_nr0(uint32_t w0, uint32_t w1); unsigned pm_frame_count(void);
+void nd_uq_sync(void) { if (!nd_uq_n || nd_uq_busy) return; nd_uq_busy = 1; const unsigned n = nd_uq_n; for (unsigned k = 0; k < n; k++) rec_nr0(uq[2u * k], uq[2u * k + 1u]); nd_uq_n = 0; nd_uq_busy = 0; } /* L1Q1 */
+void nd_rec_q(uint32_t w0, uint32_t w1) { if (nd_uq_busy) { rec_nr0(w0, w1); return; } uq[2u * nd_uq_n] = w0; uq[2u * nd_uq_n + 1u] = w1; if (++nd_uq_n == UQ_N) nd_uq_sync(); } /* L1Q1 */
+__attribute__((cold, noinline)) void nd_uq_hole(unsigned w) { static unsigned m; nd_uq_holes++; if (!(m >> w & 1u)) { m |= 1u << w; pm_log_evt("uqhole f%u w%u", pm_frame_count(), w); } } /* L1Q1 */
+static void rec_open(void) { nd_uq_sync(); if (uq_run && !rnr_d) uq_cut(); task_open(); } /* DEL3C1; L1PH0: an entry ends the unit run; L1Q1: the queued units run first */
 static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_log_e("ndc: model record of %u words (most %u)", words, G_PM_REC_WORDS + ND_REC_AUX_MAX);
     pm_fatal_stop("ndc: model record too long");
@@ -222,7 +231,7 @@ static __attribute__((cold, noinline)) void model_bad(unsigned words) {
  * R13NOP: the R13 syncs (typed ND_FS_MISC_NOP units) are dropped here; the count q[26] is the kept units. */
 /* NST2b: one typed unit into the core 1 state (nd_ds_apply), its ND_FS_CALL list (depth 1) and the NST3 ep rule. The model record
  * (nd_rec_model) and the stream units (nd_rec_nr) both call it. */
-void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) {
+void nd_ds_unit(NdDs* s, uint32_t w0, uint32_t w1) { nd_uq_sync(); /* L1Q1 */
     nd_ds_apply(s, w0, w1); /* NST1: the core 1 draw state follows the units (core 0 does not read it) */
 }
 void nd_msnap_rec(uint32_t* p, unsigned units); /* NREC1A: nd_msnap.c, weak below */
@@ -353,7 +362,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) keep++; /* R13NOP: a typed sync is not an R13 op */
     rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U); /* NREC1B: room for the jump and the model snap */ ndc_n[NDC_MODEL]++;
-    const int mmc = !r[22] && !r[23]; MmEnt* me = NULL; unsigned mh = 0; /* DO1: a record with a custom gfx range has no memo */
+    const int mmc = !r[22] && !r[23] && !nd_ds_lg_on(); MmEnt* me = NULL; unsigned mh = 0; /* DO1: a record with a custom gfx range has no memo; POND1: nor a record inside an open unit log (a hit writes nd_ds with no lg_put, so nd_ds_range misses its units) */
     if (mmc) {
         me = mm_find(r, words, keep, &mh);
         if (me && mh && !(pm_drec_now() || (mm_hits & 63u) == 0u)) { /* a hit: the copy; the census (drec frames and 1 hit in 64) runs the full path and compares */
@@ -584,7 +593,7 @@ static void rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { /* NAT4I: a native 
     st_take = 1; uint32_t* p = rec_take(4); st_take = 0; ndc_n[NDC_NRUN]++;
     p[0] = NDC_HDR(NDC_NAPI, 1, 1); p[1] = (uint32_t)(uintptr_t)run; p[2] = a; p[3] = b; }
 void nd_rec_nat(NdNapiRun run, uint32_t a, uint32_t b) { rec_open(); rec_nat(run, a, b); } /* NAT5E */
-static unsigned char cg_keep; void nd_rec_cgfx(int on) { cg_keep = (unsigned char)(on != 0); } /* NAT6A: a custom gfx range keeps its combine class units (nd_r11_walk) */
+static unsigned char cg_keep; void nd_rec_cgfx(int on) { nd_uq_sync(); /* L1Q1 */ cg_keep =(unsigned char)(on != 0); } /* NAT6A: a custom gfx range keeps its combine class units (nd_r11_walk) */
 __attribute__((weak)) void nd_txs_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_oml_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_prim_run(const uint32_t* r) { (void)r; } /* NAT6A: strong in nd_walk.c */
 __attribute__((weak)) void nd_epm_run(const uint32_t* r) { (void)r; } __attribute__((weak)) void nd_cbd_run(const uint32_t* r) { (void)r; } /* NAT6C: strong in nd_walk.c */
 static const NdDs* alt_s = &nd_ds; /* NAT5T: the state that the txr puts read (a scratch copy on the static paths) */
@@ -607,10 +616,9 @@ static void rec_ew(const NdDs* s) { NdSnapBind t[2]; nd_snap_bind(&s->w.td[0], &
 void nd_rec_ew(const NdDs* s) { rec_open(); rec_ew(s); }
 NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
 void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
-static unsigned char rnr_d; unsigned nd_rnr_n; /* PROF2: nd_rec_nr depth (the outer call times) and calls */
-void nd_rec_nr(uint32_t w0, uint32_t w1) { if (__builtin_expect(nd_ub_on, 0)) nd_ublk_unit(w0, w1); /* GD9A */
+static void rec_nr0(uint32_t w0, uint32_t w1) { if (__builtin_expect(nd_ub_on, 0)) nd_ublk_unit(w0, w1); /* GD9A; L1Q1: the body of nd_rec_nr */
     const uint32_t t[2] = { w0, w1 };
-    const int tq = pm_ph_on && !rnr_d; if (__builtin_expect(tq, 0)) pm_gpu_ndt_push(); rnr_d++; nd_rnr_n++; /* PROF2 */
+    const int tq = pm_ph_on && !rnr_d; if (__builtin_expect(tq, 0)) pm_gpu_ndt_push(); uq_run += !rnr_d; rnr_d++; nd_rnr_n++; /* PROF2; L1PH0 */
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
     if ((w0 >> 24) == ND_FS_TRI1 || (w0 >> 24) == ND_FS_TRI2) nd_snap_mesh(); /* NAT2G: every stream triangle has a snap, or the memo says the last one holds */
     if ((w0 >> 24) == ND_FS_RECT && !(w1 & ND_FS_RECT_TEX)) nd_snap_rect(); /* NAT2H: a fill rectangle takes a snap, as a texture rectangle (nd_rec_texrect :264) */
@@ -636,6 +644,7 @@ void nd_rec_nr(uint32_t w0, uint32_t w1) { if (__builtin_expect(nd_ub_on, 0)) nd
     cp_put(&nd_ds, t[0], t[1]); /* NAT4A */
     rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR);
 }
+void nd_rec_nr(uint32_t w0, uint32_t w1) { nd_uq_sync(); rec_nr0(w0, w1); } /* L1Q1: the immediate form (recorder loops, buffered sites) */
 /* NAT5R, core 1: a record (run, rec, units) with one spare unit, then its fallback units au as an alt range that the main stream jumps over.
  * The spare unit holds the range bounds (nd_alt_run). The units feed nd_ds (nd_rec_nr); the snap memo restarts at both ends. */
 unsigned nd_altu_n, nd_altr_n; /* NAT8A */ /* core 1 nd_alt_put and nd_rec_alt calls */
@@ -748,7 +757,7 @@ int nd_rec_inline(uint32_t a) {
     for (unsigned i = 0; i < n; i++) if (st_kind(w[2u * i]) == 1u) nd_rec_nr(w[2u * i], w[2u * i + 1u]);
     return 1;
 }
-const uint32_t* nd_rec_pos(void) { return wp; }
+const uint32_t* nd_rec_pos(void) { nd_uq_sync(); return wp; } /* L1Q1 */
 const uint32_t* nd_rec_mark(void) {
     rec_open();
     st_hdr = NULL; /* a range bound closes the state run: the range starts or ends at a command header */
@@ -792,9 +801,14 @@ void nd_sub_open(NdSub* s) {
 void nd_sub_close(NdSub* s) {
     s->b = nd_rec_mark();
     s->br[1] = (uint32_t)(uintptr_t)s->b;
+    s->e[0] = nd_ds.w.prim; s->e[1] = nd_ds.w.envc; s->e[2] = nd_ds.w.geom; /* TUB0: the end state of the recorded range (before the restore) */
     nd_ds_lg_close(); nd_ds_sub_restore(); /* NST2D */
 }
-void nd_sub_call(const NdSub* s) { nd_rec_call(s->a, s->b); }
+static __attribute__((cold, noinline)) void subst_log(const NdSub* s) { /* TUB0: at most 8 lines per frame */
+    static unsigned fr = ~0u, n; const unsigned f = pm_frame_count(); if (f != fr) { fr = f; n = 0; } if (n >= 8u) return; n++;
+    pm_log_evt("subst f%u prim %08x %08x env %08x %08x geom %08x %08x", f, (unsigned)s->e[0], (unsigned)nd_ds.w.prim, (unsigned)s->e[1], (unsigned)nd_ds.w.envc, (unsigned)s->e[2], (unsigned)nd_ds.w.geom); }
+void nd_sub_call(const NdSub* s) { nd_rec_call(s->a, s->b); /* TUB0: an end state other than the recorded one: the range drew with the snaps of nd_sub_open */
+    if (__builtin_expect(pm_drec_now(), 0) && (nd_ds.w.prim != s->e[0] || nd_ds.w.envc != s->e[1] || nd_ds.w.geom != s->e[2])) subst_log(s); }
 /* D10a: the end of a custom gfx range (build_custom_gfx): the replay of a range (nd_range_run) stops at its NDC_END. */
 void nd_rec_end(void) {
     rec_open();
@@ -864,6 +878,7 @@ __attribute__((weak)) void nd_snap_vprim(unsigned v) { (void)v; } __attribute__(
 unsigned char nd_snap_arm __attribute__((weak)); /* NDR0A: strong in nd_snap.c; weak so the host units that link nd_rec.c need no nd_snap.c */
 unsigned char nd_snap_live __attribute__((weak)); /* NDR1C */
 __attribute__((weak)) int pm_ph_on; __attribute__((weak)) void pm_gpu_ndt_push(void) {} __attribute__((weak)) void pm_gpu_ndt_pop(int k) { (void)k; } /* NAT8A */ /* strong in pm_phase.c, pm_gpu.c */
+unsigned pm_mq_run __attribute__((weak)); __attribute__((weak)) void pm_mq_cut_do(unsigned r) { (void)r; } /* L1C0A: strong in pm_gpu.c */
 const uint32_t* nd_stream_cur; /* POSTFAIL2 (debug tool): the stream command that runs now (core 0); gbi_cold_bad_vp (nd_walk.c) logs it */
 /* POSTFAIL2: the context of the chain whose chunk holds p (*chunk: its index), else -1. Cold: the bad viewport log only. */
 int nd_rec_where(const void* p, unsigned* chunk) {
@@ -876,8 +891,9 @@ int nd_rec_ctx(void) { return rec_ctx; } /* POSTFAIL2: the chain core 1 records 
 static void stream_run(const uint32_t* p, const uint32_t* stop) {
     for (;;) {
         __builtin_prefetch(p + 16); /* HC9B: the stream 64 B ahead (no hardware prefetcher on the ARM11) */
-        if (p == stop) return;
+        if (p == stop) { pm_mq_cut(1u); return; } /* L1C0A */
         const uint32_t h = p[0];
+        if ((h >> 24) != NDC_MODEL && (h >> 24) != NDC_JUMP) pm_mq_cut(0u); /* L1C0A: any command but a model record ends the run */
         nd_stream_cur = p;
         { const unsigned op = h >> 24; if (op != NDC_JUMP && op != NDC_TEXRECT && op != NDC_SPR && (op != NDC_NAPI || !(h & 1u))) nd_snap_arm = nd_snap_live = 0; } /* NDR0A: a command but the native runs disarms the snapchk; NDR3: a snap-taking record keeps the arm */ /* NAT6F: no NRUN record */
         switch (h >> 24) {

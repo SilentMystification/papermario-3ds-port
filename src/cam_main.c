@@ -7,10 +7,14 @@
 #include "nd.h"
 
 extern int pm_wide; /* F07-2 */
+extern int pm_wout, pm_stretch; /* FSUI2: pm_gpu.c */
 /* PT53, PT54: with wide the standard game view (12 20 296 200) becomes the whole 320 x 240 picture. The vertical field of view stays the original one, so the 200 rows fill the 240 rows (zoom 6 / 5).
  * The aspect is 320 / 240 * 1.25. The world grows to the sides only. */
 s32 pm_wide_cam(Camera* c) {
     return pm_wide && (c == &gCameras[CAM_DEFAULT] || c == &gCameras[CAM_BATTLE]) && c->viewportStartX == 0 && c->viewportStartY == 0 && c->viewportW == 320 && c->viewportH == 240;
+}
+s32 pm_wout_cam(Camera* c) { /* FSUI2: the 3D draw is at 1.25 x and a 2D draw at 40 + x: the wide full view, or the main and battle views in Fullscreen */
+    return pm_wide_cam(c) || (pm_stretch && (c == &gCameras[CAM_DEFAULT] || c == &gCameras[CAM_BATTLE]));
 }
 f32 pm_wide_lead_ratio(Camera* c) { /* the camera lead keeps the ratio of the original 296 x 200 view */
     return pm_wide_cam(c) ? 296.0f / 200.0f : (f32)c->viewportW / (f32)c->viewportH;
@@ -475,7 +479,7 @@ void set_cam_viewport(s16 id, s16 x, s16 y, s16 width, s16 height) {
     camera->vpAlt.vp.vtrans[2] = 0x200;
     camera->vpAlt.vp.vtrans[3] = 0;
 
-    if (pm_wide && id == CAM_TATTLE) { /* TATTLEAR: the 3D view fills the 2D tattle window (40 + x, 1:1): 3D x = (x + 40) * 4 / 5 */
+    if (pm_wout && id == CAM_TATTLE) { /* TATTLEAR: the 3D view fills the 2D tattle window (40 + x, 1:1): 3D x = (x + 40) * 4 / 5 */
         camera->vp.vp.vscale[0] = (s16) (camera->viewportW * 8 / 5);
         camera->vp.vp.vtrans[0] = (s16) ((camera->viewportStartX * 2 + camera->viewportW + 80) * 8 / 5);
         camera->vpAlt.vp.vscale[0] = camera->vp.vp.vscale[0];
@@ -501,7 +505,7 @@ f32 pm_debug_draw_px(s32 camID, f32 x, f32 y, f32 z) {
         return -9999.0f;
     }
     /* the draw centre and half size come from the camera viewport (rebuild_3d: vp_tx, vp_sx), +40 px without wide */
-    if (pm_wide_cam(camera)) {
+    if (pm_wout_cam(camera)) {
         return 1.25f * ((f32) camera->viewportStartX + (f32) camera->viewportW * 0.5f + (f32) camera->viewportW * 0.5f * (tX / tW));
     }
     return 40.0f + (f32) camera->viewportStartX + (f32) camera->viewportW * 0.5f + (f32) camera->viewportW * 0.5f * (tX / tW);
@@ -510,7 +514,7 @@ f32 pm_debug_draw_px(s32 camID, f32 x, f32 y, f32 z) {
 /* WIDE3: the 2D x of a 3D screen x of a camera's full view (pm_wide_cam): the 3D draw scales x by 1.25 with wide and the 2D draw adds the
  * 40 px gutter, so game x = 1.25 x - 40 (UA1). Shared by get_screen_coords and the shop prices (shops.c). 4:3 and other views: x unchanged. */
 s32 pm_wide_draw_x(Camera* camera, s32 x) {
-    return pm_wide_cam(camera) ? (s32) (x * 1.25f) - 40 : x;
+    return pm_wout_cam(camera) ? (s32) (x * 1.25f) - 40 : x;
 }
 
 /* TATTLEAR: the 3D game x that lands on the 2D game x with wide (3D 1.25 x, pm_gpu.c:230; 2D 40 + x, pm_gpu_rect.c:161). up 1 rounds up. */

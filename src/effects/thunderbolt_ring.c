@@ -118,6 +118,9 @@ void thunderbolt_ring_appendGfx(void* effect) {
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_LOAD | G_MTX_MODELVIEW);
     nd_draw_list(NDN(D_09000000_3B46A0), ND_SELF);
 
+    nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
+    nd_val_env(255, 255, 255, 0);
+
     nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
 
     for (i = 0; i < 5; i++) {
@@ -134,8 +137,6 @@ void thunderbolt_ring_appendGfx(void* effect) {
     }
 
     nd_sub_close(&sub);
-    nd_val_prim(0, 0, data->unk_18, data->unk_1C, data->unk_20, unk_24);
-    nd_val_env(255, 255, 255, 0);
 
     for (i = 0; i < data->unk_30 + 1; i++) {
         f32 angle = lifeTime * 8 + i * 180 / (data->unk_30 + 1);

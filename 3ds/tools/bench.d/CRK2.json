@@ -1,0 +1,22 @@
+{
+  "benches": [
+    {
+      "name": "seam_mac01_drec",
+      "kind": "azahar_pic",
+      "speed": "normal",
+      "default": false,
+      "purpose": "CRK2: seam census input. Draw records (drec.txt with vx and ix lines) of mac_01 frame 200, cold det start, read by seamcen.py. Two runs of one build byte-equal.",
+      "scenario": "seam_mac01_drec",
+      "cap": 35,
+      "until": "drec f\\d+ draws \\d+ bytes \\d+",
+      "tags": [
+        "azahar",
+        "det",
+        "cold",
+        "drec",
+        "seam"
+      ],
+      "gates": []
+    }
+  ]
+}

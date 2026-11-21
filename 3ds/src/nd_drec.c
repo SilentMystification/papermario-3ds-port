@@ -53,5 +53,12 @@ void nd_drec_write(FILE* f, const NdDrec* r) {
         }
         fprintf(f, "\n");
     }
+    if (r->vx) { /* CRK2 (switch drecvx): the vertex bytes (16 per token) and the index bytes (2 per token) as hex */
+        static const char hx[] = "0123456789abcdef"; const unsigned char* b = (const unsigned char*)r->vtx.p;
+        fputs("vx", f); for (i = 0; i < r->vtx.n; i++) { if (!(i & 15u)) fputc(' ', f); fputc(hx[b[i] >> 4], f); fputc(hx[b[i] & 15u], f); }
+        b = (const unsigned char*)r->idx.p;
+        fputs("\nix", f); for (i = 0; i < r->idx.n; i++) { if (!(i & 1u)) fputc(' ', f); fputc(hx[b[i] >> 4], f); fputc(hx[b[i] & 15u], f); }
+        fputc('\n', f);
+    }
     fprintf(f, "end\n");
 }

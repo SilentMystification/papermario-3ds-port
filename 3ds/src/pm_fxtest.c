@@ -249,6 +249,14 @@ static void fxc_print(int idx, const char* name, const FxCen* s, unsigned f) {
         c.mmiss - s->mmiss, c.mclr - s->mclr);
     pm_log_evt("fxcenc %d gpu %u walk %u", idx, c.gpu - s->gpu, c.walk - s->walk); /* FXSPLIT */
 }
+/* SPM0: the star power census (pm_warp.c spmove_tick). take 1 = snapshot only. Counts only (CLAUDE.md 2). */
+void pm_log_prof_line(const char* fmt, ...); void pm_gpu_gw_now(unsigned o[4]); extern unsigned pm_rom_lg_n, pm_rom_lg_b, pm_rom_spr_n, pm_fx_new_n, pm_spm_t3, pm_spm_cap, nd_rnr_n;
+static FxCen spm_s; static unsigned spm_w[4], spm_x[7];
+void pm_spm_cen(unsigned k, unsigned f, int bs, int take) { FxCen c; unsigned w[4], x[7] = { pm_rom_lg_n, pm_rom_lg_b, pm_rom_spr_n, pm_fx_new_n, pm_spm_t3, pm_spm_cap, nd_rnr_n }; int i, live = 0;
+    fxc_take(&c, f); pm_gpu_gw_now(w);
+    if (!take) { for (i = 0; i < 96; i++) if (gEffectInstances[i]) live++;
+        pm_log_prof_line("spm k%u f%u bs %d n %u gd %u gw %u nd %u tri %u tm %u tkb %u spl %u mm %u live %d fn %u rr %u rkb %u rs %u t3 %u cap %u u %u", k, f, bs, f - spm_s.f, w[0] - spm_w[0], w[1] - spm_w[1], c.cnt[C_NDRAW] - spm_s.cnt[C_NDRAW], c.cnt[C_TRI] - spm_s.cnt[C_TRI], c.cnt[C_TEXMISS] - spm_s.cnt[C_TEXMISS], (c.cnt[C_TEXBYTE] - spm_s.cnt[C_TEXBYTE]) >> 10, c.g[3] - spm_s.g[3], c.mmiss - spm_s.mmiss, live, x[3] - spm_x[3], x[0] - spm_x[0], (x[1] - spm_x[1]) >> 10, x[2] - spm_x[2], x[4] - spm_x[4], x[5] - spm_x[5], x[6] - spm_x[6]); }
+    spm_s = c; memcpy(spm_w, w, sizeof w); memcpy(spm_x, x, sizeof x); }
 
 static void shot(const char* what, int i) {
     { int k, live = 0; for (k = 0; k < 96; k++) if (gEffectInstances[k]) live++; /* FX3f: live effect count at the shot */
@@ -311,6 +319,7 @@ void pm_fxtest_tick(unsigned f) {
         fx_npc = NULL;
         for (id = 0; id < 16 && !fx_npc; id++) fx_npc = get_npc_safe(id);
         pm_log("fxtest: spawn %d %s at %d %d %d", i, fx_names[i], (int)fx_x, (int)fx_y, (int)fx_z);
+        pm_log_evt("fxsp f%u e%d", f, i); /* TUB0: the expected-diff marker of a spawn */
         if (i == FXT_emote && !fx_npc) pm_log_w("fxtest: not spawned %s: no NPC in this map", fx_names[i]);
         fx_spawn(i);
     } else if (k == (i == FXT_shiny_flare || i == FXT_emote ? 7 : 12)) shot("a", i); /* FX3f: shiny_flare lives 10 frames */

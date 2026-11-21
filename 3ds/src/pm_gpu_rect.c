@@ -10,6 +10,8 @@
 #include "pm_tex.h"
 #include "pm_port.h"
 #include "pm_gpu_int.h"
+extern int pm_stretch; /* pm_gpu.c: Fullscreen */
+extern int nd_scene2d; /* FSUI3: nd_target.c, the scene background bracket */
 #define flush() pm_gpu_flush_from(__func__, __LINE__)
 
 /* FB-1 ring_wrap: the raw vertex and index ring has no room for the next rectangle or grab quad. The limits are GRING_VTX and GRING_IDX (the ringsmall
@@ -79,7 +81,7 @@ int ring_need(unsigned nv, unsigned ni) {
 }
 
 /* Game pixels are y-down. The ortho matrix is y-up, and 320px is centered in 400. */
-static float px(int x) { return gs.off_active ? (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide */
+static float px(int x) { return gs.off_active ? (float)x : (pm_stretch && nd_scene2d) ? 1.25f * (float)x : 40.f + (float)x; } /* F07-3: 2D is 1:1 and centered, also with wide and Fullscreen (FSUI1) */
 static float py(int y) { return gs.off_active ? (float)y : 240.f - (float)y; }
 
 static float fill_z = 0.5f;
@@ -158,8 +160,8 @@ void pm_gpu_fill_rect(int x0, int y0, int x1, int y1, unsigned rgba) {
     if (rect_raw_ok()) {
         static const float uv0[4] = { 1.f, 1.f, 0.f, 0.f };
         /* F07-3: a fill from the game edge reaches the screen edge. OFF-1: an off-screen pass is px and py (no wide, no 40 pixel margin) */
-        int xa = gs.off_active ? x0 : (pm_wide && x0 <= 0) ? 0 : 40 + x0;
-        int xb = gs.off_active ? x1 + 1 : (pm_wide && x1 >= 319) ? 400 : 40 + x1 + 1;
+        int xa = gs.off_active ? x0 : (pm_stretch && nd_scene2d) ? x0 * 5 / 4 : (pm_wout && x0 <= 0) ? 0 : 40 + x0; /* FSUI1: Fullscreen as Widescreen */
+        int xb = gs.off_active ? x1 + 1 : (pm_stretch && nd_scene2d) ? (x1 + 1) * 5 / 4 : (pm_wout && x1 >= 319) ? 400 : 40 + x1 + 1;
         int ya = gs.off_active ? y0 : 240 - y0, yb = gs.off_active ? y1 + 1 : 240 - (y1 + 1);
         rect_raw_open(0, fill_z, uv0);
         rect_raw_quad(xa, ya, xb, yb, 0, 0, 0, 0, rgba);
@@ -250,7 +252,7 @@ static int tex_raw_piece(int xa, int ya, int xb, int yb, float s0, float t0, flo
 static int tex_raw_rect(int x0, int y0, int x1, int y1, float s0, float t0, float s1, float t1) {
     if (!rect_raw_ok()) return 0;
     float xa = px(x0), xb = px(x1 + 1);
-    if (pm_wide && !gs.off_active && xb > xa && x1 - x0 + 1 >= 160 && !pm_tex_cell_bound()) { /* F07-7: a rectangle on the game edge reaches the screen edge. HUDTRAIL: only a screen-covering rectangle (>= 160 game px) does; a HUD piece on game x 0 or 319 repeated its texture across the gutter. MSGBOX 4: not a glyph: a glyph at game x 0 (wide bubble text) drew 40 px of the cells left of it */
+    if (pm_wout && !gs.off_active && xb > xa && x1 - x0 + 1 >= 160 && !pm_tex_cell_bound()) { /* F07-7: a rectangle on the game edge reaches the screen edge. HUDTRAIL: only a screen-covering rectangle (>= 160 game px) does; a HUD piece on game x 0 or 319 repeated its texture across the gutter. MSGBOX 4: not a glyph: a glyph at game x 0 (wide bubble text) drew 40 px of the cells left of it */
         float ds = (s1 - s0) / (xb - xa);
         if (x0 == 0) { s0 -= ds * xa; xa = 0.f; }
         if (x1 == 319) { s1 += ds * (400.f - xb); xb = 400.f; }

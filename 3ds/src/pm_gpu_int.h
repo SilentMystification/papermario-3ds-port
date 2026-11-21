@@ -75,6 +75,7 @@ void ring_frame_begin(void); void gi_kind_set(int k); int ring_need(unsigned nv,
 void rect_raw_open(int ec, float fz, const float uvso[4]); void rect_log(unsigned f);
 void nd_tridrop_log(unsigned f); /* nd_geom.c */
 extern int pm_wide;
+extern int pm_wout; /* FSUI1: pm_gpu.c */
 typedef struct { int filt, ws, wt, cur, sx0, sy0, sx1, sy1, bl, rep, zc, zu, at, dec, noc, zon, mem, mix, comb, rgbs, pgen, mixc, prim, cc, env; } RectSig;
 extern RectSig rsig_open; extern unsigned rsig_chk, rsig_diff; /* FB-1 RSIG (switch rectsig) */
 void rect_sig_fill(RectSig* s); void rect_sig_check(const char* where);

@@ -11,6 +11,7 @@
 #include "pm_port.h"
 #include "nd_api.h"
 #include "nd_fs.h"
+void nd_uq_sync(void); /* L1Q1: mechanical, the declaration of nd_cmd.h is not in this unit */
 
 extern int pm_pf_on;                                     /* pm_phase.c */
 extern unsigned pm_gpu_cmd_split_n(void);                /* pm_gpu.c */
@@ -95,7 +96,7 @@ static uint32_t ub_ds_snap(void) {
     return ub_fnv(ub_ds_cur, ub_dsz);
 }
 
-void nd_ublk_begin(unsigned site) {
+void nd_ublk_begin(unsigned site) { nd_uq_sync(); /* L1Q1 */
     uint32_t r[4] __attribute__((aligned(8))) = { 1u, site, 0u, 0u };
     ub_dh_cur = pm_pf_on ? ub_ds_snap() : 0u;
     r[2] = ub_dh_cur;
@@ -131,7 +132,7 @@ static void ub_cmp(void) {
     ub_pn = ub_n; ub_pkey = ub_key; ub_dh_prev = ub_dh_cur; ub_pset = 1;
 }
 
-void nd_ublk_end(void) {
+void nd_ublk_end(void) { nd_uq_sync(); /* L1Q1 */
     const int on = nd_ub_on;
     uint32_t r[4] __attribute__((aligned(8))) = { 2u, ub_site, ub_key, ub_n };
     nd_ub_on = 0;

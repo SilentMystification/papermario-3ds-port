@@ -134,10 +134,38 @@ void green_impact_render(EffectInstance* effect) {
     retTask = queue_render_task(&renderTask);
 }
 
+/* TUB1: the ring parts. Each pass records them after its own prim, env and cull: a sub range keeps the state of nd_sub_open (plan_tubba.md). */
+static void green_impact_parts(GreenImpactFXData* part, s32 numParts) {
+    Matrix4f sp20, sp60;
+    NdLst dlist2;
+    s32 i;
+
+    part++;
+    for (i = 1; i < numParts; i++, part++) {
+        if (part->unk_4C >= 0) {
+            guTranslateF(sp20, part->unk_04, part->unk_08, part->unk_0C);
+            guRotateF(sp60, part->unk_34, 0.0f, 0.0f, 1.0f);
+            guMtxCatF(sp60, sp20, sp20);
+            guScaleF(sp60, part->unk_1C * 0.3, part->unk_20 * 0.3, part->unk_24 * 0.3);
+            guMtxCatF(sp60, sp20, sp20);
+            guRotateF(sp60, part->unk_30, 0.0f, 1.0f, 0.0f);
+            guMtxCatF(sp60, sp20, sp20);
+            guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
+
+            dlist2 = NDN(D_09000540_365EF0);
+
+            nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) part->unk_3C, 252, (s32) part->unk_3C + 124);
+            nd_val_tile_size(1, 0, (s32) part->unk_44, 124, (s32) part->unk_44 + 124);
+            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
+            nd_draw_list(dlist2, pe_green_impact_200);
+            nd_xf_pop(G_MTX_MODELVIEW);
+        }
+    }
+}
+
 void green_impact_appendGfx(void* effect) {
     GreenImpactFXData* part = ((EffectInstance*)effect)->data.greenImpact;
     NdLst dlist = D_E0064A60[part->unk_00];
-    NdLst dlist2;
     s32 alpha;
     s32 primR;
     s32 primG;
@@ -151,10 +179,7 @@ void green_impact_appendGfx(void* effect) {
     s32 envR2;
     s32 envG2;
     s32 envB2;
-    NdSub sub;
     Matrix4f sp20;
-    Matrix4f sp60;
-    s32 i;
 
     primR = part->unk_50.r;
     primG = part->unk_50.g;
@@ -179,43 +204,18 @@ void green_impact_appendGfx(void* effect) {
     envG2 = envG;
     envB2 = envB;
 
-    nd_sub_open(&sub); /* DIRECT D6c: the list for later is a stream range */
-
-    part++;
-    for (i = 1; i < ((EffectInstance*)effect)->numParts; i++, part++) {
-        if (part->unk_4C >= 0) {
-            guTranslateF(sp20, part->unk_04, part->unk_08, part->unk_0C);
-            guRotateF(sp60, part->unk_34, 0.0f, 0.0f, 1.0f);
-            guMtxCatF(sp60, sp20, sp20);
-            guScaleF(sp60, part->unk_1C * 0.3, part->unk_20 * 0.3, part->unk_24 * 0.3);
-            guMtxCatF(sp60, sp20, sp20);
-            guRotateF(sp60, part->unk_30, 0.0f, 1.0f, 0.0f);
-            guMtxCatF(sp60, sp20, sp20);
-            guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
-
-            dlist2 = NDN(D_09000540_365EF0);
-
-            nd_val_tile_size(G_TX_RENDERTILE, 0, (s32) part->unk_3C, 252, (s32) part->unk_3C + 124);
-            nd_val_tile_size(1, 0, (s32) part->unk_44, 124, (s32) part->unk_44 + 124);
-            nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
-            nd_draw_list(dlist2, pe_green_impact_200);
-            nd_xf_pop(G_MTX_MODELVIEW);
-        }
-    }
-
-    nd_sub_close(&sub);
 
     nd_val_prim(0, 0, primR2, primG2, primB2, alpha);
     nd_val_env(envR2, envG2, envB2, 0);
     nd_pso_geom_clr(G_CULL_BOTH);
     nd_pso_geom_set(G_CULL_FRONT);
-    nd_sub_call(&sub);
+    green_impact_parts(part, ((EffectInstance*)effect)->numParts);
 
     nd_val_prim(0, 0, primR, primG, primB, alpha);
     nd_val_env(envR, envG, envB, 0);
     nd_pso_geom_clr(G_CULL_BOTH);
     nd_pso_geom_set(G_CULL_BACK);
-    nd_sub_call(&sub);
+    green_impact_parts(part, ((EffectInstance*)effect)->numParts);
 
     nd_xf_pop(G_MTX_MODELVIEW);
 }

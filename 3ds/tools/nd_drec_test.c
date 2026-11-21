@@ -28,6 +28,16 @@ static const char expect[] =
     "v bytes 48 h b9709bed602225a5\n"
     "i bytes 6 h 37f11cf1d36d7afe\n"
     "m 0 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000\n"
+    "end\n"
+    "draw 3 kind 1 n 3\n"
+    "r 0c0 f 000f0f0f\n"
+    "r 104 3 00000001\n"
+    "t 0 type 0000000d dim 00040004 bytes 16 h 7c84dc9477851775\n"
+    "v bytes 48 h b9709bed602225a5\n"
+    "i bytes 6 h 37f11cf1d36d7afe\n"
+    "m 0 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000 00000000 00000000 00000000 00000000 3f800000\n"
+    "vx 000306090c0f1215181b1e2124272a2d 303336393c3f4245484b4e5154575a5d 606366696c6f7275787b7e8184878a8d\n"
+    "ix 0000 0100 0200\n"
     "end\n";
 
 static NdDrecReg regs[2] = {
@@ -77,7 +87,7 @@ static void build(NdDrec* r, uint32_t seq, const uint8_t* v) {
 }
 
 int main(void) {
-    NdDrec a, b, c;
+    NdDrec a, b, c, d;
     FILE* f;
     char got[4096];
     size_t len;
@@ -91,12 +101,15 @@ int main(void) {
     build(&b, 1, vtx_b);
     build(&c, 2, vtx);
     c.tex_gpu[0] = 1;
+    build(&d, 3, vtx);
+    d.vx = 1;
 
     f = tmpfile();
     if (!f) { printf("drec FAIL\n"); return 1; }
     nd_drec_write(f, &a);
     nd_drec_write(f, &b);
     nd_drec_write(f, &c);
+    nd_drec_write(f, &d);
     fflush(f);
     rewind(f);
     len = fread(got, 1, sizeof(got) - 1, f);
@@ -104,7 +117,7 @@ int main(void) {
     fclose(f);
 
     if (len == strlen(expect) && memcmp(got, expect, len) == 0 && span_fails() == 0) {
-        printf("drec ok 3\n");
+        printf("drec ok 4\n");
         return 0;
     }
     printf("drec FAIL\n%s", got);

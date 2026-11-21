@@ -7,7 +7,7 @@ Tags: FACT (code read, file:line), GUESS (estimate). Modes: Native pm_wide 0 str
   x1 >= 320 -> 400, else 40 + x. Wide 3D and every Fullscreen batch: x * 5 / 4. Native: 40 + x. Off-screen slots: scissor_off (:1080-1087), no mode.
 - Placement: view matrix (pm_gpu.c:236-237): Fullscreen scales every view draw 1.25; Widescreen keeps an ortho draw 1:1 at 40 + x (wedge_x: an edge-only
   range 1.25, :3713-3716). Rectangles (texture rects, fills: text glyphs, HUD pieces, window patterns) use px = 40 + x (pm_gpu_rect.c:82, :161-162) and
-  the fixed projection (pm_gpu.c:1926, pcomp RECT_GM :1071-1072). No rectangle path reads pm_stretch (grep). So in Fullscreen rects stay 1:1 at 40 + x.
+  the fixed projection (pm_gpu.c:1926, pcomp RECT_GM :1071-1072). WCLIP2 (merged dfb703014f) moved Fullscreen rects to 1.25 x (pm_gpu_rect.c:83, :162-163). The user rejects it: section 6 (FSUI1 undoes it).
 ## 2. Root causes (ranked)
 1. FACT: msg_draw.c:374 sets scissor 0, 0, 319, 239 (SCREEN_WIDTH - 1) for every message (flag 4: msg_draw.c:152, :189). Wide ui: x1 319 < 320 gives
    column 359 (pm_gpu.c:1205). A speech or tattle bubble reaches game x 342 (pm_wide_right(302), msg_draw.c:527-528) = column 382: columns 359..382 clip.
@@ -39,14 +39,35 @@ Tags: FACT (code read, file:line), GUESS (estimate). Modes: Native pm_wide 0 str
 | draw_box windows | draw_box.c:456 full; :764-775 off-screen slot | full FACT | full FACT |
 | damage numbers, action bars, HP/FP, star bar, enemy HP | HUD element sites or the last scissor GUESS | census decides | census decides |
 - Other wide reads (not clips, OPEN): depth and frame reads at column 40 + x (pm_gpu.c:2242, :4857) ignore the 1.25 of 3D in wide and Fullscreen.
-## 4. Rule (one rule for every draw: WCLIP1)
+## 4. Scissor rule (WCLIP1, merged; FSUI1 extends the ui side to Fullscreen)
 - A scissor equal to the full native screen (0, 0, 320 or 319, 240 or 239) or its safe area (12, 20, 308, 220) is the full screen in W and F.
-- Else each side keeps its own place: an edge at game x 0 or 319/320 is the screen edge; any other edge maps 40 + raw x (W ui) or 1.25 x (W 3D, F).
-- Native is unchanged (byte-equal). Fullscreen rects move to 1.25 x (WCLIP2), so rects, meshes and scissors agree.
-## 5. Rows (in order)
+- Else each side keeps its own place: an edge at game x 0 or 319/320 is the screen edge; any other edge maps 40 + raw x (ui: 2D or ortho batch) or 1.25 x (3D).
+- Native is unchanged (byte-equal). After FSUI1 the W rule and the F rule are the same (nd_sci.c:17 `s = ui`).
+## 5. Rows
 | row | model | what | gate |
 |---|---|---|---|
-| WCLIP0 | Haiku | clip census (clipg lines), drec scissor regs, debug words fullscr and uishow=tatr, 4 drec scenarios | expected-diff drecsc, gst and shots equal |
-| WCLIP1 | Haiku | nd_sci.c rule, raw edges, host grid test with 4 seeds, marker wclip | Native byte-equal, msgw_wide_drec expected-diff, census out 0 |
-| WCLIP2 | Haiku | Fullscreen rects at 1.25 x (px, fill), user default: HUD stretched as MENUGEN states | Native and wide byte-equal, msgw_full_drec expected-diff |
-Model: Haiku. Each page holds the code shape; no open design step.
+| WCLIP0, WCLIP1 | Haiku | clip census, nd_sci.c rule (merged) | done |
+| WCLIP2 | Haiku | Fullscreen rects at 1.25 x (merged dfb703014f, rejected by the user 21 Nov) | FSUI1 undoes it |
+| FSUI1 | Haiku | pm_wout output flag, undo WCLIP2, Native picture in the 4:3 game modes, marker fsui | msgw_wide_drec byte-equal, pause_full_drec expected-diff |
+| FSUI2 | Haiku | game reads: pm_wout_cam (3D to 2D x), screen bounds, TATTLEAR, box frustum, 3 effects, PM_SCIS | host tattlear ok 9, msgbox_talk_nowide byte-equal, msgw_full_drec expected-diff |
+| FSUI3 | Haiku | scene background bracket G_PM_ND_SCENE2D: sky and fills at 1.25 x in Fullscreen | msgbox_talk_nowide byte-equal, msgw_full_drec expected-diff, scn2d opens >= 1 |
+Order: FSUI1, then FSUI2 and FSUI3 (no shared file, both start on the FSUI1 gate commit). Model Haiku: closed edits with before and after text.
+## 6. Fullscreen UI at Native size (user order 21 Nov; oracle code read at main dfb703014f)
+User (verbatim): "I dont like how the start menu was stretched, you can keep the original aspect ratio, also the text boxes should stay the same size,
+not stretch, its just they should render properly outside of native resolution". Fullscreen = pm_wide 0, pm_stretch 1 (pm_gpu.c:1942, game_modes.c:284).
+- Mechanism: Fullscreen takes the Widescreen output path. Widescreen already draws 3D at 1.25 x and 2D and ortho 1:1 at 40 + x (rebuild_3d pm_gpu.c:238-239,
+  ui_ortho :223, wedge_x and wide_edge_k :3561-3620 for draws on both game edges, stage_scissor :1259). Today pm_stretch overrides it: :238-239 scale every
+  draw, nd_sci.c:17 maps every F edge 1.25 x, pm_gpu_rect.c:83 and :162-163 (WCLIP2) move rects. FSUI1 adds `pm_wout = pm_wide || pm_stretch` and reads it at
+  each GPU output site that read pm_wide (15 sites, ws_FSUI1.md). Discriminator: ui_ortho (G_MTX orthographic, pm_gpu.c:3455) and `!nb.draw_3d` (rects).
+- What differs from Widescreen: pm_wide stays 0, so the game keeps the Native layout (pm_wide_left/right, wide boxes) and the 4:3 field of view
+  (cam_main.c:85, cam_math.c:398). The 3D picture is the Native view stretched 1.25 x (viewport 12..308 at columns 15..385). Widescreen shows more world.
+- Check by class (FACT code read): start menu = title and file select: game_modes.c:281 list, FSUI1 gives them pm_stretch 0 (exact Native, as Widescreen).
+  Pause menu: draw_box windows and rects (2D or ortho: ui side); its rotating windows use a perspective frustum (draw_box.c:469, UA7): FSUI2. Pause picture:
+  the grab slot holds 400 columns (pm_gpu.c:2787); FSUI1 gives F the wide read shift (:2401, pm_main.c:271, nd_tex_set.c:221) and the gutters (background_gfx.c:374).
+  Speech and tattle bubbles: ortho mesh plus glyph rects (ui side), scissor msg_draw.c:374 is full (nd_sci_full); the bubble anchor comes from get_screen_coords:
+  FSUI2 pm_wout_cam gives 1.25 x - 40 (cam_main.c:513). HUD, status bar, popups, battle menus: 2D or ortho (CAM_HUD ortho hud_element.c:2105): ui side.
+- Scene parts drawn as 2D: the background (sky texrects, background colour fill, side bars, background_gfx.c:376-479) must follow the 3D: FSUI3 bracket.
+  Tattle camera (cam_main.c:478, 16C8E0.c:849), circle wipe (screen_render_util.c:228-265), bulb glow, star spirit flash, underwater grid: FSUI2 (as Widescreen).
+- Defaults taken (no user decision): title, file select, intro and chapter screen stay Native in Fullscreen (the user asked for the original aspect ratio).
+  3D-space effects (damage numbers, emotes) stay stretched with the 3D scene. A live options flip keeps the mode until the next mode change (as Widescreen).
+- OPEN: depth and frame reads at column 40 + x (pm_gpu.c:2304, :4927) ignore the 1.25 x of 3D in W and F (unchanged by FSUI).

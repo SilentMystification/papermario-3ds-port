@@ -288,6 +288,9 @@ void func_E00863B4(EffectInstance* effect) {
             guScaleF(sp20, 1.0f / 32.0f, 1.0f / 32.0f, 1.0f / 32.0f);
             guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
 
+            nd_val_prim(0, 0, primR, primG, primB, primA);
+            nd_val_env(envR, envG, engB, envA);
+
             nd_sub_open(&sub); /* DIRECT D6c: the pass list is a stream range, drawn three times */
             nd_draw_list(D_E0086AB4[unk_00], ND_SELF); /* S7EFX3: replayed by each nd_sub_call (stream_run NDC_NAPI) */
             nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
@@ -300,8 +303,6 @@ void func_E00863B4(EffectInstance* effect) {
 
         nd_sub_close(&sub);
 
-        nd_val_prim(0, 0, primR, primG, primB, primA);
-        nd_val_env(envR, envG, engB, envA);
         nd_sub_call(&sub);
 
         guRotateF(sp20, 120.0f, 1.0f, 1.0f, 1.0f);

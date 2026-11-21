@@ -108,6 +108,7 @@ void nd_ds_feed(const uint32_t* u, unsigned n) { (void)u; (void)n; }
 void nd_ds_feed_dir(const uint32_t* u, unsigned n) { nd_ds_feed(u, n); } /* NST2J: the page left this stub out (nd_direct.c calls it) */
 NdDs nd_ds; /* NDR2A: nd_dir_prim1 and nd_dir_rec read it */
 void nd_rec_napi_s(NdNapiRun run, const void* rec, unsigned units) { (void)run; (void)rec; (void)units; }
+__attribute__((weak)) void nd_uq_sync(void) { } /* L1Q1: no setter queue in this test (nd_rec.c is not linked) */
 void nd_snap_pso(const NdPsoN64* p, uint32_t prim, uint32_t env) { (void)p; (void)prim; (void)env; }
 static int snap_none; static NdCombOut snap_o;
 const NdCombOut* nd_snap_dir_o(void) { NdCombIn in; if (snap_none) return NULL; comb_in_walker(&in); nd_comb_dec(&in, &snap_o); return &snap_o; } /* NDR2D: the decision core 1 would snap */

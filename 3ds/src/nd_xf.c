@@ -25,8 +25,10 @@ static void nd_xf_run(const uint32_t* r) {
     else nd_xf_popb(r[1]);
 }
 
+unsigned nd_xf_n; /* L1PH0: transform records */
 /* core 1: the state and ep rule of the unit (as nd_rec_nr did), then the record */
 static void xf_rec(uint32_t w0, uint32_t w1) {
+    nd_xf_n++;
     const uint32_t r[2] = { w0, w1 };
     NDT_B(tx); nd_ds_unit(&nd_ds, w0, w1); nd_rec_xf(nd_xf_run, r); NDT_E(tx, NDT_RXF); /* GD0B */
 }

@@ -107,11 +107,24 @@ int nd_tex_get(const NdTexDesc* in) {
     return (int)tex_n++;
 }
 
+int nd_tex_have(const NdTexDesc* in) {
+    NdTexDesc d = *in;
+    memset(d.pad, 0, sizeof d.pad);
+    unsigned h = desc_hash(&d) & (ND_TEX_IDX - 1u);
+    for (;;) {
+        uint16_t s = tex_idx[h];
+        if (s == 0) return -1;
+        if (memcmp(&tex_ent[s - 1u].d, &d, sizeof d) == 0) return s - 1;
+        h = (h + 1u) & (ND_TEX_IDX - 1u);
+    }
+    /* unreachable: the loop returns */
+}
+
 const uint32_t* nd_tex_block(int id) { return tex_ent[id].w; }
 
 /* S3N-3c: the unit words of block id at draw time. The slot is found from the descriptor (its content key and dim), not from the walker-bound slot.
  * A miss (the texture cache dropped the image) loads it again from the descriptor, as nd_tex_get does. 0: no slot (fallback). */
-int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) {
+int nd_tex_unit_fast(int id, int* hs, unsigned* hg, NdUnit* u) {
     NdTexEnt* e = &tex_ent[id];
     NdUnit t;
     if (!e->key) return 0;
@@ -122,6 +135,13 @@ int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) {
         u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type; u->force = 0;
         return 1;
     }
+    return 0;
+} /* L1C0A: the hinted slot, no search, no load */
+
+int nd_tex_unit_slow(int id, int* hs, unsigned* hg, NdUnit* u) {
+    NdTexEnt* e = &tex_ent[id];
+    NdUnit t;
+    if (!e->key) return 0;
     int s = pm_tex_slot_find(e->key, e->d.fmt, e->d.siz, e->w[0], e->d.img, e->d.pal, &t);
     if (s < 0) {
         /* a miss or a dirty copy: load through the walker (pm_tex_load validates a dirty slot by its hash), then take the key of the bytes now loaded */
@@ -141,7 +161,9 @@ int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) {
     *hs = s; *hg = pm_tex_slot_gen(s);
     u->dim = e->w[0]; u->param = e->w[1]; u->lod = t.lod; u->addr = t.addr; u->type = t.type;
     return 1;
-}
+} /* L1C0A: the slot search and the load */
+
+int nd_tex_unit_hint(int id, int* hs, unsigned* hg, NdUnit* u) { return nd_tex_unit_fast(id, hs, hg, u) || nd_tex_unit_slow(id, hs, hg, u); }
 int nd_tex_unit(int id, NdUnit* u) {
     int hs = -1; unsigned hg = 0;
     return nd_tex_unit_hint(id, &hs, &hg, u);

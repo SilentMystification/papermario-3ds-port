@@ -30,7 +30,7 @@
       "status": "unverified",
       "subject": "Mario's yard (preset yard), Fullscreen (debug word fullscr), tattle bubble opened at frame 200 (uishow=tatr), cold det start with drec of frame 330.",
       "proves": "WCLIP0: the clip census of frame 330 in Fullscreen: the message scissor maps to 1.25 x in the census.",
-      "debug": "preset=yard fullscr uishow=tatr loglevel=debug det drec=330:1",
+      "debug": "preset=yard fullscr nowide uishow=tatr loglevel=debug det drec=330:1",
       "extra": [],
       "until": "drec f330 draws [1-9]\\d* bytes \\d+",
       "cap": 30,

@@ -160,7 +160,7 @@ void whirlwind_appendGfx(void* effect) {
     s32 spB0;
     s32 spB4;
     f32 spB8;
-    NdSub triSub, mainSub;
+    s32 j;
     f32 temp_f20_2;
     f32 temp_f20_3;
     f32 var_f4;
@@ -204,22 +204,13 @@ void whirlwind_appendGfx(void* effect) {
         vtx->v.flag = 0; vtx->v.cn[0] = vtx->v.cn[1] = vtx->v.cn[2] = vtx->v.cn[3] = 0;
     }
 
-    // Reserve 0x88 bytes (17 commands, including this one) for a separate dynamically generated display list
-    nd_sub_open(&triSub); /* DIRECT D6c: the lists for later are stream ranges */
-
-    // Generate display list
-    for (i = 0; i < 15; i++) {
-        nd_mesh_tri2(i + 0x10, i + 1, i, 0, i + 0x10, i + 0x11, i + 1, 0);
-    }
-
-    nd_sub_close(&triSub);
-
     guScaleF(sp20, 0.1f, 0.1f, 0.1f);
     guMtxF2L(sp20, &gDisplayContext->matrixStack[gMatrixListPos]);
     nd_xf_push(&gDisplayContext->matrixStack[gMatrixListPos++], G_MTX_PUSH | G_MTX_MUL | G_MTX_MODELVIEW);
 
-    // Save position to later insert a branch around the commands that follow this
-    nd_sub_open(&mainSub);
+    nd_pso_geom_clr(G_CULL_BOTH);
+    nd_val_prim(0, 0, data->primR, data->primG, data->primB, primAlpha);
+    nd_val_env(data->envR, data->envG, data->envB, 32);
 
     // Generate main display list
     for(i = 0; i < (MAX_WHIRLWIND_SEGMENTS - 1); i++) {
@@ -258,16 +249,9 @@ void whirlwind_appendGfx(void* effect) {
         nd_val_tile_size(G_TX_RENDERTILE + 1, spB4 + i * 8, 0, (spB4 + i * 8 + 63) << 2, 31 << 2);
 
         // Call the display list to create triangles from the verticies
-        nd_sub_call(&triSub);
+        for (j = 0; j < 15; j++) nd_mesh_tri2(j + 0x10, j + 1, j, 0, j + 0x10, j + 0x11, j + 1, 0); /* TUB2: after the tile sizes of this segment */
     }
 
-    nd_sub_close(&mainSub);
-    nd_pso_geom_clr(G_CULL_BOTH);
-    nd_val_prim(0, 0, data->primR, data->primG, data->primB, primAlpha);
-    nd_val_env(data->envR, data->envG, data->envB, 32);
-
-    // Call the main display list
-    nd_sub_call(&mainSub);
     nd_xf_pop(G_MTX_MODELVIEW);
     nd_xf_pop(G_MTX_MODELVIEW);
 }

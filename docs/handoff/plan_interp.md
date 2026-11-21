@@ -6,7 +6,7 @@ fps60), capture 3 (plan_walk.md:3, mac_01). libctru and citro3d headers: docker 
    (kc_build pm_gpu.c:3150-3193): no second walk, little CPU. FACT.
 2. K costs the same GPU time as L: the copy draws the whole scene again. gpuk 7.73 ms per step (FACT f4585). L has the same words (GUESS L about 7.7 ms).
 3. Only a skip of K (KSKIP, section 5) removes GPU work, and only when nothing moved. Today no K copy is equal to L: a static leaf gets a patch (1.4).
-4. Presentation fault (section 6): the L and K swaps of a step come about 8 ms apart, with no vblank wait. A picture can be dropped (GUESS half of the steps).
+4. Presentation fault (section 6): K finishes 8.26 ms after L with no vblank wait: half of the L pictures never show, K tears (FACT drop 150 of 300). Wobble causes by rank: 6.3 drop and tear, 6.3 uneven 1 + 2 vblanks, 6.6 sky lead in L, 6.4 ft 38.7 > 33.4, 6.5 weight. Fix: PRES1, then IMOV / PRES3, then perf.
 ## 1. Core 1 side (pm_interp.c). It runs once per step, not per K frame.
 - Record: every guMtxF2L in the record adds a leaf (node id, leaf index, dest Mtx*, float mf: 80 B) (pm_gu.c:38-39, pm_interp.c:198-208). 55 node sites (FI_OPEN in src).
   pm_interp_open hashes (parent, a, b, occurrence) with the GD1 table otab (:64-76). pm_interp_stop copies leaves and nodes to the previous set (:178-185).
@@ -55,44 +55,51 @@ fps60), capture 3 (plan_walk.md:3, mac_01). libctru and citro3d headers: docker 
 - Dirty-rectangle K redraw: not exact in general (the pixels behind an old place need every covering draw in order from a reset depth and colour, no frame grab,
   per eye). While the camera moves every pixel moves: no gain. Not planned.
 - Latency: KSKIP and IK1 to IK4 change none. PIPE3 and PIPE4 change the key show: KSKIP and PRES1 go after them, or get WAIT lines.
-## 6. Presentation time order (user report: wobbly when moving fast. FACT code read unless marked)
-1. L_N begins on the sync60 grid (pm_gpu.c:3032, :2976-2987): ticks, period 4481228 = 59.83 Hz (:2977), not locked to the vblank. It holds while a begin is
-   less than one period late, else it starts again (:2986). C3D_FrameEnd (:3342) queues the display transfer. citro3d swaps in its queue callback when the
-   GPU is done (renderqueue.c:227-230, coordinator FACT. libcitro3d.a onQueueFinish calls gfxScreenSwapBuffers, C3D_FrameEnd calls C3D_FrameBufTransfer
-   then gxCmdQueueRun: FACT objdump). The latest present is applied at the next vblank (gspgpu.h:133).
-2. K_N: the key begin is always late (kpace 0.00), waits for GPU L (kgx 2.34), draws 7.73 ms (gpuk), swaps. No begin waits for a vblank (fb_flags 0, :3030).
-3. So the L and K swaps of a step are about 8 ms apart, K to the next L about ft - 8 = 26 ms (GUESS from FACT gpuk and ft 34.33). libctru: one swap per
-   screen per frame, no triple buffering, else glitches (gfx.h:150-161). gfxGetFramebuffer returns buffer[gfxCurBuf ^ gfxIsDoubleBuf], the swap flips
-   gfxCurBuf (FACT objdump of libctru gfx.o). No vblank in the 8 ms: L is never shown, and K's transfer writes the buffer that is still on screen (tear).
-   GUESS share (16.7 - 8) / 16.7 = 52 percent of steps. The free tick grid makes the share drift: a 30 / 60 mix.
-4. Late steps: iv bins (pm_main.c:718: 1 or less, 2, 3, 4+): 9 / 265 / 14 / 12 (FACT f4585), 15 / 236 / 34 / 15 (capture 3). 632 vblanks for 300 steps (FACT).
-5. Weight: t is always 0.5, never from time. fps60 steps have no accumulator (pm_main.c:683): a late step slows the world, and shows L and K for 1 + 2 or 2 + 1
-   vblanks (uneven). Dynamic mode (pm_fpsmode.h:24) drops lerp and K after a late or heavy step (pm_nusys.c:171): a 30 / 60 switch. FS1 (fskip on by default,
-   pm_options.c:18, pm_main.c:693-694) can drop a late step's draws (0 in f4585: the iv bins sum to 300 steps). OPEN: the user's fps60 mode.
-6. Not interpolated: the sky scroll comes from cam->curBoomYaw and lookAt_obj per step (background.c:285-291), a texture rect with no matrix: it moves at 30 Hz
-   under a 60 Hz world while the camera pans (GUESS a main wobble source). Screen-space rects, the HUD slide (inventory.c:737-746), messages, effects with own
-   vertex positions: OPEN (IMOV). A rejected leaf moves at 30 Hz. camera_epoch has no reader (pm_interp.c:84-86): a camera cut gives one blended L picture.
-7. Lerp math: component-wise (:164). A rotation shrinks at the midpoint by cos(d/2) (GUESS 0.14 percent at 6 degrees per step). Camera and player use one t.
-8. PRES1 present gate: in the key show run the queue after the K entries (as KICK3 :867), wait until the PRES0 callback has done the L swap and
-   gspIsPresentPending(GSP_SCREEN_TOP) is 0 (gspWaitForVBlank, guard 2), then C3D_FrameEnd. The same wait before the L FrameEnd (:3342). Each picture then shows 1 vblank or more, and no transfer writes the shown
-   buffer. Cost: core 0 waits up to 1 vblank while the GPU draws K (GUESS ft +0 to +3). Shots read the target: gate byte-equal.
-   PRES2 (Opus, user yes): presents from the vblank event, one picture per vblank, 3 buffers, a late step holds K, the pace grid on the vblank tick, L's t
-   from the predicted present vblank. PRES3: the sky scroll as an interpolated scalar with a K patch (after IMOV).
-9. Measure (PRES0, no pictures): `pres lk` = vblank gaps after an L picture (0, 1, 2, 3+), `kl` = gaps after a K or plain picture, drop = a swap while the
-   last present is pending, wob = sum of |dh - g| (dh: phase step in half steps, L = 2s+1, K = 2s+2, g: vblank gap) = the lerp weight error by time.
+## 6. Presentation time order (user report: wobble when moving fast. FACT code read unless marked. Lines: main 3a29e12504. Console: build 7933, .170, f2189-f3089)
+1. L_N begins on the sync60 grid (pm_gpu.c:3045-3056, :3102): ticks, period 4481228 = 59.83 Hz, not locked to the vblank. It holds while a begin is less than
+   one period late, else it starts again (:3055). C3D_FrameEnd (:3417) queues the display transfer (C3D_FrameBufTransfer, nm renderqueue.o). citro3d swaps in
+   its queue callback onQueueFinish (gfxScreenSwapBuffers), PRES0 wraps it (pres_cb :876-885). The latest present is applied at the next vblank (gspgpu.h:138-141).
+2. K_N (pm_gpu_key_show :3267-3301): sync60_pace never waits (kpace 0.00 FACT), C3D_FrameBegin waits for GPU L (kgx 2.32-2.42 FACT), GPU K 8.0 ms (gpuk FACT).
+3. FACT console: glk 8.22-8.29 ms (L finish to K finish), drop 140-157 of 300 = lk bin 0 in every window, kl 2 vblanks 201-220 of 300, wob 400-434.
+   No vblank in 8.26 ms in (16.7 - 8.26) / 16.7 = 51 percent of steps (FACT arithmetic, = drop/300). Then K's transfer goes to buffer[gfxCurBuf ^ 1] = the buffer
+   on screen (tear, FACT objdump gfx.o), and K's swap replaces L's pending present (L never shown). libctru has 2 buffers per screen (gfx.h:150-161).
+4. Step time: ft 38.69-38.94 ms (FACT) = 2.32 vblanks per step. 2 pictures per step cannot fill 2.32 vblanks evenly: after PRES1 K holds 2 vblanks in about
+   32 percent of steps (GUESS: uniform phase, (38.7 - 33.4) / 16.7). Only ft <= 33.4 ms (perf rows) removes it.
+5. Weight: t is always 0.5 (pm_nusys.c:172). Today half the step motion falls into 8.26 ms (21 percent of the step), the other half into 30.4 ms; on drop steps the
+   whole step comes in one picture. After PRES1 L shows exactly 1 vblank before K: even motion needs t = 1 - 16.7 / ft = 0.57 at ft 38.7, 0.50 at ft <= 33.4
+   (GUESS arithmetic). The error of t = 0.5 is then 0.07 step per L picture, small against item 4. Default: t stays 0.5 (det runs stay byte-exact).
+   fps60 steps have no accumulator (pm_main.c:683). Dynamic mode drops K after a late step (pm_nusys.c:171); FACT nk 300 of 300: no drop in these windows.
+6. Not interpolated: the sky scroll comes from cam->curBoomYaw and lookAt_obj per step (src/background.c:285-291), a texture rect with no matrix. In L the world
+   is at N - 0.5, the sky at N: the sky leads by half a step of pan in every L picture (FACT mechanism, size OPEN). PRES1 shows every L: this shows more often.
+   Screen-space rects, the HUD slide (inventory.c:737-746), effects with own vertex positions, rejected leaves: OPEN (IMOV). camera_epoch has no reader (pm_interp.c:85).
+7. Lerp math: component-wise. A rotation shrinks at the midpoint by cos(d/2) (GUESS 0.14 percent at 6 degrees per step). Camera and player use one t.
+8. PRES1 (ws_PRES1.md, Haiku): pres_gate before both fps60 FrameEnds (:3296, :3416) polls until pres_sw = pres_tx (the last swap ran) and no present is pending,
+   0.2 ms steps, 40 ms cap. The swap counter is needed: libctru clears isRunning before it calls the queue callback (FACT objdump gxqueue.o +0x6c, +0x90), so
+   C3D_FrameBegin can return before the swap. The key show runs the K entries at once (gxCmdQueueRun, as KICK3 :914): the GPU draws K during the wait.
+   Result: L shows 1 vblank, K from the next vblank, no transfer into the shown buffer. Shots read the target: fps60_det byte-equal.
+   Latency (GUESS, uniform phase): the first changed picture of a step comes at the same vblank; the full-step picture (K) comes 1 vblank later on the 51 percent
+   drop steps: +8.3 ms average. Core 0 waits in the key show until the vblank (GUESS 4 to 7 ms per step), part of it in today's pace wait (c0i pace 3.85): ft +0 to +2.
+9. PRES2 decision: not needed for the wobble. A 3-buffer scheduler presents at the same vblanks as PRES1 (L at V1, K at V2) and cannot fix item 4. Its only gain is
+   the core 0 wait of item 8. Cheaper path: PRES2 = after PIPE3, the K C3D_FrameEnd moves into pm_pipe_open (plan_pipe.md 2): core 0 walks L while K waits for
+   the vblank. Start rule: PIPE3 merged and the PRES1 console capture shows gms 2 or more and ft up 1 ms or more. Page after PIPE3 (its lines do not exist yet).
+   Rejected: own vblank presents. citro3d holds the gsp event callbacks (gspSetEventCallback import, nm renderqueue.o; GUESS VBlank0 and VBlank1, C3D_FrameCounter),
+   a third buffer costs 288 KB (mono) to 576 KB (stereo) linear (GUESS RGB8 400 x 240), and the menu presents through libctru (pm_gpu.c:2128, pm_main.c:90).
+   PRES3: the sky scroll as an interpolated scalar with a K patch (after IMOV).
+10. Measure: `pres lk` = vblank gaps after an L picture (0, 1, 2, 3+), `kl` = after a K or plain one, drop = a swap while the last present is pending, wob = sum of
+   |dh - g| (dh: phase step in half steps, g: vblank gap), glk = L to K finish ms. PRES1 adds `pres1 ... gw` (gate waits), `gms` (ms per step), `gto` (timeouts).
    Ideal: lk 1 and kl 1 only, drop 0, wob 0. Azahar: counts valid, gaps not. The console decides.
 ## 7. Rows (ranked, ms GUESS unless marked)
 | # | row | model | what | needs | gate | gain |
 |---|---|---|---|---|---|---|
 | 1 | IK0 | Haiku | census `kcost`, `kcost1` (ws_IK0) | none | spot_mac01_fps60_det byte-equal, capture_check | 0 (decides 4 to 8) |
 | 2 | PRES0 | Haiku | census `pres`, `pres1` (ws_PRES0) | after IK0 (same files) | the same | 0 (decides 3, 9) |
-| 3 | PRES1 | Haiku | present gate (6.8) | PRES0 drop above 0 | fps60_det byte-equal, console drop 0 | wobble, ft +0 to +3 |
+| 3 | PRES1 | Haiku | present gate (6.8), ws_PRES1.md ready | PRES0 drop above 0 (FACT 150) | fps60_det byte-equal, Azahar drop 0, console drop 0 | drop 150 -> 0, ft +0 to +2 |
 | 4 | IK1 | Haiku | static leaves to K | IK0 st, user yes | K shots byte-equal, L expected diff | patches -st share |
 | 5 | KSKIP | Haiku | skip K when K = L | IK1 | fps60_det byte-equal, ksk, kskipall DIFF | idle GPU -7.73, core 0 -2.34 FACT |
 | 6 | IK2 | Haiku | twin skip | IK0 tw | fps60_det, stereo_det byte-equal | core 0 -0.2 to -0.6 |
 | 7 | IMOV, PRES3 | Haiku, Sonnet | 30 Hz movers census, sky lerp | PRES0 | census, then K patch gate | wobble |
 | 8 | IK3 | Haiku | rtab stamp | IK1 | host iocc, fps60_det | core 1 -0.05 to -0.2 |
-| 9 | PRES2 | Opus | vblank present scheduler | PRES1 data, user yes | fps60_det, console pres | wobble 0 |
+| 9 | PRES2 | Opus | K FrameEnd into pm_pipe_open (6.9) | PIPE3, PRES1 gms 2+ and ft +1, user yes | fps60_det, stereo_det, console pres | ft back by gms |
 | 10 | IK4 | Sonnet | K in place | PIPE3 | fps60_det, stereo_det | core 0 -0.1 to -0.3 |
 - Capture (user's word, after IK0 and PRES0 merge): `--profile prof fps60 warp=mac_01:0 pos=0:0:200 profdisk=1`. The user stands 2 windows, then runs fast
   and turns the camera 3 windows. Read kcost, kcost1, pres, pres1, c0k, c0i, at. capture_check first with the same words.

@@ -46,6 +46,7 @@ int splash_on; /* HANG1a: set by the G_PM_ND_SPLASH record (water_splash.c, nd_n
 unsigned splash_grab_f = ~0u;
 int grab_hold;                  /* SBLK2 B1: set by the G_PM_ND_GRABHOLD bracket (motion_blur_flame.c, nd_native_rec) */
 unsigned hold_grab_f = ~0u;     /* SBLK2 B1: the frame whose one copy the hold reuses */
+int nd_scene2d; unsigned nd_scene2d_n; /* FSUI3: the G_PM_ND_SCENE2D bracket (background_gfx.c, nd_native_rec); opens since boot */
 extern unsigned pm_gpu_seq; /* GRABSEQ: keys both grabs on the drawn frame, not on pm_frame_count() */
 /* LS-4: the G_PM_ND payload kinds (gbi_custom.h), called by the walker (nd_walk.c, HC4d2: the ND_FS_MISC_ND fields). */
 void nd_native_rec(unsigned kind, unsigned on) {
@@ -53,6 +54,7 @@ void nd_native_rec(unsigned kind, unsigned on) {
     if (kind == G_PM_ND_GRABHOLD) grab_hold = (int)on;
     if (kind == G_PM_ND_SPRSHADE) { extern int nd_spr_walk; extern unsigned shc[16]; nd_spr_walk = (int)on; if (on && PMDL("shadecen")) shc[14]++; } /* SHADEIMG: the imgfx shaded sprite, the walker's KZN04 multiply on inside */
     if (kind == G_PM_ND_GUTTER) { extern void pm_gpu_pause_gutters(unsigned fade); pm_gpu_pause_gutters(on); } /* PAUSEOPEN: the pause gutters; PAUSEFADE: on is the fade (0..128), the gutter mix colour */
+    if (kind == G_PM_ND_SCENE2D) { nd_scene2d = (int)on; if (on) nd_scene2d_n++; } /* FSUI3 */
 }
 void grab_cur(const void* src, int w, int h) {
     int x, y, r;

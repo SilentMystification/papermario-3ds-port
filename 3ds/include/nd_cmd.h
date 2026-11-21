@@ -36,6 +36,8 @@ void nd_rec_ent(const void* rec);                   /* D3: an entity record with
 /* D4b-1, D5: the texture rectangle (the nd_gbi.h redirect records it). */
 void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd);
 void nd_rec_nr(uint32_t k, uint32_t v); /* NSTREAM: one native record (nd_nr.h) into the open run (a new run after any other command) */
+void nd_rec_q(uint32_t k, uint32_t v); /* L1Q1 */
+void nd_uq_sync(void); /* L1Q1: run the queued setter units now */
 const uint32_t* nd_rec_pos(void);                   /* D4b-2: the stream write position (no cut): moves when any command is recorded */
 const uint32_t* nd_rec_mark(void);                  /* D1: cut, then the stream position (a range start or end) */
 void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range [a, b) here */
@@ -44,7 +46,7 @@ void nd_rec_call(const uint32_t* a, const uint32_t* b); /* D1: replay the range 
 void* nd_rec_data(unsigned bytes);
 /* D6c: a list for later of an effect (built once, drawn by one or more calls) as a stream range. nd_sub_open records an NDC_JUMP over the range
  * (patched by nd_sub_close), nd_sub_call replays it (NDC_CALL). D10a: build_custom_gfx puts its ranges inside one such jump. */
-typedef struct { const uint32_t* a; const uint32_t* b; uint32_t* br; } NdSub;
+typedef struct { const uint32_t* a; const uint32_t* b; uint32_t* br; uint32_t e[3]; } NdSub; /* TUB0: e = prim, env, geom of nd_ds at nd_sub_close */
 void nd_sub_open(NdSub* s);
 void nd_sub_close(NdSub* s);
 void nd_sub_call(const NdSub* s);

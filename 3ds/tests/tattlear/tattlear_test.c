@@ -1,5 +1,5 @@
 /* TATTLEAR host test: the tattle camera view in wide. set_cam_viewport and pm_wide_x3d (cam_main.c, extracted by
- * tattlear.sh) are the real code. Prints "tattlear ok 7" or "tattlear FAIL <what>" (first line) and exits 1. */
+ * tattlear.sh) are the real code. Prints "tattlear ok 9" or "tattlear FAIL <what>" (first line) and exits 1. Two seeds (tattlear.sh) must print FAIL. */
 #include <stdio.h>
 #include "common.h"
 
@@ -8,6 +8,8 @@ s32 pm_wide_x3d(s32 x, s32 up);
 void set_cam_viewport(s16 id, s16 x, s16 y, s16 width, s16 height);
 
 int pm_wide;
+int pm_wout; int pm_stretch;
+s32 pm_wide_draw_x(Camera* camera, s32 x);
 Camera gCameras[4];
 GameStatus gStatus;
 GameStatus* gGameStatusPtr = &gStatus;
@@ -30,7 +32,7 @@ int main(void) {
     s32 i;
 
     /* 1: wide, tattle window 137 95 138 99 */
-    pm_wide = 1;
+    pm_wide = 1; pm_wout = pm_wide;
     gStatus.altViewportOffset.x = 0;
     set_cam_viewport(CAM_TATTLE, 137, 95, 138, 99);
     if (chk("1 vscale", c->vp.vp.vscale[0], 220)) return 1;
@@ -51,13 +53,13 @@ int main(void) {
     if (chk("3 vscale", c->vp.vp.vscale[0], 220)) return 1;
 
     /* 4: not wide, args of 1 */
-    pm_wide = 0;
+    pm_wide = 0; pm_wout = pm_wide;
     set_cam_viewport(CAM_TATTLE, 137, 95, 138, 99);
     if (chk("4 vscale", c->vp.vp.vscale[0], 276)) return 1;
     if (chk("4 vtrans", c->vp.vp.vtrans[0], 824)) return 1;
 
     /* 5: wide, CAM_BATTLE full view is not changed */
-    pm_wide = 1;
+    pm_wide = 1; pm_wout = pm_wide;
     set_cam_viewport(CAM_BATTLE, 0, 0, 320, 240);
     if (chk("5 battle vscale", gCameras[CAM_BATTLE].vp.vp.vscale[0], 640)) return 1;
     if (chk("5 battle vtrans", gCameras[CAM_BATTLE].vp.vp.vtrans[0], 640)) return 1;
@@ -75,7 +77,7 @@ int main(void) {
     }
 
     /* 7: screen edges of the tattle view, wide */
-    pm_wide = 1;
+    pm_wide = 1; pm_wout = pm_wide;
     set_cam_viewport(CAM_TATTLE, 137, 95, 138, 99);
     if (chk("7 case1 left", scr(c->vp.vp.vtrans[0] - c->vp.vp.vscale[0]), 177)) return 1;
     if (chk("7 case1 right", scr(c->vp.vp.vtrans[0] + c->vp.vp.vscale[0]), 315)) return 1;
@@ -83,6 +85,11 @@ int main(void) {
     if (chk("7 case3 left", scr(c->vp.vp.vtrans[0] - c->vp.vp.vscale[0]), 77)) return 1;
     if (chk("7 case3 right", scr(c->vp.vp.vtrans[0] + c->vp.vp.vscale[0]), 215)) return 1;
 
-    printf("tattlear ok 7\n");
+    pm_wide = 0; pm_stretch = 1; pm_wout = 1; set_cam_viewport(CAM_TATTLE, 137, 95, 138, 99); /* 8: Fullscreen tattle window of case 1 */
+    if (chk("8 vscale", c->vp.vp.vscale[0], 220) || chk("8 vtrans", c->vp.vp.vtrans[0], 787)) return 1;
+    set_cam_viewport(CAM_DEFAULT, 12, 20, 296, 200); if (chk("9 view x", gCameras[CAM_DEFAULT].viewportStartX, 12) || chk("9 draw_x 32", pm_wide_draw_x(&gCameras[CAM_DEFAULT], 32), 0) ||
+        chk("9 draw_x 300", pm_wide_draw_x(&gCameras[CAM_DEFAULT], 300), 335) || chk("9 tattle x", pm_wide_draw_x(&gCameras[CAM_TATTLE], 100), 100)) return 1;
+    pm_stretch = 0; pm_wout = 0; if (chk("9 native x", pm_wide_draw_x(&gCameras[CAM_DEFAULT], 32), 32)) return 1;
+    printf("tattlear ok 9\n");
     return 0;
 }

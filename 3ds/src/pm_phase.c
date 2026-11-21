@@ -333,6 +333,7 @@ static unsigned long long pf_pe[3]; /* PF3: clean-interval sums of PMN0, PMN1, C
 static unsigned pf_pfr, pf_run; /* PF3: clean frames summed in the window; clean frames since the last sample end */
 unsigned pm_pf_late;
 static unsigned pf_svc0, pf_csvc, pf_ssvc; /* PROF2-1: pm_svc_n at the last pm_pf_frame; window sums of the svc tick reads in clean and in sampled frames */
+static unsigned long long pf_sm[2]; static u64 pf_sa[3]; /* L1PH0: PMN0, PMN1 of the sampled frames; the counters at the arm */
 /* PF3: one svc per register. The counters are not reset here, so each edge is a plain read. */
 static void pf_pmu_read(u64 out[3]) {
     pf_rc = svcControlPerformanceCounter(&out[0], PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0);
@@ -484,13 +485,14 @@ static void pf_c1_now(unsigned* x) {
 extern unsigned nd_snb, nd_snn, nd_snm, nd_lsf_n, nd_lsb_n, nd_lse_n, nd_altu_n, nd_altr_n; static unsigned lg0_c[8]; /* NAT8A */ static unsigned long long c1s_t[2], c1s_m[2]; static unsigned aw_m[8], gw_m[4]; extern unsigned nd_altw[8]; void pm_gpu_gw_now(unsigned o[4]); /* PERF0 */
 static void pf_c1n_now(unsigned* x) { x[0] = nd_snb; x[1] = nd_snn; x[2] = nd_snm; x[3] = nd_lsf_n; x[4] = nd_lsb_n; x[5] = nd_lse_n; x[6] = nd_altu_n; x[7] = nd_altr_n; } /* NAT8A */
 static unsigned rnr_m; extern unsigned nd_rnr_n; /* PROF2: nd_rec_nr calls at the window start */
+extern unsigned nd_uqr[7], nd_uqc, nd_xf_n, nd_dl_n; static unsigned uq_m[7], uqc_m, xf_m, dl_m; /* L1PH0 */
 static unsigned long long c0i_m[3]; extern unsigned long long pm_c0i_t[3]; /* GDW */
 static unsigned long long c0k_m[6]; extern unsigned long long pm_c0k[6]; /* CPT0 */
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); memcpy(c0i_m, pm_c0i_t, sizeof c0i_m); memcpy(c0k_m, pm_c0k, sizeof c0k_m); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; c1s_m[0] = c1s_t[0]; c1s_m[1] = c1s_t[1]; memcpy(aw_m, nd_altw, sizeof aw_m); pm_gpu_gw_now(gw_m); rnr_m = nd_rnr_n; } /* NAT8A */ /* PERF0; PROF2: the nd_rec_nr calls mark */
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); memcpy(c0i_m, pm_c0i_t, sizeof c0i_m); memcpy(c0k_m, pm_c0k, sizeof c0k_m); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; c1s_m[0] = c1s_t[0]; c1s_m[1] = c1s_t[1]; memcpy(aw_m, nd_altw, sizeof aw_m); pm_gpu_gw_now(gw_m); rnr_m = nd_rnr_n; memcpy(uq_m, nd_uqr, sizeof uq_m); uqc_m = nd_uqc; xf_m = nd_xf_n; dl_m = nd_dl_n; } /* NAT8A */ /* PERF0; PROF2: the nd_rec_nr calls mark */
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
-    { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } /* PERF1: the class timers start with the window (a tour window, a scene change) */
+    { uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); } { static uint64_t e_[NDT_N][2]; static unsigned n_[NDT_N]; pm_gpu_ndt_take_e(e_, n_); } pf_sm[0] = pf_sm[1] = 0; /* PERF1: the class timers start with the window (a tour window, a scene change) */
     { uint64_t g_[13]; unsigned u_[13], a_[13]; pm_gpu_ndt_take_g(g_, u_, a_); } /* GD0, GD0B */
     pf_nd_t = 0; pf_leg = 0; pf_eye2_t = 0;
     pf_sc[0] = pf_sc[1] = pf_sc[2] = -1; /* the next window starts in the scene now */
@@ -625,7 +627,7 @@ static void pf_report(void) {
     else pm_log_prof_line("prof f%u w%u pmu %c %u %u cyc %u pm %u %u", pf_total, pf_w, pf_set, e0, e1, cy, p0, p1);
     if (pf_ph_pmu) pf_pmxph_line(); /* PMUPH */
     { /* PERF1: ms per sampled frame of each producer class (exclusive, nd.h NDT_*); PERF2: the op classes split what was rest */
-        uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct);
+        uint64_t ct[NDT_N]; pm_gpu_ndt_take(ct); static uint64_t l1_e[NDT_N][2], l1_e2[NDT_N][2]; static unsigned l1_n[NDT_N], l1_n2[NDT_N]; pm_gpu_ndt_take_e(l1_e, l1_n); /* L1PH0 */
         unsigned cm[NDT_N], csum = 0;
         for (int k = 0; k < NDT_N; k++) { cm[k] = pf_cs(ct[k], pf_s); if (k <= NDT_LIST || k == NDT_MKEY || k == NDT_MMTX || k == NDT_MHIT) csum += cm[k]; } /* NAT8A; PROF2: the core 0 record classes are in the walk */
         /* PERF2 step 6: rest = the walk (nd: gbi_walk ticks) less the classes; task = gbi less the walk (the task start: the GPU tail wait outside its own phases, nd_frame_begin) */
@@ -647,11 +649,25 @@ static void pf_report(void) {
             C1(c10[0]), C1(c10[1]), C1(c10[2]), C1(c10[3]), C1(c10[4]), C1(c10[5]), C1(c10[6]), C1(c10[7]));
         { /* NAT8A: core 1 recorder timers of the sampled step, ms x 100 per sampled frame; cal = ticks inside one empty timer pair */
             for (int k = 0; k < 16; k++) { pm_gpu_ndt_push(); pm_gpu_ndt_pop(NDT_ALT); }
-            uint64_t c2[NDT_N]; pm_gpu_ndt_take(c2);
+            uint64_t c2[NDT_N]; pm_gpu_ndt_take(c2); pm_gpu_ndt_take_e(l1_e2, l1_n2);
             pm_log_prof_line("prof f%u w%u c1t snap %u.%02u lsc %u.%02u alt %u.%02u cal %u", pf_total, pf_w,
                 CS(cm[NDT_SNAP]), CS(cm[NDT_LSC]), CS(cm[NDT_ALT]), (unsigned)(c2[NDT_ALT] >> 4));
             pm_log_prof_line("prof f%u w%u c1d rmdl %u.%02u rent %u.%02u rspr %u.%02u rnr %u.%02u n %u", pf_total, pf_w,
                 CS(cm[NDT_RMDL]), CS(cm[NDT_RENT]), CS(cm[NDT_RSPR]), CS(cm[NDT_RNR]), nd_rnr_n - rnr_m); /* PROF2 */
+            if (pf_ph_pmu) { /* L1PH0: per class with calls in the window: PMN0, PMN1 (exclusive ticks, per sampled frame) and calls per sampled frame; 2 classes a line */
+                static const char* const nm_[NDT_N] = { "rec", "ent", "spr", "dlc", "sub", "kick", "raw", "tex", "comb", "geo", "mtx", "rect", "list", "snap", "lsc", "alt", "rmdl", "rent", "rspr", "rnr", "mkey", "mmtx", "mhit", "gent", "gmdl", "gply", "gnpc", "gwrk", "gfx", "gtask", "gthud", "gui", "gsub", "ghud", "gmode", "gwin", "rxf", "supd", "semit" };
+                _Static_assert(sizeof nm_ / sizeof nm_[0] == NDT_N, "L1PH0");
+                const unsigned s_ = pf_s ? pf_s : 1u; const char st_ = pf_rot ? pf_sets[pf_si].c : pf_set;
+                int q_ = 0; const char* nq_[2] = { "-", "-" }; unsigned vq_[2][3];
+                memset(vq_, 0, sizeof vq_);
+                for (int k = 0; k < NDT_N; k++) {
+                    if (!l1_n[k]) continue;
+                    nq_[q_] = nm_[k]; vq_[q_][0] = (unsigned)(l1_e[k][0] / s_); vq_[q_][1] = (unsigned)(l1_e[k][1] / s_); vq_[q_][2] = l1_n[k] / s_;
+                    if (++q_ == 2) { pm_log_prof_line("prof f%u w%u l1m set %c %s %u %u %u %s %u %u %u", pf_total, pf_w, st_, nq_[0], vq_[0][0], vq_[0][1], vq_[0][2], nq_[1], vq_[1][0], vq_[1][1], vq_[1][2]); q_ = 0; nq_[0] = nq_[1] = "-"; memset(vq_, 0, sizeof vq_); }
+                }
+                if (q_) pm_log_prof_line("prof f%u w%u l1m set %c %s %u %u %u %s %u %u %u", pf_total, pf_w, st_, nq_[0], vq_[0][0], vq_[0][1], vq_[0][2], nq_[1], vq_[1][0], vq_[1][1], vq_[1][2]);
+                pm_log_prof_line("prof f%u w%u l1t set %c s %u e0 %u e1 %u cal %u %u", pf_total, pf_w, st_, (unsigned)pf_s, (unsigned)(pf_sm[0] / s_), (unsigned)(pf_sm[1] / s_), (unsigned)(l1_e2[NDT_ALT][0] >> 4), (unsigned)(l1_e2[NDT_ALT][1] >> 4));
+            } /* L1PH0 */
             pm_log_prof_line("prof f%u w%u c0r key %u.%02u mtx %u.%02u hit %u.%02u", pf_total, pf_w,
                 CS(cm[NDT_MKEY]), CS(cm[NDT_MMTX]), CS(cm[NDT_MHIT])); /* PROF2 */
             { unsigned ur[8], u10[8]; pm_gpu_updr_take(ur); for (int k = 0; k < 8; k++) u10[k] = (unsigned)((unsigned long long)ur[k] * 10u / pw); /* DO3 */
@@ -797,12 +813,25 @@ static void pf_report(void) {
             pm_log_prof_line("prof f%u w%u core2 drain dr %u.%02u drw %u.%02u wqf %u.%02u", pf_total, pf_w,
                 dr / 100u, dr % 100u, drw / 100u, drw % 100u, wqf / 100u, wqf % 100u);
             { extern unsigned pm_slot_race; pm_log_prof_line("prof f%u w%u slotl race %u", pf_total, pf_w, pm_slot_race); } /* SLOTL: since boot, must stay 0 */
+            { extern volatile unsigned pm_pres[14]; static unsigned m_[14]; unsigned d_[14]; /* PRES0 */
+              for (int k = 0; k < 14; k++) { const unsigned v_ = pm_pres[k]; d_[k] = v_ - m_[k]; m_[k] = v_; }
+              const unsigned nl_ = d_[0] + d_[1] + d_[2] + d_[3], gl_ = nl_ ? (unsigned)(d_[11] * 100ull / PF_TPM / nl_) : 0u, g1_ = d_[13] ? (unsigned)(d_[12] * 100ull / PF_TPM / d_[13]) : 0u;
+              pm_log_prof_line("prof f%u w%u pres lk %u %u %u %u kl %u %u %u %u drop %u wob %u glk %u.%02u", pf_total, pf_w, d_[0], d_[1], d_[2], d_[3], d_[4], d_[5], d_[6], d_[7], d_[8], d_[9], gl_ / 100u, gl_ % 100u);
+              extern volatile unsigned pm_pres_g[3]; static unsigned mg_[3]; unsigned e_[3]; for (int k = 0; k < 3; k++) { const unsigned v_ = pm_pres_g[k]; e_[k] = v_ - mg_[k]; mg_[k] = v_; } /* PRES1 */
+              const unsigned gm_ = pf_w ? (unsigned)(e_[1] * 100ull / PF_TPM / pf_w) : 0u; /* PRES1: gate wait ms per step x 100 */
+              pm_log_prof_line("prof f%u w%u pres1 n %u gpu1 %u.%02u n1 %u gw %u gms %u.%02u gto %u", pf_total, pf_w, d_[10], g1_ / 100u, g1_ % 100u, d_[13], e_[0], gm_ / 100u, gm_ % 100u, e_[2]); }
             { unsigned c[8]; pf_c1n_now(c); pm_log_prof_line("prof f%u w%u c1n n %u snb %u snn %u snm %u lsf %u lsb %u lse %u altu %u altr %u", pf_total, pf_w, dn, c[0] - lg0_c[0], c[1] - lg0_c[1], c[2] - lg0_c[2], c[3] - lg0_c[3], c[4] - lg0_c[4], c[5] - lg0_c[5], c[6] - lg0_c[6], c[7] - lg0_c[7]); } /* NAT8A */ /* window totals over n logic steps */ { const unsigned d1_ = dn ? dn : 1u, pw1_ = pf_w ? pf_w : 1u; unsigned g_[4]; unsigned long long s0_ = (c1s_t[0] - c1s_m[0]) * 100ull / PF_TPM / d1_, s1_ = (c1s_t[1] - c1s_m[1]) * 100ull / PF_TPM / d1_; pm_gpu_gw_now(g_); pm_log_prof_line("prof f%u w%u c1s logic %u.%02u dl %u.%02u", pf_total, pf_w, (unsigned)(s0_ / 100u), (unsigned)(s0_ % 100u), (unsigned)(s1_ / 100u), (unsigned)(s1_ % 100u)); pm_log_prof_line("prof f%u w%u c1a m %u e %u c %u o %u c0 %u m %u e %u gpu d %u w %u bd %u bw %u", pf_total, pf_w, (nd_altw[0] - aw_m[0]) / d1_, (nd_altw[1] - aw_m[1]) / d1_, (nd_altw[2] - aw_m[2]) / d1_, (nd_altw[3] - aw_m[3]) / d1_, (nd_altw[4] - aw_m[4]) / pw1_, (nd_altw[5] - aw_m[5]) / pw1_, (nd_altw[6] - aw_m[6]) / pw1_, (g_[0] - gw_m[0]) / pw1_, (g_[1] - gw_m[1]) / pw1_, (g_[2] - gw_m[2]) / pw1_, (g_[3] - gw_m[3]) / pw1_); } /* PERF0 */
+            if (pf_ph_pmu) { /* L1PH0: the unit runs of the window per frame (dn): by length 1, 2-3, 4-7, 8-15, 16-31, 32-63, 64+ (r); the run ends (cut); the transform records (xf); the list draws (dl) */
+                const unsigned d_ = dn ? dn : 1u; unsigned r_[7], u_ = 0;
+                for (int k = 0; k < 7; k++) { r_[k] = (nd_uqr[k] - uq_m[k]) / d_; u_ += r_[k]; }
+                pm_log_prof_line("prof f%u w%u l1q u %u cut %u xf %u dl %u", pf_total, pf_w, u_, (nd_uqc - uqc_m) / d_, (nd_xf_n - xf_m) / d_, (nd_dl_n - dl_m) / d_);
+                pm_log_prof_line("prof f%u w%u l1q r %u %u %u %u %u %u %u", pf_total, pf_w, r_[0], r_[1], r_[2], r_[3], r_[4], r_[5], r_[6]);
+            } /* L1PH0 */
         }
     }
     if (c1_st == 1) c1_begin(); /* CORE2C C1P */
     if (pf_rot) { /* PMUROT: the next window counts the next set; core 1 follows at its next logic step */
-        pf_si = (pf_si + 1) % 6; pm_pf_core_setup(); pf_pmu_read(pf_base); if (pf_ph_pmu && pf_samp) pph_read(pph_last); pm_pf_set_gen++; /* PMUPHFIX2: a sample armed in this call counts from the reset */
+        pf_si = (pf_si + 1) % 6; pm_pf_core_setup(); pf_pmu_read(pf_base); if (pf_samp) memcpy(pf_sa, pf_base, sizeof pf_sa); if (pf_ph_pmu && pf_samp) pph_read(pph_last); pm_pf_set_gen++; /* PMUPHFIX2: a sample armed in this call counts from the reset */
     }
     pf_reset();
 }
@@ -812,6 +841,7 @@ static void pf_arm(void) {
     pm_lg_quiesce(); /* CORE2C-3: the logic thread is idle before pm_ph_on changes (the sample step runs inline) */
     u64 c[3];
     pf_pmu_read(c);
+    memcpy(pf_sa, c, sizeof pf_sa);
     for (int k = 0; k < 3; k++) pf_pe[k] += (unsigned)(c[k] - pf_base[k]); /* u32 delta: one interval is far below 2^32 cycles */
     pf_pfr += pf_run;
     pf_run = 0;
@@ -852,7 +882,7 @@ void pm_pf_frame(unsigned long long t0, unsigned long long t1) {
         if (pf_ph_pmu) pph_add(cur); /* PMUPHFIX: the last phase of the sample */
         pf_samp = 0; pm_ph_on = 0; pf_cd = pf_every - 1;
         pm_walk_dbg_set();
-        pf_pmu_read(pf_base); pf_run = 0;
+        pf_pmu_read(pf_base); pf_sm[0] += (uint32_t)(pf_base[0] - pf_sa[0]); pf_sm[1] += (uint32_t)(pf_base[1] - pf_sa[1]); pf_run = 0;
     } else {
         pf_wksum += wk; pf_wkn++; pf_run++;
         if (pm_pf_arm && --pf_cd == 0) pf_arm();
@@ -925,6 +955,7 @@ static void pf_init(void) {
     pf_set = pm_debug_has("profstall") ? 's' : 'm';
     pf_rot = pm_debug_has("profrot"); /* PMUROT: rotate the sets per window */
     pf_ph_pmu = pm_debug_has("profph"); /* PMUPH: counts per phase in sampled frames */
+    { extern int pm_ndt_pmu; pm_ndt_pmu = pf_ph_pmu; } /* L1PH0 */
     pf_si = pf_set == 's' ? 1 : 0; /* the start set: s with profstall, else m */
     pm_pf_on = pf_want && pm_log_file();
     pf_cd = pf_every - 1;
