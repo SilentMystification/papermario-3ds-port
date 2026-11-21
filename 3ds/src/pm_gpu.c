@@ -670,6 +670,7 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
     pm_log_evt("drecsc f%u", pm_frame_count()); /* WCLIP0 */
+    if (pm_stretch) pm_log_evt("wclip2 f%u", pm_frame_count()); /* WCLIP2: expected-diff marker */
     gst_fp = fopen("sdmc:/3ds/PaperMario/shots/gst.txt", "wb"); gst_vb = (char*)malloc(64u << 10); /* DO0 */
     if (gst_fp && gst_vb) setvbuf(gst_fp, gst_vb, _IOFBF, 64u << 10); else { if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; }
     gst_cb = NULL; gst_off = gst_fvec = gst_fcomp = 0; gst_fn = 4u; memset(gst_r, 0, sizeof gst_r); memset(gst_f, 0, sizeof gst_f); memset(gst_lut, 0, sizeof gst_lut);
