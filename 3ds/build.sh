@@ -27,10 +27,17 @@ if [ "${PM_FNCOV:-0}" = 1 ]; then
     [ -n "$PM_LANE" ] || { echo "PM_FNCOV=1 needs PM_LANE" >&2; exit 1; }
     FNV=ON; OUT=build3ds/lane-${PM_LANE}_fncov
 fi
+# PROF4: PM_FPROF=1 is the function profile lane <L>_fprof (needs PM_LANE): its own output folder, the profile TUs instrumented.
+FPV=OFF
+if [ "${PM_FPROF:-0}" = 1 ]; then
+    [ -n "$PM_LANE" ] || { echo "PM_FPROF=1 needs PM_LANE" >&2; exit 1; }
+    [ "$FNV" = OFF ] || { echo "PM_FPROF=1 and PM_FNCOV=1 together: pick one" >&2; exit 1; }
+    FPV=ON; OUT=build3ds/lane-${PM_LANE}_fprof
+fi
 mkdir -p $OUT
 CACHE=${PM_CACHE:-on}
 ASSET_DIRS="assets/us ver/us/build"
-CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src 3ds/tools/cov.d src include"
+CODE_DIRS="3ds/CMakeLists.txt 3ds/effects.cmake 3ds/battle.cmake 3ds/maps.cmake 3ds/map_syms.lds LaunchIcon.png 3ds/ld 3ds/shaders 3ds/stub_include 3ds/include 3ds/src 3ds/tools/cov.d 3ds/tools/fprof_exclude.txt src include"
 # The build key covers the code dirs, the build recipe and this script.
 KEY_IN="$CODE_DIRS docker/Dockerfile.build 3ds/build.sh"
 # Generator outputs and the build header inside CODE_DIRS: their ids are taken after the generators (gen_ids).
@@ -287,7 +294,7 @@ if [ "$SKIP" = 1 ]; then
     stage key
     publish_3dsx
     if [ -s $OUT/memcheck_line.txt ] && [ $OUT/memcheck_line.txt -nt $OUT/pm_3ds.map ]; then cat $OUT/memcheck_line.txt; else memcheck_line; fi
-    [ "$FNV" = OFF ] && hotset_line
+    [ "$FNV" = OFF ] && [ "$FPV" = OFF ] && hotset_line
     exit 0
 fi
 stage key
@@ -331,7 +338,7 @@ ws_run() {
     rm -f $OUT/sync_done.txt
     # STALEOBJ: tar -m stamps each copied file with the copy time, so it is newer than every object in the build volume.
     tar -cf - -T $OUT/src_changed.txt | MSYS_NO_PATHCONV=1 docker run --rm -i --memory "$MEM" --name "$NAME" -v $SRCVOL:/src -v $AVOL:/a:ro -v $SHVOL:/sh:ro \
-        -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-4G}" -e PM_BUILD_NUM="$BN" -e PM_FNCOV_V="$FNV" -e AHASH="$AHASH" \
+        -e CCACHE_DIR=/ccache -e CCACHE_MAXSIZE="${PM_CCACHE_MAX:-4G}" -e PM_BUILD_NUM="$BN" -e PM_FNCOV_V="$FNV" -e PM_FPROF_V="$FPV" -e AHASH="$AHASH" \
         -e IMGID="$IMGID" -e PM_CACHE_V="$CACHE" -e SHAPE_E="$SHAPE_E" -e OLDID="$OLDID" -e NEWID="$NEWID" -e RECONF="$RECONF" -e JOBS="$JOBS" \
         -e COLDOV="$COLDOV" -e GENF="$GEN_FILES" \
         -v "$(pwd)/$OUT:/out" -v $VOL:/work -v pm3ds-ccache-$(printf '%s' "$IMGID" | cut -c1-12):/ccache \
@@ -370,10 +377,10 @@ ws_run() {
     stage sync
     # Configure when the build dir is missing, has other flags, another build number (the smdh text) or a path was added or removed.
     if [ "$RECONF" = 1 ] || ! grep -q "^CMAKE_C_COMPILER_LAUNCHER:STRING=ccache$" /work/build/CMakeCache.txt 2>/dev/null \
-        || ! grep -q "^PM_FNCOV:BOOL=$PM_FNCOV_V\$" /work/build/CMakeCache.txt 2>/dev/null \
+        || ! grep -q "^PM_FNCOV:BOOL=$PM_FNCOV_V\$" /work/build/CMakeCache.txt 2>/dev/null         || ! grep -q "^PM_FPROF:BOOL=$PM_FPROF_V\$" /work/build/CMakeCache.txt 2>/dev/null \
         || ! grep -q "^CMAKE_HOME_DIRECTORY:INTERNAL=/src/3ds$" /work/build/CMakeCache.txt 2>/dev/null \
         || ! grep -q "^PM_BUILD_NUM:STRING=$PM_BUILD_NUM\$" /work/build/CMakeCache.txt 2>/dev/null; then
-        cmake -G Ninja -S /src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DPM_BUILD_NUM=$PM_BUILD_NUM -DPM_FNCOV=$PM_FNCOV_V
+        cmake -G Ninja -S /src/3ds -B /work/build -DCMAKE_TOOLCHAIN_FILE=$DEVKITPRO/cmake/3DS.cmake -DCMAKE_C_COMPILER_LAUNCHER=ccache -DPM_BUILD_NUM=$PM_BUILD_NUM -DPM_FNCOV=$PM_FNCOV_V -DPM_FPROF=$PM_FPROF_V
     fi
     stage configure
     if [ "$COLDOV" = 1 ]; then
@@ -435,5 +442,5 @@ if [ -f $OUT/pm_3ds.elf ]; then
 fi
 publish_3dsx
 memcheck_line
-[ "$FNV" = OFF ] && hotset_line
+[ "$FNV" = OFF ] && [ "$FPV" = OFF ] && hotset_line
 stage tail

@@ -576,6 +576,9 @@ static void pf_pmxph_line(void) {
     }
 }
 static void pf_report(void) {
+#ifdef PM_FPROF
+    { extern void pm_fprof_window(unsigned total, unsigned steps); pm_fprof_window(pf_total, pf_w); } /* PROF4 lane only */
+#endif
     unsigned vb =(unsigned)(C3D_FrameCounter(0) - pf_vb0);
     /* fps counts presents: the steps of the window plus the key frames walked (fps60 shows two pictures a step). ft and wk stay per step. */
     unsigned kfw; { unsigned long long t_, w_, pe_[3]; unsigned n_, s_, k_; int c_; pm_lg_pf(&t_, &n_, &w_, &s_, &c_, &k_, pe_, &kfw); kfw -= lg0_kf; }

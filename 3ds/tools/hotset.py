@@ -5,6 +5,7 @@ usage (repo root; Windows: py -3 3ds/tools/hotset.py ...):
   hotset.py                  full report of the lane: M1 per class and union, M2 linker hot group, call sites of the union
   hotset.py --line           one line (build.sh prints it after the memcheck line)
   hotset.py --fncov <log>    M3: bytes of the functions that ran in each census frame, per class (log of an fncov_* scenario)
+  hotset.py --fprof <log>    PROF4: exclusive ms per function per core (log of the lane <L>_fprof, PM_FPROF=1 build.sh)
 Lane: PM_LANE (folder build3ds/lane-<L>/), else build3ds/. The census lane is <L>_fncov (PM_FNCOV=1 build.sh); M3 reads its map.
 Sizes come from the map (.text.<fn> input sections, -ffunction-sections). Call edges come from objdump -d of pm_3ds.elf, run in
 the devkitARM image pm3ds-build:1 through docker and cached in <lane>/hotset/objdump.txt (rerun when the ELF size or mtime changes).
@@ -29,10 +30,10 @@ LD = REPO / "3ds" / "ld" / "3dsx.ld.in"
 HOT_LD = REPO / "3ds" / "ld" / "hot_order.ld"
 
 
-def lane_dir(lane, fncov=False):
+def lane_dir(lane, fncov=False, fprof=False):
     if not lane:
         return REPO / "build3ds"
-    return REPO / "build3ds" / ("lane-%s%s" % (lane, "_fncov" if fncov else ""))
+    return REPO / "build3ds" / ("lane-%s%s" % (lane, "_fncov" if fncov else "_fprof" if fprof else ""))
 
 
 def strip_sec(sec):
@@ -327,13 +328,52 @@ def fncov_report(log, lane, fn=False):
     return 0
 
 
+def fprof_report(log, lane):
+    """PROF4: the fprof lines of a lane log (fprof f<F> c<k> r<rank> <addr> ex <ms x100 per step> n <calls x10 per step>) joined with the
+    map of the profile lane: per core, the functions summed over the windows by name, exclusive ms per step (mean over windows)."""
+    fmap = parse_map(lane_dir(lane, fprof=True) / "pm_3ds.map")
+    pat = re.compile(r"fprof f(\d+) c([01]) r\d+ ([0-9a-f]{8}) ex (\d+) n (\d+)")
+    pat_o = re.compile(r"fprof f(\d+) c([01]) calls (\d+) pairs (\d+) drop (\d+) ovh (\d+)")
+    ex, nn, wins, ovh, unm = [Counter(), Counter()], [Counter(), Counter()], [set(), set()], [[], []], 0
+    with open(log, encoding="utf-8", errors="replace") as fh:
+        for l in fh:
+            m = pat.search(l)
+            if m:
+                c = int(m.group(2)); a = int(m.group(3), 16)
+                e = fmap.get(a)
+                name = e["name"] if e else "0x%08x" % a
+                if not e:
+                    unm += 1
+                ex[c][name] += int(m.group(4)); nn[c][name] += int(m.group(5)); wins[c].add(int(m.group(1)))
+                continue
+            m = pat_o.search(l)
+            if m:
+                ovh[int(m.group(2))].append((int(m.group(3)), int(m.group(4)), int(m.group(5)), int(m.group(6))))
+    if not any(wins):
+        print("hotset fprof: no 'fprof f<F> c<k> r<rank>' line in %s" % log)
+        return 1
+    for c in (0, 1):
+        w = max(1, len(wins[c]))
+        print("hotset fprof c%d: %d windows, unmatched %d" % (c, len(wins[c]), unm))
+        for name, v in ex[c].most_common(30):
+            print("hotset fprof c%d %-32s ex %d.%02d ms/step  n %.1f /step" % (c, name, v // w // 100, v // w % 100, nn[c][name] / 10.0 / w))
+        if ovh[c]:
+            o = ovh[c]
+            print("hotset fprof c%d ovh %.2f ms/step (calls %d pairs %d drop %d per step, mean)" % (
+                c, sum(x[3] for x in o) / 100.0 / len(o), sum(x[0] for x in o) // len(o), sum(x[1] for x in o) // len(o), sum(x[2] for x in o)))
+    return 0
+
+
 def main():
     ap = argparse.ArgumentParser(description="hot code bytes of the core 0 draw path (plan_hotcode HC0)")
     ap.add_argument("--line", action="store_true", help="one line for build.sh")
     ap.add_argument("--fncov", metavar="LOG", help="M3 from a census log")
+    ap.add_argument("--fprof", metavar="LOG", help="PROF4: exclusive ms per function per core from a lane <L>_fprof log")
     ap.add_argument("--fncovfn", action="store_true", help="with --fncov: calls per function of each census frame")
     ap.add_argument("--lane", default=os.environ.get("PM_LANE", ""), help="lane name (default PM_LANE)")
     a = ap.parse_args()
+    if a.fprof:
+        return fprof_report(a.fprof, a.lane)
     if a.fncov:
         return fncov_report(a.fncov, a.lane, a.fncovfn)
     return run_report(a.lane, a.line)

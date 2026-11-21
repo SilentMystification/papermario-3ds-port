@@ -349,6 +349,8 @@ file(GLOB PORT_SRC CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/*.c)
 list(REMOVE_ITEM PORT_SRC
     # census lane only: added with PM_FNCOV below
     ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_fncov.c
+    # PROF4 lane only: added with PM_FPROF below
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_fprof.c
 )
 
 # CORE2-1: every non-static snd_* function of snd_interface.c is wrapped (src/pm_audio_gate.c joins the audio job first). A new
@@ -383,7 +385,11 @@ set_property(SOURCE src/pm_gpu.c src/pm_tex.c src/nd_comb.c src/nd_model.c src/p
 # HC0 census lane (PM_FNCOV=ON, tools only; build.sh PM_FNCOV=1 PM_LANE=<L>): the draw TUs get -finstrument-functions, and
 # src/pm_fncov.c counts the calls per function (switch fncov=<frame>). Off in the normal build: no flag, no file.
 option(PM_FNCOV "HC0 census lane: call counts of the draw TUs" OFF)
-if(PM_FNCOV)
+option(PM_FPROF "PROF4 lane: exclusive cycles per function per core" OFF)
+if(PM_FNCOV AND PM_FPROF)
+    message(FATAL_ERROR "PM_FNCOV and PM_FPROF are separate lanes")
+endif()
+if(PM_FNCOV OR PM_FPROF)
     file(GLOB FNCOV_TUS ${CMAKE_CURRENT_SOURCE_DIR}/src/nd_*.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_gpu*.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_tex.c ${CMAKE_CURRENT_SOURCE_DIR}/src/pm_comb.c)
     # COVMAP: game files listed in tools/cov.d/<row>.txt (lines starting src/) join the census lane.
     file(GLOB COV_LISTS CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tools/cov.d/*.txt)
@@ -394,9 +400,28 @@ if(PM_FNCOV)
             list(APPEND FNCOV_TUS ${DECOMP}/${cf})
         endforeach()
     endforeach()
+endif()
+if(PM_FNCOV)
     set_property(SOURCE ${FNCOV_TUS} APPEND PROPERTY COMPILE_OPTIONS -finstrument-functions)
     list(APPEND PORT_SRC src/pm_fncov.c)
     add_compile_definitions(PM_FNCOV=1)
+endif()
+# PROF4 lane (PM_FPROF=ON, build.sh PM_FPROF=1 PM_LANE=<L>): same TU list; src/pm_fprof.c times the functions (switch fprofd=<1..8>).
+# tools/fprof_exclude.txt: function names (one per line) that stay inside their caller's time.
+if(PM_FPROF)
+    set(FP_FLAGS -finstrument-functions -finstrument-functions-exclude-file-list=include/,3ds/include/,devkitPro)
+    set(FP_EXC ${CMAKE_CURRENT_SOURCE_DIR}/tools/fprof_exclude.txt)
+    if(EXISTS ${FP_EXC})
+        set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${FP_EXC})
+        file(STRINGS ${FP_EXC} fp_names REGEX "^[A-Za-z_]")
+        list(JOIN fp_names "," fp_list)
+        if(fp_list)
+            list(APPEND FP_FLAGS -finstrument-functions-exclude-function-list=${fp_list})
+        endif()
+    endif()
+    set_property(SOURCE ${FNCOV_TUS} APPEND PROPERTY COMPILE_OPTIONS ${FP_FLAGS})
+    list(APPEND PORT_SRC src/pm_fprof.c)
+    add_compile_definitions(PM_FPROF=1)
 endif()
 add_executable(pm_3ds
     ${PORT_SRC}

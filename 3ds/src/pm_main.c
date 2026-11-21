@@ -947,6 +947,9 @@ static void game_thread(void* arg) {
     pm_log_prof_apply(1); /* PROF4: re-applies after pm_options_init set the levels, and prints the boot line */
     pm_ph_init(); /* after the log gate: phase, prof, pmu and fsplit read the final pm_log_file() */
     pm_options_prof_boot(); /* PROFROW: the launch word or the saved Profiling row */
+#ifdef PM_FPROF
+    { extern void pm_fprof_thread(int k); pm_fprof_thread(0); } /* PROF4 lane only */
+#endif
     if (!pm_rom_init()) return; /* the bottom screen showed the reason */
     pm_mem_log("boot");
     pm_zbuf_reserve(); /* PAUSEC: the pause picture, while the heap is whole (after the ROM, so the ROM check is unchanged) */

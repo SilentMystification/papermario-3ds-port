@@ -57,6 +57,9 @@ static void lg_main(void* arg) {
     (void)arg;
     pm_fpscr_setup("logic"); /* the N64 FPU mode (flush to zero, nearest) is per thread */
     pm_stack_register(3, "logic", LG_STACK);
+#ifdef PM_FPROF
+    { extern void pm_fprof_thread(int k); pm_fprof_thread(1); } /* PROF4 lane only */
+#endif
     lg_core = (int)svcGetProcessorID();
     for (;;) {
         while (lg_qtaken == lg_qn && !lg_exit) LightEvent_Wait(&lg_ev);
