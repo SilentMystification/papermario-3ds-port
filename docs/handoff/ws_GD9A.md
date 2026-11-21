@@ -11,7 +11,8 @@ FACT (NATIVE20, live_play2_170.txt): the shown bar adds on core 0 gbi +4.15 ms, 
            if (id == ND_FS_MTX && is_host(w1)) ub_bytes((const void*)(uintptr_t)w1, 64u);
            else if (id == ND_FS_VTX && is_host(w1)) ub_bytes((const void*)(uintptr_t)w1, 16u * ((w0 >> 12) & 0xffu));
            else ub_w(w1); }
-   nd_ublk_napi(run, rec, units): ub_w(run); if run == nd_xf_run, each unit pair through nd_ublk_unit; else ub_bytes(rec, 8 x units).
+   nd_ublk_napi(run, rec, units): ub_w(run); when units == 1, the pair through nd_ublk_unit (an nd_xf record is one MTX or POPMTX unit,
+   nd_xf.c:31; nd_xf_run is static); else ub_bytes(rec, 8 x units).
    (is_host: nd_walk.c:421, a pure range test.)
 3. 3ds/src/nd_rec.c, one line at the entry of each (after the opening brace): nd_rec_nr (:604) `if (__builtin_expect(nd_ub_on, 0)) nd_ublk_unit(w0, w1);`;
    nd_rec_napi (:449) and nd_rec_napi_s (:460) `if (__builtin_expect(nd_ub_on, 0)) nd_ublk_napi(run, rec, units);`; nd_rec_alt (:635) the same with
