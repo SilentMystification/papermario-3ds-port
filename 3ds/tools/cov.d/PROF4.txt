@@ -1,0 +1,17 @@
+src/main_loop.c
+src/cam_main.c
+src/model.c
+src/entity.c
+src/entity_model.c
+src/animator.c
+src/npc.c
+src/77480.c
+src/sprite.c
+src/imgfx.c
+src/effects.c
+src/worker.c
+src/hud_element.c
+src/draw_box.c
+src/inventory.c
+src/msg.c
+src/state_world.c
