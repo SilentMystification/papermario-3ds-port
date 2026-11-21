@@ -2,7 +2,7 @@
 Designer: oracle L1 (plan_l1.md). Worktree build3ds/wt/L1Q1, branch L1Q1. PM_ROW=L1Q1 PM_LANE=L1Q1. Start: main after the L1PH0 merge.
 WAIT: start only when oracle L1 releases this page on rule Q (plan_l1.md 5, from the L1PH0 console capture). No release: no start.
 Objective: a setter unit (macro nd_nr, 3ds/include/nd_nr.h:11) goes into a 128-unit queue (1 KB). The recorder runs the queue in one loop when it is full or before any other recorder entry. Unit order and stream bytes stay the same.
-Counters: Azahar l1q u / cut (units per run) rises (FACT after the run). Console ic1, lgms: GUESS -5000 to -15000 I misses, -1 to -3 ms per step.
+Counters: Azahar l1q u, cut and r stay equal to the base (FACT by construction: a full-queue flush runs rec_nr0 with no rec_open, so a run still ends only at a depth-0 rec_open). Console ic1, lgms: GUESS -5000 to -15000 I misses, -1 to -3 ms per step.
 Line numbers are main dfb703014f plus L1PH0. Grep each anchor again. Edit with the Edit tool (CRLF sources).
 ## Edits
 1. nd_nr.h:11 before: `#define nd_nr(k, v) nd_rec_nr((k), (v)) /* one native record ... */`. After: `#define nd_nr(k, v) nd_rec_q((k), (v)) /* L1Q1: a setter unit into the unit queue (nd_rec.c) */`.
@@ -31,7 +31,7 @@ Line numbers are main dfb703014f plus L1PH0. Grep each anchor again. Edit with t
 ## Tests (output to build3ds/out/, read the last 20 lines). Gate: 1 build, 2 Azahar runs. Budget 8 Azahar starts.
 1. `PM_LANE=L1Q1 sh 3ds/build.sh`: memcheck OK (bss +1 KB). `sh 3ds/tools/nd_host_test.sh` (timeout 600000): PASS, uqunit seed and ok lines. c0gate 0 / 0 / 0.
 2. spot_mac01_drec and hudfb_drec: `bench.py base <b> --commit $(git merge-base HEAD main)`, run, cmp: byte-equal. `grep -c uqhole` = 0 in both run logs.
-3. capture_check as ws_L1PH0 test 3 (proof `l1q`): report the l1q line (u, cut) next to the L1PH0 value.
+3. capture_check as ws_L1PH0 test 3 (proof `l1q`): the l1q line must equal the base l1q line word for word (a change means the unit order changed: stop, send it to the oracle).
 Fix rights: compile errors. A host unit that does not link nd_rec_q or nd_uq_sync: add `__attribute__((weak))` forwarding or no-op definitions in that unit's test double (for example 3ds/tools/nd_direct_test.c).
 A uqhole line or a DIFF: stop, send the log path and the cmp output path to the oracle. Do not add a sync site the page does not name.
 Stop: the commit `L1Q1: gate` deletes this page. Hand back with ONE SubagentHandback: commit hashes, host lines, c0gate, cmp lines, uqhole counts, l1q line before and after.
