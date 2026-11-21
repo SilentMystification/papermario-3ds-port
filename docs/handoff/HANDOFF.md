@@ -1,37 +1,64 @@
-# HANDOFF (orchestrator, overwritten at each handoff)
+# HANDOFF (overwritten at each handoff)
 
-State: 20 Nov, about 12:00, main f0a9f642e4 (`git log`). Goal of the session: a fully native draw path (core 0 decides nothing). Start: read this file, docs/handoff/orchestrator_rules.md, CLAUDE.md, docs/handoff/plan_native.md, docs/handoff/oracle_handoff.md, docs/handoff/merge_protocol.md, docs/handoff/push_runbook.md and the memory index. Then `date`, ListAgents, `git log --oneline -15`, `git status`.
+State: 21 Nov 2026, about 04:00. Main is `git log -1` (it moves while the merger job in section 3 runs). The reader of this file is ONE hands-on agent.
+There is NO orchestrator and NO sub-agent team any more. Do not start Agent, oracle, coder or merger agents. Do the work yourself.
+Start: read this file, CLAUDE.md, docs/handoff/hw_guidelines.md, docs/handoff/push_runbook.md, docs/handoff/merge_protocol.md and the memory index. Then `date`, `git log --oneline -15`, `git status`.
+Ignore the role text in docs/handoff/orchestrator_rules.md (agent labels, coaches, dispatcher). The rules that stay: CLAUDE.md rules 1 to 10, the user rules in section 6.
 
-## Numbers (FACT, `python 3ds/tools/c0gate.py <ELF>`; calls / interp / state)
-- Main f0a9f642e4 (build 7680): c0gate 0 / 0 / 0. The state symbol nd_c0 is gone (NC0T2). elfgate func 0 data 0 gfxnames 0. Host tests, binchk, build key all pass. memcheck margin 402 KB.
-- Core 0 state that remains lives in cache objects outside nd_c0: nd_txw 752 B (texture model: bind fallback after a copy texture unit in a static call, glyph bind, TMEM rects, model full key), nd_gm 28 B (GPU memos), nd_bo 20 B (bind outputs). The user decision on whether these count as 'core 0 decides nothing' is open (questions 9, 10, 17; defaults yes).
-- Optimization rows merged this session after the capture: NC0B NC0R NC0C NC0S NC0V NC0M NC0T1 NC0F NC0T2 (nd_c0 912 to 0 B), MCOPY1 MCOPY2 (core 0 model copy words 0; core 1 model alt range words 1752196 to 0 in spot_mac01_drec), T1FIX, ALT2C (census). Output changes accepted as expected-diff (oracle decision): MCOPY1 (marker mmiss), NC0V step 1 (marker texfog) and step 2 (marker gstex). Each row was byte-equal against its own start commit; no wave gate against the session start exists (expected-diff rows).
+## 1. How you work (no orchestrator)
+- A goal page docs/handoff/ws_<id>.md is a closed task written for a coder. You are the coder: do its edits in a worktree `build3ds/wt/<id>`, branch `<id>`, then gate it, then merge it yourself with `sh 3ds/tools/merge_row.sh <id> [message-file]` from the main folder.
+- Page edits: use the Edit tool (sources are CRLF). A mechanical fault of a page or a tool (wrong anchor, missing launch word): fix it and say so in the commit. Anything else that fails a gate: stop and report to the user with the exact output.
+- Tiered gates (CLAUDE.md rule 3): every commit = build (`sh 3ds/build.sh`), host tests (`PM_HOSTSEL=all sh 3ds/tools/nd_host_test.sh`, over 180 s: run it in the background and wait for the notice), c0gate (`python 3ds/tools/c0gate.py <ELF>` must read 0 / 0 / 0). A row gate = the 1 to 2 benches the page names (`python 3ds/tools/bench.py base <bench>`, then `bench.py cmp <bench> --row <id>`, byte-exact). Budget: 8 Azahar starts per task.
+- An expected-diff row passes only with the marker word: `cmp --expect <word>`; give the merge a message file with the word `expected-diff` and the marker.
+- Main folder must be clean (rule 10): commit oracle or page files and run records (`git add -f 3ds/logs/perf/runs.jsonl 3ds/logs/test_budget.csv`). 3ds/logs/test_budget.csv now merges by union (.gitattributes), runs.jsonl too.
+- No `git push`, no `git stash`, no hand edit of a bench base, no feature toggle, no stub.
+- Hooks you will meet: no_poll_hook (no sleep, no wait loop: run a long job in the background and end the turn with `waiting for <job>`), no_guess_hook (blocks some phrases in prompts, for example "debug line", "log line", "check first"), a style hook (ASD-STE100 chat text, no apology), a stop hook (main must be clean).
+- Chat style with the user: ASD-STE100 (one instruction per sentence, active voice, no semicolons, no praise, no apology, no self-blame), FACT / GUESS / OPEN on every number, questions only with AskUserQuestion (plain text is not a prompt).
 
-## Console capture (O3DS .170, build 9f6be238aa, mac_01 0 0 200, 38 windows, fps 37.7) - taken BEFORE the rows above
-Core 0 = wk - wwait, core 1 = lgms - bw. Last 3 windows: core 0 18 to 25 ms, core 1 44 to 50 ms, ratio 2.0 to 2.45 (limit 1.20). Logs: build3ds/hw_o3ds_log.txt, run 2435651.
-Next step needs the user: one capture of main f0a9f642e4 (build 7680) on O3DS .170 to read ic1, lgms, c1a m (expect 0), c1d, c0r. It picks the next frame-time row (core 1 untimed recorder about 30 ms GUESS, I-cache 92K misses per step, MDLHIT2 core 0 rec 6.15 ms). ALT2 is parked (gap runs only; GUESS 0.2 to 0.4 ms).
+## 2. Console and push (user rules, FACT)
+- O3DS .170 (`o`), O3DS XL .131, N3DS .224. A push is only on the user's word, asked with AskUserQuestion AFTER the build, binchk and capture_check are done (a question before them was a fault this session).
+- Order: `sh 3ds/build.sh` (build of main) -> `python 3ds/tools/binchk.py build3ds/pm_3ds.elf --file docs/handoff/push_strings.txt` prints `binchk OK` -> capture_check (Azahar, the same launch words, in the main lane: `PM_ROW=<id> python 3ds/tools/capture_check.py --row <id> --proof "<lines>" --profile prof warp=mac_01:0 pos=0:0:200 profdisk=1 prof=1 <extra words>`; `prof=1` is needed for prof lines; a lane id without a build gives "3dsx is missing") -> AskUserQuestion -> on yes at once `powershell -NoProfile -File 3ds/go.ps1 push o -ip 192.168.1.170 -NoBuild -Seconds 150 -Profile prof -GameDebug "<words>"`.
+- The push is detached (`PUSH STARTED pid N`): start the background job `powershell -NoProfile -Command "Wait-Process -Id N -ErrorAction SilentlyContinue"`, end the turn, read build3ds/out/push_o_<time>.txt and build3ds/hw_live_log_170.txt after the notice. The game serves ONE live-log client: no livelog.py while the push reads.
+- To read a running game after the push ended: `py -3 -u 3ds/tools/livelog.py 192.168.1.170 40 <out-file> --idle 15` (the ring holds the last about 5000 lines). The user said "not via ftp": do not use `pull o`.
+- Perf pushes always use `-Profile prof` and the mac_01 spot (`warp=mac_01:0 pos=0:0:200`). After a push: `git add -f 3ds/logs/perf/pushed_builds.txt` and commit.
+- Last push: build 7933 of main b43206229d (L1PH0 capture), words `warp=mac_01:0 pos=0:0:200 profdisk=1 prof=1 profph profrot`. Log: build3ds/hw_live_log_170.txt (window f2189 set m, f2489 s, f2789 b, f3089 w).
 
-## Open items
-- User word needed: console capture (above), then balance rows from the data.
-- User decisions open with defaults: build3ds/out/questions_for_user.md (items 1 to 17).
-- ws_WALKSRC.md stays (branch WALKSRC not merged). Empty folders in build3ds/wt (Permission denied on delete): ignore.
-- Parked, never start unasked: ASSETFREE, CIA, QTM.
-- Gate-definition changes: see below; add: `state nd_c0` now matches no symbol (count 0).
+## 3. State of the work (FACT from git and the session)
+Merged this session (all gated): DEC1 (key colour fill for 5551 textures, expected-diff tkd), WCLIP1, PRES0 (census), POND0+POND1 (water memo fix), LOGDIET (gate markers print only on drec frames: log 10361 -> about 1438 lines per capture), L1PH0 (PMU counts per phase: profph, profrot; lines l1m l1t l1q), FSUI1 + FSUI2 + FSUI3 (Fullscreen: UI at native size and aspect, 3D and scene background stretched 1.25 x; the WCLIP2 rect stretch is undone), .gitattributes union for test_budget.csv.
+Running at the time of writing (check `git log` and build3ds/out):
+- Merger job for L1C0A (gate 980c752eca), L1C0B (83c5754a92, starts from the L1C0A gate) and L1Q1 (85d2f8fecf): the merger agent merges them with a combined gate (spot_mac01_drec, entcape_kmr03_drec, hudfb_drec byte-equal, mqw bad 0, uqhole 0). Look for `Merge L1C0A`, `Merge L1C0B`, `Merge L1Q1` in `git log`. If a branch is not merged: `sh 3ds/tools/merge_row.sh <id>` then the combined gate yourself. A post-merge check runs detached: build3ds/out/post_merge_<hash>.txt, build3ds/out/postmerge_FAIL.txt means a failure.
+- 3 design oracles (dgb_01 lag, Tubba cloud, star power moves): they write plan_dgb01.md / plan_tubba.md / plan_upaway.md and ws_ pages and commit or leave them untracked in the main folder. Commit what they leave (docs only) and read their pages.
+Branches finished but NOT merged: CRK1 (gate f54428789b: seam census step 6, `mac_01 mtxchk 19 of 55 shared 529 split 15 snap_rn 0 snap_rz 0 maxd16 0.012 same 0 gpx 81 gpxmax 0.748 holes_rn 14 holes_rz 14`), MTX1 (tip 4dcf251410, held: xfer_map_shots 7 of 16 frames differ with the stamp call sites, 16 of 16 equal with the old drain; the oracle's cause guess was the POND memo, POND1 is now merged: merge main into MTX1, rebuild, rerun `bench.py cmp xfer_map_shots`; if it is equal, merge), CRK2 (result never read; look at branch CRK2 and build3ds/wt/CRK2). Leftover worktrees in build3ds/wt that cannot be removed (Permission denied) stay.
 
-## How this session worked (lessons, FACT)
-- Rows ran in parallel when their edits sat in separate code regions (user rule). Pages were written by Opus oracles (NATIVE8 to NATIVE14), coders were Sonnet or Haiku, one Haiku merger agent was resumed for every merge. Oracles cannot start coders (permission denied): the orchestrator starts every coder.
-- Cost: about 40 rows, each with fixed reading cost; large oracles (400K to 500K tokens) were resumed often; timed wakeups were polling. Rule 7 now says no polling. Lean mode: no new oracles, batch merges, one oracle resume per round.
-- A coder that ends a turn on a background job goes idle: resume it with the foreground order (happened about 10 times).
-- Tiered tests (CLAUDE.md rule 3): host tests and c0gate every commit; 1 to 2 benches per row; a wave gate with all benches about every 5 rows.
-- Expected-diff merge: message file with the word expected-diff as merge_row.sh argument 2 (used for NWS4B).
-- Merge order matters when rows share files: the later branch merges main, rebuilds and reruns its gate (NAT6F, NSET2).
-- Agent ids die with the session: start fresh agents after a restart.
+## 4. Open user-reported faults and their status
+1. Wobble while moving at 60 fps: cause ranked (plan_interp.md section 6). Console: `pres lk 150 150 0 0 kl 0 71 208 21 drop 150` (300 steps). K finishes 8.26 ms after L, so no vblank falls between them in 51 percent of steps; step 38.7 ms is 2.32 vblanks. FIRST ROW READY: ws_PRES1.md (present gate, pm_gpu.c :3296 :3416, gate spot_mac01_fps60_det 12 of 12 byte-equal, console drop 150 -> 0). PRES2 (vblank scheduler) is not needed for the wobble: waits for PIPE3 and needs the user's yes (Opus design).
+2. dgb_01 (area 15 map 1) lag with the broken bridge: cause read (FACT, plan_dgb01.md): broken = story -28 to -17 shows group g240 (84 leaf models, 2000 triangles, 18 ALPHATEST models) and hides g340 (16 models, 208 triangles), bridges.c:189-194. The map draws 153 models broken against 85 intact, one record and one PICA draw per model (rec_run nd_recs.c:274-302, pm_gpu_model_hit pm_gpu.c:4357-4411). GUESS: +68 models x 132 us = +9 ms core 0 per step. First row ready: ws_DGB0.md (Haiku-sized: 2 benches dgb01_broken_prof story -28 and dgb01_whole_prof story -16, no source change, 1 build, 4 Azahar starts). plan_dgb01.md section 4 rules D1 to D4 pick the next row; a linear-only cost goes to the L1C0B hit queue plus a static-batch design (needs the user's yes). Console capture words (only on the user's word, after capture_check OK): `warp=dgb_01:1 story=-28 pos=80:0:144 profdisk=1`, then the same with story=-16; proof lines `at dgb_01 15:1,sp-28,ndc model,stepx norm`. Entry 0 sets story -32 at first visit (main.c:120-122): use entry 1.
+3. Tubba Blubba attack cloud: does not fade properly, fades to BLACK not transparent. Oracle job running (plan_tubba.md). Check for alpha ramp, blend off at the fade end, alpha test with no blend (nd_tmpl.c:302), key colour (pm_tex_key.h).
+4. Star power sequences Up and Away, Peach Beam, Star Beam laggy: oracle job running (plan_upaway.md).
+5. Map transitions (mac_01 <-> mac_00 <-> mac_02): console now max step 110 to 242 ms (before MTX 239 to 262), load 146 to 225 ms, 204 ROM reads per transition, audio 47 to 49 ms in 5 of 9 worst steps. Not fixed. Plans: plan_maptrans.md (MTX1 stamps, MTX2 async file jobs, MTX3 to MTX5 design). First merge MTX1 (section 3), then capture again.
+6. Seams on buildings: CRK1 census above; fix rows CRK4 to CRK6 need the user's yes (Sonnet, changes output); plan_seams.md.
+7. Pond in mac_00 solid blue: POND1 merged. Needs a console check by the user (not verified on the console).
+8. Text box clipped in Widescreen and Fullscreen: WCLIP1 + FSUI merged. User decision (21 Nov): in Fullscreen the UI and text boxes keep native size and aspect, no stretch, render without clipping. Needs a console check.
+9. Outlines on overlay textures (kmr_11 windows): DEC1 merged for RGBA5551; DEC2 (LA4, LA8, RGBA8) and DEC3 (delete the old key patch) have no page (plan_decal.md). Needs a console check.
+10. Walking lag, status bar cost: ROMDR + SLOTL merged and verified on the console earlier. Status bar still +4.15 ms core 0 (GD9B blocked on GD9A2 key mismatch).
 
-## Gate-definition changes this session (for the user to review; FACT from the merge messages)
-The measure is `3ds/tools/c0gate_names.txt` (names) and `3ds/tools/c0gate.py` (rules). Changes, each with its reason:
-- NAT6F (merge 6dcbbe695b) and NSET3 (merge 11aae628a2): names of deleted interpreter functions left the list (nd_nr_exec, nd_nr_run, nr_set, nr_unknown, ls_run, nd_unit_same; nd_unit_apply and 16 setters). The symbols were deleted from the source, so the names matched nothing.
-- NWS1 (merge 5e3df581bf): `interp nd_comb_sync` and `state comb_gen cmb_gen_seen sc_ok sc_sig` left the list with their symbols.
-- NAT6G2 (merge e923f5bce0): `interp gt_run` left the list. Reason: since NAT6E3 gt_run runs no unit (it brackets the snap range and takes a native arm). The same row fixed the c0gate selftest fixture (it called a name that no longer existed).
-- CLEAN2 (merge e5953a4e31): `state nd_c0` joined the list (user decision): the struct holds the core 0 draw state that nd_ws held, so main reads 0 / 0 / 1.
-- Still on the list but their symbols are gone: sc_adopt, ds_take, nd_comb_set, keyc, keys, fogc, blendc, dual_on, box_folded. A name off the list could no longer catch a regression: keep these.
-Review: judge whether `gt_run` (NAT6G2) should return as a name that must have no unit work. Capture data: docs/handoff/plan_perf.md section on the capture of build 7569.
+## 5. Perf data and the cache work (FACT from the 21 Nov capture, build 7933)
+- Per sampled step (core 0 and core 1 run serially): I-cache misses 130504, D read misses 59969, istall 5.04M cycles, dstall 5.04M, inst executed 5.34M, step about 79 ms (about 21M cycles). I-stall cycles / I-misses = about 39 cycles per I-miss. IPC about 0.25.
+- Executed code per frame: 225044 B in 792 functions (fncov lane M3). L1 is 16 KB I + 16 KB D per core, no L2 on the O3DS (hardware knowledge, not measured here).
+- Frame: ft 38.7 ms (fps 50 counting K pictures), wk 32.5, core 1 lgms 33.2 ms. Step budget is 33.3 ms.
+- plan_l1.md: tiling is possible only for the recorder setter units (L1Q1, queue of 128 units) and the core 0 model hit path (L1C0A census, L1C0B hit queue of 8). Not possible for game code (call order), model records, entity copies, snaps, kc_build, interp. After the merge of L1Q1 and L1C0B take ONE console capture (words above) and read `ic1`, `lgms`, `pmu m`, `l1m set m` to see the gain (GUESS: L1Q1 -5000 to -15000 I-misses core 1; L1C0B -8000 to -30000 core 0 per frame, -1.2 to -4.5 ms). Rows without a page: L1Q2 (transform units into the queue), L1C0C (hot_order.ld by phase), L1C0D (submit diet, alternative if C0 fails). Rule C0 and Q0/Q held on the data.
+- Fullscreen / widescreen scenarios need the debug word `nowide`, else a saved option runs Widescreen (pm_gpu.c:1941).
+- The 4 benches (CLAUDE.md rule 3) and bench bases: a drec bench base made before WCLIP0 (it changed drec.txt) is stale; make a new one with `bench.py base`.
+
+## 6. User rules and preferences (FACT)
+- A state the user reports (game runs, console online, a fault) is fact. Never doubt it, read the code. No guess and check. No agent looks at screenshots (rule 2): proof is code read, host tests, byte compare.
+- Ask every question and every push with AskUserQuestion. Take defaults for small choices. Short chat: one line per merge, fault or decision. Expand acronyms and row codes when you talk to the user.
+- Sonnet rows or output-changing rows (IK1, CRK4 to CRK6, PRES2 Opus) need the user's yes. Parked, never start unasked: ASSETFREE, CIA, QTM, WALKSRC branch.
+- No new model-label tricks are needed now (no agents). Memory files are in the memory folder; read MEMORY.md.
+
+## 7. First steps for you
+1. `git status`, `git log --oneline -15`; read build3ds/out/postmerge_FAIL.txt if it exists; commit docs the oracles left.
+2. Finish the L1 merges (section 3). Then merge CRK1; run MTX1 again (section 3).
+3. Do ws_PRES1.md (the user's top report is the wobble), then ws_DGB0.md, then the Tubba and star power pages when they exist.
+4. After the L1 merges, PRES1 and one more fix: build, binchk, capture_check, ask the user for ONE console capture; read the cache and `pres` lines.
+5. Update this file at the next handoff (overwrite, keep it short).
