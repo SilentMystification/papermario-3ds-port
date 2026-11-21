@@ -332,12 +332,9 @@ static void map_prefetch(void) {
         dec[i] = dl; clen[i] = cl;
     }
     pm_prefetch_post(sn, src[0], clen[0], dec[0], hn, src[1], clen[1], dec[1]);
+    { extern void pm_prefetch_files(const char* shape); pm_prefetch_files(sn); } /* MTX2; MTX7: the .nds header, .seam and .dlc reads are posted with the shape at the fade start, not at the first covered step:
+     * 4 idle steps were too short for the lowest-priority prefetch thread, and the load waited up to 342 ms in pm_pf_fopen (xfer2 seam) */
 }
-void pm_map_cover_post(void) { /* MTX2: the first covered step of a map change posts the file reads of the target shape (logic thread) */
-    static int posted; s32 a = gGameStatusPtr->areaID, m = gGameStatusPtr->mapID; char sn[24];
-    if (get_game_mode() != GAME_MODE_CHANGE_MAP || !(gOverrideFlags & GLOBAL_OVERRIDES_DISABLE_DRAW_FRAME)) { posted = 0; return; }
-    if (posted || a < 0 || a >= (s32)ARRAY_COUNT(gAreas) || m < 0 || m >= gAreas[a].mapCount) return;
-    posted = 1; snprintf(sn, sizeof sn, "%s_shape", gAreas[a].maps[m].id); { extern void pm_prefetch_files(const char* shape); pm_prefetch_files(sn); } }
 /* BTLWIPE F5: post the Yay0 decode of the battle stage's shape and hit when the star wipe has closed (PRE_BATTLE_LOAD, encounter.c, the
  * first step with the screen black), about 16 steps before BTL_SUBSTATE_NORMAL_START_INIT decodes them (btl_states_actions.c). Not at the
  * start of the wipe: the decode is one long call without a system call, and Azahar did not switch core 1 back to the logic thread inside

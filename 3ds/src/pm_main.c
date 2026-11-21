@@ -479,7 +479,6 @@ void pm_fxtest_tick(unsigned);
 /* CORE2C-3: the body of one frame loop command (pm_logic.c), on the logic thread or inline. LG_IDLE: the retrace call of an idle pass.
  * LG_STEP: frame begin, the step (step_game_loop, list build, frame push), the audio ticks, the step end; LG_SKIP: the FS1 step with no
  * draw. Then the step tail: the frame number, warp and tour, fxtest, the script dump. */
-void pm_map_cover_post(void); /* MTX2 */
 void pm_step_run(const LgCmd* c) {
     if (c->kind == LG_IDLE) { pm_gfx_retrace(); return; }
     int drew = c->kind == LG_STEP;
@@ -490,7 +489,6 @@ void pm_step_run(const LgCmd* c) {
     if (drew) {
         pm_gpu_begin(1);
         pm_gfx_retrace();
-        pm_map_cover_post(); /* MTX2 */
         pm_xfer_hidden(); /* DOORHITCH: hidden models of a new map, after this frame's walk entries */
     } else {
         pm_gfx_retrace_skip();
