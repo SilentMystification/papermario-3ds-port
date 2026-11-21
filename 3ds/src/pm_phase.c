@@ -485,7 +485,8 @@ extern unsigned nd_snb, nd_snn, nd_snm, nd_lsf_n, nd_lsb_n, nd_lse_n, nd_altu_n,
 static void pf_c1n_now(unsigned* x) { x[0] = nd_snb; x[1] = nd_snn; x[2] = nd_snm; x[3] = nd_lsf_n; x[4] = nd_lsb_n; x[5] = nd_lse_n; x[6] = nd_altu_n; x[7] = nd_altr_n; } /* NAT8A */
 static unsigned rnr_m; extern unsigned nd_rnr_n; /* PROF2: nd_rec_nr calls at the window start */
 static unsigned long long c0i_m[3]; extern unsigned long long pm_c0i_t[3]; /* GDW */
-static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); memcpy(c0i_m, pm_c0i_t, sizeof c0i_m); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; c1s_m[0] = c1s_t[0]; c1s_m[1] = c1s_t[1]; memcpy(aw_m, nd_altw, sizeof aw_m); pm_gpu_gw_now(gw_m); rnr_m = nd_rnr_n; } /* NAT8A */ /* PERF0; PROF2: the nd_rec_nr calls mark */
+static unsigned long long c0k_m[6]; extern unsigned long long pm_c0k[6]; /* CPT0 */
+static void pf_lg_mark(void) { int c; unsigned k; pm_lg_pf(&lg0_t, &lg0_n, &lg0_w, &lg0_s, &c, &k, lg0_pe, &lg0_kf); memcpy(c0i_m, pm_c0i_t, sizeof c0i_m); memcpy(c0k_m, pm_c0k, sizeof c0k_m); pf_c1_now(lg0_x); pf_c1n_now(lg0_c); lg0_q[0] = pm_wq_dr; lg0_q[1] = pm_wq_drw; lg0_q[2] = pm_wq_wqf; c1s_m[0] = c1s_t[0]; c1s_m[1] = c1s_t[1]; memcpy(aw_m, nd_altw, sizeof aw_m); pm_gpu_gw_now(gw_m); rnr_m = nd_rnr_n; } /* NAT8A */ /* PERF0; PROF2: the nd_rec_nr calls mark */
 static void pf_reset(void) {
     pf_lg_mark();
     pm_au_pf_sum = 0; pm_au_pf_max = 0;
@@ -704,6 +705,11 @@ static void pf_report(void) {
                 lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1, kf - lg0_kf);
             { unsigned c_[3]; for (int k = 0; k < 3; k++) c_[k] = pf_w ? (unsigned)((pm_c0i_t[k] - c0i_m[k]) * 100ull / PF_TPM / pf_w) : 0u;
               pm_log_prof_line("prof f%u w%u c0i idle %u.%02u pace %u.%02u gx %u.%02u", pf_total, pf_w, c_[0] / 100u, c_[0] % 100u, c_[1] / 100u, c_[1] % 100u, c_[2] / 100u, c_[2] % 100u); } /* GDW */
+            { unsigned long long d_[6]; for (int k = 0; k < 6; k++) d_[k] = pm_c0k[k] - c0k_m[k];
+              const unsigned kp = pf_w ? (unsigned)(d_[0] * 100ull / PF_TPM / pf_w) : 0u, kg = pf_w ? (unsigned)(d_[1] * 100ull / PF_TPM / pf_w) : 0u;
+              const unsigned gl = d_[4] ? (unsigned)(d_[2] / 10ull / d_[4]) : 0u, gk = d_[5] ? (unsigned)(d_[3] / 10ull / d_[5]) : 0u; /* us to ms x 100 */
+              pm_log_prof_line("prof f%u w%u c0k kpace %u.%02u kgx %u.%02u gpul %u.%02u gpuk %u.%02u nk %u nb %u", pf_total, pf_w, kp / 100u, kp % 100u,
+                  kg / 100u, kg % 100u, gl / 100u, gl % 100u, gk / 100u, gk % 100u, (unsigned)d_[4], (unsigned)d_[5]); } /* CPT0 */
             if (pf_rot) pm_log_prof_line("prof f%u w%u pmx1 set %c c1_%s %u c1_%s %u c1_cyc %u", pf_total, pf_w, pf_sets[pf_si].c,
                 pf_sets[pf_si].n0, ic1, pf_sets[pf_si].n1, dc1, cy1); /* PMUROT */
             /* C1WAIT: ms per logic step of the waits inside lgms (LF_MAX_ARGS is 16 words: a second line). bw = the logic thread's wait for
