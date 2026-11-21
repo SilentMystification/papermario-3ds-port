@@ -1298,8 +1298,11 @@ static uint64_t ndt_gi[NDT_GC]; static unsigned ndt_gu[NDT_GC], ndt_ga[NDT_GC], 
 static uint32_t ndt_top; /* PERF2: the ticks of the outer regions so far (the op class spans subtract them) */
 static int cls_cur = -1; static uint32_t cls_t, cls_top0; /* PERF2: the open op class span: its class, start tick, ndt_top at its start */
 static int ndt_mdl;
+int pm_ndt_pmu; /* L1PH0: switch profph; the class stack also sums PMN0, PMN1, exclusive as the ticks */
+static uint32_t ndt_e0[4][2], ndt_ei[4][2]; static uint64_t ndt_es[NDT_N][2]; static unsigned ndt_en[NDT_N];
+static __attribute__((cold, noinline)) void ndt_ev(uint32_t v[2]) { u64 a = 0, b = 0; svcControlPerformanceCounter(&a, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_0, 0); svcControlPerformanceCounter(&b, PERFCOUNTEROP_GET_VALUE, PERFCOUNTERREG_CORE_COUNT_REG_1, 0); v[0] = (uint32_t)a; v[1] = (uint32_t)b; }
 __attribute__((cold, noinline)) void pm_gpu_ndt_push(void) { /* sampled frames only: out of the hot callers */
-    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; ndt_u[ndt_sp] = nd_rnr_n; ndt_a[ndt_sp] = nd_altu_n; }
+    if (ndt_sp < 4u) { ndt_t0[ndt_sp] = (uint32_t)svcGetSystemTick(); ndt_in[ndt_sp] = 0; ndt_u[ndt_sp] = nd_rnr_n; ndt_a[ndt_sp] = nd_altu_n; if (pm_ndt_pmu) { ndt_ev(ndt_e0[ndt_sp]); ndt_ei[ndt_sp][0] = ndt_ei[ndt_sp][1] = 0u; } }
     ndt_sp++;
 }
 __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
@@ -1309,6 +1312,7 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_pop(int k) {
     uint32_t tot = (uint32_t)svcGetSystemTick() - ndt_t0[i], in = ndt_in[i];
     ndt_sum[k] += tot > in ? tot - in : 0u;
     if (k >= NDT_GENT && k <= NDT_GWIN) { ndt_gi[k - NDT_GENT] += tot; ndt_gu[k - NDT_GENT] += nd_rnr_n - ndt_u[i]; ndt_ga[k - NDT_GENT] += nd_altu_n - ndt_a[i]; } /* GD0, GD0B */
+    if (pm_ndt_pmu) { uint32_t v[2]; ndt_ev(v); ndt_en[k]++; for (int j = 0; j < 2; j++) { const uint32_t t = v[j] - ndt_e0[i][j], c = ndt_ei[i][j]; ndt_es[k][j] += t > c ? t - c : 0u; if (i) ndt_ei[i - 1][j] += t; } } /* L1PH0 */
     if (i) ndt_in[i - 1] += tot; else ndt_top += tot;
 }
 /* PERF2 step 6: the op class timer of the walk (sampled frames, walk_dbg_op with WD_PH). Outside the regions only (a region times its own ops); a span ends at
@@ -1320,6 +1324,7 @@ __attribute__((cold, noinline)) void pm_gpu_ndt_cls(int k) {
     cls_cur = k; cls_t = now; cls_top0 = ndt_top;
 }
 void pm_gpu_ndt_take(uint64_t o[NDT_N]) { for (int k = 0; k < NDT_N; k++) { o[k] = ndt_sum[k]; ndt_sum[k] = 0; } }
+void pm_gpu_ndt_take_e(uint64_t o[NDT_N][2], unsigned n[NDT_N]) { memcpy(o, ndt_es, sizeof ndt_es); memcpy(n, ndt_en, sizeof ndt_en); memset(ndt_es, 0, sizeof ndt_es); memset(ndt_en, 0, sizeof ndt_en); } /* L1PH0 */
 void pm_gpu_ndt_take_g(uint64_t o[NDT_GC], unsigned u[NDT_GC], unsigned a[NDT_GC]) { /* GD0: the core 1 class ticks (with their recorder regions) and nd_rec_nr calls, then reset; GD0B: and the alt units */
     for (int k = 0; k < NDT_GC; k++) { o[k] = ndt_gi[k]; u[k] = ndt_gu[k]; a[k] = ndt_ga[k]; ndt_gi[k] = 0; ndt_gu[k] = 0; ndt_ga[k] = 0; }
 }

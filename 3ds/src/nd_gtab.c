@@ -145,7 +145,8 @@ void nd_rec_ntab(const void* list) {
     nd_alt_raw_on = 0; nd_alt_close(br, pay + 6); pay[5] = (uint32_t)(uintptr_t)nd_alt_et_end(pay[7]); /* NAT5F; NAT5A */
     if (ls) nd_lsc_end_at(pay + 4); /* NAT5F: the table after the range */
 }
-void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { dl_ent = e; nd_rec_ntab(list); dl_ent = NULL; }
+unsigned nd_dl_n; /* L1PH0: list draws */
+void nd_rec_dl_e(const void* list, const NdPsoDesc* e) { nd_dl_n++; dl_ent = e; nd_rec_ntab(list); dl_ent = NULL; }
 void nd_rec_dl_key(const void* list, unsigned k) { dl_site = (uint32_t)(uintptr_t)__builtin_return_address(0) | ((k & 15u) + 1u) << 28; nd_rec_ntab(list); dl_site = 0; }
 void nd_rec_ndev(const NdNDev* e) { /* NTABFIND: a copy (nd_gtab.h); NAT5T: its units as a raw alt range at rec[10], rec[11] */
     uint32_t rec[2u * ND_NDEV_REC_UNITS]; nd_ndev_pack(rec, e, (uint32_t)(uintptr_t)__builtin_return_address(0)); nd_rec_ew(&nd_ds); /* NC0B */ nd_rec_napi(nd_ndev_rec, rec, ND_NDEV_REC_UNITS);

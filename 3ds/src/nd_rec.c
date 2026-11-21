@@ -212,7 +212,10 @@ static void task_open(void) {
     rec_ctx_check();
     if (!task_head) { task_head = wp; sh_all(); nd_snap_task(); } /* NAT2J */
 }
-static void rec_open(void) { task_open(); } /* DEL3C1: no top-level packet on the device */
+static unsigned char rnr_d; unsigned nd_rnr_n; /* PROF2: nd_rec_nr depth and calls (L1PH0: moved up) */
+unsigned nd_uqr[7], nd_uqc; static unsigned uq_run; /* L1PH0: units of the runs by length 1, 2-3, 4-7, 8-15, 16-31, 32-63, 64+, and the run ends. A run = depth-0 nd_rec_nr calls between two depth-0 rec_open calls */
+static __attribute__((noinline)) void uq_cut(void) { const unsigned b = 31u - (unsigned)__builtin_clz(uq_run); nd_uqr[b < 6u ? b : 6u] += uq_run; nd_uqc++; uq_run = 0; }
+static void rec_open(void) { if (uq_run && !rnr_d) uq_cut(); task_open(); } /* DEL3C1; L1PH0: an entry ends the unit run */
 static __attribute__((cold, noinline)) void model_bad(unsigned words) {
     pm_log_e("ndc: model record of %u words (most %u)", words, G_PM_REC_WORDS + ND_REC_AUX_MAX);
     pm_fatal_stop("ndc: model record too long");
@@ -607,10 +610,9 @@ static void rec_ew(const NdDs* s) { NdSnapBind t[2]; nd_snap_bind(&s->w.td[0], &
 void nd_rec_ew(const NdDs* s) { rec_open(); rec_ew(s); }
 NdDs* nd_alt_scr_on(void) { static NdDs scr; scr = nd_ds; alt_s = &scr; return &scr; } /* NAT5T: a scratch copy of core 1 state for the static paths (nd_rec_ndev, the stream CALL, nd_rec_alt_raw): core 1 state stays as it was */
 void nd_alt_scr_off(void) { alt_s = &nd_ds; } /* NAT5T */
-static unsigned char rnr_d; unsigned nd_rnr_n; /* PROF2: nd_rec_nr depth (the outer call times) and calls */
 void nd_rec_nr(uint32_t w0, uint32_t w1) { if (__builtin_expect(nd_ub_on, 0)) nd_ublk_unit(w0, w1); /* GD9A */
     const uint32_t t[2] = { w0, w1 };
-    const int tq = pm_ph_on && !rnr_d; if (__builtin_expect(tq, 0)) pm_gpu_ndt_push(); rnr_d++; nd_rnr_n++; /* PROF2 */
+    const int tq = pm_ph_on && !rnr_d; if (__builtin_expect(tq, 0)) pm_gpu_ndt_push(); uq_run += !rnr_d; rnr_d++; nd_rnr_n++; /* PROF2; L1PH0 */
     if (__builtin_expect(!nd_op_typed(w0 >> 24), 0)) { word_bad(w0); { rnr_d--; if (__builtin_expect(tq, 0)) pm_gpu_ndt_pop(NDT_RNR); return; } }
     if ((w0 >> 24) == ND_FS_TRI1 || (w0 >> 24) == ND_FS_TRI2) nd_snap_mesh(); /* NAT2G: every stream triangle has a snap, or the memo says the last one holds */
     if ((w0 >> 24) == ND_FS_RECT && !(w1 & ND_FS_RECT_TEX)) nd_snap_rect(); /* NAT2H: a fill rectangle takes a snap, as a texture rectangle (nd_rec_texrect :264) */
