@@ -11,6 +11,8 @@ B = build3ds/out/live_play2_170.txt (main a05f62c545), C = build3ds/hw_tidal1_li
 4. Root cause (mechanism): resource lifetime is kept by a blanket drain of the walker queue, not by the frame that last reads the resource.
    The load runs as one synchronous block on the logic thread. First-sight cache work runs inline in the first drawn frames.
 
+5. MTX1 + MTX1K console result (FACT, build3ds/out/live_xfer_mtx1k4.txt, main 76e3f8448c, 6 warm transitions n2-n7 against 8 of build3ds/out/live_xfer3_170.txt): c max mean 177.8 -> 167.5 ms, rdw 234.7 -> 182.6 ms, biggest drain caller (20-23 calls) 154.9 -> 129.0 ms. The waits removed spread over steps: the load step drops about 10 ms, not the 60-115 ms guess. n1 (first load after boot) has tex 105.6 ms (cold). Next: MTX2.
+
 ## 1. Timeline of one map change (game code src/state_map_transitions.c. L = logic thread core 1, G = game thread core 0, P = prefetch thread core 1 prio 0x3F)
 | # | stage | code | thread | blocks | ms |
 |---|---|---|---|---|---|
