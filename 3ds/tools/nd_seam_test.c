@@ -242,6 +242,26 @@ static int project(const float o[16], const int32_t w[3], float* sx, float* sy, 
     *sx = (cx / cw * 0.5f + 0.5f) * RW; *sy = (cy / cw * 0.5f + 0.5f) * RH; *iw = 1.0f / cw;
     return !(*sx < -2048.f || *sx > 2048.f || *sy < -2048.f || *sy > 2048.f);
 }
+/* CRK1 step 6: one palette per list (c6p[li], the device chain of nd_mtx.c:112, :132). rz 0: fp24 round to nearest even (dp4_fp24 bit for bit),
+ * rz 1: fp24 round toward zero (the mantissa bits below 16 are cut). */
+static float fp24z(float x) { union { float f; uint32_t u; } v; v.f = x; v.u &= ~0x7fu; return v.f; }
+static float dp4_m(const float row[4], const float v[4], int rz) {
+    float acc = 0.f;
+    for (int k = 0; k < 4; k++) {
+        float p = rz ? fp24z(fp24z(row[k]) * fp24z(v[k])) : fp24(fp24(row[k]) * fp24(v[k]));
+        acc = rz ? fp24z(acc + p) : fp24(acc + p);
+    }
+    return acc;
+}
+static int project_v(const float o[16], const int16_t s[3], int rz, float* sx, float* sy, float* iw) { /* project() (:237) on an object vertex, list palette */
+    float v[4] = { 1.f, (float)s[2], (float)s[1], (float)s[0] };
+    float cx = dp4_m(o + 0, v, rz), cy = dp4_m(o + 4, v, rz), cw = dp4_m(o + 12, v, rz);
+    if (cw < 0.05f) return 0;
+    *sx = (cx / cw * 0.5f + 0.5f) * RW; *sy = (cy / cw * 0.5f + 0.5f) * RH; *iw = 1.0f / cw;
+    return !(*sx < -2048.f || *sx > 2048.f || *sy < -2048.f || *sy > 2048.f);
+}
+static int64_t snap16(float s) { return (int64_t)(s * 16.f + (s < 0 ? -0.5f : 0.5f)); } /* the 1/16 pixel snap of raster() */
+static int on_scr(float sx, float sy) { return sx >= 0.f && sx < RW && sy >= 0.f && sy < RH; }
 typedef struct { float ax, ay, bx, by; } Seg;
 static Seg* tseg; static unsigned ntseg;
 static float seg_d2(const Seg* s, float px, float py) {
@@ -343,16 +363,78 @@ static unsigned raster(const float o[16], unsigned* nskip, unsigned* ht) {
     return holes;
 }
 
-/* the camera of the map draws of an ndref file: the most frequent game matrix of its kind 5 records, pcomp with the post matrix */
-static int ndref_camera(const char* path, float o[16]) {
+/* CRK1 step 6 state: the triangles of mac_01 (object vertices and list index, every class), the camera palette of each valid list (c6p, c6v), the
+ * rounding mode of each list (rm, 1 only for the SEAM_SEED=6 seed) */
+typedef struct { int16_t v[3][3]; uint16_t li; } T5;
+static T5* t5; static size_t nt5, ct5;
+static float c6p[1024][16]; static unsigned char c6v[1024], rm[1024];
+static unsigned cam_cnt[64]; static float cam_post[64][16], cam_game[64][4][4]; static int cam_best;
+
+/* raster() (:290) with the palette of each list (c6p[li]) and the object vertices (T5), rounding mode rz, no T-point edges */
+static unsigned raster5(int rz, unsigned* nskip) {
+    static const int smp[8][2] = { { 1, 9 }, { 3, 3 }, { 5, 13 }, { 7, 7 }, { 9, 1 }, { 11, 11 }, { 13, 5 }, { 15, 15 } };
+    memset(zc, 0, sizeof zc); memset(zs, 0, sizeof zs);
+    *nskip = 0;
+    for (size_t k = 0; k < nt5; k++) {
+        int64_t X[3], Y[3];
+        float iw[3], fx[3], fy[3];
+        int bad = 0;
+        for (int c = 0; c < 3 && !bad; c++) {
+            if (!project_v(c6p[t5[k].li], t5[k].v[c], rz, &fx[c], &fy[c], &iw[c])) bad = 1;
+            else { X[c] = snap16(fx[c]); Y[c] = snap16(fy[c]); }
+        }
+        if (bad) { (*nskip)++; continue; }
+        int64_t area = ef(X[0], Y[0], X[1], Y[1], X[2], Y[2]);
+        if (area == 0) continue;
+        if (area < 0) { int64_t t = X[1]; X[1] = X[2]; X[2] = t; t = Y[1]; Y[1] = Y[2]; Y[2] = t; float f = iw[1]; iw[1] = iw[2]; iw[2] = f; area = -area; }
+        int64_t mnx = X[0], mxx = X[0], mny = Y[0], mxy = Y[0];
+        for (int c = 1; c < 3; c++) { if (X[c] < mnx) mnx = X[c]; if (X[c] > mxx) mxx = X[c]; if (Y[c] < mny) mny = Y[c]; if (Y[c] > mxy) mxy = Y[c]; }
+        int x0 = (int)(mnx >> 4) - 1, x1 = (int)(mxx >> 4) + 1, y0 = (int)(mny >> 4) - 1, y1 = (int)(mxy >> 4) + 1;
+        if (x0 < 0) x0 = 0;
+        if (y0 < 0) y0 = 0;
+        if (x1 > RW - 1) x1 = RW - 1;
+        if (y1 > RH - 1) y1 = RH - 1;
+        int tl[3];
+        for (int e = 0; e < 3; e++) { int n = e == 2 ? 0 : e + 1; int64_t dx = X[n] - X[e], dy = Y[n] - Y[e]; tl[e] = (dy < 0) || (dy == 0 && dx > 0); }
+        float inva = 1.0f / (float)area;
+        for (int py = y0; py <= y1; py++)
+            for (int px = x0; px <= x1; px++) {
+                int64_t cx = 16 * px + 8, cy = 16 * py + 8;
+                int64_t b0 = ef(X[1], Y[1], X[2], Y[2], cx, cy), b1 = ef(X[2], Y[2], X[0], Y[0], cx, cy), b2 = ef(X[0], Y[0], X[1], Y[1], cx, cy);
+                float z = ((float)b0 * iw[0] + (float)b1 * iw[1] + (float)b2 * iw[2]) * inva;
+                int in = !(b2 < 0 || (b2 == 0 && !tl[0])) && !(b0 < 0 || (b0 == 0 && !tl[1])) && !(b1 < 0 || (b1 == 0 && !tl[2]));
+                int i = py * RW + px;
+                if (in && z > zc[i]) zc[i] = z;
+                if (z > zs[i])
+                    for (int q = 0; q < 8; q++) {
+                        int64_t sx = 16 * px + smp[q][0], sy = 16 * py + smp[q][1];
+                        if (ef(X[0], Y[0], X[1], Y[1], sx, sy) >= 0 && ef(X[1], Y[1], X[2], Y[2], sx, sy) >= 0 && ef(X[2], Y[2], X[0], Y[0], sx, sy) >= 0) { zs[i] = z; break; }
+                    }
+            }
+    }
+    unsigned holes = 0;
+    for (int py = 1; py < RH - 1; py++)
+        for (int px = 1; px < RW - 1; px++) {
+            int i = py * RW + px;
+            float s = zs[i];
+            if (s <= 0 || zc[i] >= s * 0.97f) continue; /* the centre shows the surface the samples see */
+            float lo = s * 0.97f;
+            if (!((zc[i - 1] >= lo && zc[i + 1] >= lo) || (zc[i - RW] >= lo && zc[i + RW] >= lo))) continue; /* a silhouette, not a hole */
+            holes++;
+        }
+    return holes;
+}
+
+/* the camera of the map draws of an ndref file: the most frequent game matrix of its kind 5 records (cam_game, cam_post), pcomp with the post
+ * matrix. The index goes to *best_o. */
+static int ndref_camera(const char* path, float o[16], int* best_o) {
     FILE* fp = fopen(path, "rb");
     if (!fp) return 0;
     fseek(fp, 0, SEEK_END); long sz = ftell(fp); fseek(fp, 0, SEEK_SET);
     uint8_t* buf = malloc((size_t)sz);
     if (!buf || fread(buf, 1, (size_t)sz, fp) != (size_t)sz) { fclose(fp); return 0; }
     fclose(fp);
-    static unsigned cnt[64]; static float post[64][16], game[64][4][4];
-    memset(cnt, 0, sizeof cnt);
+    memset(cam_cnt, 0, sizeof cam_cnt);
     for (size_t pos = 20, end = 20 + le32(buf + 16); pos < end;) {
         uint32_t kind = le32(buf + pos), size = le32(buf + pos + 4);
         const uint8_t* body = buf + pos + 8;
@@ -360,17 +442,18 @@ static int ndref_camera(const char* path, float o[16]) {
             unsigned np = le32(body + 64);
             for (unsigned k = 0; k < np; k++) {
                 unsigned gm = le32(body + 68 + 68 * k);
-                if (gm < 64) { if (!cnt[gm]) { memcpy(post[gm], body, 64); memcpy(game[gm], body + 68 + 68 * k + 4, 64); } cnt[gm]++; }
+                if (gm < 64) { if (!cam_cnt[gm]) { memcpy(cam_post[gm], body, 64); memcpy(cam_game[gm], body + 68 + 68 * k + 4, 64); } cam_cnt[gm]++; }
             }
         }
         pos += 8 + size;
     }
     free(buf);
     unsigned best = 0;
-    for (unsigned g = 1; g < 64; g++) if (cnt[g] > cnt[best]) best = g;
-    if (!cnt[best]) return 0;
-    nd_mtx_pcomp(o, post[best], (const float(*)[4])game[best]);
-    printf("seam step 4: camera game matrix %u (%u draws)\n", best, cnt[best]);
+    for (unsigned g = 1; g < 64; g++) if (cam_cnt[g] > cam_cnt[best]) best = g;
+    if (!cam_cnt[best]) return 0;
+    nd_mtx_pcomp(o, cam_post[best], (const float(*)[4])cam_game[best]);
+    *best_o = (int)best;
+    printf("seam step 4: camera game matrix %u (%u draws)\n", best, cam_cnt[best]);
     return 1;
 }
 
@@ -464,6 +547,79 @@ static void c5_put(C5V* r, const int16_t* v, unsigned li, int cls) { /* world po
 static int c5_cmp(const void* a, const void* b) { const C5V* x = a; const C5V* y = b; int c = memcmp(x->w, y->w, 12); return c ? c : (x->li > y->li) - (x->li < y->li); }
 static int c5_cmpx(const void* a, const void* b) { const C5V* x = a; const C5V* y = b; return (x->w[0] > y->w[0]) - (x->w[0] < y->w[0]); }
 
+/* ---- CRK1 step 6: the camera census of mac_01 in f24 (plan_seams.md section 3) ----
+ * c6p[li] = pcomp(camera post, nd_mtx_mul(c5m[li], camera game)) (the chain of nd_mtx.c:112, :132). mtxchk: the cls 1 or 2 lists whose game equals
+ * (float ==, all 16) a kind 5 game matrix of the camera file. snap_rn, snap_rz: shared groups of step 5 with a pair of first records (one per list)
+ * on screen (0 <= sx < RW, 0 <= sy < RH) whose 1/16 px snap differs under round to nearest (rz 0) or round toward zero (rz 1). maxd16: the largest
+ * max(|dsx|, |dsy|) of those pairs in rz 0, times 16. same: pairs with equal object vertex and equal c5m bits whose projection bits differ under the
+ * rm mode of their lists. gpx, gpxmax: the sweep pairs of step 5 on screen in rz 0, d = max(|dsx|, |dsy|) (gpx: d above 1/16 px).
+ * holes_rn, holes_rz: raster5 in rz 0 and rz 1. tri: the T5 triangles; skip: the projection failures in rz 0. */
+static const char exp6[] = "seam step 6: mac_01 mtxchk 19 of 55 shared 529 split 15 snap_rn 0 snap_rz 0 maxd16 0.012 same 0 gpx 81 gpxmax 0.748 holes_rn 14 holes_rz 14 tri 2631 skip 291";
+static int scr6(const float o[16], const int16_t v[3], int rz, float* sx, float* sy) {
+    float iw = 0.f;
+    return project_v(o, v, rz, sx, sy, &iw) && on_scr(*sx, *sy);
+}
+static int seam_step6(const NdSeamTab* t, const char* nm, const C5V* rv, size_t nrv, const C5V* u, size_t nu, unsigned shared, unsigned split) {
+    unsigned mtxn = 0, mtxok = 0, snap_rn = 0, snap_rz = 0, same = 0, gpx = 0, skip0 = 0, skip1 = 0, hn, hz;
+    float maxd16 = 0.f, gpxmax = 0.f;
+    char line[512];
+    for (unsigned li = 0; li < t->nlist; li++) {
+        float gm[4][4];
+        int hit = 0;
+        if (!c6v[li] || (t->list[li].cls != 1 && t->list[li].cls != 2)) continue;
+        mtxn++;
+        nd_mtx_mul(gm, c5m[li], cam_game[cam_best]);
+        for (unsigned g = 0; g < 64 && !hit; g++) {
+            int eq = cam_cnt[g] > 0;
+            for (int a = 0; a < 4 && eq; a++)
+                for (int b = 0; b < 4; b++) if (gm[a][b] != cam_game[g][a][b]) { eq = 0; break; }
+            hit = eq;
+        }
+        if (hit) mtxok++;
+    }
+    for (size_t g0 = 0, g1; g0 < nrv; g0 = g1) {
+        int fn = 0, fz = 0;
+        g1 = g0 + 1;
+        while (g1 < nrv && !memcmp(rv[g1].w, rv[g0].w, 12)) g1++;
+        for (size_t k1 = g0; k1 < g1; k1++) {
+            if (k1 > g0 && rv[k1].li == rv[k1 - 1].li) continue;
+            for (size_t k2 = k1 + 1; k2 < g1; k2++) {
+                const C5V* A = &rv[k1]; const C5V* B = &rv[k2];
+                float ax = 0.f, ay = 0.f, bx = 0.f, by = 0.f;
+                if (rv[k2].li == rv[k2 - 1].li) continue;
+                for (int rz = 0; rz < 2; rz++) {
+                    if (!scr6(c6p[A->li], A->v, rz, &ax, &ay) || !scr6(c6p[B->li], B->v, rz, &bx, &by)) continue;
+                    if (snap16(ax) != snap16(bx) || snap16(ay) != snap16(by)) { if (rz) fz = 1; else fn = 1; }
+                    if (!rz) { float d = fabsf(ax - bx), dy = fabsf(ay - by); if (dy > d) d = dy; if (16.f * d > maxd16) maxd16 = 16.f * d; }
+                }
+                if (!memcmp(A->v, B->v, 6) && !memcmp(c5m[A->li], c5m[B->li], sizeof c5m[0]) &&
+                    scr6(c6p[A->li], A->v, rm[A->li], &ax, &ay) && scr6(c6p[B->li], B->v, rm[B->li], &bx, &by) &&
+                    (memcmp(&ax, &bx, 4) || memcmp(&ay, &by, 4)))
+                    same++;
+            }
+        }
+        snap_rn += (unsigned)fn; snap_rz += (unsigned)fz;
+    }
+    for (size_t i = 0; i < nu; i++)
+        for (size_t j = i + 1; j < nu && u[j].w[0] - u[i].w[0] <= 1.5f; j++) {
+            float dx = u[j].w[0] - u[i].w[0], dy = u[j].w[1] - u[i].w[1], dz = u[j].w[2] - u[i].w[2];
+            float d2 = dx * dx + dy * dy + dz * dz, ax = 0.f, ay = 0.f, bx = 0.f, by = 0.f;
+            if (u[j].li == u[i].li || !(d2 > 0.f && d2 <= 2.25f)) continue;
+            if (!scr6(c6p[u[i].li], u[i].v, 0, &ax, &ay) || !scr6(c6p[u[j].li], u[j].v, 0, &bx, &by)) continue;
+            float d = fabsf(ax - bx);
+            if (fabsf(ay - by) > d) d = fabsf(ay - by);
+            if (d > 0.0625f) gpx++;
+            if (d > gpxmax) gpxmax = d;
+        }
+    hn = raster5(0, &skip0);
+    hz = raster5(1, &skip1);
+    snprintf(line, sizeof line, "seam step 6: %.6s mtxchk %u of %u shared %u split %u snap_rn %u snap_rz %u maxd16 %.3f same %u gpx %u gpxmax %.3f holes_rn %u holes_rz %u tri %u skip %u",
+        nm, mtxok, mtxn, shared, split, snap_rn, snap_rz, maxd16, same, gpx, gpxmax, hn, hz, (unsigned)nt5, skip0);
+    if (strcmp(line, exp6)) { printf("FAIL: %.6s step 6\n", nm); puts(line); return 1; }
+    puts(line);
+    return 0;
+}
+
 /* the step 5 lines of the first run (map order of nd_host_test.sh:274) */
 static const char* const exp5[6] = {
     "seam step 5: mac_01 lists 148 notx 0 multi 0 cmis 0 pts 1802 shared 529 split 15 s00 0 s01 4 s02 0 s11 9 s12 0 s22 2 gap 440 gc2 314 gint 126 gapmax 1.474",
@@ -473,7 +629,7 @@ static const char* const exp5[6] = {
     "seam step 5: kmr_20 lists 204 notx 0 multi 0 cmis 0 pts 3018 shared 667 split 14 s00 0 s01 12 s02 2 s11 0 s12 0 s22 0 gap 199 gc2 72 gint 127 gapmax 1.414",
     "seam step 5: nok_11 lists 71 notx 0 multi 0 cmis 0 pts 871 shared 83 split 0 s00 0 s01 0 s02 0 s11 0 s12 0 s22 0 gap 7 gc2 0 gint 7 gapmax 1.000"
 };
-static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const uint8_t* buf, uint32_t size) {
+static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const uint8_t* buf, uint32_t size, int cam) {
     C5W w; SXf id; C5V* rv = NULL; C5V* u = NULL;
     size_t nrv = 0, crv = 0, nu = 0, cu = 0, g0, g1, k, i, j;
     unsigned lists = 0, notx = 0, multi = 0, cmis = 0, pts = 0, shared = 0, split = 0, s[3][3], gap = 0, gc2 = 0, gint = 0;
@@ -481,12 +637,13 @@ static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const ui
     char line[512];
     const char* seed = getenv("SEAM_SEED");
     int seeded = seed && !strcmp(seed, "5") && !strncmp(nm, "mac_01", 6);
+    int seeded6 = cam && seed && !strcmp(seed, "6");
     memset(s, 0, sizeof s);
     memset(c5m, 0, sizeof c5m);
     w.buf = buf; w.base = (uint32_t)(uintptr_t)buf; w.size = size;
     memset(&id, 0, sizeof id);
     for (int q = 0; q < 4; q++) id.f[q][q] = 1.f;
-    c5_nt = 0;
+    c5_nt = 0; nt5 = 0; memset(c6v, 0, sizeof c6v);
     c5_node(&w, size >= 4 ? c5_rd32(buf) : 0, &id, 0);
     for (unsigned li = 0; li < t->nlist; li++) {
         const NdSeamList* L = &t->list[li];
@@ -498,6 +655,9 @@ static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const ui
         if (c5_tab[ci].x.cls != L->cls) cmis++;
         c5_mv(c5_tab[ci].x.f, c5m[li]);
         if (seeded && L->cls == 0 && (li & 1u)) c5m[li][3][0] = nextafterf(0.f, 1.f);
+        c6v[li] = 1;
+        rm[li] = (unsigned char)(seeded6 && L->cls == 0 && (li & 1u));
+        if (cam) { float gm[4][4]; nd_mtx_mul(gm, c5m[li], cam_game[cam_best]); nd_mtx_pcomp(c6p[li], cam_post[cam_best], gm); }
         {
             static uint32_t lw[2 * (ND_DLC_MAXOPS + 1)];
             const uint8_t* p = (const uint8_t*)(uintptr_t)L->addr;
@@ -508,7 +668,12 @@ static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const ui
             if (L->cnt) { env.tp = t->tp + L->first; env.ntp = L->cnt; }
             if (nd_dlc_compile(&o, lw, &env)) continue;
             lists++;
-            for (unsigned tr = 0; tr < o.nidx / 3u; tr++)
+            for (unsigned tr = 0; tr < o.nidx / 3u; tr++) {
+                if (nt5 >= ct5) {
+                    ct5 = ct5 ? 2 * ct5 : 8192;
+                    t5 = realloc(t5, ct5 * sizeof *t5);
+                    if (!t5) { printf("FAIL: %.6s step 6: no memory\n", nm); return 1; }
+                }
                 for (int c = 0; c < 3; c++) {
                     const int16_t* v = (const int16_t*)(o.vtx + 16u * (o.idx[3 * tr + c] - o.vfirst));
                     if (nrv >= crv) {
@@ -516,8 +681,11 @@ static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const ui
                         rv = realloc(rv, crv * sizeof *rv);
                         if (!rv) { printf("FAIL: %.6s step 5: no memory\n", nm); return 1; }
                     }
+                    memcpy(t5[nt5].v[c], v, 6);
                     c5_put(&rv[nrv++], v, li, L->cls);
                 }
+                t5[nt5++].li = (uint16_t)li;
+            }
             nd_dlc_free(&o);
         }
     }
@@ -558,10 +726,14 @@ static int seam_step5(const NdSeamTab* t, const char* nm, unsigned idx, const ui
         }
     snprintf(line, sizeof line, "seam step 5: %.6s lists %u notx %u multi %u cmis %u pts %u shared %u split %u s00 %u s01 %u s02 %u s11 %u s12 %u s22 %u gap %u gc2 %u gint %u gapmax %.3f",
         nm, lists, notx, multi, cmis, pts, shared, split, s[0][0], s[0][1], s[0][2], s[1][1], s[1][2], s[2][2], gap, gc2, gint, sqrtf(gapmax2));
-    free(rv); free(u);
-    if (idx >= 6 || strcmp(line, exp5[idx])) { printf("FAIL: %.6s step 5\n", nm); puts(line); return 1; }
-    puts(line);
-    return 0;
+    {
+        int bad5 = idx >= 6 || strcmp(line, exp5[idx]) != 0;
+        if (bad5) printf("FAIL: %.6s step 5\n", nm);
+        puts(line);
+        int bad6 = cam ? seam_step6(t, nm, rv, nrv, u, nu, shared, split) : 0;
+        free(rv); free(u);
+        return bad5 || bad6;
+    }
 }
 
 static int seam_steps34(int nshape, char** shapes, const char* toad) {
@@ -580,7 +752,7 @@ static int seam_steps34(int nshape, char** shapes, const char* toad) {
         printf("seam step 3: %.6s compiled %u lists (refused %u): T points in the compiled output %u\n", nm, c_lists, c_ref, c0.tp_all);
         float o[16]; unsigned nskip, ht0 = 0, h0 = 0;
         int cam = !strncmp(nm, "mac_01", 6) && toad;
-        if (cam && !ndref_camera(toad, o)) { printf("FAIL: no kind 5 camera in %s\n", toad); fail = 1; cam = 0; }
+        if (cam && !ndref_camera(toad, o, &cam_best)) { printf("FAIL: no kind 5 camera in %s\n", toad); fail = 1; cam = 0; }
         if (cam) { tedges(&t, o); h0 = raster(o, &nskip, &ht0); }
         NdSeamTab c1;
         if (compile_soup(&t, &c1, 1)) { printf("FAIL: %s: compile soup no memory\n", nm); fail = 1; nd_seam_free(&c0); nd_seam_free(&t); continue; }
@@ -593,7 +765,7 @@ static int seam_steps34(int nshape, char** shapes, const char* toad) {
                 h0, ht0, h0 - ht0, h1, ht1, h1 - ht1, nctri, nskip, ntseg);
             if (h1 > h0 || ht1 * 2u > ht0) { printf("FAIL: mac_01 holes on T-point edges did not drop to half\n"); fail = 1; }
         }
-        if (seam_step5(&t, nm, (unsigned)a, buf, size)) fail = 1;
+        if (seam_step5(&t, nm, (unsigned)a, buf, size, cam)) fail = 1;
         nd_seam_free(&c1);
         nd_seam_free(&c0);
         nd_seam_free(&t);
