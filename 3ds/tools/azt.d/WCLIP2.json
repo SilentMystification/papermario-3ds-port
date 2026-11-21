@@ -5,7 +5,7 @@
       "status": "unverified",
       "subject": "Toad Town (preset toad), Fullscreen (debug word fullscr), pause menu opened by START three times, cold det start with drec of frame 116.",
       "proves": "WCLIP2: the clip census of the pause menu draws of frame 116 in Fullscreen: every clipg line has out 0 (rects and scissors at 1.25 x).",
-      "debug": "preset=toad padscript=wait80,START*3 fullscr loglevel=debug det drec=116:1",
+      "debug": "preset=toad padscript=wait80,START*3 fullscr nowide loglevel=debug det drec=116:1",
       "extra": [],
       "until": "drec f116 draws [1-9]\\d* bytes \\d+",
       "cap": 25,
