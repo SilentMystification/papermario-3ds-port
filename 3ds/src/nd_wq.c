@@ -21,6 +21,7 @@
 #include <3ds.h>
 #include <string.h>
 #include "pm_port.h"
+#include "pm_stamp.h" /* MTX1 */
 
 int pm_walk_side;
 int pm_c2own = -1;
@@ -30,13 +31,15 @@ extern unsigned pm_frame_n; /* pm_main.c: the logic step counter */
 /* The queue: power-of-two ring, free-running head (next to run) and tail (next free). 40 bytes an entry, 2.5 KB. */
 #define WQ_N 64u
 #define WQ_ARG 32u
-typedef struct { void (*fn)(void*); unsigned frame; unsigned long long arg[WQ_ARG / 8]; } WqEnt;
+typedef struct { void (*fn)(void*); unsigned frame, rseq; /* MTX1: rseq the reader number, 0 none */ unsigned long long arg[WQ_ARG / 8]; } WqEnt;
 static WqEnt wq_ring[WQ_N];
 static volatile unsigned wq_head, wq_tail;
 static volatile unsigned wq_fr_push, wq_fr_walked; /* frames pushed and walked */
 static volatile unsigned wq_l_push, wq_l_walked; /* SLOTL: L and plain frames only: the walker reads rtab and the display context only in these */
+static volatile unsigned wq_r_push, wq_r_done, wq_r_want; /* MTX1: reader entries posted, run, and the count a logic wait needs */
+unsigned pm_walk_rseq, pm_mt_norseq; /* MTX1 */
 static volatile int wq_blocked; /* the logic thread waits for the walker: 0 no, WQB_ALL the queue is run whole, WQB_WALKED it is run up to the last frame */
-enum { WQB_ALL = 1, WQB_WALKED = 2 };
+enum { WQB_ALL = 1, WQB_WALKED = 2, WQB_READ = 3 }; /* MTX1 */
 static Thread wq_lg; /* the logic thread (NULL: serial only) */
 static LightEvent wq_ev_walker; /* logic to walker: blocked, a command done, a retrace started */
 static LightEvent wq_ev_logic; /* walker to logic: an entry ran */
@@ -67,9 +70,12 @@ int pm_wq_pump_one(void) {
     { extern void pm_fncov_walk(unsigned f); pm_fncov_walk(e->frame); } /* HC0 census lane only */
 #endif
     pm_walk_side++;
+    pm_walk_rseq = e->rseq; /* MTX1 */
     e->fn(e->arg);
     pm_walk_side--;
     __sync_synchronize();
+    if (e->rseq) wq_r_done = e->rseq; /* MTX1 */
+    pm_walk_rseq = 0; /* MTX1 */
     wq_head = h + 1u;
     __sync_synchronize();
     if (wq_blocked) LightEvent_Signal(&wq_ev_logic);
@@ -81,6 +87,7 @@ void pm_wq_pump_blocked(void) {
     int b = wq_blocked;
     if (b == WQB_ALL) wq_pump();
     else if (b == WQB_WALKED) { while (wq_l_walked != wq_l_push && pm_wq_pump_one()) {} } /* a whole pump would run the begin entry of the next step: one more vblank */
+    else if (b == WQB_READ) { while (!pm_stamp_due(wq_r_done, wq_r_want) && pm_wq_pump_one()) {} } /* MTX1: a reader wait runs the queue up to its stamp */
 }
 
 /* C1WAIT: the logic thread's wait for the walker, in ticks of the prof window (pm_phase.c reads it per logic step). [0] every
@@ -118,17 +125,19 @@ static __attribute__((cold, noinline)) void wq_too_big(unsigned size) {
     pm_log_e("wq: message of %u bytes, the queue holds %u", size, WQ_ARG);
     pm_fatal_stop("wq: message too big");
 }
-static void wq_put(void (*fn)(void*), const void* arg, unsigned size) {
+static void wq_put_r(void (*fn)(void*), const void* arg, unsigned size, unsigned r) { /* MTX1: r the reader number, 0 none */
     if (size > WQ_ARG) wq_too_big(size);
     if (wq_tail - wq_head == WQ_N) { if (pm_wq_on_logic()) pm_wq_wqf++; wq_block(c_space, NULL, WQB_ALL); }
     unsigned t = wq_tail;
     WqEnt* e = &wq_ring[t & (WQ_N - 1u)];
     e->fn = fn;
     e->frame = pm_frame_n;
+    e->rseq = r; /* MTX1 */
     if (size) memcpy(e->arg, arg, size);
     __sync_synchronize();
     wq_tail = t + 1u;
 }
+static void wq_put(void (*fn)(void*), const void* arg, unsigned size) { wq_put_r(fn, arg, size, 0u); } /* MTX1 */
 void pm_lg_quiesce(void); /* pm_logic.c */
 /* Game thread outside a walk: the logic thread stops at a step boundary, the queue is run, then fn runs on the walker side. */
 static void wq_main_direct(void (*fn)(void*), void* arg) {
@@ -142,6 +151,17 @@ static void wq_main_direct(void (*fn)(void*), void* arg) {
     fn(arg);
     pm_walk_side--;
 }
+static void wq_main_direct_r(void (*fn)(void*), void* arg, unsigned r) { pm_lg_quiesce(); wq_pump(); pm_walk_rseq = r; wq_main_direct(fn, arg); pm_walk_rseq = 0; wq_r_done = r; } /* MTX1 */
+void pm_wq_post_reader(void (*fn)(void*), void* arg, unsigned size) { /* MTX1: an entry that reads game RAM */
+    if (pm_wq_on_logic()) { wq_put_r(fn, arg, size, ++wq_r_push); return; }
+    if (pm_walk_side) { pm_walk_side++; fn(arg); pm_walk_side--; return; }
+    wq_main_direct_r(fn, arg, ++wq_r_push); }
+unsigned pm_walk_stamp(void) { return wq_r_push; } /* MTX1: every reader entry posted so far */
+static int c_rdone(void* c) { (void)c; return pm_stamp_due(wq_r_done, wq_r_want); }
+void pm_walk_until(unsigned s) { /* MTX1: return when every reader entry up to s ran */
+    if (pm_wq_on_logic()) { pm_wq_dr++; if (pm_stamp_due(wq_r_done, s)) return;
+        pm_wq_drw++; wq_r_want = s; __sync_synchronize(); wq_block(c_rdone, NULL, WQB_READ); return; }
+    if (!pm_walk_side) { pm_lg_quiesce(); wq_pump(); } }
 
 void pm_wq_post(void (*fn)(void*), void* arg, unsigned size) {
     if (pm_wq_on_logic()) { wq_put(fn, arg, size); return; }
@@ -154,11 +174,11 @@ void pm_wq_frame(const PmFrame* f) {
     if (pm_wq_on_logic()) {
         if (wq_l_walked != wq_l_push) wq_block(c_lwalked, NULL, WQB_WALKED); /* depth 1, SLOTL: the frame before is walked; its key frame is a copy */
         wq_fr_push++; wq_l_push++;
-        wq_put(wq_frame_run, f, sizeof *f);
+        wq_put_r(wq_frame_run, f, sizeof *f, ++wq_r_push); /* MTX1: a frame walk reads game RAM */
         return;
     }
     wq_fr_push++; wq_l_push++;
-    wq_main_direct(wq_frame_run, (void*)f);
+    wq_main_direct_r(wq_frame_run, (void*)f, ++wq_r_push); /* MTX1 */
 }
 
 /* 60 fps: the logic of step N+1 runs while the walker draws frame N and key frame N. Before it writes the replacement table

@@ -742,7 +742,7 @@ static void pf_report(void) {
          * (PROF2-1: timed in sampled frames only), aujoin_max = longest single join (us). */
         pm_log_prof_line("prof f%u w%u writer beats %u | aujoin_us %u aujoin_max %u", pf_total, pf_w, pm_log_writer_hb(),
             pf_s ? (unsigned)(pm_au_pf_sum * 1000ull / PF_TPM / pf_s) : 0u, (unsigned)((unsigned long long)pm_au_pf_max * 1000ull / PF_TPM));
-        { extern unsigned pm_rr_race; pm_log_prof_line("prof f%u w%u romrace %u", pf_total, pf_w, pm_rr_race); } /* ROMDR: since boot, must stay 0 */
+        { extern unsigned pm_rr_race, pm_mt_norseq; pm_log_prof_line("prof f%u w%u romrace %u norseq %u", pf_total, pf_w, pm_rr_race, pm_mt_norseq); } /* MTX1 */ /* ROMDR: since boot, must stay 0 */
         { /* CORE2C-3: lgms = logic thread wall ms per step it ran (step_game_loop, list build, audio kick, tail, and the waits inside them:
            * bw of the wait line below is part of it), n = those steps; wwait = game thread ms per drawn frame waiting for the logic (the
            * walk wait); ser = steps run inline (serial: prof sample, det, measurement modes); core and stk = the logic thread core and its

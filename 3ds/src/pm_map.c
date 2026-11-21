@@ -133,7 +133,7 @@ void decode_yay0(void* src, void* dst) {
      * (the farther table offset) cut the literal bytes at the end and every decode failed. */
     bound = 0x100000u;
     if (dec > 0x40000u || link < 16u || count < 16u) return;
-    { void pm_walk_drain(const char* why); pm_walk_drain("decode"); } /* CORE2-3b: the decode writes RAM that the last walk may have read */
+    { pm_walk_read("decode", pm_walk_stamp()); } /* MTX1: the reader entries only */ /* CORE2-3b: the decode writes RAM that the last walk may have read */
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u;
     const int shp = dst == (void*)pm_shape_buf;
     if (shp) { extern char wMapShapeName[]; memcpy(pm_shape_name, src == last_asset_src ? last_asset_name : wMapShapeName, sizeof pm_shape_name); } /* SEAMFIX: the seamfix log line names the shape (world.c calls its own load_asset_by_name, not the wrap) */
@@ -370,7 +370,7 @@ s16 pm_warp_hook(s16 mode);
 void pm_walk_drain(const char* why); /* nd_walk.c, CORE2-3b */
 void pm_tex_scene_begin(const char* name); /* ROOMTEX: pm_tex.c */
 void __wrap_set_game_mode(s16 mode) {
-    pm_walk_drain("mode"); /* a mode change loads and frees scene data */
+    pm_walk_read("mode", pm_walk_stamp()); /* MTX1 */ /* a mode change loads and frees scene data */
     mode = pm_warp_hook(mode); /* slice W01 debug switches warp, story, preset */
     if (mode == GAME_MODE_ENTER_WORLD) pm_cheat_enter_world(); /* CHEATSAVE: the slot's cheat file (pm_cheatsave.c) */
     {
@@ -397,7 +397,7 @@ void __wrap_set_game_mode(s16 mode) {
 
 void __wrap_load_map_by_IDs(s16 areaID, s16 mapID, s16 loadType) {
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* MAPX-1: the load and audio stage ticks of the xfer line */
-    pm_walk_drain("map");
+    pm_walk_read("map", pm_walk_stamp()); /* MTX1: the reader entries only */
     pm_audio_join_at(0); /* AU2; MAPX-5b: the control job joins (it may read what the load writes); the mixer render queue is not drained: it reads only
                           * its own command ring and the sample data (docs/plans/AU2_design.md), and the ROM is in RAM. The drain waited about 100 ms on Azahar. */
     if (pm_xf.on) pm_xf.au_t += pm_ticks() - xt0;

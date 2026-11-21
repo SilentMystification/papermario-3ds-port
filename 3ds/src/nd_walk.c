@@ -467,13 +467,13 @@ void nd_modvtx(unsigned where, unsigned vi) { /* B5 (HC4d2: typed ND_FS_MISC fie
  * walker side (the walker's own reads) do nothing. */
 void pm_wq_idle(void); /* nd_wq.c: CORE2C-2, return when the walker queue is empty */
 typedef struct { const void* k; unsigned n, t; } DrcEnt; DrcEnt pm_drc[8]; extern void* pm_rom_caller; /* DRAINC: drain census by caller */
-void pm_walk_drain(const char* why) {
+static void walk_wait(const char* why, int full, unsigned s) { /* MTX1: full 0 waits only for the reader entries up to s */
     /* PAUSEC: pm_walk_side is the game thread's count of the walk it runs. A logic thread drain must wait for that walk too (the
      * queue entry is popped after it runs), so only the walker's own calls return here. */
     if (pm_walk_side && !pm_wq_on_logic()) return;
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the dr stage of the xfer line */
     const unsigned dt0_ = pm_wq_on_logic() ? pm_ticks() : 0u; /* DRAINC */
-    pm_wq_idle();
+    if (full) pm_wq_idle(); else pm_walk_until(s); /* MTX1 */
     if (pm_xf.on) { /* MTX0: every thread, det runs are serial */ const void* k_ = (why[0] == 'r' && why[1] == 'o' && why[2] == 'm' && !why[3]) ? pm_rom_caller : (const void*)why; unsigned i_ = 0; /* MTX0: DRAINC copy for the transition */
         while (i_ < 3u && pm_xf.dc[i_].k && pm_xf.dc[i_].k != k_) i_++;
         if (i_ == 3u) k_ = 0; /* MTX0: slot 3 takes the rest (key 0) */
@@ -484,6 +484,8 @@ void pm_walk_drain(const char* why) {
         pm_drc[i_].k = k_; pm_drc[i_].n++; pm_drc[i_].t += pm_ticks() - dt0_; }
     if (pm_xf.on) { pm_xf.dr_n++; pm_xf.dr_t += pm_ticks() - xt0; }
 }
+void pm_walk_drain(const char* why) { walk_wait(why, 1, 0u); } /* MTX1 */
+void pm_walk_read(const char* why, unsigned s) { walk_wait(why, 0, s); } /* MTX1 */
 void pm_gbi_fallback(void) { /* NATFB2 (user yes): the boot picture is one native fill, as the old FILL rectangle; no test triangle */
     pm_gpu_set_replace(1);
     pm_gpu_fill_rect(0, 0, 319, 239, rgba_from_5551(0x2229u));

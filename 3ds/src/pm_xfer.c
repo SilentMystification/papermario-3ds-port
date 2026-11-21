@@ -262,7 +262,7 @@ void pm_xfer_hidden(void) {
         if (!m->modelNode || !m->modelNode->displayData || (xh_done[i >> 5] & (1u << (i & 31u)))) continue;
         xh_done[i >> 5] |= 1u << (i & 31u);
         XhQ q = { m->modelNode->displayData->displayList, m->finalMtx == &m->savedMtx && !(m->flags & MODEL_FLAG_BILLBOARD) }; /* SEAM2 */
-        pm_wq_post(wq_xh, &q, sizeof q);
+        pm_wq_post_reader(wq_xh, &q, sizeof q); /* MTX1: the prebuild reads the shape lists */
         n++;
     }
     xh_n += n;
