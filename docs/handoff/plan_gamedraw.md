@@ -76,7 +76,7 @@ Done: GD1 (core 1 -3.7 FACT), GD0, GD0B. Dropped: GD3, GD5 (c1g mdl, ply, npc sm
 - L1: GD1 replaces a 7.8 KB scan per open by 1 to 2 lines. GD2 compares a 1 KB key array. GD7 reads one key and copies one block per hit (sequential).
 
 ## 6. Order and dependencies
-1. GD9A now (Haiku). GDW and DO3F are merged. GD8 page when the GDW line shows core 0 work under 33 ms per step.
+1. GD9A gated (8785b78c74): merge it. GD9A2 (census 2: steady window, dup walks, nd_ds entry hash, first differing unit) next. GDW and DO3F are merged. GD8 page when the GDW line shows core 0 work under 33 ms per step.
 2. GD9B page after the GD9A line (bad 0, key near n). GD7 and GD6 after GD9B (core 1 rows), on the user's Sonnet yes and NATIVE17's yes.
 
 ## 7. Risks and fallbacks
