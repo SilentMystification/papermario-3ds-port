@@ -11,6 +11,7 @@ HeapNode* general_heap_create(void) {
 
 void* general_heap_malloc(s32 size) {
     void* p = _heap_malloc(&heap_generalHead, size);
+    { extern unsigned pm_hp_a; pm_hp_a++; } /* MTX0 */
     return p;
 }
 
@@ -20,6 +21,7 @@ void* general_heap_malloc_tail(s32 size) {
 
 s32 general_heap_free(void* data) {
     s32 r = _heap_free(&heap_generalHead, data);
+    { extern unsigned pm_hp_f; pm_hp_f++; } /* MTX0 */
     return r;
 }
 

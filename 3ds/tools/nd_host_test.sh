@@ -32,6 +32,8 @@ if [ -n "$direct" ]; then echo "FAIL direct linear call (use pm_linear_*):"; ech
 # threadCreate outside that helper fails the test.
 rawth=$(grep -nE '(^|[^_A-Za-z0-9])threadCreate[[:space:]]*\(' 3ds/src/*.c 2>/dev/null | grep -v '^3ds/src/pm_thread.c:')
 if [ -n "$rawth" ]; then echo "FAIL direct threadCreate (use pm_thread_create):"; echo "$rawth"; fail=1; fi
+sh 3ds/tools/seamlint.sh || fail=1 # SEAMLINT (plan_seams.md section 4): one f32 to f24 path, one palette product, one shader position block
+if sh 3ds/tools/seamlint.sh --seed > /dev/null 2>&1; then echo "FAIL seamlint: the seeded site passed"; fail=1; fi
 stage checks
 # outs_hash <entry dir>: content hash of every stored file except key.txt and outs.sha1.
 outs_hash() { (cd "$1" && find . -type f ! -name key.txt ! -name outs.sha1 | LC_ALL=C sort | xargs -r sha1sum) | sha1sum | cut -d' ' -f1; }
@@ -272,6 +274,7 @@ unsigned pm_tex_slot_gen(int i) { (void)i; return 0; }\nint pm_tex_slot_unit(int
   /tmp/ndgt
   stage L76
   /tmp/ndseam assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin 3ds/tests/ndref/ndref_*.bin -- assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_00_shape.bin assets/us/mapfs/geom/kkj_14_shape.bin assets/us/mapfs/geom/iwa_10_shape.bin assets/us/mapfs/geom/kmr_20_shape.bin assets/us/mapfs/geom/nok_11_shape.bin
+  if SEAM_SEED=5 /tmp/ndseam assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_02_shape.bin 3ds/tests/ndref/ndref_*.bin -- assets/us/mapfs/geom/mac_01_shape.bin assets/us/mapfs/geom/mac_00_shape.bin assets/us/mapfs/geom/kkj_14_shape.bin assets/us/mapfs/geom/iwa_10_shape.bin assets/us/mapfs/geom/kmr_20_shape.bin assets/us/mapfs/geom/nok_11_shape.bin > /tmp/ndseam5.txt; then echo "FAIL: seam seed 5 passed"; exit 1; fi; grep -q "FAIL: mac_01 step 5" /tmp/ndseam5.txt
   stage L77
   gcc -m32 -Wall -Wextra -Werror $FP -DF3DEX_GBI_2 -D_LANGUAGE_C -DTARGET_3DS -DVERSION_US -D_MIPS_SZLONG=32 -I 3ds/tools/gbi_inc -I include -I ver/us/build/include -I 3ds/include -I 3ds/stub_include -c -o /tmp/ndtexwin.o 3ds/src/nd_texwin.c  # S7TEX1: compile check of the moved tile window (nd_texwin.c)
   stage L78

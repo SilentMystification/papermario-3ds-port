@@ -46,11 +46,27 @@ static void pf_maps(void) { /* the posted map job, if any (pf_busy is set after 
     __atomic_store_n(&pf_busy, 0, __ATOMIC_RELEASE);
     LightEvent_Signal(&pf_done);
 }
+#define PFF_N 3 /* MTX2: the .nds header (16 B), the .seam, the .dlc of one shape */
+static char pff_path[PFF_N][48]; static unsigned char* pff_buf[PFF_N]; static unsigned pff_len[PFF_N]; static volatile int pff_busy; static LightEvent pff_done; /* MTX2 */
+static void pff_run(void) { if (!__atomic_load_n(&pff_busy, __ATOMIC_ACQUIRE)) return; /* worker: MTX2 */
+    for (int i = 0; i < PFF_N; i++) { FILE* f = fopen(pff_path[i], "rb"); long n = -1; if (f && fseek(f, 0, SEEK_END) == 0) n = ftell(f); if (i == 0 && n > 16) n = 16;
+        if (f && n > 0 && fseek(f, 0, SEEK_SET) == 0 && (pff_buf[i] = malloc((size_t)n)) && fread(pff_buf[i], 1, (size_t)n, f) == (size_t)n) pff_len[i] = (unsigned)n;
+        else { free(pff_buf[i]); pff_buf[i] = NULL; pff_len[i] = 0; } if (f) fclose(f); }
+    __atomic_store_n(&pff_busy, 0, __ATOMIC_RELEASE); LightEvent_Signal(&pff_done); }
+static void pff_wait(void) { while (__atomic_load_n(&pff_busy, __ATOMIC_ACQUIRE)) LightEvent_Wait(&pff_done); }
+void pm_prefetch_files_release(void) { pff_wait(); for (int i = 0; i < PFF_N; i++) { free(pff_buf[i]); pff_buf[i] = NULL; pff_len[i] = 0; pff_path[i][0] = 0; } }
+static int pf_start(void); void pm_prefetch_files(const char* shape) { static const char* const ext[PFF_N] = { "nds", "seam", "dlc" }; pm_prefetch_files_release(); if (!pf_start()) return;
+    for (int i = 0; i < PFF_N; i++) snprintf(pff_path[i], sizeof pff_path[i], "romfs:/shape/%s.%s", shape, ext[i]);
+    LightEvent_Clear(&pff_done); __atomic_store_n(&pff_busy, 1, __ATOMIC_RELEASE); LightEvent_Signal(&pf_go); }
+FILE* pm_pf_fopen(const char* path, const char* mode) { /* a posted path from memory (waits for the job), else the file */
+    for (int i = 0; i < PFF_N; i++) if (pff_path[i][0] && strcmp(path, pff_path[i]) == 0) { pff_wait(); if (pff_buf[i]) { pm_xf.pff_n++; return fmemopen(pff_buf[i], pff_len[i], mode); } break; }
+    return fopen(path, mode); }
 static void pf_main(void* arg) {
     (void)arg;
     for (;;) {
         LightEvent_Wait(&pf_go);
         pf_maps();
+        pff_run(); /* MTX2 */
         int song = __atomic_exchange_n(&pf_song, -1, __ATOMIC_ACQ_REL);
         if (song < 0) continue;
         int n = au_song_samples(song, pf_smp, PF_SMP);
@@ -64,6 +80,7 @@ static int pf_start(void) { /* 0 when the thread cannot run (the caller does the
     if (!pf_th) {
         LightEvent_Init(&pf_go, RESET_ONESHOT);
         LightEvent_Init(&pf_done, RESET_STICKY);
+        LightEvent_Init(&pff_done, RESET_STICKY); /* MTX2 */
         pf_th = pm_thread_create(pf_main, NULL, 16 * 1024, 0x3F, 1, "prefetch"); /* MAPROMFS: stdio and FS calls on this thread now */
         if (!pf_th) { pf_th = (Thread)1; pm_log_w("prefetch: no core-1 thread, the game thread decodes"); }
     }

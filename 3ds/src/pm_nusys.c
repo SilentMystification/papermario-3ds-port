@@ -121,7 +121,7 @@ static __attribute__((cold, noinline)) void wide_walk_note(int built) {
 int pm_icmp_kind;
 int pm_tw_on; /* INTERPB1: 1 during the whole walk of an L frame (background and main task): twin matrices are made (nd_mtx_set.c) */
 void nd_twin_frame_begin(int kind);
-volatile int pm_lerp_busy; unsigned pm_slot_race; /* SLOTL: a lerp that overlaps an L walk (declared before its first use in pm_frame_walk) */
+volatile int pm_lerp_busy; unsigned pm_slot_race; unsigned long long pm_ik_lt; /* IK0 */ /* SLOTL: a lerp that overlaps an L walk (declared before its first use in pm_frame_walk) */
 void pm_frame_walk(const PmFrame* f) {
     pm_icmp_kind = (f->flags & PMF_REPL) ? 1 : 0; /* INTERP2M */
     pm_tw_on = pm_icmp_kind; /* INTERPB1 */
@@ -169,7 +169,7 @@ void nuGfxTaskStart(u32 ucode, u32 flag) {
         fr.main.ptr = (void*)st; fr.main.n = 0u;
         if (pm_interp_on > 0) {
             if (pm_interp_skip) { pm_interp_skip_count(); nkey = 0; } /* F06-5: behind, draw the key frame now */
-            else { pm_wq_frame_slot(); pm_lerp_busy = 1; __sync_synchronize(); pm_interp_lerp(0.5f); __sync_synchronize(); pm_lerp_busy = 0; fr.flags |= PMF_REPL; } /* the walker reads rtab: the frames before are walked first */
+            else { pm_wq_frame_slot(); pm_lerp_busy = 1; __sync_synchronize(); { const uint64_t lt0_ = pm_pf_on ? svcGetSystemTick() : 0; pm_interp_lerp(0.5f); if (pm_pf_on) pm_ik_lt += svcGetSystemTick() - lt0_; } /* IK0 */ __sync_synchronize(); pm_lerp_busy = 0; fr.flags |= PMF_REPL; } /* the walker reads rtab: the frames before are walked first */
         }
         fr_push();
     }

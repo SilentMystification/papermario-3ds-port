@@ -2090,7 +2090,7 @@ void pm_warp_tick(unsigned frame) {
             MessagePrintState* tp;
             msg_get_printer_for_msg(MSG_MAC_Plaza_0000, &uishow_talk_closed);
             tp = msg_get_printer_for_msg(MSG_EntityTattle_HammerBlock1_CanBreak, &uishow_tattle_closed);
-            if (tp != NULL) msg_printer_set_origin_pos(tp, -30, 220);
+            if (tp != NULL) msg_printer_set_origin_pos(tp, uv[2] == 't' ? 350 : -30, 220);
             pm_log_d("debug uishow: talk opened f%u", f);
         }
     }

@@ -474,6 +474,10 @@ static void walk_wait(const char* why, int full, unsigned s) { /* MTX1: full 0 w
     unsigned xt0 = pm_xf.on ? pm_ticks() : 0u; /* BTLWIPE: the dr stage of the xfer line */
     const unsigned dt0_ = pm_wq_on_logic() ? pm_ticks() : 0u; /* DRAINC */
     if (full) pm_wq_idle(); else pm_walk_until(s); /* MTX1 */
+    if (pm_xf.on) { /* MTX0: every thread, det runs are serial */ const void* k_ = (why[0] == 'r' && why[1] == 'o' && why[2] == 'm' && !why[3]) ? pm_rom_caller : (const void*)why; unsigned i_ = 0; /* MTX0: DRAINC copy for the transition */
+        while (i_ < 3u && pm_xf.dc[i_].k && pm_xf.dc[i_].k != k_) i_++;
+        if (i_ == 3u) k_ = 0; /* MTX0: slot 3 takes the rest (key 0) */
+        pm_xf.dc[i_].k = k_; pm_xf.dc[i_].n++; pm_xf.dc[i_].t += pm_ticks() - xt0; }
     if (pm_wq_on_logic()) { const void* k_ = (why[0] == 'r' && why[1] == 'o' && why[2] == 'm' && !why[3]) ? pm_rom_caller : (const void*)why; unsigned i_ = 0; /* DRAINC */
         while (i_ < 7u && pm_drc[i_].k && pm_drc[i_].k != k_) i_++;
         if (i_ == 7u) k_ = 0; /* DRAINC: slot 7 takes the rest (key 0), so no slot is relabelled */

@@ -31,14 +31,14 @@ def words_from_dry(out):
 PROF_LINE = re.compile(r"prof f\d+ w\d+")
 
 
-def judge(text, proof, prof=False):
+def judge(text, proof, prof=False, prof_line=PROF_LINE):  # MTX0: --prof-line pattern
     """(ok, detail) for a game log text and a list of proof substrings. prof: the launch words set prof=<n>, which turns logging off
     (pm_options.c:284), so the gate is a prof line and the fxtest: done line instead of log_on=1."""
     if prof:
         miss = [p for p in proof if p not in text]
-        if PROF_LINE.search(text) and "fxtest: done" in text and not miss:
+        if prof_line.search(text) and "fxtest: done" in text and not miss:
             return True, "prof run, prof line and fxtest: done, proof " + " ".join("%s %d" % (p, text.count(p)) for p in proof)
-        why = ["prof run, no prof line" if not PROF_LINE.search(text) else "prof run, no fxtest: done line"]
+        why = ["prof run, no prof line" if not prof_line.search(text) else "prof run, no fxtest: done line"]
         if miss:
             why.append("missing proof: " + ", ".join(miss))
         return False, ", ".join(why)
@@ -72,6 +72,7 @@ def main(argv=None):
     ap.add_argument("--row", required=True)
     ap.add_argument("--proof", required=True, help="comma list of text that must be in the game log")
     ap.add_argument("--profile", default="log")
+    ap.add_argument("--prof-line", default=PROF_LINE.pattern, help="prof-mode line pattern (MTX0: a map transition line has no window line)")
     ap.add_argument("--raw", default="", help="exact switch words (skips push_3ds.sh --dry)")
     ap.add_argument("words", nargs="*")
     a = ap.parse_args(argv)
@@ -89,7 +90,7 @@ def main(argv=None):
     if prof and keep is not None:  # a prof run has no log_on line: its boot check is the prof line (judge prof=True)
         bs = bytes([92])  # one backslash byte: the JSON file escapes each one
         scen.write_bytes(keep.replace(b'"regex": "build ' + bs * 2 + b'd+' + bs * 2 + b'S* git"',
-                                      b'"regex": "prof f' + bs * 2 + b'd+ w' + bs * 2 + b'd+"', 1))
+                                      b'"regex": ' + json.dumps(a.prof_line).encode(), 1))  # MTX0: --prof-line, json.dumps doubles the backslashes
     before = last_run("capchk", a.row)
     env = dict(os.environ, PM_DEBUG_ADD=words, PM_OPT_WORST="1", PM_ROW=a.row)
     rc = subprocess.run([sys.executable, "3ds/tools/bench.py", "run", "capchk", "--row", a.row, "--why", "capture check: " + words],
@@ -103,7 +104,7 @@ def main(argv=None):
     log = Path(rec["log_path"])
     if not log.is_absolute():
         log = REPO / log
-    ok, detail = judge(log.read_text(encoding="utf-8", errors="replace") if log.exists() else "", proof, prof=prof)
+    ok, detail = judge(log.read_text(encoding="utf-8", errors="replace") if log.exists() else "", proof, prof=prof, prof_line=re.compile(a.prof_line))
     if ok and rc != 0:
         print("CAPTURE CHECK TOOL FAULT: bench.py run capchk rc %d with every proof line (run %s, %s)" % (rc, rec.get("run_id"), rec["log_path"]))
         return 2

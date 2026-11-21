@@ -650,6 +650,7 @@ static __attribute__((cold, noinline)) void gst_draw(u32* cb, u32 end) { /* DO0:
     for (unsigned k = 0; k < 3u; k++) h = gst_mix(h, gst_lut[k]);
     fprintf(gst_fp, "d %u h %08x\n", drec_seq, h);
 }
+typedef struct { int gx0, gx1, top, bot; unsigned n, out; int lo, hi; } ClipG; static ClipG clipg[8]; static unsigned clipg_n, clipg_over; /* WCLIP0 */
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
         char v[24]; drec_win = -1;
@@ -666,6 +667,7 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     drec_vb = (char*)malloc(1u << 20); drec_regs = (NdDrecReg*)malloc(DREC_REGS * sizeof(NdDrecReg));
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
+    pm_log_evt("drecsc f%u", pm_frame_count()); /* WCLIP0 */
     gst_fp = fopen("sdmc:/3ds/PaperMario/shots/gst.txt", "wb"); gst_vb = (char*)malloc(64u << 10); /* DO0 */
     if (gst_fp && gst_vb) setvbuf(gst_fp, gst_vb, _IOFBF, 64u << 10); else { if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; }
     gst_cb = NULL; gst_off = gst_fvec = gst_fcomp = 0; gst_fn = 4u; memset(gst_r, 0, sizeof gst_r); memset(gst_f, 0, sizeof gst_f); memset(gst_lut, 0, sizeof gst_lut);
@@ -685,6 +687,9 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     { extern void nd_mmemo_log(void); nd_mmemo_log(); } /* DO1 */
+    pm_log_evt("clipc f%u groups %u over %u", pm_frame_count(), clipg_n, clipg_over); /* WCLIP0 */
+    for (unsigned q = 0; q < clipg_n; q++) pm_log_evt("clipg f%u g %d %d c %d %d n %u out %u bb %d %d", pm_frame_count(), clipg[q].gx0, clipg[q].gx1, clipg[q].top, clipg[q].bot, clipg[q].n, clipg[q].out, clipg[q].out ? clipg[q].lo : 0, clipg[q].out ? clipg[q].hi : 0);
+    clipg_n = clipg_over = 0;
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
     { extern unsigned nd_altw[8]; pm_log_evt("altw f%u c1 m %u e %u c %u o %u c0 all %u m %u e %u gd %u gw %u bd %u bw %u d %u", pm_frame_count(), nd_altw[0], nd_altw[1], nd_altw[2], nd_altw[3], nd_altw[4], nd_altw[5], nd_altw[6], sc_gd[0], sc_gw[0], sc_gd[1], sc_gw[1], nd_altw[7]); } /* PERF0 */
     { extern unsigned nd_entn[64], nd_entw[64]; char eb[512]; int n = snprintf(eb, sizeof eb, "entw f%u", pm_frame_count()); /* ALT2C: entity copy runs and words by reason */
@@ -696,6 +701,7 @@ static const uint8_t* drec_p2v(uint32_t phys, uint32_t dl) { /* the inverse of o
     if (phys >= 0x18000000u && phys < 0x18600000u) return (const uint8_t*)(uintptr_t)(phys + 0x07000000u);
     return (const uint8_t*)(uintptr_t)(phys - dl);
 }
+static void drec_sc_put(NdDrecReg* r, unsigned* n, const NdDraw* d, const uint8_t* vb, const uint16_t* ix); /* WCLIP0 */
 static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat) {
     if (!drec_f) return;
     NdDrecReg* r = drec_regs; unsigned n = 0;
@@ -751,6 +757,7 @@ static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat)
         rec.vtx.p = vb + 16u * lo; rec.vtx.n = 16u * (hi - lo + 1u);
         rec.idx.p = drec_idx; rec.idx.n = d->nidx * 2u;
     } else drec_over = 1;
+    drec_sc_put(r, &n, d, vb, ix); rec.nregs = n; /* WCLIP0 */
     nd_drec_write(drec_f, &rec);
 }
 /* S0-6: prof counters. pfd_add runs at each frame end (cen_frame_end), before pm_dc_c is cleared: draws, TEV rebuilds, texture binds and
@@ -824,6 +831,23 @@ static void sh_clear(void) { nd_leave_native(); sh.has = 0; pm_tex_bind_reset();
 static void sh_scissor(GPU_SCISSORMODE m, u32 l, u32 t, u32 r, u32 b) {
     if ((sh.has & SH_SC) && sh.sc[0] == (unsigned)m && sh.sc[1] == l && sh.sc[2] == t && sh.sc[3] == r && sh.sc[4] == b) return;
     sh.sc[0] = m; sh.sc[1] = l; sh.sc[2] = t; sh.sc[3] = r; sh.sc[4] = b; sh.has |= SH_SC; pm_dc_c[DC_SHM]++; C3D_SetScissor(m, l, t, r, b);
+}
+static void drec_sc_put(NdDrecReg* r, unsigned* n, const NdDraw* d, const uint8_t* vb, const uint16_t* ix) { /* WCLIP0: scissor regs and the clip census */
+    if (*n + 3u < DREC_REGS) { r[*n].reg = 0x065; r[*n].mask = 0xF; r[(*n)++].val = sh.sc[0];
+        r[*n].reg = 0x066; r[*n].mask = 0xF; r[(*n)++].val = sh.sc[1] | sh.sc[2] << 16; r[*n].reg = 0x067; r[*n].mask = 0xF; r[(*n)++].val = sh.sc[3] | sh.sc[4] << 16; }
+    if (gs.off_active || d->no_uni || !d->npal || !d->nidx || !ix) return;
+    const C3D_Mtx* P = &projection; int j = fabsf(P->r[0].x) > fabsf(P->r[1].x) ? 0 : 1; /* the clip row that screen x moves */
+    const float a = P->r[j].w, b = P->r[j].x * 400.f + P->r[j].w; if (P->r[j].y != 0.f || b == a) return;
+    const int top = 400 - (int)sh.sc[4], bot = 400 - (int)sh.sc[2], v0 = (pm_wide || pm_stretch) ? 0 : 40, v1 = (pm_wide || pm_stretch) ? 400 : 360;
+    float lo = 1e9f, hi = -1e9f; for (unsigned i = 0; i < d->nidx; i++) { const short* p = (const short*)(const void*)(vb + 16u * ix[i]); const unsigned k = (unsigned short)p[3];
+        if (k >= d->npal) continue; const C3D_Mtx* M = (const C3D_Mtx*)(const void*)d->pal[k];
+        const float w = M->r[3].x * p[0] + M->r[3].y * p[1] + M->r[3].z * p[2] + M->r[3].w; if (!(w > 0.f)) continue;
+        const float c = (M->r[j].x * p[0] + M->r[j].y * p[1] + M->r[j].z * p[2] + M->r[j].w) / w, sx = (c - a) * 400.f / (b - a);
+        if (sx < lo) lo = sx; if (sx > hi) hi = sx; }
+    if (lo < (float)v0) lo = (float)v0; if (hi > (float)v1) hi = (float)v1;
+    unsigned g = 0; while (g < clipg_n && !(clipg[g].gx0 == gsci_r[0] && clipg[g].gx1 == gsci_r[2] && clipg[g].top == top && clipg[g].bot == bot)) g++;
+    if (g == clipg_n) { if (g == 8u) { clipg_over++; return; } clipg[g] = (ClipG){ gsci_r[0], gsci_r[2], top, bot, 0, 0, 9999, -9999 }; clipg_n++; }
+    clipg[g].n++; if (hi > lo && (lo < (float)top - 0.5f || hi > (float)bot + 0.5f)) { clipg[g].out++; if ((int)lo < clipg[g].lo) clipg[g].lo = (int)lo; if ((int)hi > clipg[g].hi) clipg[g].hi = (int)hi; }
 }
 static void sh_user_clip(int on) {
     if ((sh.has & SH_UC) && sh.uc == on) return;
@@ -1267,6 +1291,7 @@ void pm_gpu_ndt_take_g(uint64_t o[NDT_GC], unsigned u[NDT_GC], unsigned a[NDT_GC
 }
 /* S3N-2: the submit of one native draw, moved from nd_raw_native as it was (the state staging, the shadow, citro3d's context update, the emit and the
  * counters). The palette and the NdDraw are built by the caller before. Model draws (nd_model.c, S3N-4) use this too. */
+unsigned long long pm_ik[10]; /* IK0: 0 kc_build ticks, 1 patches of valid copies, 2 max patches (window), 3 copies with 0 patches, 4 valid copies, 5 key show ticks, 6 patched draws, 7 twin loads replaced, 8 plain */
 static unsigned ndn_tgen;
 /* INTERPB2: the words C3Di_UpdateContext wrote at [from, to) of the command buffer (cold, only with nd_kp_on): a float uniform vector with a staged K (u5kpv) gets a patch. */
 static __attribute__((cold, noinline)) void kp_scan(const u32* cb, unsigned from, unsigned to) {
@@ -1380,6 +1405,7 @@ static __attribute__((cold, noinline)) void c0_count(const NdDraw* d) { /* NAT1:
     c0_d++; c0_c += nd_c0w & 1u; c0_r += (nd_c0w >> 1) & 1u; if (d->u[0].dim) c0_b += (nd_c0w >> 2) & 1u; } /* NAT1 */
 static void nd_native_submit(const NdDraw* dp, int tex) {
     NDT_B(tsub); /* PERF1: the native submit class */
+    const unsigned kp0_ = nd_kp_n; /* IK0 */
     PH_ADD(C_NDRAW, 1); PH_ADD(C_NIDX, dp->nidx); /* FXCEN1 */
     { u32 *cb_, csz_, coff_; GPUCMD_GetBuffer(&cb_, &csz_, &coff_); if (coff_ + ND_EMIT_MAX + 1024u >= csz_) cmd_split_forced(); } /* PERF1-6: the draw words go straight into the command buffer: near its end the frame is split first (as nd_raw_native) */
     /* FB-3: every program 5 draw (model, sprite, raw) writes its pm5 block here, once. The copy keeps the caller's NdDraw; uvx goes to the pm5 uniform. */
@@ -1428,6 +1454,7 @@ static void nd_native_submit(const NdDraw* dp, int tex) {
         else { if (nb.rect_y0 < grab_dy0) grab_dy0 = nb.rect_y0; if (nb.rect_y1 > grab_dy1) grab_dy1 = nb.rect_y1; }
     }
     if (__builtin_expect(t1l_on | rp_on_ | (d->use5 & d->has_uvx), 0)) submit_dbg(d, tex); /* PERF1: the debug logs are tested here (cached switches, the draw flags), not called per draw */
+    if (nd_kp_n != kp0_) pm_ik[6]++; /* IK0 */
     dc_kick();
     NDT_E(tsub, NDT_SUB);
 }
@@ -1878,7 +1905,7 @@ static void pm_gpu_init_w(void) {
     jt_on = pm_debug_has("jumptest");
     mfr_init();
     pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide == 1) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
-    pm_stretch_cfg = pm_opt.wide == 2; pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
+    pm_stretch_cfg = pm_opt.wide == 2 || pm_debug_has("fullscr"); pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
     pm_log("gpu: wide=%d stretch=%d", pm_wide, pm_stretch);
     gfxInitDefault();
     gspSetEventCallback(GSPGPU_EVENT_VBlank0, gsp_adopt, NULL, true); /* LIBTHR: one shot, on the GSP event thread */
@@ -3188,6 +3215,7 @@ static __attribute__((noinline)) void kc_build(void) {
     kc_fl = (*(volatile unsigned*)(__C3D_Context + 32) & 2u) != 0u; /* FPS60FL */
     GSPGPU_FlushDataCache(kc_buf, coff * 4u);
     kc_valid = 1; kc_ok_gen = kc_gen;
+    if (pm_pf_on) { pm_ik[4]++; pm_ik[1] += np; if (np > pm_ik[2]) pm_ik[2] = np; if (!np) pm_ik[3]++; } /* IK0 */
     kc_plain_shown = !armed;
     if (!armed) pm_kc_plain++;
 }
@@ -3202,6 +3230,7 @@ void pm_gpu_key_show(void) {
     if (pm_pf_on) { const unsigned n_ = (unsigned)svcGetSystemTick(); pm_c0k[0] += n_ - k0_; k0_ = n_; }
     if (!C3D_FrameBegin(0)) { pm_kc_why[4]++; return; } /* FPS60W2: a frame already begun: nothing is queued into a frame citro3d did not open */
     if (pm_pf_on) { pm_c0k[1] += (unsigned)svcGetSystemTick() - k0_; pm_c0k[2] += (unsigned)(C3D_GetDrawingTime() * 1000.f); pm_c0k[4]++; } /* CPT0: the key wait; the GPU tail of the L frame */
+    const unsigned ks0_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; /* IK0 */
     if (gb_on) { gb_sum += (unsigned)(pm_ticks() - gb_sub); gb_n++; gb_on = 0; pm_pf_late++; }
     noise_off[0] = (float)(noise_next() & 1023u) / 1024.f; noise_off[1] = (float)(noise_next() & 1023u) / 1024.f; /* PT07: the sequence of a frame begin */
     pm_ph_gpu_note();
@@ -3223,6 +3252,7 @@ void pm_gpu_key_show(void) {
     C3D_FrameDrawOn(target);
     rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     c0k_kf = 1; /* CPT0 */
+    if (pm_pf_on) pm_ik[5] += (unsigned)svcGetSystemTick() - ks0_; /* IK0 */
     if (pm_ph_on) { gb_sub = pm_ticks(); gb_on = 1; }
 }
 /* FRAMEHASH3: the fhash switch (fhash fhwin=<first>:<count>). At the frame end of a window frame the GX lists of the frame are hashed (nd_fh_frame) and
@@ -3337,7 +3367,7 @@ static void pm_gpu_end_w(void) {
     if (sr_on) sr_replay(); /* STEREO: the right eye */
     if (__builtin_expect(fh_on(), 0)) fh_frame(); /* FRAMEHASH3: before kc_build, which takes the same entries */
     pp_frame_end(); /* PIPE0 */
-    kc_build(); /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
+    { const unsigned kb0_ = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; kc_build(); if (pm_pf_on) pm_ik[0] += (unsigned)svcGetSystemTick() - kb0_; } /* IK0 */ /* INTERPB3: the K copy of an L frame, from the recorded entries and the used command buffer */
     if (__builtin_expect(PMDL("icmp"), 0)) icmp_frame((gxCmdQueue_s*)&__C3D_Context); /* INTERP2M: after the frame-end take, before the queue is cleared */
     ndunit_scan(); rd_sync(); C3D_FrameEnd(GX_CMDLIST_FLUSH);
     if (__builtin_expect(pm_ff_on(), 0)) pm_ff_end(pm_frame_count(), pm_ticks(), off_used, off_sused, grab_split + kick_done, OFF_N); /* FLIPLOG: the counts of this frame */

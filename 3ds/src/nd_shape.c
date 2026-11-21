@@ -135,6 +135,7 @@ extern char pm_shape_name[24];
 /* SEAMHOST: the T-point table of the shape, built on the host by nd_shape_conv.c: romfs:/shape/<name>.seam (format there). The shape
  * size of the .seam must equal the NDSH size of its .nds. Returns 0 with the table loaded (list addr + the shape base), else -1 with nothing kept. */
 static u32 seam_le32(const u8* p) { return (u32)p[0] | ((u32)p[1] << 8) | ((u32)p[2] << 16) | ((u32)p[3] << 24); }
+FILE* pm_pf_fopen(const char* path, const char* mode); void pm_prefetch_files_release(void); /* MTX2 */
 __attribute__((cold, noinline)) static int seam_load(NdSeamTab* t) {
     char path[64];
     u8 hdr[4 + 5 * 4 + 12 * 4];
@@ -143,13 +144,13 @@ __attribute__((cold, noinline)) static int seam_load(NdSeamTab* t) {
     FILE* f;
     memset(t, 0, sizeof *t);
     snprintf(path, sizeof path, "romfs:/shape/%s.nds", pm_shape_name);
-    f = fopen(path, "rb");
+    f = pm_pf_fopen(path, "rb"); /* MTX2 */
     if (!f) return -1;
     if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDSH", 4) != 0) { fclose(f); return -1; }
     nds_size = seam_le32(hdr + 8);
     fclose(f);
     snprintf(path, sizeof path, "romfs:/shape/%s.seam", pm_shape_name);
-    f = fopen(path, "rb");
+    f = pm_pf_fopen(path, "rb"); /* MTX2 */
     if (!f) return -1;
     setvbuf(f, NULL, _IOFBF, 0x10000); /* DLCRD: one FS read for the whole .seam (max 13536 B) */
     if (fread(hdr, 1, sizeof hdr, f) != sizeof hdr || memcmp(hdr, "NDSM", 4) != 0) goto bad;
@@ -216,13 +217,13 @@ __attribute__((cold, noinline)) static int dlcp_open(void) {
     dlcp_close();
     dlcp_gen = pm_dlc_gen;
     snprintf(path, sizeof path, "romfs:/shape/%s.nds", pm_shape_name);
-    f = fopen(path, "rb");
+    f = pm_pf_fopen(path, "rb"); /* MTX2 */
     if (!f) return 0;
     if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDSH", 4) != 0) { fclose(f); return 0; }
     nds_size = seam_le32(hdr + 8);
     fclose(f);
     snprintf(path, sizeof path, "romfs:/shape/%s.dlc", pm_shape_name);
-    f = fopen(path, "rb");
+    f = pm_pf_fopen(path, "rb"); /* MTX2 */
     if (!f) return 0;
     setvbuf(f, NULL, _IOFBF, 0x10000); /* DLCRD: a few FS reads (pm_map.c:67) */
     if (fread(hdr, 1, 16, f) != 16 || memcmp(hdr, "NDDC", 4) != 0 || seam_le32(hdr + 4) != 3 || seam_le32(hdr + 8) != nds_size) goto bad;
@@ -261,9 +262,10 @@ bad:
  * The next walker entry is queued after these writes (nd_wq.c wq_put barrier). dlc_reset keeps the tables of the current pm_dlc_gen, so the
  * first drawn step reads them and does not load them. Same files, same bytes as the walker build: only the thread and the time change. */
 __attribute__((cold, noinline)) void pm_dlc_preload(void) {
-    if (!seam_get()) return; /* as nd_sg_build: no seam table, no .dlc read */
+    if (!seam_get()) { pm_prefetch_files_release(); return; } /* as nd_sg_build: no seam table, no .dlc read; MTX2 */
     const unsigned t0 = pm_ticks();
     (void)dlcp_open();
+    pm_prefetch_files_release(); /* MTX2 */
     if (pm_xf.on) pm_xf.dlcp_t += pm_ticks() - t0; /* XFT */
 }
 /* 1: o filled from the file, 0: no section (nothing allocated), 2: the section is a refusal (*refuse is the code), -1: no pool room or a read fault.

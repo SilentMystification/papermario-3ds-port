@@ -124,6 +124,7 @@ void pm_mapdata_enter(const char* id) {
         }
         if (r->b1 > r->b0) { memset(r->b0, 0, r->b1 - r->b0); bz += r->b1 - r->b0; }
     }
+    pm_xf.rst_b += bd + bz; /* MTX0 */
     if (pm_debug_has("dataprobe")) {
         pm_log_d("mapdata: %s restored data %u bss %u", id, bd, bz);
         pm_mapdata_probe_after(id); /* what is still different from the first entry after the restore: changers not in map_restore.txt */
