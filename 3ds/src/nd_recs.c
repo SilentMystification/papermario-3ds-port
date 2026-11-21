@@ -52,12 +52,14 @@ static __attribute__((noinline)) void rec_lights(const NdW2* q) {
         gv_epoch++; nd_mv_mem(w0, w1);
     }
 }
+int pm_drec_now(void);
 static unsigned mm_fr = ~0u;
-static __attribute__((cold, noinline)) void mmiss_note(void) { const unsigned f = pm_frame_count(); if (f != mm_fr) { mm_fr = f; pm_log_evt("mmiss f%u", f); } } /* the miss path takes the hit state: marker of the expected-diff gate */
+static __attribute__((cold, noinline)) void mmiss_note(void) { if (!pm_drec_now()) return; const unsigned f = pm_frame_count(); if (f != mm_fr) { mm_fr = f; pm_log_evt("mmiss f%u", f); } } /* the miss path takes the hit state: marker of the expected-diff gate */
 static unsigned t1_fr = ~0u; /* T1FIX: the bind took the tile of the snap before: marker of the expected-diff gate */
 static __attribute__((cold, noinline)) void t1fix_note(const uint32_t* pw) {
     const uint32_t* const mw = nd_msnap_w();
     if (!plan_active || !cur_plan.uses_tex1 || nd_cw_t1only(pw[MSW_CW0], pw[MSW_CW1]) == nd_cw_t1only(mw[MSW_CW0], mw[MSW_CW1])) return;
+    if (!pm_drec_now()) return;
     const unsigned f = pm_frame_count(); if (f != t1_fr) { t1_fr = f; pm_log_evt("t1fix f%u", f); }
 }
 static __attribute__((noinline)) void rec_apply(const NdW2* q, int mdone, const NdMEnt* e) {
