@@ -650,6 +650,7 @@ static __attribute__((cold, noinline)) void gst_draw(u32* cb, u32 end) { /* DO0:
     for (unsigned k = 0; k < 3u; k++) h = gst_mix(h, gst_lut[k]);
     fprintf(gst_fp, "d %u h %08x\n", drec_seq, h);
 }
+typedef struct { int gx0, gx1, top, bot; unsigned n, out; int lo, hi; } ClipG; static ClipG clipg[8]; static unsigned clipg_n, clipg_over; /* WCLIP0 */
 static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, from pm_gpu_begin_w */
     if (drec_win == -2) {
         char v[24]; drec_win = -1;
@@ -666,6 +667,7 @@ static __attribute__((cold, noinline)) void drec_begin(void) { /* per frame, fro
     drec_vb = (char*)malloc(1u << 20); drec_regs = (NdDrecReg*)malloc(DREC_REGS * sizeof(NdDrecReg));
     if (!drec_f || !drec_vb || !drec_regs) { pm_log_e("drec: no file or memory"); if (drec_f) fclose(drec_f); free(drec_vb); free(drec_regs); drec_f = NULL; drec_vb = NULL; drec_regs = NULL; drec_on = 0; drec_win = -1; return; }
     setvbuf(drec_f, drec_vb, _IOFBF, 1u << 20);
+    pm_log_evt("drecsc f%u", pm_frame_count()); /* WCLIP0 */
     gst_fp = fopen("sdmc:/3ds/PaperMario/shots/gst.txt", "wb"); gst_vb = (char*)malloc(64u << 10); /* DO0 */
     if (gst_fp && gst_vb) setvbuf(gst_fp, gst_vb, _IOFBF, 64u << 10); else { if (gst_fp) fclose(gst_fp); gst_fp = NULL; free(gst_vb); gst_vb = NULL; }
     gst_cb = NULL; gst_off = gst_fvec = gst_fcomp = 0; gst_fn = 4u; memset(gst_r, 0, sizeof gst_r); memset(gst_f, 0, sizeof gst_f); memset(gst_lut, 0, sizeof gst_lut);
@@ -685,6 +687,9 @@ static __attribute__((cold, noinline)) void drec_end(void) { /* end of a frame, 
     { extern unsigned nd_epk_n, nd_epk_bad, nd_epk_mk; pm_log_evt("epchk f%u units %u bad %u marks %u", pm_frame_count(), nd_epk_n, nd_epk_bad, nd_epk_mk); } /* NAT4A; NAT4B */ /* NAT6F */
     { extern unsigned nd_c0fb_n[8]; pm_log_evt("c0fb f%u hud %u cplx %u glyph %u tsten %u spr %u fill %u trect %u", pm_frame_count(), nd_c0fb_n[1], nd_c0fb_n[2], nd_c0fb_n[3], nd_c0fb_n[4], nd_c0fb_n[5], nd_c0fb_n[6], nd_c0fb_n[7]); } /* NAT5D */
     { extern void nd_mmemo_log(void); nd_mmemo_log(); } /* DO1 */
+    pm_log_evt("clipc f%u groups %u over %u", pm_frame_count(), clipg_n, clipg_over); /* WCLIP0 */
+    for (unsigned q = 0; q < clipg_n; q++) pm_log_evt("clipg f%u g %d %d c %d %d n %u out %u bb %d %d", pm_frame_count(), clipg[q].gx0, clipg[q].gx1, clipg[q].top, clipg[q].bot, clipg[q].n, clipg[q].out, clipg[q].out ? clipg[q].lo : 0, clipg[q].out ? clipg[q].hi : 0);
+    clipg_n = clipg_over = 0;
     pm_log_evt("drec f%u draws %u bytes %ld%s", pm_frame_count(), drec_seq, bytes, drec_over ? " over" : "");
     { extern unsigned nd_altw[8]; pm_log_evt("altw f%u c1 m %u e %u c %u o %u c0 all %u m %u e %u gd %u gw %u bd %u bw %u d %u", pm_frame_count(), nd_altw[0], nd_altw[1], nd_altw[2], nd_altw[3], nd_altw[4], nd_altw[5], nd_altw[6], sc_gd[0], sc_gw[0], sc_gd[1], sc_gw[1], nd_altw[7]); } /* PERF0 */
     { extern unsigned nd_entn[64], nd_entw[64]; char eb[512]; int n = snprintf(eb, sizeof eb, "entw f%u", pm_frame_count()); /* ALT2C: entity copy runs and words by reason */
@@ -696,6 +701,7 @@ static const uint8_t* drec_p2v(uint32_t phys, uint32_t dl) { /* the inverse of o
     if (phys >= 0x18000000u && phys < 0x18600000u) return (const uint8_t*)(uintptr_t)(phys + 0x07000000u);
     return (const uint8_t*)(uintptr_t)(phys - dl);
 }
+static void drec_sc_put(NdDrecReg* r, unsigned* n, const NdDraw* d, const uint8_t* vb, const uint16_t* ix); /* WCLIP0 */
 static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat) {
     if (!drec_f) return;
     NdDrecReg* r = drec_regs; unsigned n = 0;
@@ -751,6 +757,7 @@ static __attribute__((cold, noinline)) void drec_draw(const NdDraw* d, int stat)
         rec.vtx.p = vb + 16u * lo; rec.vtx.n = 16u * (hi - lo + 1u);
         rec.idx.p = drec_idx; rec.idx.n = d->nidx * 2u;
     } else drec_over = 1;
+    drec_sc_put(r, &n, d, vb, ix); rec.nregs = n; /* WCLIP0 */
     nd_drec_write(drec_f, &rec);
 }
 /* S0-6: prof counters. pfd_add runs at each frame end (cen_frame_end), before pm_dc_c is cleared: draws, TEV rebuilds, texture binds and
@@ -824,6 +831,23 @@ static void sh_clear(void) { nd_leave_native(); sh.has = 0; pm_tex_bind_reset();
 static void sh_scissor(GPU_SCISSORMODE m, u32 l, u32 t, u32 r, u32 b) {
     if ((sh.has & SH_SC) && sh.sc[0] == (unsigned)m && sh.sc[1] == l && sh.sc[2] == t && sh.sc[3] == r && sh.sc[4] == b) return;
     sh.sc[0] = m; sh.sc[1] = l; sh.sc[2] = t; sh.sc[3] = r; sh.sc[4] = b; sh.has |= SH_SC; pm_dc_c[DC_SHM]++; C3D_SetScissor(m, l, t, r, b);
+}
+static void drec_sc_put(NdDrecReg* r, unsigned* n, const NdDraw* d, const uint8_t* vb, const uint16_t* ix) { /* WCLIP0: scissor regs and the clip census */
+    if (*n + 3u < DREC_REGS) { r[*n].reg = 0x065; r[*n].mask = 0xF; r[(*n)++].val = sh.sc[0];
+        r[*n].reg = 0x066; r[*n].mask = 0xF; r[(*n)++].val = sh.sc[1] | sh.sc[2] << 16; r[*n].reg = 0x067; r[*n].mask = 0xF; r[(*n)++].val = sh.sc[3] | sh.sc[4] << 16; }
+    if (gs.off_active || d->no_uni || !d->npal || !d->nidx || !ix) return;
+    const C3D_Mtx* P = &projection; int j = fabsf(P->r[0].x) > fabsf(P->r[1].x) ? 0 : 1; /* the clip row that screen x moves */
+    const float a = P->r[j].w, b = P->r[j].x * 400.f + P->r[j].w; if (P->r[j].y != 0.f || b == a) return;
+    const int top = 400 - (int)sh.sc[4], bot = 400 - (int)sh.sc[2], v0 = (pm_wide || pm_stretch) ? 0 : 40, v1 = (pm_wide || pm_stretch) ? 400 : 360;
+    float lo = 1e9f, hi = -1e9f; for (unsigned i = 0; i < d->nidx; i++) { const short* p = (const short*)(const void*)(vb + 16u * ix[i]); const unsigned k = (unsigned short)p[3];
+        if (k >= d->npal) continue; const C3D_Mtx* M = (const C3D_Mtx*)(const void*)d->pal[k];
+        const float w = M->r[3].x * p[0] + M->r[3].y * p[1] + M->r[3].z * p[2] + M->r[3].w; if (!(w > 0.f)) continue;
+        const float c = (M->r[j].x * p[0] + M->r[j].y * p[1] + M->r[j].z * p[2] + M->r[j].w) / w, sx = (c - a) * 400.f / (b - a);
+        if (sx < lo) lo = sx; if (sx > hi) hi = sx; }
+    if (lo < (float)v0) lo = (float)v0; if (hi > (float)v1) hi = (float)v1;
+    unsigned g = 0; while (g < clipg_n && !(clipg[g].gx0 == gsci_r[0] && clipg[g].gx1 == gsci_r[2] && clipg[g].top == top && clipg[g].bot == bot)) g++;
+    if (g == clipg_n) { if (g == 8u) { clipg_over++; return; } clipg[g] = (ClipG){ gsci_r[0], gsci_r[2], top, bot, 0, 0, 9999, -9999 }; clipg_n++; }
+    clipg[g].n++; if (hi > lo && (lo < (float)top - 0.5f || hi > (float)bot + 0.5f)) { clipg[g].out++; if ((int)lo < clipg[g].lo) clipg[g].lo = (int)lo; if ((int)hi > clipg[g].hi) clipg[g].hi = (int)hi; }
 }
 static void sh_user_clip(int on) {
     if ((sh.has & SH_UC) && sh.uc == on) return;
@@ -1878,7 +1902,7 @@ static void pm_gpu_init_w(void) {
     jt_on = pm_debug_has("jumptest");
     mfr_init();
     pm_wide = pm_wide_cfg = (pm_debug_has("wide") || pm_opt.wide == 1) && !pm_debug_has("nowide"); /* nowide: 4:3 layout with wide set in options.ini */
-    pm_stretch_cfg = pm_opt.wide == 2; pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
+    pm_stretch_cfg = pm_opt.wide == 2 || pm_debug_has("fullscr"); pm_stretch = pm_stretch_cfg && !pm_wide; /* MENUGEN: Fullscreen = pm_wide 0 and stretch 1 */
     pm_log("gpu: wide=%d stretch=%d", pm_wide, pm_stretch);
     gfxInitDefault();
     gspSetEventCallback(GSPGPU_EVENT_VBlank0, gsp_adopt, NULL, true); /* LIBTHR: one shot, on the GSP event thread */
