@@ -74,3 +74,23 @@ No capture has walking or spin data (all at mac_01 0 0 200, player standing).
   and no wait is the same result with less code. DRAINC names the other drain callers; each one gets its own narrow row from its own stamp or none.
 - Race checks (det benches run serial and show no race): ROMDR counts romrace (a raster loaded after the walked frame); SLOTL counts slotl race (a lerp during
   an L walk). Both print in prof windows and must stay 0 in the console capture.
+
+## 6. Addendum: play capture 2 and every nuPiReadRom caller (FACT build3ds/out/live_play2_170.txt, main a05f62c545)
+- Step time by state: idle 37.45 ms (68 percent slow), walk or run 44.10 (88 percent), spin 36.34 (56 percent). Drains per step: 0.98 walking, 0.02 idle;
+  drw = dr. drainc: spr_get_player_raster+0x12c in 286 of 290 steps; dma_copy 1 per window. c0i idle 5 to 9 ms walking against 1.0 at idle (all FACT).
+- Reading: the walk penalty (+6.65 ms per step against idle, FACT arithmetic) is about the c0i idle rise (4 to 8 ms, FACT): the drain is the walking cost.
+  It is not larger than walking in mac_01: the other callers drain once per window. Idle slowness (68 percent slow at 0.02 drains) has another cause: the
+  stepx slow fields of the idle windows decide.
+| caller | file:line | when (GUESS from the code) | can queued walker work read the destination | form |
+|---|---|---|---|---|
+| player raster | src/101b90_len_8f0.c:362 | each new raster: about 1 per walking step (FACT) | no: a free entry (lazyDeleteTime 0) | ROMDR (first row) |
+| HUD and item icon raster, palette | src/hud_element.c:198, :234; src/item_entity.c:312, :345 | a new icon: menus, pickups, the status bar | no while the cache only grows (append at gHudElementCacheSize, :191-199); yes in the first step after a cache clear reuses the bytes | later row HUDDR (Sonnet): own read when no clear happened since the last frame push |
+| NPC sprite asset | src/101b90_len_8f0.c:179, :201 | NPC spawn, map load | yes: general_heap_malloc (:194) can return a block freed this step that a queued frame still draws | keep the drain |
+| player raster sets and headers | src/101b90_len_8f0.c:267, :296, :319, :323 | sprite set change, map load | header tables only; rare | keep the drain |
+| dma_copy | src/43F0.c:439, :443 | map, battle, overlay and effect loads (1 per window, FACT) | yes: fixed slots and overlays are reused | keep the drain |
+| battle partner | src/battle/190B20.c:1514 | battle start | yes (heap) | keep the drain |
+- One rule inside nuPiReadRom does not replace the per-caller rows: the drain protects the destination, and only the caller knows a free test for it
+  (raster lazyDeleteTime, the icon cache size, nothing for heap blocks). A copy from the resident ROM image (the PAUSEDR form) makes the read faster but
+  does not remove the wait. So each safe caller is one call-site line (nuPiReadRomOwn, as ROMDR) plus its free test: later callers are cheap rows.
+- Order: ROMDR (merge after its coder merges main) -> a play capture (walk bucket ft, dr, c0i idle) -> HUDDR page only if drainc shows hud_element or
+  item_entity callers in a menu or pickup capture.
