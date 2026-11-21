@@ -90,7 +90,7 @@ def main(argv=None):
     if prof and keep is not None:  # a prof run has no log_on line: its boot check is the prof line (judge prof=True)
         bs = bytes([92])  # one backslash byte: the JSON file escapes each one
         scen.write_bytes(keep.replace(b'"regex": "build ' + bs * 2 + b'd+' + bs * 2 + b'S* git"',
-                                      b'"regex": "prof f' + bs * 2 + b'd+ w' + bs * 2 + b'd+"', 1))
+                                      b'"regex": ' + json.dumps(a.prof_line).encode(), 1))  # MTX0: --prof-line, json.dumps doubles the backslashes
     before = last_run("capchk", a.row)
     env = dict(os.environ, PM_DEBUG_ADD=words, PM_OPT_WORST="1", PM_ROW=a.row)
     rc = subprocess.run([sys.executable, "3ds/tools/bench.py", "run", "capchk", "--row", a.row, "--why", "capture check: " + words],
