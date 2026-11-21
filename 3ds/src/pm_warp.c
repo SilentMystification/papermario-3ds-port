@@ -1784,7 +1784,24 @@ static void encwarp_tick(unsigned f) {
     }
 }
 
+/* SPM0: spmove=<i>[:<i>:<i>] runs StarPowersTable[i] at the next player menus. States: 0 wait battle, 1 wait menu, 2 move, 3 and 4 post windows, 9 off. */
+void pm_spm_cen(unsigned k, unsigned f, int bs, int take); extern int pm_cnt_on; void pm_log_prof_line(const char* fmt, ...);
+static void spmove_tick(unsigned f) { static int st = -1, n, q[3], qi; static unsigned k, f0; char v[16]; const int bs = gBattleState;
+    if (st < 0) { st = 9; if (pm_debug_value("spmove", v, sizeof v) && (n = sscanf(v, "%d:%d:%d", &q[0], &q[1], &q[2])) > 0) { st = 0; pm_cnt_on = 1; } }
+    if (st == 9) return;
+    if (st == 0) { if (get_game_mode() == GAME_MODE_BATTLE) { pm_spm_cen(0, f, bs, 1); st = 1; } return; }
+    if (st == 1) { if (gBattleState != BATTLE_STATE_PLAYER_MENU || gBattleSubState != BTL_SUBSTATE_INIT) return;
+        const int i = q[qi]; if (i < 0 || i > 9) { pm_log_prof_line("spmove: bad index %d", i); st = 9; return; }
+        gPlayerData.maxStarPower = 7; gPlayerData.starPower = 7 * SP_PER_BAR; gBattleStatus.moveCategory = BTL_MENU_TYPE_STAR_POWERS; gBattleStatus.selectedMoveID = MOVE_FOCUS + i; gBattleStatus.moveArgument = i;
+        gBattleStatus.curTargetListFlags = gMoveTable[MOVE_FOCUS + i].flags; create_current_pos_target_list(gBattleStatus.playerActor); btl_set_state(BATTLE_STATE_PLAYER_MOVE);
+        pm_spm_cen(k++, f, bs, 0); pm_log_prof_line("spmove: start %d f%u", i, f); st = 2; f0 = f; return; }
+    if (st == 2) { if (gBattleState != BATTLE_STATE_PLAYER_MOVE) { pm_spm_cen(k++, f, bs, 0); st = 3; f0 = f; } else if (f - f0 >= 30u) { pm_spm_cen(k++, f, bs, 0); f0 = f; } return; }
+    if (f - f0 < 30u) return;
+    pm_spm_cen(k++, f, bs, 0); f0 = f; if (++st < 5) return;
+    pm_log_prof_line("spmove: end %d f%u", q[qi], f); if (++qi < n) { st = 1; return; }
+    pm_log_prof_line("spmove: done f%u", f); st = 9; }
 static void battle_hooks(unsigned f) {
+    spmove_tick(f); /* SPM0 */
     encwarp_tick(f);
     char v[96], vf[16];
     unsigned at = 100;
