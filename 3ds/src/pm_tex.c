@@ -12,6 +12,7 @@
 #include "pm_texbake.h"
 #include "pm_port.h"
 #include "pm_tex_idx.h"
+void pm_pipe_note(unsigned k); /* pm_gpu.c PIPE0 */
 void pm_gpu_rect_sync(void); /* pm_gpu.c */
 static C3D_Tex tex_dummy; static int tex_dummy_ok; /* GPUHANG1: 8 x 8 zero texture for units 1 and 2 (C3D_TexBind(1, NULL) faults) */
 static const C3D_Tex* c3d_unit[3]; /* GPUHANG1: the texture citro3d holds per unit */
@@ -339,6 +340,7 @@ static int cell_get(const GlyphSheet* g, int idx, const void* tlut, int tlut_n) 
         if (cell_key[c] == key && cell_ph[c] == ph) { cell_fr[c] = tc_frame; return c; }
     if (cell_used < CELL_N) c = (int)cell_used++;
     else if ((c = cell_evict()) < 0) return -1;
+    pm_pipe_note(2u); /* PIPE0: a glyph cell is filled */
     cell_key[c] = (unsigned short)key; cell_ph[c] = ph; cell_fr[c] = tc_frame;
     cell_next[c] = cell_head[h]; cell_head[h] = (short)(c + 1);
     cell_write(c, g, idx, (const u8*)tlut, tlut_n);
@@ -1412,6 +1414,7 @@ static void* tm_caller; /* BTLDIM debug: the caller of pm_tex_load (texmiss line
 static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, unsigned siz, int width, int height,
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                       unsigned dkey, unsigned phash, unsigned lk) {
+    pm_pipe_note(2u); /* PIPE0: PP_TEX */
     src_native = pm_fb_native(img);
     PH_PUSH(PH_TEX);
     PH_ADD(C_TEXMISS, 1);
