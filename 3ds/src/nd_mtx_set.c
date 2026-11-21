@@ -41,6 +41,7 @@ extern int pm_interp_repl;
 int nd_tw_chk; /* switch twinchk, read at each frame start */
 void nd_twinchk_mvp(const float* m, const void* ra);
 extern int pm_tw_on; /* pm_nusys.c: 1 for the whole walk of an L frame (its background and main tasks): the twins are made, K = L where nothing is replaced */
+extern unsigned long long pm_ik[10]; /* IK0 */
 float combined_k[4][4];
 float (*gm_tab_k)[4][4];
 float (*gm_nrm_k)[3][4];
@@ -135,6 +136,7 @@ void nd_xf_load(u32 w0, u32 w1, u32 hdr) {
     float in[4][4];
     if (pm_frame_count() == 200 && pm_gbi_ndref_frame() == 200) mtx_dbg(src, hdr); /* M4-2 diag */
     int lm = nd_mtx_replace(src, in); /* F06-2, S1-5: the interpolated matrix of the t = 0.5 pass */
+    if (pm_tw_on) pm_ik[lm ? 7 : 8]++; /* IK0 */
     unsigned slot = hdr & 0xffu;
     int cached = slot != 0 && (hdr & 0x100u) != 0 && !lm; /* a static model matrix: the header says src is that model's savedMtx */
     u32 tag = 0x10000u | (hdr >> 16);

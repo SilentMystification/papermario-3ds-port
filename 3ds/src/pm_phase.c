@@ -753,6 +753,18 @@ static void pf_report(void) {
               const unsigned gl = d_[4] ? (unsigned)(d_[2] / 10ull / d_[4]) : 0u, gk = d_[5] ? (unsigned)(d_[3] / 10ull / d_[5]) : 0u; /* us to ms x 100 */
               pm_log_prof_line("prof f%u w%u c0k kpace %u.%02u kgx %u.%02u gpul %u.%02u gpuk %u.%02u nk %u nb %u", pf_total, pf_w, kp / 100u, kp % 100u,
                   kg / 100u, kg % 100u, gl / 100u, gl % 100u, gk / 100u, gk % 100u, (unsigned)d_[4], (unsigned)d_[5]); } /* CPT0 */
+            { extern unsigned long long pm_ik[10], pm_ik_lt; extern void pm_interp_ik(unsigned o[5]); /* IK0 */
+              static unsigned long long m_[10], ml_; static unsigned mi_[5]; unsigned long long d_[10]; unsigned o_[5], e_[5];
+              for (int k = 0; k < 10; k++) { d_[k] = pm_ik[k] - m_[k]; m_[k] = pm_ik[k]; }
+              pm_interp_ik(o_); for (int k = 0; k < 5; k++) { e_[k] = o_[k] - mi_[k]; mi_[k] = o_[k]; }
+              const unsigned long long lt_ = pm_ik_lt - ml_; ml_ = pm_ik_lt;
+              const unsigned w_ = pf_w ? pf_w : 1u, cp_ = (unsigned)d_[4], np_ = cp_ ? (unsigned)(d_[1] / cp_) : 0u, mx_ = (unsigned)pm_ik[2];
+              const unsigned kb_ = (unsigned)(d_[0] * 100ull / PF_TPM / w_), ks_ = (unsigned)(d_[5] * 100ull / PF_TPM / w_), lr_ = (unsigned)(lt_ * 100ull / PF_TPM / w_);
+              pm_ik[2] = 0; m_[2] = 0;
+              pm_log_prof_line("prof f%u w%u kcost kb %u.%02u ks %u.%02u np %u npmax %u pd %u eq %u cp %u tw %u %u", pf_total, pf_w, kb_ / 100u, kb_ % 100u,
+                  ks_ / 100u, ks_ % 100u, np_, mx_, (unsigned)(d_[6] / w_), (unsigned)d_[3], cp_, (unsigned)(d_[7] / w_), (unsigned)(d_[8] / w_));
+              pm_log_prof_line("prof f%u w%u kcost1 lrp %u.%02u lv %u pr %u st %u rn %u rl %u fm %d", pf_total, pf_w, lr_ / 100u, lr_ % 100u,
+                  e_[0] / w_, e_[1] / w_, e_[2] / w_, e_[3] / w_, e_[4] / w_, pm_opt.fps60); } /* IK0 */
             if (pf_rot) pm_log_prof_line("prof f%u w%u pmx1 set %c c1_%s %u c1_%s %u c1_cyc %u", pf_total, pf_w, pf_sets[pf_si].c,
                 pf_sets[pf_si].n0, ic1, pf_sets[pf_si].n1, dc1, cy1); /* PMUROT */
             /* C1WAIT: ms per logic step of the waits inside lgms (LF_MAX_ARGS is 16 words: a second line). bw = the logic thread's wait for
