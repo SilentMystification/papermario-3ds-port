@@ -54,6 +54,7 @@ void nd_ds_scomp(NdDs* s, const uint32_t* du, unsigned n, uint32_t vmask, const 
 void nd_ds_lg_reset(void);
 void nd_ds_lg_open(void);
 void nd_ds_lg_close(void);
+int nd_ds_lg_on(void); /* POND1 */
 void nd_ds_mark(const uint32_t* pos);
 void nd_ds_sub_save(void);
 void nd_ds_sub_restore(void);

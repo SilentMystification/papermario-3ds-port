@@ -329,6 +329,7 @@ static void lg_put(uint32_t k, uint32_t v) {
 void nd_ds_lg_reset(void) { lg_n = lg_dep = lg_nmk = sv_n = 0; }
 void nd_ds_lg_open(void) { lg_dep++; }
 void nd_ds_lg_close(void) { if (lg_dep) lg_dep--; }
+int nd_ds_lg_on(void) { return lg_dep != 0u; } /* POND1: a range of the unit log is open (nd_rec_model takes no memo hit) */
 void nd_ds_mark(const uint32_t* pos) {
     if (lg_nmk < 1024u) { lg_mk[lg_nmk].pos = pos; lg_mk[lg_nmk++].i = lg_n; }
     else nd_ds_lg_over++;
