@@ -13,7 +13,7 @@
 void pm_log_prof_line(const char* fmt, ...); /* pm_log.c */
 
 #define NF __attribute__((no_instrument_function))
-#define FP_N 512u /* slots of a half, a power of two */
+#define FP_N 2048u /* slots of a half, a power of two (PROF4B: 2048, a full half drops counts) */
 #define FP_TPM 268112ull /* ticks per ms */
 #define FP_TOP 30u
 typedef struct { unsigned addr, n; unsigned long long cyc; } FpEnt;
@@ -27,7 +27,7 @@ typedef struct {
 } FpSt;
 static FpSt fp_st[2];
 static unsigned fp_gen, fp_dmax = 4u, fp_hook_t, fp_pair_t, fp_cal_pend;
-static unsigned fp_cnt, fp_live, fp_arm, fp_end, fp_frame; /* PROF4B: fprofn=<arm>:<end>, counts only while fp_live (arm..end) */
+static unsigned fp_cnt, fp_win, fp_live, fp_arm, fp_end, fp_frame; /* PROF4B: fprofn=<arm>:<end>, counts only while fp_live (arm..end) */
 static unsigned fp_last_total, fp_last_steps;
 static FpEnt fp_sink;
 
@@ -42,7 +42,7 @@ static FpSt* fp_me(void) {
 static FpEnt* fp_slot(FpSt* s, unsigned a) NF;
 static FpEnt* fp_slot(FpSt* s, unsigned a) {
     FpHalf* h = &s->h[s->cur];
-    unsigned i = (a * 2654435761u) >> 23; /* the top 9 bits of the multiplicative hash */
+    unsigned i = (a * 2654435761u) >> 21; /* the top 11 bits of the multiplicative hash */
     for (unsigned k = 0; k < FP_N; k++) {
         FpEnt* e = &h->e[(i + k) & (FP_N - 1u)];
         if (e->addr == a) return e;
@@ -72,6 +72,7 @@ void __cyg_profile_func_enter(void* fn, void* cs) {
         s->d++;
         return;
     }
+    if (fp_win && !fp_live) { s->d++; return; } /* PROF4B: fprofw, timed only between the arm and end frames */
     s->h[s->cur].calls++;
     if (s->d++ >= fp_dmax) return; /* deeper calls: their time stays with the timed caller */
     const unsigned t = (unsigned)svcGetSystemTick();
@@ -86,6 +87,7 @@ void __cyg_profile_func_exit(void* fn, void* cs) {
     (void)fn; (void)cs;
     if (!s || !s->d) return;
     if (fp_cnt) { s->d--; return; } /* PROF4B: counts only */
+    if (fp_win && !fp_live) { s->d--; return; }
     if (--s->d >= fp_dmax) return;
     const unsigned t = (unsigned)svcGetSystemTick();
     if (!s->sp) return;
@@ -123,6 +125,12 @@ void pm_fprof_thread(int k) {
     fp_clear(s, 0);
     fp_clear(s, 1);
     fp_cnt = pm_debug_value("fprofn", v, sizeof v) ? 1u : 0u; /* PROF4B: fprofn=<arm>:<end>, after the calibration (it runs the timed path) */
+    if (pm_debug_value("fprofw", v, sizeof v)) { /* PROF4B: timed frame window fprofw=<arm>:<end> */
+        const char* c = strchr(v, ':');
+        fp_win = 1u;
+        fp_arm = (unsigned)atoi(v);
+        fp_end = c ? (unsigned)atoi(c + 1) : fp_arm + 80u;
+    }
     if (fp_cnt) {
         const char* c = strchr(v, ':');
         fp_arm = (unsigned)atoi(v);
@@ -141,12 +149,13 @@ static void fp_print(unsigned f, unsigned core, unsigned steps) {
     for (unsigned k = 0; k < 2u; k++) {
         if (!s->done[k] || k == s->cur) continue;
         FpHalf* h = &s->h[k];
+        if (!h->calls) { fp_clear(s, k); continue; } /* PROF4B: a half before the arm has no calls */
         if (fp_cnt) { /* PROF4B: the span of the half is its frames (f1 - f0); a half with no calls (before the arm) is skipped */
             if (!h->calls) { fp_clear(s, k); continue; }
             unsigned span = h->f1 > h->f0 ? h->f1 - h->f0 : 1u;
             for (unsigned i = 0; i < FP_N; i++) {
                 const FpEnt* e = &h->e[i];
-                if (e->addr && e->n >= span) pm_log_prof_line("fprofn f%u c%u %08x n %u dsum %u", f, core, e->addr, e->n, (unsigned)e->cyc);
+                if (e->addr && e->n >= 1u) pm_log_prof_line("fprofn f%u c%u %08x n %u dsum %u", f, core, e->addr, e->n, (unsigned)e->cyc);
             }
             pm_log_prof_line("fprofn f%u c%u steps %u calls %u d %u %u %u %u %u %u %u %u %u", f, core, span, h->calls,
                 h->dn[0], h->dn[1], h->dn[2], h->dn[3], h->dn[4], h->dn[5], h->dn[6], h->dn[7], h->dn[8]);
@@ -165,7 +174,7 @@ static void fp_print(unsigned f, unsigned core, unsigned steps) {
             while (p > 0u && top[p - 1u].c < e->cyc) { top[p] = top[p - 1u]; p--; }
             top[p].a = e->addr; top[p].c = e->cyc; top[p].n = e->n;
         }
-        unsigned st = steps ? steps : 1u;
+        unsigned st = h->f1 > h->f0 ? h->f1 - h->f0 : (steps ? steps : 1u); /* PROF4B: the frames of the half when set */
         for (unsigned r = 0; r < nt; r++) {
             unsigned ms100 = (unsigned)(top[r].c * 100ull / ((unsigned long long)st * FP_TPM));
             unsigned n10 = (unsigned)((unsigned long long)top[r].n * 10ull / st);
@@ -186,9 +195,12 @@ void pm_fprof_window(unsigned total, unsigned steps) NF;
 /* PROF4B: called by pm_phase.c each frame (game thread): arm swaps both halves on, end prints core 0, end + 10 prints core 1. */
 void pm_fprof_frame(unsigned f) NF;
 void pm_fprof_frame(unsigned f) {
-    if (!fp_cnt) return;
+    if (!fp_cnt && !fp_win) return;
     fp_frame = f;
-    if (f == fp_arm) { fp_live = 1; fp_gen++; fp_swap(&fp_st[0]); }
+    if (f == fp_arm) {
+        if (fp_cal_pend) { fp_cal_pend = 0; pm_log_prof_line("fprof cal hook %u pair %u", fp_hook_t, fp_pair_t); }
+        fp_live = 1; fp_gen++; fp_swap(&fp_st[0]);
+    }
     else if (f == fp_end) { fp_gen++; fp_swap(&fp_st[0]); fp_print(f, 0u, 0u); }
     else if (f == fp_end + 10u) { fp_print(fp_end, 1u, 0u); fp_live = 0; }
 }
