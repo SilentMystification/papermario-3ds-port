@@ -358,6 +358,7 @@ IMG_PTR spr_get_player_raster(s32 rasterIndex, s32 playerSpriteID) {
     // each player raster load descriptor has image size (in bytes) and relative offset packed into one word
     // upper three nibbles give size / 16, lower 5 give offset
     playerRasterInfo = PlayerRasterLoadDesc[PlayerRasterLoadDescBeginSpriteIndex[playerSpriteID] + rasterIndex];
+    { extern unsigned pm_rom_spr_n; pm_rom_spr_n++; } /* STEPX */
     nuPiReadRom(SpriteDataHeader[0] + (playerRasterInfo & 0xFFFFF), cacheEntry->raster, (playerRasterInfo >> 0x10) & 0xFFF0);
     return cacheEntry->raster;
 }

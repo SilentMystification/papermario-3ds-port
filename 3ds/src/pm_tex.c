@@ -13,6 +13,7 @@
 #include "pm_port.h"
 #include "pm_tex_idx.h"
 void pm_pipe_note(unsigned k); /* pm_gpu.c PIPE0 */
+unsigned pm_tex_miss_n; /* STEPX */
 void pm_gpu_rect_sync(void); /* pm_gpu.c */
 static C3D_Tex tex_dummy; static int tex_dummy_ok; /* GPUHANG1: 8 x 8 zero texture for units 1 and 2 (C3D_TexBind(1, NULL) faults) */
 static const C3D_Tex* c3d_unit[3]; /* GPUHANG1: the texture citro3d holds per unit */
@@ -1415,6 +1416,7 @@ static __attribute__((noinline)) int load_miss(const void* img, unsigned fmt, un
                       const void* tlut, int tlut_n, int stride, const unsigned* lut, int dx4, int dy4,
                       unsigned dkey, unsigned phash, unsigned lk) {
     pm_pipe_note(2u); /* PIPE0: PP_TEX */
+    pm_tex_miss_n++; /* STEPX */
     src_native = pm_fb_native(img);
     PH_PUSH(PH_TEX);
     PH_ADD(C_TEXMISS, 1);

@@ -181,7 +181,9 @@ static __attribute__((cold, noinline)) void mkchk_note(const NdMKey* k, const Nd
 void pm_km_note(const uint32_t* rec, const NdMKey* k, int cls); /* KEYMISS census (pm_keymiss.c, switch keymiss) */
 /* HC6 step 3: everything of a record but the hit: the miss (the full key, the diagnostics, rec_apply, the native draw or the walker geometry), the
  * warm budget skip, a failed hit (tried: the matrix ran and pm_gpu_model_hit said no) and the debug switches that need the full key (full0). */
+unsigned pm_mdl_miss_n; /* STEPX */
 static __attribute__((cold, noinline)) unsigned rec_miss(const NdW2* q, NdMKey* mkp, NdMEnt* mce, int full0, int tried, unsigned mi0) {
+    if (tried || !mce) pm_mdl_miss_n++; /* STEPX: no cache entry, or a failed hit */
     int cached = mce != NULL;
     int full = full0;
     if (!cached && !full) { const uint32_t h_ = mkp->h; pm_gpu_model_key((const uint32_t*)q, mkp); mkp->h = h_; full = 1; } /* HC6 step 2: the miss path reads the full key */
