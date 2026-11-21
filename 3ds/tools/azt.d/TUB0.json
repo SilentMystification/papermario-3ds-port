@@ -1,0 +1,28 @@
+{
+  "scenarios": [
+    {
+      "name": "subcol_drec",
+      "status": "unverified",
+      "subject": "TUB0 sub-range census: the 8 sub effects of plan_tubba.md section 2 (shockwave 32, green_impact 44, red_impact 98, hieroglyphs 106, stop_watch 92, thunderbolt_ring 82, whirlwind 97, firework 61) and the control shimmer_burst 50 on mac_01 (pos 0 0 200), cold det start with the drec switch (frames 400 to 764, step 44), no shots.",
+      "proves": "TUB0: the draw record of the sub effects is unchanged (census only), and the subst lines show the end state of nd_sub_call against nd_sub_close.",
+      "debug": "warp=mac_01:0 pos=0:0:200 fxtest=32,44,98,106,92,82,97,61,50 loglevel=debug det drec=412:9:44",
+      "until": "drec f764 draws [1-9]\\d* bytes \\d+",
+      "cap": 30,
+      "deadline": 27,
+      "first_marker": "warp: mac_01 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "warp",
+          "regex": "warp: mac_01 entry 0"
+        },
+        {
+          "name": "drec",
+          "regex": "drec f764 draws [1-9]\\d* bytes \\d+"
+        }
+      ],
+      "reason": "TUB0: copy of NREC4 fxparts_drec with the sub effect list. Cap 30 s, deadline 27 s, until the drec line of frame 764 (the shimmer_burst control slot)."
+    }
+  ]
+}
