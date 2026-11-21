@@ -220,9 +220,11 @@ int main(int argc, char** argv) {
         nd_ds_lg_reset();
         nd_ds_mark(&mA);
         nd_ds_lg_open();
+        C5("lg_on open", nd_ds_lg_on(), 1);
         nd_ds_apply(&nd_ds, ND_FS_W0(ND_FS_PRIM, 5), 0xAAAAu);
         nd_ds_mark(&mB);
         nd_ds_lg_close();
+        C5("lg_on closed", nd_ds_lg_on(), 0);
         nd_ds_apply(&nd_ds, ND_FS_W0(ND_FS_PRIM, 9), 0xBBBBu);
         if (fault) nd_ds_range(&nd_ds, &mB, &mA);
         else nd_ds_range(&nd_ds, &mA, &mB);

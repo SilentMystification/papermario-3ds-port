@@ -353,7 +353,7 @@ void nd_rec_model(const void* rec, unsigned words) {
     const uint32_t* r = (const uint32_t*)rec; unsigned keep = 0;
     for (unsigned k = G_PM_REC_WORDS; k < words; k++) if (!IS_NOP(r[2 * k])) keep++; /* R13NOP: a typed sync is not an R13 op */
     rec_open(); uint32_t* p = rec_take(2u + 2u * (G_PM_REC_WORDS + keep) + 2u + 2u * ND_MSNAP_U); /* NREC1B: room for the jump and the model snap */ ndc_n[NDC_MODEL]++;
-    const int mmc = !r[22] && !r[23]; MmEnt* me = NULL; unsigned mh = 0; /* DO1: a record with a custom gfx range has no memo */
+    const int mmc = !r[22] && !r[23] && !nd_ds_lg_on(); MmEnt* me = NULL; unsigned mh = 0; /* DO1: a record with a custom gfx range has no memo; POND1: nor a record inside an open unit log (a hit writes nd_ds with no lg_put, so nd_ds_range misses its units) */
     if (mmc) {
         me = mm_find(r, words, keep, &mh);
         if (me && mh && !(pm_drec_now() || (mm_hits & 63u) == 0u)) { /* a hit: the copy; the census (drec frames and 1 hit in 64) runs the full path and compares */
