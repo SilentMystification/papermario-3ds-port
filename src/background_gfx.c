@@ -13,6 +13,7 @@
 extern s32 gPauseBackgroundFade;
 extern int pm_wide; /* F07-4 */
 extern int pm_wout; /* FSUI1: pm_gpu.c */
+extern int pm_stretch; /* FSUI3: pm_gpu.c */
 extern s32 pm_wide_cam(Camera* c);
 
 Vp D_80074200 = {
@@ -387,6 +388,7 @@ void gfx_draw_background(void) {
             nd_val_fill(PACK_FILL_DEPTH(G_MAXFBZ, 0));
             nd_rect_fill(0, 0, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
             nd_target_end();
+            if (pm_stretch) nd_mark(G_PM_ND_SCENE2D, 1); /* FSUI3: the scene background at 1.25 x in Fullscreen */
             nd_val_fill(PACK_FILL_COLOR(camera->bgColor[0], camera->bgColor[1], camera->bgColor[2], 1));
 
             backgroundMinX = gGameStatusPtr->backgroundMinX;
@@ -477,6 +479,7 @@ void gfx_draw_background(void) {
             if (backgroundMaxY < SCREEN_HEIGHT) {
                 nd_rect_fill(0, backgroundMaxY, SCREEN_WIDTH - 1, SCREEN_HEIGHT - 1);
             }
+            if (pm_stretch) nd_mark(G_PM_ND_SCENE2D, 0); /* FSUI3 */
             break;
     }
 }

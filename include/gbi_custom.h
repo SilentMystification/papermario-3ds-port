@@ -51,6 +51,9 @@
 /* SHADEIMG: G_PM_ND_SPRSHADE (arg 1 opens, 0 closes) brackets the imgfx draw of a shaded sprite (sprite.c spr_appendGfx_component). The walker
  * multiplies the KZN04 shade colour inside the bracket (nd_geom.c gv_params_calc, nd_spr_walk). */
 #define G_PM_ND_SPRSHADE 4
+/* FSUI3: G_PM_ND_SCENE2D (arg 1 opens, 0 closes) brackets the scene background of gfx_draw_background in Fullscreen. Inside, the walker places
+ * rectangles and fills at 1.25 x like the 3D picture (pm_gpu_rect.c px, pm_gpu_fill_rect). */
+#define G_PM_ND_SCENE2D 5
 
 /* DIRECT D11a: G_PM_LST, the start of a static state list recorded in line (nd_rec.c rec_inline). The replay runs it as the list start of the
  * G_DL it replaces (nd_walk.c: the state epoch, the entity skip mark consumed). w1 unused. */
