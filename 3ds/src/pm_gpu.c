@@ -16,6 +16,7 @@ void pm_gx_room(void); /* HANG1a */
 #include "nd_sprite.h"
 #include "nd_kccmd.h"
 #include "nd_drec.h"
+#include "nd_sci.h" /* WCLIP1 */
 #include "pm_shader4_shbin.h"
 #include "pm_gpu.h"
 #include "pm_tex.h"
@@ -64,6 +65,7 @@ static float game_mvp[4][4];
 static C3D_Mtx shader_3d;
 /* N64 scissor, y down. The 400-wide target is the 320 game plus 40px bars. */
 static int gsci_x0, gsci_y0, gsci_x1 = 320, gsci_y1 = 240;
+static int gsci_wx0, gsci_wx1 = 320; /* WCLIP1: raw x edges for the wide and Fullscreen rule */
 static int gsci_r[4] = { 0, 0, 320, 240 }; /* NC0S: the raw words of the last scissor unit (before the clamp) */
 static C3D_Mtx projection;
 /* PT07: the RDP NOISE input. A 64 x 64 L8 texture of random bytes (fixed seed) on unit 2. The vertex shader gives it the screen position
@@ -1218,15 +1220,28 @@ static __attribute__((cold, noinline)) void rp_draw(const char* path, int tex) {
           gs.env_col, cconst, r_mixcol, st_tss, st_geo, st_cw0, st_cw1, tw_, th_, plan_gen, gs.combine); }
 }
 
+/* WCLIP1: the old x pair (the rule before nd_sci_x) next to the new one. Cold, drec frames only, at most 4 lines per frame. */
+static __attribute__((cold, noinline)) void wclip_note(int top, int bottom, int ui) {
+    static unsigned wn_fr, wn_n;
+    const unsigned fr = pm_frame_count();
+    const int ot = pm_stretch ? gsci_x0 * 5 / 4 : !pm_wide ? 40 + gsci_x0 : ui ? (gsci_x0 <= 0 ? 0 : 40 + gsci_x0) : gsci_x0 * 5 / 4;
+    const int ob = pm_stretch ? gsci_x1 * 5 / 4 : !pm_wide ? 40 + gsci_x1 : ui ? (gsci_x1 >= 320 ? 400 : 40 + gsci_x1) : gsci_x1 * 5 / 4;
+    if (wn_fr != fr) { wn_fr = fr; wn_n = 0; }
+    if ((ot == top && ob == bottom) || wn_n >= 4u) return;
+    wn_n++;
+    pm_log_evt("wclip f%u g %d %d old %d %d new %d %d", fr, gsci_wx0, gsci_wx1, ot, ob, top, bottom);
+}
+
 /* the scissor of the main target (flush_draw and the native draw): the game scissor in the rotated 240 x 400 buffer */
 static void stage_scissor(void) {
         int left = 240 - gsci_y1;
         int right = 240 - gsci_y0;
         /* F07-3: a 2D or orthographic batch is 1:1 and centered (40 + x). A scissor edge at 0 or 320 reaches the screen edge. A 3D batch scales by 1.25. */
         int ui = pm_wide && (!nb.draw_3d || ui_ortho);
-        /* MENUGEN: Fullscreen (pm_stretch) scales every batch by 1.25 over the full 400 px, like a 3D batch */
-        int top = pm_stretch ? gsci_x0 * 5 / 4 : !pm_wide ? 40 + gsci_x0 : ui ? (gsci_x0 <= 0 ? 0 : 40 + gsci_x0) : gsci_x0 * 5 / 4;
-        int bottom = pm_stretch ? gsci_x1 * 5 / 4 : !pm_wide ? 40 + gsci_x1 : ui ? (gsci_x1 >= 320 ? 400 : 40 + gsci_x1) : gsci_x1 * 5 / 4;
+        /* WCLIP1: one x rule for every mode (nd_sci.c). Native uses the clamped edges; wide and Fullscreen use the raw edges. */
+        const int mode = pm_stretch ? 2 : pm_wide ? 1 : 0; int top, bottom;
+        nd_sci_x(mode ? gsci_wx0 : gsci_x0, gsci_y0, mode ? gsci_wx1 : gsci_x1, gsci_y1, mode, ui, &top, &bottom);
+        if (__builtin_expect(drec_on, 0)) wclip_note(top, bottom, ui); /* marker: the old rule gives other columns */
         const int full = pm_wide || pm_stretch;
         if (left < 0) left = 0;
         if (right > 240) right = 240;
@@ -2925,10 +2940,10 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
     if (!prev_frame) { grab_queue_copy(); if (prev_hold) { prev_hold = 0; hold_rst++; } } /* PT12; PAUSEH: a grab overwrote grab_tex: the next frame copies again */
     pm_gpu_off_begin(cfb, 320, 2, 0);
     {
-        int sc[4] = { gsci_x0, gsci_y0, gsci_x1, gsci_y1 };
+        int sc[6] = { gsci_x0, gsci_y0, gsci_x1, gsci_y1, gsci_wx0, gsci_wx1 };
         int s_comb = gs.combine, s_2d = nb.rect_2d, s_bi = batch_identity, s_rep = r_replace, s_at = gs.r_atest, s_nc = gs.r_nocol, s_mix = gs.r_mix,
             s_rs = rgb_scale, s_3d = nb.draw_3d;
-        gsci_x0 = 0; gsci_y0 = 0; gsci_x1 = x1; gsci_y1 = 240;
+        gsci_x0 = 0; gsci_y0 = 0; gsci_x1 = x1; gsci_y1 = 240; gsci_wx0 = 0; gsci_wx1 = x1; /* WCLIP1 */
         gs.combine = 3; nb.rect_2d = 1; batch_identity = 1; r_replace = 1; gs.r_atest = -1; gs.r_nocol = 0; gs.r_mix = 0; rgb_scale = 1; nb.draw_3d = 0;
         grab_bind = 1;
         /* FB-1 GRAB: the copy quad is a native raw batch (rect path at fill depth 0.5, combine 3, unit 0 = grab_tex). */
@@ -2937,7 +2952,7 @@ static int grab_impl(const void* cfb, int y0, int y1, int prev_frame) {
         grab_raw_quad(x1, mo);
         flush();
         grab_bind = 0;
-        gsci_x0 = sc[0]; gsci_y0 = sc[1]; gsci_x1 = sc[2]; gsci_y1 = sc[3];
+        gsci_x0 = sc[0]; gsci_y0 = sc[1]; gsci_x1 = sc[2]; gsci_y1 = sc[3]; gsci_wx0 = sc[4]; gsci_wx1 = sc[5];
         gs.combine = s_comb; nb.rect_2d = s_2d; batch_identity = s_bi; r_replace = s_rep; gs.r_atest = s_at; gs.r_nocol = s_nc; gs.r_mix = s_mix;
         rgb_scale = s_rs; nb.draw_3d = s_3d;
     }
@@ -3046,6 +3061,7 @@ void pm_gpu_begin_wait(void) {
     gsci_y0 = 0;
     gsci_x1 = 320;
     gsci_y1 = 240;
+    gsci_wx0 = 0; gsci_wx1 = 320; /* WCLIP1 */
     nb.draw_3d = 0;
     if (!gs.gpu_ok) return;
     pm_tex_upload_vram_before_frame();
@@ -4848,6 +4864,7 @@ void pm_gpu_dcsum_frame(unsigned frame) {
 
 void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     gsci_r[0] = x0; gsci_r[1] = y0; gsci_r[2] = x1; gsci_r[3] = y1; /* NC0S */
+    const int rx0 = x0, rx1 = x1; /* WCLIP1: raw x edges */
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 > 320) x1 = 320;
@@ -4856,11 +4873,12 @@ void pm_gpu_set_scissor(int x0, int y0, int x1, int y1) {
     if (y1 < y0) { int t = y0; y0 = y1; y1 = t; }
     /* V05: the batch in flight was drawn under the old scissor on the N64. Draw it before the scissor changes: the last
      * background piece of a window (its bottom right quarter) was cut by the next pass's scissor, a smaller one. */
-    if (x0 != gsci_x0 || y0 != gsci_y0 || x1 != gsci_x1 || y1 != gsci_y1) flush();
+    if (x0 != gsci_x0 || y0 != gsci_y0 || x1 != gsci_x1 || y1 != gsci_y1 || ((pm_wide || pm_stretch) && (rx0 != gsci_wx0 || rx1 != gsci_wx1))) flush();
     gsci_x0 = x0;
     gsci_y0 = y0;
     gsci_x1 = x1;
     gsci_y1 = y1;
+    gsci_wx0 = rx0; gsci_wx1 = rx1; /* WCLIP1 */
 }
 const int* pm_gpu_sci_raw(void) { return gsci_r; } /* NC0S */
 
