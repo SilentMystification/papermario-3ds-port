@@ -197,6 +197,7 @@ void pm_fprof_window(unsigned total, unsigned steps) {
         fp_cal_pend = 0;
         pm_log_prof_line("fprof cal hook %u pair %u", fp_hook_t, fp_pair_t);
     }
+    if (fp_cnt) return; /* PROF4B: counts mode prints at the frame window (pm_fprof_frame) only */
     fp_print(fp_last_total, 1u, fp_last_steps);
     fp_gen++;
     fp_swap(&fp_st[0]);

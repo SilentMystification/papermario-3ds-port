@@ -30,25 +30,37 @@ STEPS = re.compile(r"fprofn f(\d+) c([01]) steps (\d+) calls (\d+) d ((?:\d+ ?){
 
 
 def read_log(log):
-    """-> per core: n and dsum per address (sums over windows), steps and calls totals, depth histogram."""
+    """-> per core: n and dsum per address (sums over windows), steps and calls totals, depth histogram.
+    Only the first counts window of the log counts (the core 0 steps line sets its frame): later window blocks are not the census."""
     n = [defaultdict(int), defaultdict(int)]
     dsum = [defaultdict(int), defaultdict(int)]
     steps, calls, hist = [0, 0], [0, 0], [[0] * 9, [0] * 9]
     with open(log, encoding="utf-8", errors="replace") as fh:
-        for line in fh:
-            m = ENT.search(line)
-            if m:
-                c, a = int(m.group(2)), int(m.group(3), 16)
-                n[c][a] += int(m.group(4))
-                dsum[c][a] += int(m.group(5))
+        lines = fh.readlines()
+    first = None
+    for line in lines:
+        m = STEPS.search(line)
+        if m and m.group(2) == "0":
+            first = m.group(1)
+            break
+    for line in lines:
+        m = ENT.search(line)
+        if m:
+            if m.group(1) != first:
                 continue
-            m = STEPS.search(line)
-            if m:
-                c = int(m.group(2))
-                steps[c] += int(m.group(3))
-                calls[c] += int(m.group(4))
-                for i, v in enumerate(m.group(5).split()):
-                    hist[c][i] += int(v)
+            c, a = int(m.group(2)), int(m.group(3), 16)
+            n[c][a] += int(m.group(4))
+            dsum[c][a] += int(m.group(5))
+            continue
+        m = STEPS.search(line)
+        if m:
+            if m.group(1) != first:
+                continue
+            c = int(m.group(2))
+            steps[c] += int(m.group(3))
+            calls[c] += int(m.group(4))
+            for i, v in enumerate(m.group(5).split()):
+                hist[c][i] += int(v)
     return n, dsum, steps, calls, hist
 
 
@@ -107,9 +119,13 @@ def main(argv=None):
         return 2
     fmap = hotset.parse_map(mapf)
     n, dsum, steps, calls, hist = read_log(a.log)
-    if not steps[0] or not steps[1]:
-        print("fprof_excl TOOL FAULT: no fprofn steps line for core 0 and 1 in %s (steps %s)" % (a.log, steps))
+    if not steps[0]:
+        print("fprof_excl TOOL FAULT: no fprofn steps line for core 0 in %s" % a.log)
         return 2
+    combined = 0
+    if not steps[1]:  # the capchk words set det: every step runs inline on core 0, core 1 has no steps
+        combined = 1
+        n[1], dsum[1], steps[1], calls[1], hist[1] = n[0], dsum[0], steps[0], calls[0], hist[0]
     prev = previous_names()
     mx = a.max
     while True:
@@ -131,8 +147,8 @@ def main(argv=None):
           " ".join(str(x) for x in hist[0]), " ".join(str(x) for x in hist[1])))
     for nm in sorted(collat):
         print("collateral %s" % nm)
-    print("fprof_excl names %d collateral %d core0 calls %d pairs %d core1 calls %d pairs %d D %d ticks0 %d ticks1 %d" % (
-        len(names), len(collat), t[0][1], t[0][2], t[1][1], t[1][2], d, t[0][0], t[1][0]))
+    print("fprof_excl names %d collateral %d core0 calls %d pairs %d core1 calls %d pairs %d D %d ticks0 %d ticks1 %d combined %d" % (
+        len(names), len(collat), t[0][1], t[0][2], t[1][1], t[1][2], d, t[0][0], t[1][0], combined))
     return 0
 
 
