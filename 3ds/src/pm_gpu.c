@@ -2890,6 +2890,7 @@ void pm_gpu_pause_gutters(unsigned fade) {
     nb.rect_2d = s_2d;
     if (dbg) pm_log("GUTDBG flushed: gni %u", nb.gni);
 }
+unsigned pm_spm_t3; /* SPM0 */
 int pm_gpu_grab_prev(const void* prev_cfb) {
     PM_WALK_OWN(); /* CORE2-3a */
     prev_want = 2; /* BTRANS: the request holds for 2 drawn frames */
@@ -2898,7 +2899,7 @@ int pm_gpu_grab_prev(const void* prev_cfb) {
     if (prev_done) return prev_done > 0 ? 2 : 0;
     if (!target || !gs.gpu_ok) return 0;
     const int r = grab_impl(prev_cfb, 0, 240, 1);
-    prev_done = r == 2 ? 1 : -1;
+    prev_done = r == 2 ? 1 : -1; if (r == 2) pm_spm_t3++; /* SPM0: old-frame grabs */
     return r;
 }
 /* BTRANS fix 3: an encounter start (pre-battle init) asks for the copy of the frame before the star wipe, at the next two begins. */

@@ -1,0 +1,85 @@
+{
+  "scenarios": [
+    {
+      "name": "spm_uaa",
+      "status": "unverified",
+      "reason": "SPM0 census for Up and Away. Until is spmove: done. Cap 45 s, deadline 40 s.",
+      "subject": "SPM0: Up and Away (StarPowersTable[7]) started by spmove=7 at the first player menu of the kmr_20 battle. Census lines spm per 30 steps (pm_fxtest.c pm_spm_cen).",
+      "proves": "SPM0: spmove: start, spm census lines and spmove: done appear in the log of the Up and Away run (counts only).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 spmove=7 profdisk=1 det fixedseed loglevel=debug",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "spmove: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "spmove start",
+          "regex": "spmove: start"
+        },
+        {
+          "name": "spmove done",
+          "regex": "spmove: done"
+        }
+      ]
+    },
+    {
+      "name": "spm_sbeam",
+      "status": "unverified",
+      "reason": "SPM0 census for Star Beam. Until is spmove: done. Cap 45 s, deadline 40 s.",
+      "subject": "SPM0: Star Beam (StarPowersTable[8]) started by spmove=8 at the first player menu of the kmr_20 battle. Census lines spm per 30 steps (pm_fxtest.c pm_spm_cen).",
+      "proves": "SPM0: spmove: start, spm census lines and spmove: done appear in the log of the Star Beam run (counts only).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 spmove=8 profdisk=1 det fixedseed loglevel=debug",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "spmove: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "spmove start",
+          "regex": "spmove: start"
+        },
+        {
+          "name": "spmove done",
+          "regex": "spmove: done"
+        }
+      ]
+    },
+    {
+      "name": "spm_pbeam",
+      "status": "unverified",
+      "reason": "SPM0 census for Peach Beam. Until is spmove: done. Cap 45 s, deadline 40 s.",
+      "subject": "SPM0: Peach Beam (StarPowersTable[9]) started by spmove=9 at the first player menu of the kmr_20 battle. Census lines spm per 30 steps (pm_fxtest.c pm_spm_cen).",
+      "proves": "SPM0: spmove: start, spm census lines and spmove: done appear in the log of the Peach Beam run (counts only).",
+      "debug": "warp=kmr_20:0 battle=BTL_KMR_1_FORMATION_00:BTL_KMR_1_STAGE_01 battlef=30 spmove=9 profdisk=1 det fixedseed loglevel=debug",
+      "extra": [
+        "-Turbo"
+      ],
+      "until": "spmove: done",
+      "cap": 45,
+      "deadline": 40,
+      "first_marker": "warp: kmr_20 entry 0",
+      "expects": "warp",
+      "needs_picture": false,
+      "expected_events": [
+        {
+          "name": "spmove start",
+          "regex": "spmove: start"
+        },
+        {
+          "name": "spmove done",
+          "regex": "spmove: done"
+        }
+      ]
+    }
+  ]
+}

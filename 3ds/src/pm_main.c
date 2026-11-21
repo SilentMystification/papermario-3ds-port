@@ -346,6 +346,7 @@ static void cap_note(const char* path) {
 }
 /* PAUSEOPEN: the last frame for a texture read (set_timg). The GPU copy when this drawn frame has it, else the CPU readback of the frame buffer
  * that is not drawn now. The pause no longer reads the pixels on the CPU (ROLE_CPUFILL only writes the coverage). */
+unsigned pm_spm_cap; /* SPM0 */
 void pm_cfb_capture_prev(void) {
     static unsigned done = ~0u;
     unsigned i;
@@ -377,7 +378,7 @@ void pm_cfb_capture_prev(void) {
                 pm_gpu_cap_state(st);
                 if (st[2] || st[3]) { cap_note("skip"); return; }
             }
-            cap_note("cpu");
+            cap_note("cpu"); pm_spm_cap++; /* SPM0: CPU frame reads */
             if (pm_xf.on) pm_xf.cap_cpu++; /* BTLWIPE: the capcpu field of the xfer line */
             pm_gpu_read_frame(prev);
             if (pm_ph_on) { unsigned dt = pm_ticks() - t0; pm_b7.cap_n++; pm_b7.cap_ticks += dt; if (dt > pm_b7.cap_max) pm_b7.cap_max = dt; }
