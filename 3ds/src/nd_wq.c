@@ -51,7 +51,9 @@ void pm_wq_set_logic(Thread t) {
 int pm_wq_on_logic(void) { return wq_lg && threadGetCurrent() == wq_lg; }
 void pm_wq_kick_walker(void) { if (wq_lg) LightEvent_Signal(&wq_ev_walker); }
 /* The game thread waits at most ns for the logic thread (a block, a done command, a retrace start). */
-void pm_wq_wait_walker(long long ns) { LightEvent_WaitTimeout(&wq_ev_walker, ns); }
+unsigned long long pm_c0i_t[3]; /* GDW: game thread ticks: [0] waits for the logic, [1] sync60_pace, [2] C3D_FrameBegin (prof only) */
+extern int pm_pf_on; /* GDW: pm_phase.c */
+void pm_wq_wait_walker(long long ns) { const unsigned t0 = pm_pf_on ? (unsigned)svcGetSystemTick() : 0u; LightEvent_WaitTimeout(&wq_ev_walker, ns); if (pm_pf_on) pm_c0i_t[0] += (unsigned)svcGetSystemTick() - t0; }
 
 /* Game thread: run the head entry. 0 when the queue is empty. */
 int pm_wq_pump_one(void) {
