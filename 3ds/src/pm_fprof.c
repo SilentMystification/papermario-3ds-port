@@ -17,7 +17,7 @@ void pm_log_prof_line(const char* fmt, ...); /* pm_log.c */
 #define FP_TPM 268112ull /* ticks per ms */
 #define FP_TOP 30u
 typedef struct { unsigned addr, n; unsigned long long cyc; } FpEnt;
-typedef struct { FpEnt e[FP_N]; unsigned calls, pairs, drop, used; } FpHalf;
+typedef struct { FpEnt e[FP_N]; unsigned calls, pairs, drop, used; unsigned dn[9]; } FpHalf; /* dn: calls per depth, 8 = 8 and up */
 typedef struct {
     void* tls;
     unsigned d, sp, last, gen, cur;
@@ -27,6 +27,8 @@ typedef struct {
 } FpSt;
 static FpSt fp_st[2];
 static unsigned fp_gen, fp_dmax = 4u, fp_hook_t, fp_pair_t, fp_cal_pend;
+static unsigned fp_cnt; /* PROF4B: fprofn switch, counts only (no ticks) */
+int pm_debug_has(const char* word); /* pm_log.c */
 static unsigned fp_last_total, fp_last_steps;
 static FpEnt fp_sink;
 
@@ -65,6 +67,7 @@ void __cyg_profile_func_enter(void* fn, void* cs) {
     if (!s) return; /* another thread: no count */
     if (s->d == 0u && s->gen != fp_gen) fp_swap(s); /* window change at depth 0: the other half */
     s->h[s->cur].calls++;
+    if (fp_cnt) { FpEnt* e = fp_slot(s, (unsigned)fn); e->n++; e->cyc += s->d; s->h[s->cur].dn[s->d < 8u ? s->d : 8u]++; s->d++; return; } /* PROF4B: counts only */
     if (s->d++ >= fp_dmax) return; /* deeper calls: their time stays with the timed caller */
     const unsigned t = (unsigned)svcGetSystemTick();
     s->h[s->cur].pairs++;
@@ -77,6 +80,7 @@ void __cyg_profile_func_exit(void* fn, void* cs) {
     FpSt* s = fp_me();
     (void)fn; (void)cs;
     if (!s || !s->d) return;
+    if (fp_cnt) { s->d--; return; } /* PROF4B: counts only */
     if (--s->d >= fp_dmax) return;
     const unsigned t = (unsigned)svcGetSystemTick();
     if (!s->sp) return;
@@ -113,6 +117,7 @@ void pm_fprof_thread(int k) {
     s->d = s->sp = 0;
     fp_clear(s, 0);
     fp_clear(s, 1);
+    fp_cnt = pm_debug_has("fprofn") ? 1u : 0u; /* PROF4B: after the calibration (it runs the timed path) */
     s->cur = 0;
     s->gen = fp_gen;
     fp_cal_pend = 1;
@@ -126,6 +131,17 @@ static void fp_print(unsigned f, unsigned core, unsigned steps) {
     for (unsigned k = 0; k < 2u; k++) {
         if (!s->done[k] || k == s->cur) continue;
         FpHalf* h = &s->h[k];
+        if (fp_cnt) { /* PROF4B: every function with 1 call per step and up, then the calls per depth of the half */
+            unsigned stc = steps ? steps : 1u;
+            for (unsigned i = 0; i < FP_N; i++) {
+                const FpEnt* e = &h->e[i];
+                if (e->addr && e->n >= stc) pm_log_prof_line("fprofn f%u c%u %08x n %u dsum %u", f, core, e->addr, e->n, (unsigned)e->cyc);
+            }
+            pm_log_prof_line("fprofn f%u c%u steps %u calls %u d %u %u %u %u %u %u %u %u %u", f, core, steps, h->calls,
+                h->dn[0], h->dn[1], h->dn[2], h->dn[3], h->dn[4], h->dn[5], h->dn[6], h->dn[7], h->dn[8]);
+            fp_clear(s, k);
+            continue;
+        }
         FpTop top[FP_TOP];
         unsigned nt = 0;
         for (unsigned i = 0; i < FP_N; i++) { /* insertion into the top 30 by cyc */
