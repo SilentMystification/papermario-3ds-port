@@ -14,16 +14,16 @@ B = build3ds/out/live_play2_170.txt (main a05f62c545), C = build3ds/hw_tidal1_li
 ## 1. Timeline of one map change (game code src/state_map_transitions.c; L = logic thread core 1, G = game thread core 0, P = prefetch thread core 1 prio 0x3F)
 | # | stage | code | thread | blocks | ms |
 |---|---|---|---|---|---|
-| 1 | exit volume, exit script, GotoMap: set_game_mode(CHANGE_MAP) | pm_map.c:367-385: drain "mode", xfer begin, map_prefetch | L | 1 full drain | OPEN |
-| 2 | P reads <map>_shape.nds (romfs), Yay0 of <map>_hit | pm_prefetch.c:38-48 | P | nothing (runs in L idle) | yay0 7.8 (FACT A) |
-| 3 | CHANGE_MAP_INIT: fade out, rate 20: 13 steps, old map drawn | state_map_transitions.c:133-142, screen_overlays.c:460 | L, G | visible | OPEN |
-| 4 | DELAY: draw off; 4 idle steps (the N64 wait for its RSP) | :143-148, :153-154; main_loop.c:194-197 no frame push | L | covered | small (GUESS) |
-| 5 | load_map_by_IDs: drain "map", audio join, heap create, clears | pm_map.c:393-418, world.c:83-252 | L | covered | load 250 to 272 (FACT A) |
+| 1 | exit volume, exit script, GotoMap: set_game_mode(CHANGE_MAP) | pm_map.c:367-389: drain "mode", xfer begin, map_prefetch | L | 1 full drain | OPEN |
+| 2 | P reads <map>_shape.nds (romfs), Yay0 of <map>_hit | pm_prefetch.c:39-48 | P | nothing (runs in L idle) | yay0 7.8 (FACT A) |
+| 3 | CHANGE_MAP_INIT: fade out, rate 20: 13 steps, old map drawn | state_map_transitions.c:134-143, screen_overlays.c:460 | L, G | visible | OPEN |
+| 4 | DELAY: draw off; 4 idle steps (the N64 wait for its RSP) | :144-149, :155-157; main_loop.c:194-197 no frame push | L | covered | small (GUESS) |
+| 5 | load_map_by_IDs: drain "map", audio join, heap create, clears | pm_map.c:393-418, world.c:83-242 | L | covered | load 250 to 272 (FACT A) |
 | 5a | map statics restore (MS01) | pm_mapdata.c:108-126 memcpy data, memset bss | L | - | OPEN (GUESS under 1) |
-| 5b | shape (.nds take), hit, bg Yay0; seam and .dlc file reads | pm_map.c:136-154, nd_shape.c:177-188, :211-258 | L | FS waits | seam+dlcp 88 to 115 (FACT A) |
+| 5b | shape (.nds take), hit, bg Yay0; seam and .dlc file reads | pm_map.c:136-154, nd_shape.c:177-188, :210-256 | L | FS waits | seam+dlcp 88 to 115 (FACT A) |
 | 5c | texture copies: 1 to 2 dma_copy per texture, 8 KB chunks | model.c:1573, :1585, 43F0.c:432-447 | L | 1 drain per chunk | maxstep rom 115 reads (FACT A) |
-| 6 | AWAIT_MAIN: main script: NPCs, entities, music | :167-178; 101b90_len_8f0.c:179, :201; entity.c:881 | L | covered, drains | OPEN |
-| 7 | FADE_IN: draw on, cover held 3 steps (MAPLAG), 13 fade steps | :180-195, pm_maplag.h:6 | L, G | first sight | init 50 to 150 (FACT A) |
+| 6 | AWAIT_MAIN: main script: NPCs, entities, music | :171-183; 101b90_len_8f0.c:179, :201; entity.c:881 | L | covered, drains | OPEN |
+| 7 | FADE_IN: draw on, cover held 3 steps (MAPLAG), 13 fade steps | :184-198, pm_maplag.h:6 | L, G | first sight | init 50 to 150 (FACT A) |
 | 8 | first sight on G: model misses, tex misses, list compiles | nd_recs.c:190, pm_tex.c:1399, nd_shape.c:759 | G | warm 64 misses per covered frame (pm_xfer.c:160) | mdl 282, tex 53/25 ms, dlc 156/24 ms (FACT A) |
 - Audio: control job and mixer on core 1 (pm_audio.c:118). The map song samples decode at first play on the render thread (BTLWIPE did this only for battles, pm_prefetch.c:9-11).
 - The picture: while the draw is off, no frame is pushed (main_loop.c:194-197). The screen keeps the black fade frame. The watchdog limit is 10 s (pm_wdog.c:32).
@@ -34,7 +34,7 @@ B = build3ds/out/live_play2_170.txt (main a05f62c545), C = build3ds/hw_tidal1_li
   (nd_wq.c:178-183). The queue holds entries that read no game RAM: the step begin (pace and GPU wait, pm_gpu.c:3087, :3032, :3035), step ends, key frames,
   texture invalidations. Each ROM read posts an invalidation (pm_os.c:435 -> pm_tex.c:1325, no kick). So the next read always waits one cross-core round trip.
   During the load no frame is in the queue at all (draw off since stage 4): every wait in the load step protects nothing.
-- M2 synchronous load. load_map_by_IDs runs in one step. Port work was added inside it: romfs seam and .dlc reads (MAPLAG, nd_shape.c:259-271), the drains.
+- M2 synchronous load. load_map_by_IDs runs in one step. Port work was added inside it: romfs seam and .dlc reads (MAPLAG, nd_shape.c:258-268), the drains.
 - M3 inline first sight. The new map's lists, textures and model records build in the frames that draw them. MAPX-3 and DOORHITCH spread part of it
   over covered frames (pm_xfer.c:154-180, :198-236). While the draw is off (stages 4 to 6) core 0 has no frame to walk and does nothing.
 - Display list era: build 3542 (92e01310) had the same drain (pm_os.c:462-466) and the same per-read invalidation (pm_os.c:435) (FACT git show).
@@ -57,11 +57,11 @@ B = build3ds/out/live_play2_170.txt (main a05f62c545), C = build3ds/hw_tidal1_li
 - Stamps already in use for GPU reads: ring chunks (pm_gpu_rect.c:41), glyph cells (pm_tex.c:322), texture staging (pm_tex.c:795). Design A is the same rule for game RAM.
 
 ## 4. Design B: asynchronous load jobs with a completion handshake (rows MTX2, MTX4)
-- Job = a file read or decode on P with a take at the consumer (the pm_prefetch_post and pm_prefetch_take pattern, pm_prefetch.c:85-124).
+- Job = a file read or decode on P with a take at the consumer (the pm_prefetch_post and pm_prefetch_take pattern, pm_prefetch.c:87-124).
 - MTX2: the .seam and .dlc files of the target map are read on P at the first covered step (stage 4, 5 idle steps). pm_dlc_preload takes the bytes.
-  The files depend only on the map name (nd_shape.c:144-153, :219-226). Cut: seam+dlcp, 88 to 115 ms (FACT A) leave the load step.
+  The files depend only on the map name (nd_shape.c:145, :151, :218, :224). Cut: seam+dlcp, 88 to 115 ms (FACT A) leave the load step.
 - MTX4: the map song samples pre-decode on P at the song change (pm_prefetch_song, as BTLWIPE F4). Only if MTX0 shows dec in visible steps.
-- Must stay synchronous (the main script reads them in its first run, world.c:251): shape, hit, collision, model tree, texture handles, map init.
+- Must stay synchronous (the main script reads them in its first run, world.c:241): shape, hit, collision, model tree, texture handles, map init.
   These are memcpy and Yay0 (7.8 ms, FACT A). No slicing is needed for them.
 - Not done: slicing load_map_by_IDs over steps (it clears heaps and lists in one order; the cover hides it), preload of neighbor maps (heap, no gain).
 
