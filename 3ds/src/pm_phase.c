@@ -745,9 +745,9 @@ static void pf_report(void) {
                 lgc / 100u, lgc % 100u, dn, wwc / 100u, wwc % 100u, sn - lg0_s, core, kb, ic1, dc1, cy1, kf - lg0_kf);
             { unsigned c_[3]; for (int k = 0; k < 3; k++) c_[k] = pf_w ? (unsigned)((pm_c0i_t[k] - c0i_m[k]) * 100ull / PF_TPM / pf_w) : 0u;
               pm_log_prof_line("prof f%u w%u c0i idle %u.%02u pace %u.%02u gx %u.%02u", pf_total, pf_w, c_[0] / 100u, c_[0] % 100u, c_[1] / 100u, c_[1] % 100u, c_[2] / 100u, c_[2] % 100u); } /* GDW */
-            { unsigned o_[8]; unsigned long long tk_; extern void nd_ublk_take(unsigned o[8], unsigned long long* tk); nd_ublk_take(o_, &tk_); /* GD9A */
+            { unsigned o_[11]; unsigned long long tk_; extern void nd_ublk_take(unsigned o[11], unsigned long long* tk); nd_ublk_take(o_, &tk_); /* GD9A */
               const unsigned nb_ = o_[0] ? o_[0] : 1u, c0_ = o_[0] ? (unsigned)(tk_ * 100ull / PF_TPM / o_[0]) : 0u;
-              pm_log_prof_line("prof f%u w%u ublk n %u key %u st %u w %u bad %u spl %u words %u draws %u c0 %u.%02u", pf_total, pf_w, o_[0], o_[1], o_[2], o_[3], o_[4], o_[5], o_[6] / nb_, o_[7] / nb_, c0_ / 100u, c0_ % 100u); }
+              pm_log_prof_line("prof f%u w%u ublk n %u key %u st %u w %u bad %u ds %u bad2 %u dup %u spl %u words %u draws %u c0 %u.%02u", pf_total, pf_w, o_[0], o_[1], o_[2], o_[3], o_[4], o_[8], o_[9], o_[10], o_[5], o_[6] / nb_, o_[7] / nb_, c0_ / 100u, c0_ % 100u); }
             { unsigned long long d_[6]; for (int k = 0; k < 6; k++) d_[k] = pm_c0k[k] - c0k_m[k];
               const unsigned kp = pf_w ? (unsigned)(d_[0] * 100ull / PF_TPM / pf_w) : 0u, kg = pf_w ? (unsigned)(d_[1] * 100ull / PF_TPM / pf_w) : 0u;
               const unsigned gl = d_[4] ? (unsigned)(d_[2] / 10ull / d_[4]) : 0u, gk = d_[5] ? (unsigned)(d_[3] / 10ull / d_[5]) : 0u; /* us to ms x 100 */

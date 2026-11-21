@@ -120,7 +120,7 @@ void nd_lsc_begin(void); void nd_lsc_begin_v(unsigned vprim); /* NREC4 */ void n
 /* GD9A (nd_ublk.c): the status bar block census. Core 1 brackets the block (nd_ublk_begin, nd_ublk_end); core 0 runs the records
  * (nd_ublk_run) and the prof line takes the window counts (nd_ublk_take). nd_ub_on is the bracket flag (nd_rec.c). */
 void nd_ublk_begin(unsigned site); void nd_ublk_end(void); void nd_ublk_run(const uint32_t* rec);
-void nd_ublk_take(unsigned o[8], unsigned long long* tk); void nd_ublk_unit(uint32_t w0, uint32_t w1);
+void nd_ublk_take(unsigned o[11], unsigned long long* tk); void nd_ublk_unit(uint32_t w0, uint32_t w1);
 void nd_ublk_napi(NdNapiRun run, const void* rec, unsigned units); extern int nd_ub_on;
 
 #endif

@@ -442,6 +442,9 @@ void nd_rec_texrect(uint32_t w0, uint32_t w1, uint32_t hs, uint32_t hd) {
 }
 /* GD9A: the bracket flag and the weak no-ops (nd_ublk.c, strong) for the units that link nd_rec.c alone */
 int nd_ub_on;
+/* GD9A2: nd_ds size and address for nd_ublk.c (its citro3d include clashes with nd_ds.h, which includes nd_int.h) */
+unsigned nd_ds_size(void) { return (unsigned)sizeof(NdDs); }
+const void* nd_ds_addr(void) { return &nd_ds; }
 __attribute__((weak)) void nd_ublk_unit(uint32_t w0, uint32_t w1) { (void)w0; (void)w1; }
 __attribute__((weak)) void nd_ublk_napi(NdNapiRun run, const void* rec, unsigned units) { (void)run; (void)rec; (void)units; }
 /* NATIVEAPI: a native draw record (nd_api.h). units 1 to 255. */
