@@ -152,17 +152,19 @@ static void fp_print(unsigned f, unsigned core, unsigned steps) {
     }
 }
 
-/* Called at the window print (pm_phase.c pf_report, game thread). The halves printed are those the threads left at the previous
- * window change, so the frame and step count are those of the previous call. */
+/* Called at the window print (pm_phase.c pf_report, game thread). The game thread swaps its own half here (a swap at any depth is
+ * safe: the stack holds addresses, the open calls close in the new half) and prints it at once: core 0 lines are of this window.
+ * The logic thread swaps at its next depth 0 entry: its half is printed at the next window (the frame and steps of the previous call). */
 void pm_fprof_window(unsigned total, unsigned steps) NF;
 void pm_fprof_window(unsigned total, unsigned steps) {
     if (fp_cal_pend) {
         fp_cal_pend = 0;
         pm_log_prof_line("fprof cal hook %u pair %u", fp_hook_t, fp_pair_t);
     }
-    fp_print(fp_last_total, 0u, fp_last_steps);
     fp_print(fp_last_total, 1u, fp_last_steps);
+    fp_gen++;
+    fp_swap(&fp_st[0]);
+    fp_print(total, 0u, steps);
     fp_last_total = total;
     fp_last_steps = steps;
-    fp_gen++;
 }
