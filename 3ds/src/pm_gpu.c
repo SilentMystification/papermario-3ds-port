@@ -1325,7 +1325,6 @@ static unsigned updr[8]; /* DO3: why c3d_upd_needed said yes: 0 flag word, 1 lig
 static void uni_native(void) {
     bool* const dv = C3D_FVUnifDirty[GPU_VERTEX_SHADER];
     if (u_eye >= 0) dv[u_eye] = false;
-    if (__builtin_expect(nd_kp_on, 0)) return;
     for (unsigned i = 0; i < C3D_FVUNIF_COUNT;) {
         if (!dv[i]) { i++; continue; }
         unsigned e = i + 1;
@@ -1334,9 +1333,11 @@ static void uni_native(void) {
         u32* o = cb + coff;
         *o++ = 0x80000000u | i; *o++ = 0x2C0u | 0xFu << 16; /* one(): value, header (the pad is not needed: 2 words) */
         const unsigned nw = 4u * (e - i);
+        u32* const dc = o; /* DO3F: the data command (its first value word), the base of nd_kp_vec */
         *o++ = ((const u32*)&C3D_FVUnif[GPU_VERTEX_SHADER][i])[0]; *o++ = 0x2C1u | 0xFu << 16 | (nw - 1u) << 20;
         for (unsigned k = 1; k < nw; k++) *o++ = ((const u32*)&C3D_FVUnif[GPU_VERTEX_SHADER][i])[k];
         *o++ = 0; /* nw is even: the pad */
+        if (__builtin_expect(nd_kp_on, 0)) for (unsigned k = i; k < e; k++) if (u5kpv[k]) { nd_kp_vec((uint32_t*)dc, 4u * (k - i), u5kp[k]); u5kpv[k] = 0; } /* DO3F: the K value of a staged row, as kp_scan */
         GPUCMD_SetBufferOffset(coff + (unsigned)(o - (cb + coff)));
         for (unsigned k = i; k < e; k++) dv[k] = false;
         i = e;
