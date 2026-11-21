@@ -311,6 +311,7 @@ void pm_fxtest_tick(unsigned f) {
         fx_npc = NULL;
         for (id = 0; id < 16 && !fx_npc; id++) fx_npc = get_npc_safe(id);
         pm_log("fxtest: spawn %d %s at %d %d %d", i, fx_names[i], (int)fx_x, (int)fx_y, (int)fx_z);
+        pm_log_evt("fxsp f%u e%d", f, i); /* TUB0: the expected-diff marker of a spawn */
         if (i == FXT_emote && !fx_npc) pm_log_w("fxtest: not spawned %s: no NPC in this map", fx_names[i]);
         fx_spawn(i);
     } else if (k == (i == FXT_shiny_flare || i == FXT_emote ? 7 : 12)) shot("a", i); /* FX3f: shiny_flare lives 10 frames */

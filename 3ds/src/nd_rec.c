@@ -801,9 +801,14 @@ void nd_sub_open(NdSub* s) {
 void nd_sub_close(NdSub* s) {
     s->b = nd_rec_mark();
     s->br[1] = (uint32_t)(uintptr_t)s->b;
+    s->e[0] = nd_ds.w.prim; s->e[1] = nd_ds.w.envc; s->e[2] = nd_ds.w.geom; /* TUB0: the end state of the recorded range (before the restore) */
     nd_ds_lg_close(); nd_ds_sub_restore(); /* NST2D */
 }
-void nd_sub_call(const NdSub* s) { nd_rec_call(s->a, s->b); }
+static __attribute__((cold, noinline)) void subst_log(const NdSub* s) { /* TUB0: at most 8 lines per frame */
+    static unsigned fr = ~0u, n; const unsigned f = pm_frame_count(); if (f != fr) { fr = f; n = 0; } if (n >= 8u) return; n++;
+    pm_log_evt("subst f%u prim %08x %08x env %08x %08x geom %08x %08x", f, (unsigned)s->e[0], (unsigned)nd_ds.w.prim, (unsigned)s->e[1], (unsigned)nd_ds.w.envc, (unsigned)s->e[2], (unsigned)nd_ds.w.geom); }
+void nd_sub_call(const NdSub* s) { nd_rec_call(s->a, s->b); /* TUB0: an end state other than the recorded one: the range drew with the snaps of nd_sub_open */
+    if (__builtin_expect(pm_drec_now(), 0) && (nd_ds.w.prim != s->e[0] || nd_ds.w.envc != s->e[1] || nd_ds.w.geom != s->e[2])) subst_log(s); }
 /* D10a: the end of a custom gfx range (build_custom_gfx): the replay of a range (nd_range_run) stops at its NDC_END. */
 void nd_rec_end(void) {
     rec_open();
