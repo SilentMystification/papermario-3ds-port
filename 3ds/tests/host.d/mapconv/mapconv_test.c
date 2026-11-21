@@ -38,6 +38,8 @@ static FILE* test_fopen(const char* path, const char* mode) {
     snprintf(p, sizeof p, "%s/%s", g_dir, path + 13);
     return fopen(p, mode);
 }
+static FILE* pm_pf_fopen(const char* path, const char* mode) { return test_fopen(path, mode); } /* MTX2: no prefetch thread in the test, the files are read here */
+static void pm_prefetch_files_release(void) { } /* MTX2 */
 #define fopen test_fopen
 #include LOADER_INC
 #undef fopen
